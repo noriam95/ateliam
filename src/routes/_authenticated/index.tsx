@@ -1,133 +1,114 @@
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { createDocument, deleteDocument, listDocuments } from "@/lib/documents.functions";
-import { Plus, FileText, ExternalLink, Trash2, History } from "lucide-react";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { listDocuments } from "@/lib/documents.functions";
+import { MODULE_LIST } from "@/lib/modules";
+import { ArrowUpRight, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/")({
-  component: Dashboard,
+  component: Overview,
 });
 
-function Dashboard() {
-  const router = useRouter();
-  const navigate = useNavigate();
+function Overview() {
   const list = useServerFn(listDocuments);
-  const create = useServerFn(createDocument);
-  const del = useServerFn(deleteDocument);
-  const [showNew, setShowNew] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-
-  const q = useQuery({ queryKey: ["documents"], queryFn: () => list() });
-
-  const createMut = useMutation({
-    mutationFn: () => create({ data: { name, description } }),
-    onSuccess: async (doc) => {
-      toast.success("Documento criado");
-      setShowNew(false); setName(""); setDescription("");
-      navigate({ to: "/editor/$id", params: { id: doc.id } });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const delMut = useMutation({
-    mutationFn: (id: string) => del({ data: { id } }),
-    onSuccess: () => { toast.success("Removido"); router.invalidate(); q.refetch(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const q = useQuery({ queryKey: ["documents", "all"], queryFn: () => list({ data: {} }) });
+  const docs = q.data ?? [];
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-bold uppercase tracking-wide">Documentos BPMN</h1>
-          <p className="text-sm text-muted-foreground mt-1">Crie, edite e versione seus processos.</p>
+    <div className="px-10 py-12 max-w-6xl mx-auto">
+      <div className="mb-12">
+        <div className="text-[11px] font-display uppercase tracking-[0.22em] text-muted-foreground mb-3">
+          Workspace · Atelier
         </div>
-        <button
-          onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" /> Novo documento
-        </button>
+        <h1 className="font-display text-4xl font-bold text-foreground leading-tight">
+          Bem-vindo ao seu ateliê de processos.
+        </h1>
+        <p className="text-muted-foreground mt-3 text-[15px] max-w-2xl">
+          Escolha um módulo para criar, editar e versionar documentos. Cada módulo é um ambiente
+          independente, com seu próprio fluxo de trabalho.
+        </p>
       </div>
 
-      {q.isLoading && <div className="text-sm text-muted-foreground">Carregando...</div>}
-      {q.data && q.data.length === 0 && (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Nenhum documento ainda. Clique em "Novo documento".</p>
-        </div>
-      )}
-      <div className="grid gap-3">
-        {q.data?.map((doc) => (
-          <div key={doc.id} className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:shadow-sm transition">
-            <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <Link to="/editor/$id" params={{ id: doc.id }} className="font-medium hover:underline truncate">
-                  {doc.name}
-                </Link>
-                <span className="text-[10px] font-display uppercase tracking-wider bg-secondary px-1.5 py-0.5 rounded">
-                  v{doc.current_version}
-                </span>
-              </div>
-              {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Atualizado em {new Date(doc.updated_at).toLocaleString("pt-BR")}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              <Link
-                to="/editor/$id/versions" params={{ id: doc.id }}
-                className="p-2 hover:bg-accent rounded-md" title="Histórico"
-              >
-                <History className="h-4 w-4" />
-              </Link>
-              {doc.sharepoint_web_url && (
-                <a href={doc.sharepoint_web_url} target="_blank" rel="noreferrer" className="p-2 hover:bg-accent rounded-md" title="Abrir no SharePoint">
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              )}
-              <button
-                onClick={() => confirm(`Remover "${doc.name}"?`) && delMut.mutate(doc.id)}
-                className="p-2 hover:bg-accent rounded-md text-destructive" title="Remover"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {showNew && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowNew(false)}>
-          <div className="bg-card rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-display text-lg font-bold uppercase mb-4">Novo documento</h2>
-            <div className="space-y-3">
-              <input
-                placeholder="Nome do processo" value={name} onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-md text-sm"
+      {/* Modules grid */}
+      <div className="grid md:grid-cols-3 gap-4 mb-12">
+        {MODULE_LIST.map((m) => {
+          const count = docs.filter((d) => d.module === m.key).length;
+          const Icon = m.icon;
+          return (
+            <Link
+              key={m.key}
+              to="/m/$module"
+              params={{ module: m.key }}
+              className="group relative bg-card border border-border rounded-xl p-6 hover:border-foreground/30 transition overflow-hidden"
+            >
+              <div
+                className="absolute top-0 left-0 right-0 h-1"
+                style={{ background: `var(${m.accent})` }}
               />
-              <textarea
-                placeholder="Descrição (opcional)" value={description} onChange={(e) => setDescription(e.target.value)}
-                rows={3} className="w-full px-3 py-2 border border-input rounded-md text-sm"
-              />
-              <div className="flex gap-2 justify-end">
-                <button onClick={() => setShowNew(false)} className="px-3 py-2 text-sm hover:bg-accent rounded-md">Cancelar</button>
-                <button
-                  onClick={() => name && createMut.mutate()}
-                  disabled={!name || createMut.isPending}
-                  className="px-3 py-2 bg-primary text-primary-foreground text-sm rounded-md disabled:opacity-50"
+              <div className="flex items-start justify-between mb-6">
+                <div
+                  className="h-11 w-11 rounded-lg grid place-items-center border border-border"
+                  style={{ color: `var(${m.accent})` }}
                 >
-                  {createMut.isPending ? "Criando..." : "Criar"}
-                </button>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition" />
               </div>
-            </div>
-          </div>
+              <div className="font-display text-lg font-semibold mb-1">{m.name}</div>
+              <p className="text-[13px] text-muted-foreground leading-relaxed mb-5">{m.description}</p>
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-display">
+                  Documentos
+                </span>
+                <span className="font-display text-xl font-bold tabular-nums">{count}</span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Recent */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-display text-sm uppercase tracking-[0.18em] text-muted-foreground">
+            Atividade recente
+          </h2>
         </div>
-      )}
+        {q.isLoading && <div className="text-sm text-muted-foreground">Carregando…</div>}
+        {!q.isLoading && docs.length === 0 && (
+          <div className="bg-card border border-border rounded-xl p-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              Nenhum documento ainda. Entre em um módulo para começar.
+            </p>
+          </div>
+        )}
+        <div className="divide-y divide-border border border-border rounded-xl overflow-hidden bg-card">
+          {docs.slice(0, 6).map((d) => {
+            const mod = MODULE_LIST.find((m) => m.key === d.module) ?? MODULE_LIST[0];
+            return (
+              <Link
+                key={d.id}
+                to="/editor/$id"
+                params={{ id: d.id }}
+                className="flex items-center gap-4 px-5 py-3.5 hover:bg-accent/40 transition"
+              >
+                <span
+                  className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded"
+                  style={{ background: `color-mix(in oklab, var(${mod.accent}) 15%, transparent)`, color: `var(${mod.accent})` }}
+                >
+                  {mod.short}
+                </span>
+                <span className="font-medium flex-1 truncate">{d.name}</span>
+                <span className="text-[11px] text-muted-foreground tabular-nums">v{d.current_version}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {new Date(d.updated_at).toLocaleDateString("pt-BR")}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
