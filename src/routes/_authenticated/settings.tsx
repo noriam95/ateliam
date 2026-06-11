@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getAppConfig, updateAppConfig, listSharePointSites, listSharePointDrives, getMe } from "@/lib/config.functions";
-import { CheckCircle2, AlertCircle, Search } from "lucide-react";
+import { CheckCircle2, AlertCircle, Search, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -48,9 +48,16 @@ function Settings() {
   });
 
   return (
-    <div className="p-8 max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background">
+      <header className="h-12 bg-primary text-primary-foreground flex items-center gap-3 px-4 border-b border-primary/20">
+        <Link to="/" className="flex items-center gap-2 text-[12px] hover:opacity-80">
+          <ArrowLeft className="h-4 w-4" /> Workspace
+        </Link>
+        <div className="font-display text-[15px] font-bold tracking-tight ml-2">Atelier · Configurações</div>
+      </header>
+      <div className="p-8 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold uppercase tracking-wide">Configurações</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight">Configurações</h1>
         <p className="text-sm text-muted-foreground mt-1">Integração SharePoint e workspace.</p>
       </div>
 
@@ -140,6 +147,7 @@ function Settings() {
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50">
           {saveMut.isPending ? "Salvando..." : "Salvar configuração"}
         </button>
+      </div>
       </div>
     </div>
   );
