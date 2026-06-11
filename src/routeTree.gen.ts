@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedMModuleRouteImport } from './routes/_authenticated/m.$module'
 import { Route as AuthenticatedEditorIdRouteImport } from './routes/_authenticated/editor.$id'
 import { Route as AuthenticatedEditorIdVersionsRouteImport } from './routes/_authenticated/editor.$id.versions'
 
@@ -35,6 +36,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMModuleRoute = AuthenticatedMModuleRouteImport.update({
+  id: '/m/$module',
+  path: '/m/$module',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedEditorIdRoute = AuthenticatedEditorIdRouteImport.update({
   id: '/editor/$id',
   path: '/editor/$id',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/editor/$id': typeof AuthenticatedEditorIdRouteWithChildren
+  '/m/$module': typeof AuthenticatedMModuleRoute
   '/editor/$id/versions': typeof AuthenticatedEditorIdVersionsRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
   '/editor/$id': typeof AuthenticatedEditorIdRouteWithChildren
+  '/m/$module': typeof AuthenticatedMModuleRoute
   '/editor/$id/versions': typeof AuthenticatedEditorIdVersionsRoute
 }
 export interface FileRoutesById {
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/editor/$id': typeof AuthenticatedEditorIdRouteWithChildren
+  '/_authenticated/m/$module': typeof AuthenticatedMModuleRoute
   '/_authenticated/editor/$id/versions': typeof AuthenticatedEditorIdVersionsRoute
 }
 export interface FileRouteTypes {
@@ -77,9 +86,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/editor/$id'
+    | '/m/$module'
     | '/editor/$id/versions'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/settings' | '/' | '/editor/$id' | '/editor/$id/versions'
+  to:
+    | '/auth'
+    | '/settings'
+    | '/'
+    | '/editor/$id'
+    | '/m/$module'
+    | '/editor/$id/versions'
   id:
     | '__root__'
     | '/_authenticated'
@@ -87,6 +103,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/'
     | '/_authenticated/editor/$id'
+    | '/_authenticated/m/$module'
     | '/_authenticated/editor/$id/versions'
   fileRoutesById: FileRoutesById
 }
@@ -125,6 +142,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/m/$module': {
+      id: '/_authenticated/m/$module'
+      path: '/m/$module'
+      fullPath: '/m/$module'
+      preLoaderRoute: typeof AuthenticatedMModuleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/editor/$id': {
       id: '/_authenticated/editor/$id'
       path: '/editor/$id'
@@ -159,12 +183,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedEditorIdRoute: typeof AuthenticatedEditorIdRouteWithChildren
+  AuthenticatedMModuleRoute: typeof AuthenticatedMModuleRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedEditorIdRoute: AuthenticatedEditorIdRouteWithChildren,
+  AuthenticatedMModuleRoute: AuthenticatedMModuleRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -177,13 +203,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

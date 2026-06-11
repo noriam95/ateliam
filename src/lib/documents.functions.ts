@@ -7,15 +7,20 @@ async function sha256Hex(s: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export const listDocuments = createServerFn({ method: "GET" })
+export const listDocuments = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+  .inputValidator((d?: { module?: string }) =>
+    z.object({ module: z.enum(["bpmn", "policy", "diagnostic"]).optional() }).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    let q = context.supabase
       .from("documents")
-      .select("id, name, description, owner_id, current_version, sharepoint_web_url, updated_at, created_at")
+      .select("id, name, description, owner_id, module, current_version, sharepoint_web_url, updated_at, created_at")
       .order("updated_at", { ascending: false });
+    if (data.module) q = q.eq("module", data.module);
+    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return data ?? [];
+    return rows ?? [];
   });
 
 export const getDocument = createServerFn({ method: "POST" })
@@ -51,8 +56,13 @@ export const getDocument = createServerFn({ method: "POST" })
 
 export const createDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { name: string; description?: string; content?: string }) =>
-    z.object({ name: z.string().min(1).max(200), description: z.string().max(500).optional(), content: z.string().optional() }).parse(d),
+  .inputValidator((d: { name: string; description?: string; content?: string; module?: string }) =>
+    z.object({
+      name: z.string().min(1).max(200),
+      description: z.string().max(500).optional(),
+      content: z.string().optional(),
+      module: z.enum(["bpmn", "policy", "diagnostic"]).default("bpmn"),
+    }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
@@ -62,6 +72,7 @@ export const createDocument = createServerFn({ method: "POST" })
         description: data.description ?? null,
         owner_id: context.userId,
         content_inline: data.content ?? null,
+        module: data.module,
       })
       .select("*")
       .single();

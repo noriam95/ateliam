@@ -89,6 +89,7 @@ export type Database = {
           current_version: number
           description: string | null
           id: string
+          module: string
           name: string
           owner_id: string
           sharepoint_drive_id: string | null
@@ -102,6 +103,7 @@ export type Database = {
           current_version?: number
           description?: string | null
           id?: string
+          module?: string
           name: string
           owner_id: string
           sharepoint_drive_id?: string | null
@@ -115,6 +117,7 @@ export type Database = {
           current_version?: number
           description?: string | null
           id?: string
+          module?: string
           name?: string
           owner_id?: string
           sharepoint_drive_id?: string | null
