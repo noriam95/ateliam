@@ -1,0 +1,2 @@
+ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS documents_module_check;
+ALTER TABLE public.documents ADD CONSTRAINT documents_module_check CHECK (module IN ('bpmn','policy','diagnostic','workspace'));
