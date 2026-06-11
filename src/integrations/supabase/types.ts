@@ -14,16 +14,173 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_config: {
+        Row: {
+          id: number
+          sharepoint_drive_id: string | null
+          sharepoint_folder_path: string | null
+          sharepoint_site_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sharepoint_drive_id?: string | null
+          sharepoint_folder_path?: string | null
+          sharepoint_site_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sharepoint_drive_id?: string | null
+          sharepoint_folder_path?: string | null
+          sharepoint_site_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      document_versions: {
+        Row: {
+          author_id: string
+          comment: string | null
+          content_hash: string | null
+          content_snapshot: string | null
+          created_at: string
+          document_id: string
+          id: string
+          sharepoint_version_label: string | null
+          version_number: number
+        }
+        Insert: {
+          author_id: string
+          comment?: string | null
+          content_hash?: string | null
+          content_snapshot?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          sharepoint_version_label?: string | null
+          version_number: number
+        }
+        Update: {
+          author_id?: string
+          comment?: string | null
+          content_hash?: string | null
+          content_snapshot?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          sharepoint_version_label?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          content_inline: string | null
+          created_at: string
+          current_version: number
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          sharepoint_drive_id: string | null
+          sharepoint_item_id: string | null
+          sharepoint_web_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          content_inline?: string | null
+          created_at?: string
+          current_version?: number
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          sharepoint_drive_id?: string | null
+          sharepoint_item_id?: string | null
+          sharepoint_web_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content_inline?: string | null
+          created_at?: string
+          current_version?: number
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          sharepoint_drive_id?: string | null
+          sharepoint_item_id?: string | null
+          sharepoint_web_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "editor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +307,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "editor", "viewer"],
+    },
   },
 } as const
