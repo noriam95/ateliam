@@ -49,7 +49,8 @@ function ModuleWorkspacePage() {
     if (!wsQ.data) return;
     let cancelled = false;
     (async () => {
-      const html = await fetch(TEMPLATE_URL, { cache: "no-store" }).then((r) => r.text());
+      const templateUrl = `${TEMPLATE_URL}&t=${Date.now()}`;
+      const html = await fetch(templateUrl, { cache: "reload" }).then((r) => r.text());
       let state: Record<string, string> | null = null;
       if (wsQ.data?.content_inline) {
         try { state = JSON.parse(wsQ.data.content_inline); } catch { state = null; }
