@@ -88,6 +88,7 @@ export function wrapTemplate(
 (function(){
   try {
     var s = ${stateJson};
+    try { localStorage.clear(); } catch(e){}
     if (s && typeof s === 'object') {
       Object.keys(s).forEach(function(k){
         try { localStorage.setItem(k, s[k]); } catch(e){}
