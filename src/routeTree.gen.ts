@@ -13,7 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedMModuleRouteImport } from './routes/_authenticated/m.$module'
+import { Route as AuthenticatedModuleRouteImport } from './routes/_authenticated/m.$module'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -34,7 +34,7 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedMModuleRoute = AuthenticatedMModuleRouteImport.update({
+const AuthenticatedModuleRoute = AuthenticatedModuleRouteImport.update({
   id: '/m/$module',
   path: '/m/$module',
   getParentRoute: () => AuthenticatedRouteRoute,
@@ -44,34 +44,34 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/m/$module': typeof AuthenticatedMModuleRoute
+  '/m/$module': typeof AuthenticatedModuleRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/m/$module': typeof AuthenticatedModuleRoute
   '/': typeof AuthenticatedIndexRoute
-  '/m/$module': typeof AuthenticatedMModuleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/m/$module': typeof AuthenticatedModuleRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/m/$module': typeof AuthenticatedMModuleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/auth' | '/settings' | '/m/$module'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/settings' | '/' | '/m/$module'
+  to: '/auth' | '/settings' | '/m/$module' | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/settings'
-    | '/_authenticated/'
     | '/_authenticated/m/$module'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,7 +113,7 @@ declare module '@tanstack/react-router' {
       id: '/_authenticated/m/$module'
       path: '/m/$module'
       fullPath: '/m/$module'
-      preLoaderRoute: typeof AuthenticatedMModuleRouteImport
+      preLoaderRoute: typeof AuthenticatedModuleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
@@ -121,14 +121,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedModuleRoute: typeof AuthenticatedModuleRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedMModuleRoute: typeof AuthenticatedMModuleRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedModuleRoute: AuthenticatedModuleRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedMModuleRoute: AuthenticatedMModuleRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
