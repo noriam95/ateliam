@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/m/$module")({
   },
 });
 
-const TEMPLATE_URL = "/noriam-bpmn.html";
+const TEMPLATE_URL = "/noriam-bpmn.html?atelier=script-escape-fix-20260612";
 
 function ModuleWorkspacePage() {
   const { module } = Route.useParams();
@@ -49,7 +49,8 @@ function ModuleWorkspacePage() {
     if (!wsQ.data) return;
     let cancelled = false;
     (async () => {
-      const html = await fetch(TEMPLATE_URL).then((r) => r.text());
+      const templateUrl = `${TEMPLATE_URL}&t=${Date.now()}`;
+      const html = await fetch(templateUrl, { cache: "reload" }).then((r) => r.text());
       let state: Record<string, string> | null = null;
       if (wsQ.data?.content_inline) {
         try { state = JSON.parse(wsQ.data.content_inline); } catch { state = null; }
