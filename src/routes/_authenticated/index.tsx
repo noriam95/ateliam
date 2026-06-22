@@ -5,6 +5,7 @@ import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useStat
 import {
   Activity,
   AlertCircle,
+  BarChart2,
   Building2,
   CheckCircle2,
   ChevronDown,
@@ -34,6 +35,7 @@ import {
   WorkspaceProcessRegistrations,
   type ProcessRegistrationView,
 } from "@/components/workspace-process-registrations";
+import { WorkspaceReports } from "@/components/workspace-reports";
 import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
 import { getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
@@ -43,7 +45,10 @@ export const Route = createFileRoute("/_authenticated/")({
   component: WorkspaceHome,
   validateSearch: (search: Record<string, unknown>) => ({
     area:
-      search.area === "modules" || search.area === "registrations" || search.area === "settings"
+      search.area === "modules" ||
+      search.area === "registrations" ||
+      search.area === "reports" ||
+      search.area === "settings"
         ? search.area
         : undefined,
     view: typeof search.view === "string" ? search.view : undefined,
@@ -77,11 +82,12 @@ type WorkspaceView =
   | "visual-identity"
   | "integrations"
   | "version-history"
+  | "value-chain-report"
   | `module:${AteliamModule}:${ModuleTask}`
   | `module:${AteliamModule}`;
 
 type ModuleTask = "home" | "consult" | "cause-new" | "cause-consult" | "cause-edit" | "library";
-type WorkspaceArea = "home" | "modules" | "registrations" | "settings";
+type WorkspaceArea = "home" | "modules" | "registrations" | "reports" | "settings";
 type DashboardTotals = {
   processes: number;
   activeProcesses: number;
@@ -415,9 +421,16 @@ function WorkspaceHome() {
           "owners",
           "processes",
           "causes",
+          "value-chains",
         ].includes(view)
       ) {
         setView("processes");
+      }
+    }
+    if (area === "reports") {
+      setExpanded((current) => ({ ...current, reports: true }));
+      if (!["value-chain-report"].includes(view)) {
+        setView("value-chain-report");
       }
     }
     if (area === "settings") {
@@ -531,6 +544,13 @@ function WorkspaceHome() {
             onClick={() => selectArea("modules")}
           >
             <LayoutGrid className="h-4 w-4" />
+          </GlobalNavButton>
+          <GlobalNavButton
+            active={activeArea === "reports"}
+            label="Relatórios"
+            onClick={() => selectArea("reports")}
+          >
+            <BarChart2 className="h-4 w-4" />
           </GlobalNavButton>
           <GlobalNavButton
             active={activeArea === "registrations"}
@@ -695,6 +715,17 @@ function WorkspaceHome() {
                     </div>
                   ) : null}
 
+                  {activeArea === "reports" ? (
+                    <div className="grid gap-1">
+                      <TreeButton
+                        active={view === "value-chain-report"}
+                        onClick={() => setView("value-chain-report")}
+                      >
+                        Cadeia de Valor
+                      </TreeButton>
+                    </div>
+                  ) : null}
+
                   {activeArea === "settings" ? (
                     <div className="grid gap-1">
                       <TreeButton active={view === "users"} onClick={() => setView("users")}>
@@ -826,6 +857,10 @@ function WorkspaceContent({
         organizationId={organizationId}
       />
     );
+  }
+
+  if (view === "value-chain-report") {
+    return <WorkspaceReports view={view} organizationId={organizationId} isDemo={isDemo} />;
   }
 
   if (
