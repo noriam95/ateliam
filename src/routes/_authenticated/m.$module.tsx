@@ -68,11 +68,13 @@ import {
   listModuleDocuments,
   listOrganizationCatalogs,
   listOrganizationDocumentModels,
+  reserveCode,
   saveModuleDocument,
   updateOrganizationCatalogItem,
   updateOrganizationCause,
   updateOrganizationProcess,
 } from "@/lib/config.functions";
+import { type CodeKind, type CodeSettings, normalizeRule, formatCode } from "@/lib/code-generation";
 import {
   deleteDemoWorkspaceVersions,
   getDemoWorkspaceVersion,
@@ -87,6 +89,67 @@ import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
 import { toast } from "sonner";
 
 type ModuleRouteView = "new" | "consult" | "cause-new" | "cause-consult" | "cause-edit";
+
+// Tipo de codificação associado a cada módulo.
+const MODULE_CODE_KIND: Record<AteliamModule, CodeKind> = {
+  ddp: "mapping",
+  pop: "pop_it",
+  bpmn: "flowchart",
+};
+
+// Em modo demo a sequência de código é mantida por (organização, tipo) no
+// localStorage, inicializada a partir da regra configurada.
+function demoCodeNextKey(organizationId: string | null | undefined, kind: CodeKind) {
+  return `ateliam-demo-code-next:${organizationId ?? "default"}:${kind}`;
+}
+function readDemoCodeNext(
+  organizationId: string | null | undefined,
+  kind: CodeKind,
+  fallback: number,
+) {
+  if (typeof window === "undefined") return fallback;
+  const stored = Number(window.localStorage.getItem(demoCodeNextKey(organizationId, kind)));
+  return Number.isFinite(stored) && stored >= 1 ? Math.floor(stored) : fallback;
+}
+function reserveDemoCode(
+  organizationId: string | null | undefined,
+  kind: CodeKind,
+  settings: CodeSettings | null | undefined,
+  slug: string | null | undefined,
+) {
+  const rule = normalizeRule(kind, settings?.[kind]);
+  const next = readDemoCodeNext(organizationId, kind, rule.next);
+  const code = formatCode(rule.mask, next, { slug });
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(demoCodeNextKey(organizationId, kind), String(next + 1));
+  }
+  return code;
+}
+// Lê a organização demo ativa (id, slug, code_settings) do localStorage.
+function readActiveDemoOrganization(): {
+  id: string | null;
+  slug: string | null;
+  code_settings: CodeSettings | null;
+} {
+  if (typeof window === "undefined") return { id: null, slug: null, code_settings: null };
+  try {
+    const activeId = window.localStorage.getItem("ateliam-active-organization");
+    const stored = JSON.parse(
+      window.localStorage.getItem("ateliam-demo-organizations") ?? "[]",
+    ) as Array<{ id: string; slug: string; code_settings?: CodeSettings | null }>;
+    const org =
+      (Array.isArray(stored) && stored.find((item) => item.id === activeId)) ||
+      (Array.isArray(stored) && stored[0]) ||
+      null;
+    return {
+      id: org?.id ?? activeId ?? null,
+      slug: org?.slug ?? null,
+      code_settings: org?.code_settings ?? null,
+    };
+  } catch {
+    return { id: null, slug: null, code_settings: null };
+  }
+}
 
 const MODULE_ROUTE_VIEWS = new Set<ModuleRouteView>([
   "new",
@@ -295,6 +358,7 @@ type PopState = {
 
 type BpmnState = {
   poolName: string;
+  codigo?: string;
   lanes: [string, string];
   nodes: BpmnNode[];
   flows: BpmnFlow[];
@@ -4008,6 +4072,39 @@ function ModuleWorkspacePage() {
         logo_data_url: demoOrganizationLogo,
       }
     : (meQ.data?.organization ?? { name: "Ateliam", word_header_color: "1D1D1F" });
+
+  // Contexto de codificação da organização ativa (modo demo via localStorage).
+  const codeKind = MODULE_CODE_KIND[moduleId];
+  const demoOrgForCode = isDemo ? readActiveDemoOrganization() : null;
+  const codeOrganizationId = isDemo ? demoOrgForCode!.id : (meQ.data?.organization?.id ?? null);
+  const codeOrganizationSlug = isDemo
+    ? demoOrgForCode!.slug
+    : (meQ.data?.organization?.slug ?? null);
+  const codeSettings: CodeSettings | null = isDemo
+    ? demoOrgForCode!.code_settings
+    : ((meQ.data?.organization?.code_settings as CodeSettings | null | undefined) ?? null);
+  const codeRule = normalizeRule(codeKind, codeSettings?.[codeKind]);
+  const isAutoCodeModule = codeRule.mode === "auto";
+  const autoCodePreview = isAutoCodeModule
+    ? formatCode(
+        codeRule.mask,
+        isDemo ? readDemoCodeNext(codeOrganizationId, codeKind, codeRule.next) : codeRule.next,
+        { slug: codeOrganizationSlug },
+      )
+    : "";
+
+  const reserveCodeFn = useServerFn(reserveCode);
+  // Reserva o próximo código (consome a sequência) no momento de salvar.
+  async function reserveModuleCode(): Promise<string> {
+    if (isDemo) {
+      return reserveDemoCode(codeOrganizationId, codeKind, codeSettings, codeOrganizationSlug);
+    }
+    const result = await reserveCodeFn({
+      data: { organizationId: codeOrganizationId, kind: codeKind },
+    });
+    return result.code;
+  }
+
   const documentModels = isDemo
     ? demoDocumentModels
     : DEFAULT_DOCUMENT_MODELS.map((fallback) => ({
@@ -4272,32 +4369,48 @@ function ModuleWorkspacePage() {
     }
   }
 
-  function currentModuleSavePayload() {
+  function currentModuleSavePayload(ws: WorkspaceState = workspace) {
     if (moduleId === "ddp") {
       return {
-        code: workspace.ddp.meta.codigo,
-        title: workspace.ddp.meta.titulo,
-        description: workspace.ddp.overview.objetivo || workspace.ddp.overview.escopo,
-        primaryProcessId: workspace.ddp.macroprocess.processId || null,
-        primaryProcessVersion: workspace.ddp.macroprocess.processVersion || null,
+        code: ws.ddp.meta.codigo,
+        title: ws.ddp.meta.titulo,
+        description: ws.ddp.overview.objetivo || ws.ddp.overview.escopo,
+        primaryProcessId: ws.ddp.macroprocess.processId || null,
+        primaryProcessVersion: ws.ddp.macroprocess.processVersion || null,
       };
     }
     if (moduleId === "pop") {
       return {
-        code: workspace.pop.meta.codigo,
-        title: workspace.pop.meta.titulo,
-        description: workspace.pop.purpose.objetivo || workspace.pop.meta.processo,
+        code: ws.pop.meta.codigo,
+        title: ws.pop.meta.titulo,
+        description: ws.pop.purpose.objetivo || ws.pop.meta.processo,
         primaryProcessId: null,
         primaryProcessVersion: null,
       };
     }
     return {
-      code: "FLX",
-      title: workspace.bpmn.poolName || "Fluxograma",
+      code: ws.bpmn.codigo || "FLX",
+      title: ws.bpmn.poolName || "Fluxograma",
       description: "",
       primaryProcessId: null,
       primaryProcessVersion: null,
     };
+  }
+
+  // Devolve o código atual do documento para o tipo do módulo (vazio = sem código).
+  function currentModuleCode(ws: WorkspaceState = workspace): string {
+    if (moduleId === "ddp") return ws.ddp.meta.codigo;
+    if (moduleId === "pop") return ws.pop.meta.codigo;
+    return ws.bpmn.codigo ?? "";
+  }
+
+  // Injeta um código no workspace conforme o tipo do módulo.
+  function withModuleCode(ws: WorkspaceState, code: string): WorkspaceState {
+    if (moduleId === "ddp")
+      return { ...ws, ddp: { ...ws.ddp, meta: { ...ws.ddp.meta, codigo: code } } };
+    if (moduleId === "pop")
+      return { ...ws, pop: { ...ws.pop, meta: { ...ws.pop.meta, codigo: code } } };
+    return { ...ws, bpmn: { ...ws.bpmn, codigo: code } };
   }
 
   function downloadImportTemplate() {
@@ -4348,9 +4461,18 @@ function ModuleWorkspacePage() {
           "Selecione um processo previamente cadastrado antes de salvar o Mapeamento.",
         );
       }
+      // Geração automática de código: reserva a sequência quando configurado e
+      // o documento ainda não tem código.
+      let workspaceToSave = workspace;
+      if (isAutoCodeModule && !currentModuleCode(workspace)) {
+        const reserved = await reserveModuleCode();
+        workspaceToSave = withModuleCode(workspace, reserved);
+        setWorkspace(workspaceToSave);
+        window.localStorage.setItem(draftKey, JSON.stringify(workspaceToSave));
+      }
       const fullComment = `[${moduleInfo.title}] ${comment || "Versão salva"}`;
-      if (isDemo) return saveDemoWorkspaceVersion(JSON.stringify(workspace), fullComment);
-      const payload = currentModuleSavePayload();
+      if (isDemo) return saveDemoWorkspaceVersion(JSON.stringify(workspaceToSave), fullComment);
+      const payload = currentModuleSavePayload(workspaceToSave);
       const row = await saveCloudDocument({
         data: {
           id: activeCloudDocument?.moduleId === moduleId ? activeCloudDocument.id : null,
@@ -4358,7 +4480,7 @@ function ModuleWorkspacePage() {
           code: payload.code,
           title: payload.title,
           description: payload.description,
-          content: buildModuleJson(moduleId, workspace),
+          content: buildModuleJson(moduleId, workspaceToSave),
           comment: fullComment,
           primaryProcessId: payload.primaryProcessId,
           primaryProcessVersion: payload.primaryProcessVersion,
@@ -4934,6 +5056,8 @@ function ModuleWorkspacePage() {
             <PopModule
               data={workspace.pop}
               update={(pop) => updateWorkspace((current) => ({ ...current, pop }))}
+              autoCode={isAutoCodeModule}
+              codePreview={autoCodePreview}
             />
           )
         ) : null}
@@ -4941,6 +5065,8 @@ function ModuleWorkspacePage() {
           <BpmnModule
             data={workspace.bpmn}
             update={(bpmn) => updateWorkspace((current) => ({ ...current, bpmn }))}
+            autoCode={isAutoCodeModule}
+            codePreview={autoCodePreview}
           />
         ) : null}
       </>
@@ -8354,7 +8480,17 @@ function DdpModule({
   );
 }
 
-function PopModule({ data, update }: { data: PopState; update: (value: PopState) => void }) {
+function PopModule({
+  data,
+  update,
+  autoCode = false,
+  codePreview = "",
+}: {
+  data: PopState;
+  update: (value: PopState) => void;
+  autoCode?: boolean;
+  codePreview?: string;
+}) {
   const completion = useMemo(() => {
     const fields = [
       data.meta.codigo,
@@ -8442,11 +8578,15 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
               update({ ...data, meta: { ...data.meta, tipo: tipo as PopState["meta"]["tipo"] } })
             }
           />
-          <Field
-            label="Código"
-            value={data.meta.codigo}
-            onChange={(codigo) => update({ ...data, meta: { ...data.meta, codigo } })}
-          />
+          {autoCode ? (
+            <ReadOnlyField label="Código (automático)" value={data.meta.codigo || codePreview} />
+          ) : (
+            <Field
+              label="Código"
+              value={data.meta.codigo}
+              onChange={(codigo) => update({ ...data, meta: { ...data.meta, codigo } })}
+            />
+          )}
           <Field
             label="Versão"
             value={data.meta.versao}
@@ -8975,7 +9115,17 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
   );
 }
 
-function BpmnModule({ data, update }: { data: BpmnState; update: (value: BpmnState) => void }) {
+function BpmnModule({
+  data,
+  update,
+  autoCode = false,
+  codePreview = "",
+}: {
+  data: BpmnState;
+  update: (value: BpmnState) => void;
+  autoCode?: boolean;
+  codePreview?: string;
+}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
@@ -9203,6 +9353,17 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
               value={data.poolName}
               onChange={(poolName) => update({ ...data, poolName })}
             />
+            <div className="mt-3">
+              {autoCode ? (
+                <ReadOnlyField label="Código (automático)" value={data.codigo || codePreview} />
+              ) : (
+                <Field
+                  label="Código"
+                  value={data.codigo ?? ""}
+                  onChange={(codigo) => update({ ...data, codigo })}
+                />
+              )}
+            </div>
             <div className="mt-3 grid gap-3">
               <Field
                 label="Raia 1"
