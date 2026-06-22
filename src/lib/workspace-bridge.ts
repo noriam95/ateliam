@@ -31,7 +31,7 @@ export const MODULES: Array<{
     title: "Fluxograma",
     tagline: "",
     description:
-      "Desenhe processos com raias, eventos, tarefas, gateways, conectores e exportação BPMN/SVG.",
+      "Desenhe fluxos de atividades com raias, eventos, tarefas, decisões, conectores e exportação XML/SVG.",
     accent: "var(--gold)",
     glyph: "F",
   },

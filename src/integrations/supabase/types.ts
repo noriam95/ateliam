@@ -132,6 +132,7 @@ export type Database = {
       };
       organizations: {
         Row: {
+          category: string;
           created_at: string;
           created_by: string | null;
           id: string;
@@ -142,6 +143,7 @@ export type Database = {
           word_header_color: string;
         };
         Insert: {
+          category?: string;
           created_at?: string;
           created_by?: string | null;
           id?: string;
@@ -152,6 +154,7 @@ export type Database = {
           word_header_color?: string;
         };
         Update: {
+          category?: string;
           created_at?: string;
           created_by?: string | null;
           id?: string;

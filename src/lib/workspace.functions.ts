@@ -47,7 +47,7 @@ export const getOrCreateWorkspace = createServerFn({ method: "POST" })
         owner_id: context.userId,
         organization_id: organizationId,
         module: "workspace",
-        description: "Workspace da organização — contém todos os módulos (DDP, POP, BPMN).",
+        description: "Workspace da organização — contém Mapeamento, Documentação e Fluxograma.",
       })
       .select("*")
       .single();

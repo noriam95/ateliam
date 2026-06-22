@@ -89,6 +89,7 @@ const organizationScopeSchema = z.object({
 const valueChainSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(2).max(180),
+  category: z.enum(["primary", "support", "management"]),
   description: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["Ativa", "Inativa"]).default("Ativa"),
 });
@@ -259,7 +260,7 @@ export const listAccessibleOrganizations = createServerFn({ method: "GET" })
     let organizationIds: string[] | null = null;
     const { data: memberships, error: membershipError } = await supabaseAdmin
       .from("user_organization_access")
-      .select("organization_id, unit_id, is_default")
+      .select("organization_id, is_default")
       .eq("user_id", context.userId);
     if (membershipError) throw new Error(membershipError.message);
     if (!access.isMaestro) {
@@ -275,51 +276,15 @@ export const listAccessibleOrganizations = createServerFn({ method: "GET" })
       .select("*")
       .order("name", { ascending: true });
     if (organizationIds) organizationQuery = organizationQuery.in("id", organizationIds);
-    const [{ data: organizations, error: organizationError }, { data: units, error: unitsError }] =
-      await Promise.all([
-        organizationQuery,
-        supabaseAdmin.from("organization_units").select("*").order("name", { ascending: true }),
-      ]);
+    const { data: organizations, error: organizationError } = await organizationQuery;
     if (organizationError) throw new Error(organizationError.message);
-    if (unitsError) throw new Error(unitsError.message);
     return (organizations ?? []).map((organization) => {
       const membership = (memberships ?? []).find((row) => row.organization_id === organization.id);
       return {
         ...organization,
-        units: (units ?? []).filter((unit) => unit.organization_id === organization.id),
-        defaultUnitId: membership?.unit_id ?? null,
         isDefault: membership?.is_default || organization.id === access.profile.organization_id,
       };
     });
-  });
-
-export const saveOrganizationUnit = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((data: { id?: string; organizationId: string; name: string; code?: string | null }) =>
-    z
-      .object({
-        id: z.string().uuid().optional(),
-        organizationId: z.string().uuid(),
-        name: z.string().trim().min(2).max(120),
-        code: z.string().trim().max(40).optional().nullable(),
-      })
-      .parse(data),
-  )
-  .handler(async ({ data, context }) => {
-    await assertOrganizationAdmin(context, data.organizationId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const payload = {
-      organization_id: data.organizationId,
-      name: data.name,
-      code: data.code ?? null,
-      updated_at: new Date().toISOString(),
-    };
-    const query = data.id
-      ? supabaseAdmin.from("organization_units").update(payload).eq("id", data.id)
-      : supabaseAdmin.from("organization_units").insert(payload);
-    const { data: row, error } = await query.select("*").single();
-    if (error) throw new Error(error.message);
-    return row;
   });
 
 export const createOrganization = createServerFn({ method: "POST" })
@@ -334,31 +299,23 @@ export const createOrganization = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const [{ error: unitError }, { error: typeError }] = await Promise.all([
-      supabaseAdmin.from("organization_units").insert({
+    const { error: typeError } = await supabaseAdmin.from("organization_process_types").insert([
+      {
         organization_id: row.id,
-        name: "Matriz",
-        code: "MATRIZ",
-      }),
-      supabaseAdmin.from("organization_process_types").insert([
-        {
-          organization_id: row.id,
-          code: "macroprocess",
-          label: "Macroprocesso",
-        },
-        {
-          organization_id: row.id,
-          code: "process",
-          label: "Processo",
-        },
-        {
-          organization_id: row.id,
-          code: "subprocess",
-          label: "Subprocesso",
-        },
-      ]),
+        code: "macroprocess",
+        label: "Macroprocesso",
+      },
+      {
+        organization_id: row.id,
+        code: "process",
+        label: "Processo",
+      },
+      {
+        organization_id: row.id,
+        code: "subprocess",
+        label: "Subprocesso",
+      },
     ]);
-    if (unitError) throw new Error(unitError.message);
     if (typeError) throw new Error(typeError.message);
     return row;
   });
@@ -466,7 +423,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "GET" })
         .order("name", { ascending: true }),
       supabaseAdmin
         .from("organization_value_chains")
-        .select("id, name, description, status, organization_id, created_at, updated_at")
+        .select("id, name, category, description, status, organization_id, created_at, updated_at")
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }),
     ]);
@@ -621,6 +578,7 @@ export const saveValueChainRegistration = createServerFn({ method: "POST" })
     const payload = {
       organization_id: access.organizationId,
       name: data.name,
+      category: data.category,
       description: data.description ?? null,
       status: data.status,
       updated_at: new Date().toISOString(),
@@ -1179,7 +1137,6 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       { data: departments, error: departmentsError },
       { data: owners, error: ownersError },
       { data: valueChains, error: valueChainsError },
-      { data: units, error: unitsError },
     ] = await Promise.all([
       supabaseAdmin.from("organizations").select("*").eq("id", organizationId).maybeSingle(),
       supabaseAdmin
@@ -1207,10 +1164,6 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         .from("organization_value_chains")
         .select("id, name")
         .eq("organization_id", organizationId),
-      supabaseAdmin
-        .from("organization_units")
-        .select("id, name, code, active")
-        .eq("organization_id", organizationId),
     ]);
 
     if (organizationError) throw new Error(organizationError.message);
@@ -1219,7 +1172,6 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     if (departmentsError) throw new Error(departmentsError.message);
     if (ownersError) throw new Error(ownersError.message);
     if (valueChainsError) throw new Error(valueChainsError.message);
-    if (unitsError) throw new Error(unitsError.message);
 
     const rank = (values: Array<string | null>) => {
       const counts = new Map<string, number>();
@@ -1249,13 +1201,11 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         departments: departments?.length ?? 0,
         owners: owners?.length ?? 0,
         valueChains: valueChains?.length ?? 0,
-        units: units?.length ?? 0,
       },
       topDepartments: rank((processes ?? []).map((process) => process.department)),
       topOwners: rank((processes ?? []).map((process) => process.owner)),
       recentDocuments: (documents ?? []).slice(0, 5),
       recentProcesses: (processes ?? []).slice(0, 5),
-      units: units ?? [],
     };
   });
 
@@ -1289,20 +1239,17 @@ export const listUserAccess = createServerFn({ method: "GET" })
       { data: roles, error: rolesError },
       { data: organizations, error: organizationsError },
       { data: memberships, error: membershipsError },
-      { data: units, error: unitsError },
     ] = await Promise.all([
       profilesQuery,
       supabaseAdmin.from("user_roles").select("user_id, role"),
       supabaseAdmin.from("organizations").select("id, name, slug"),
-      supabaseAdmin.from("user_organization_access").select("*"),
-      supabaseAdmin.from("organization_units").select("id, organization_id, name, code"),
+      supabaseAdmin.from("user_organization_access").select("user_id, organization_id, is_default"),
     ]);
 
     if (profilesError) throw new Error(profilesError.message);
     if (rolesError) throw new Error(rolesError.message);
     if (organizationsError) throw new Error(organizationsError.message);
     if (membershipsError) throw new Error(membershipsError.message);
-    if (unitsError) throw new Error(unitsError.message);
 
     return (profiles ?? []).map((profile) => ({
       ...profile,
@@ -1314,7 +1261,6 @@ export const listUserAccess = createServerFn({ method: "GET" })
           ...membership,
           organization:
             (organizations ?? []).find((org) => org.id === membership.organization_id) ?? null,
-          unit: (units ?? []).find((unit) => unit.id === membership.unit_id) ?? null,
         })),
     }));
   });
@@ -1327,7 +1273,6 @@ export const updateUserAccess = createServerFn({ method: "POST" })
       displayName?: string | null;
       organizationId?: string | null;
       organizationIds?: string[];
-      unitId?: string | null;
       roles: AppRole[];
     }) =>
       z
@@ -1336,7 +1281,6 @@ export const updateUserAccess = createServerFn({ method: "POST" })
           displayName: z.string().trim().min(2).max(120).optional().nullable(),
           organizationId: z.string().uuid().optional().nullable(),
           organizationIds: z.array(z.string().uuid()).optional(),
-          unitId: z.string().uuid().optional().nullable(),
           roles: z.array(appRoleSchema).min(1),
         })
         .parse(d),
@@ -1393,7 +1337,6 @@ export const updateUserAccess = createServerFn({ method: "POST" })
         organizationIds.map((organizationId) => ({
           user_id: data.userId,
           organization_id: organizationId,
-          unit_id: organizationId === targetOrgId ? (data.unitId ?? null) : null,
           is_default: organizationId === targetOrgId,
         })),
       );
@@ -1411,7 +1354,6 @@ export const createUserAccess = createServerFn({ method: "POST" })
       displayName?: string | null;
       organizationId?: string | null;
       organizationIds?: string[];
-      unitId?: string | null;
       roles: AppRole[];
     }) =>
       z
@@ -1421,7 +1363,6 @@ export const createUserAccess = createServerFn({ method: "POST" })
           displayName: z.string().trim().min(2).max(120).optional().nullable(),
           organizationId: z.string().uuid().optional().nullable(),
           organizationIds: z.array(z.string().uuid()).optional(),
-          unitId: z.string().uuid().optional().nullable(),
           roles: z.array(appRoleSchema).min(1),
         })
         .parse(d),
@@ -1478,7 +1419,6 @@ export const createUserAccess = createServerFn({ method: "POST" })
       organizationIds.map((allowedOrganizationId) => ({
         user_id: userId,
         organization_id: allowedOrganizationId,
-        unit_id: allowedOrganizationId === organizationId ? (data.unitId ?? null) : null,
         is_default: allowedOrganizationId === organizationId,
       })),
     );

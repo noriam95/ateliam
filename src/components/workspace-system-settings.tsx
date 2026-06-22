@@ -23,7 +23,6 @@ import {
   listOrganizationDocumentModels,
   listUserAccess,
   saveOrganizationDocumentModel,
-  saveOrganizationUnit,
   updateOrganization,
   updateUserAccess,
 } from "@/lib/config.functions";
@@ -40,7 +39,6 @@ type OrganizationRow = {
   word_header_color: string;
   created_at?: string;
   updated_at?: string;
-  units?: Array<{ id: string; name: string; code: string | null; active: boolean }>;
 };
 type UserAccessRow = {
   id: string;
@@ -51,10 +49,8 @@ type UserAccessRow = {
   roles: string[];
   organization_access?: Array<{
     organization_id: string;
-    unit_id: string | null;
     is_default: boolean;
     organization: { id: string; name: string; slug?: string } | null;
-    unit: { id: string; name: string; code?: string | null } | null;
   }>;
 };
 const DEMO_ORGANIZATION_LOGO_KEY = "ateliam-demo-organization-logo";
@@ -105,7 +101,6 @@ export function WorkspaceSystemSettings({
   const updateUser = useServerFn(updateUserAccess);
   const listDocumentModels = useServerFn(listOrganizationDocumentModels);
   const saveDocumentModel = useServerFn(saveOrganizationDocumentModel);
-  const saveUnit = useServerFn(saveOrganizationUnit);
 
   const [demoOrganizations, setDemoOrganizations] = useState<OrganizationRow[]>(() => {
     const fallback = [
@@ -118,10 +113,6 @@ export function WorkspaceSystemSettings({
             ? null
             : window.localStorage.getItem(DEMO_ORGANIZATION_LOGO_KEY),
         word_header_color: "1D1D1F",
-        units: [
-          { id: "demo-unit-matriz", name: "Matriz", code: "MATRIZ", active: true },
-          { id: "demo-unit-agricola", name: "Operação Agrícola", code: "AGR", active: true },
-        ],
       },
       {
         id: "demo-ateliam-lab",
@@ -129,7 +120,6 @@ export function WorkspaceSystemSettings({
         slug: "ateliam-lab",
         logo_data_url: null,
         word_header_color: "1D1F23",
-        units: [{ id: "demo-unit-lab", name: "Unidade Principal", code: "LAB", active: true }],
       },
     ];
     if (typeof window === "undefined") return fallback;
@@ -151,17 +141,13 @@ export function WorkspaceSystemSettings({
       organization_access: [
         {
           organization_id: "demo-bom-futuro",
-          unit_id: "demo-unit-matriz",
           is_default: true,
           organization: { id: "demo-bom-futuro", name: "Bom Futuro" },
-          unit: { id: "demo-unit-matriz", name: "Matriz" },
         },
         {
           organization_id: "demo-ateliam-lab",
-          unit_id: "demo-unit-lab",
           is_default: false,
           organization: { id: "demo-ateliam-lab", name: "Ateliam Lab" },
-          unit: { id: "demo-unit-lab", name: "Unidade Principal" },
         },
       ],
     },
@@ -264,26 +250,6 @@ export function WorkspaceSystemSettings({
           await queryClient.invalidateQueries({ queryKey: ["organization-dashboard"] });
           return row as OrganizationRow;
         }}
-        onSaveUnit={async (organizationId, name, code) => {
-          if (isDemo) {
-            const unit = { id: `demo-unit-${Date.now()}`, name, code: code || null, active: true };
-            setDemoOrganizations((current) => {
-              const next = current.map((organization) =>
-                organization.id === organizationId
-                  ? { ...organization, units: [...(organization.units ?? []), unit] }
-                  : organization,
-              );
-              window.localStorage.setItem("ateliam-demo-organizations", JSON.stringify(next));
-              window.dispatchEvent(new Event("ateliam-organizations-changed"));
-              return next;
-            });
-            return unit;
-          }
-          const unit = await saveUnit({ data: { organizationId, name, code: code || null } });
-          await organizationsQ.refetch();
-          await queryClient.invalidateQueries({ queryKey: ["accessible-organizations"] });
-          return unit;
-        }}
       />
     );
   }
@@ -301,12 +267,8 @@ export function WorkspaceSystemSettings({
             const allowedOrganization = organizations.find(
               (item) => item.id === allowedOrganizationId,
             );
-            const unit = allowedOrganization?.units?.find(
-              (item) => item.id === draft.unitId && allowedOrganizationId === draft.organizationId,
-            );
             return {
               organization_id: allowedOrganizationId,
-              unit_id: unit?.id ?? null,
               is_default: allowedOrganizationId === draft.organizationId,
               organization: allowedOrganization
                 ? {
@@ -315,7 +277,6 @@ export function WorkspaceSystemSettings({
                     slug: allowedOrganization.slug,
                   }
                 : null,
-              unit: unit ? { id: unit.id, name: unit.name, code: unit.code } : null,
             };
           });
           const row: UserAccessRow = {
@@ -343,7 +304,6 @@ export function WorkspaceSystemSettings({
               displayName: draft.displayName || null,
               organizationId: draft.organizationId || null,
               organizationIds: draft.organizationIds,
-              unitId: draft.unitId || null,
               roles: [draft.role],
             },
           });
@@ -355,7 +315,6 @@ export function WorkspaceSystemSettings({
               displayName: draft.displayName || null,
               organizationId: draft.organizationId || null,
               organizationIds: draft.organizationIds,
-              unitId: draft.unitId || null,
               roles: [draft.role],
             },
           });
@@ -373,17 +332,11 @@ function OrganizationsSettings({
   loading,
   error,
   onSave,
-  onSaveUnit,
 }: {
   rows: OrganizationRow[];
   loading: boolean;
   error: unknown;
   onSave: (draft: OrganizationDraft) => Promise<OrganizationRow>;
-  onSaveUnit: (
-    organizationId: string,
-    name: string,
-    code: string,
-  ) => Promise<{ id: string; name: string; code: string | null; active: boolean }>;
 }) {
   const emptyDraft = (): OrganizationDraft => ({
     id: "",
@@ -394,31 +347,15 @@ function OrganizationsSettings({
   });
   const [draft, setDraft] = useState<OrganizationDraft>(emptyDraft);
   const [formOpen, setFormOpen] = useState(false);
-  const [unitName, setUnitName] = useState("");
-  const [unitCode, setUnitCode] = useState("");
   const saveMut = useMutation({
     mutationFn: () => onSave(draft),
     onSuccess: (row) => {
       toast.success(draft.id ? "Organização atualizada." : "Organização cadastrada.");
-      setDraft({ ...row, units: row.units ?? draft.units ?? [] });
+      setDraft(row);
       setFormOpen(false);
     },
     onError: (cause: Error) => toast.error(cause.message),
   });
-  const saveUnitMut = useMutation({
-    mutationFn: () => onSaveUnit(draft.id, unitName.trim(), unitCode.trim()),
-    onSuccess: (unit) => {
-      setDraft((current) => ({
-        ...current,
-        units: [...(current.units ?? []), unit],
-      }));
-      setUnitName("");
-      setUnitCode("");
-      toast.success("Unidade cadastrada.");
-    },
-    onError: (cause: Error) => toast.error(cause.message),
-  });
-
   function selectLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -437,7 +374,7 @@ function OrganizationsSettings({
     <SettingsSurface
       eyebrow="configurações · administração"
       title="Organizações"
-      description="Gerencie identidade, unidades e personalização dos documentos de cada organização."
+      description="Gerencie a identidade e a personalização dos documentos de cada organização."
       action={
         <button
           onClick={() => {
@@ -459,7 +396,6 @@ function OrganizationsSettings({
               <tr>
                 <th className="px-4 py-3">Organização</th>
                 <th className="px-3 py-3">Identificador</th>
-                <th className="px-3 py-3">Unidades</th>
                 <th className="px-3 py-3">Cor institucional</th>
                 <th className="w-20 px-3 py-3">Ação</th>
               </tr>
@@ -474,7 +410,6 @@ function OrganizationsSettings({
                     </div>
                   </td>
                   <td className="px-3 py-3 text-muted-foreground">{row.slug}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{row.units?.length ?? 0}</td>
                   <td className="px-3 py-3">
                     <span className="inline-flex items-center gap-2 text-muted-foreground">
                       <span
@@ -583,53 +518,6 @@ function OrganizationsSettings({
                 <ImagePlus className="h-4 w-4" /> Adicionar logo
                 <input type="file" accept="image/*" className="hidden" onChange={selectLogo} />
               </label>
-              {draft.id ? (
-                <div className="rounded-md border border-border bg-background/55 p-3">
-                  <div className="text-xs font-semibold text-foreground">Unidades</div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {draft.units?.length ? (
-                      draft.units.map((unit) => (
-                        <span
-                          key={unit.id}
-                          className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground"
-                        >
-                          {unit.name}
-                          {unit.code ? ` · ${unit.code}` : ""}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Nenhuma unidade.</span>
-                    )}
-                  </div>
-                  <div className="mt-3 grid grid-cols-[1fr_110px_auto] gap-2">
-                    <input
-                      value={unitName}
-                      onChange={(event) => setUnitName(event.target.value)}
-                      className={inputClass}
-                      placeholder="Nome da unidade"
-                    />
-                    <input
-                      value={unitCode}
-                      onChange={(event) => setUnitCode(event.target.value)}
-                      className={inputClass}
-                      placeholder="Código"
-                    />
-                    <button
-                      type="button"
-                      disabled={saveUnitMut.isPending || unitName.trim().length < 2}
-                      onClick={() => saveUnitMut.mutate()}
-                      className={iconButtonClass}
-                      title="Adicionar unidade"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Salve a organização para cadastrar suas unidades.
-                </p>
-              )}
               <button
                 type="submit"
                 disabled={saveMut.isPending || !draft.name.trim() || !draft.slug.trim()}
@@ -653,7 +541,6 @@ type UserDraft = {
   displayName: string;
   organizationId: string;
   organizationIds: string[];
-  unitId: string;
   role: AppRole;
 };
 
@@ -677,7 +564,6 @@ function UsersSettings({
     displayName: "",
     organizationId: organizations[0]?.id ?? "",
     organizationIds: organizations[0]?.id ? [organizations[0].id] : [],
-    unitId: organizations[0]?.units?.[0]?.id ?? "",
     role: "viewer",
   });
   const [draft, setDraft] = useState<UserDraft>(emptyDraft);
@@ -709,15 +595,10 @@ function UsersSettings({
         : defaultOrganizationId
           ? [defaultOrganizationId]
           : [],
-      unitId: defaultAccess?.unit_id ?? "",
       role,
     });
     setFormOpen(true);
   }
-
-  const defaultOrganization = organizations.find(
-    (organization) => organization.id === draft.organizationId,
-  );
 
   function toggleOrganization(organizationId: string) {
     setDraft((current) => {
@@ -727,15 +608,10 @@ function UsersSettings({
       const nextOrganizationId = selected.includes(current.organizationId)
         ? current.organizationId
         : (selected[0] ?? "");
-      const nextOrganization = organizations.find((item) => item.id === nextOrganizationId);
       return {
         ...current,
         organizationIds: selected,
         organizationId: nextOrganizationId,
-        unitId:
-          nextOrganizationId === current.organizationId
-            ? current.unitId
-            : (nextOrganization?.units?.[0]?.id ?? ""),
       };
     });
   }
@@ -744,7 +620,7 @@ function UsersSettings({
     <SettingsSurface
       eyebrow="configurações · acesso"
       title="Usuários e permissões"
-      description="Cadastre usuários, defina as organizações e unidades acessíveis e atribua o nível de permissão."
+      description="Cadastre usuários, defina as organizações acessíveis e atribua o nível de permissão."
       action={
         <button
           onClick={() => {
@@ -901,9 +777,6 @@ function UsersSettings({
                     setDraft((current) => ({
                       ...current,
                       organizationId: event.target.value,
-                      unitId:
-                        organizations.find((item) => item.id === event.target.value)?.units?.[0]
-                          ?.id ?? "",
                     }))
                   }
                   className={inputClass}
@@ -916,22 +789,6 @@ function UsersSettings({
                         {organization.name}
                       </option>
                     ))}
-                </select>
-              </FormField>
-              <FormField label="Unidade padrão">
-                <select
-                  value={draft.unitId}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, unitId: event.target.value }))
-                  }
-                  className={inputClass}
-                >
-                  <option value="">Todas as unidades</option>
-                  {(defaultOrganization?.units ?? []).map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </option>
-                  ))}
                 </select>
               </FormField>
               <FormField label="Tipo de acesso">

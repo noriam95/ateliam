@@ -377,6 +377,7 @@ const DEMO_CATALOGS: OrganizationCatalogs = {
     {
       id: "demo-chain-operacao",
       name: "Operação e Gestão",
+      category: "management",
       description: "Cadeia de valor principal da organização.",
       status: "Ativa",
     },
@@ -1295,7 +1296,7 @@ function importWorkspaceFromJson(
     return {
       workspace: { ...current, bpmn: { ...current.bpmn, ...(bpmnSource as Partial<BpmnState>) } },
       moduleId: "bpmn",
-      label: textAt(bpmnSource, "poolName") || "Fluxograma BPMN",
+      label: textAt(bpmnSource, "poolName") || "Fluxograma",
     };
   }
 
@@ -1768,6 +1769,7 @@ type OrganizationProcess = {
 type OrganizationValueChain = {
   id: string;
   name: string;
+  category: "primary" | "support" | "management";
   description: string | null;
   status: string;
   organization_id?: string;
@@ -3877,6 +3879,10 @@ function ModuleWorkspacePage() {
   const [loaded, setLoaded] = useState(false);
   const [railArea, setRailArea] = useState<RailArea>("modules");
   const [treeOpen, setTreeOpen] = useState(true);
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 1023px)").matches) setTreeOpen(false);
+  }, []);
   const [contentMode, setContentMode] = useState<ModuleContentMode>("module");
   const [moduleSurface, setModuleSurface] = useState<ModuleSurface>(() =>
     search.view === "consult" ? "consult" : "editor",
@@ -4095,7 +4101,7 @@ function ModuleWorkspacePage() {
       setRailArea("modules");
       setContentMode("module");
       setModuleSurface("consult");
-      setTreeOpen(true);
+      setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
       return;
     }
     if (search.view?.startsWith("cause-") && moduleId === "ddp") {
@@ -4103,7 +4109,7 @@ function ModuleWorkspacePage() {
       setContentMode("module");
       setModuleSurface("editor");
       setDdpView("causes");
-      setTreeOpen(true);
+      setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
       return;
     }
     if (search.view === "new") {
@@ -4112,7 +4118,7 @@ function ModuleWorkspacePage() {
       setModuleSurface("editor");
       setDdpView("editor");
       setModuleEditStarted(true);
-      setTreeOpen(true);
+      setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
     }
   }, [moduleId, search.view]);
 
@@ -4286,8 +4292,8 @@ function ModuleWorkspacePage() {
       };
     }
     return {
-      code: "BPMN",
-      title: workspace.bpmn.poolName || "Fluxograma BPMN",
+      code: "FLX",
+      title: workspace.bpmn.poolName || "Fluxograma",
       description: "",
       primaryProcessId: null,
       primaryProcessVersion: null,
@@ -4897,11 +4903,13 @@ function ModuleWorkspacePage() {
               onOpenEditor={() => setDdpView("editor")}
             />
           ) : !moduleEditStarted ? (
-            <ModuleStartGate
-              moduleLabel={moduleDocLabel}
-              title="Escolha um mapeamento para preencher"
-              onNew={newModuleDocument}
-              onSearch={openSystemLibrary}
+            <ModuleDocumentGrid
+              moduleId={moduleId}
+              rows={documentRows}
+              loading={cloudDocsQ.isLoading && !isDemo}
+              onEdit={editDocumentRow}
+              onDelete={deleteDocumentRows}
+              onExport={exportDocumentRow}
             />
           ) : (
             <DdpModule
@@ -4914,11 +4922,13 @@ function ModuleWorkspacePage() {
         ) : null}
         {loaded && moduleId === "pop" ? (
           !moduleEditStarted ? (
-            <ModuleStartGate
-              moduleLabel={moduleDocLabel}
-              title="Escolha uma documentação para preencher"
-              onNew={newModuleDocument}
-              onSearch={openSystemLibrary}
+            <ModuleDocumentGrid
+              moduleId={moduleId}
+              rows={documentRows}
+              loading={cloudDocsQ.isLoading && !isDemo}
+              onEdit={editDocumentRow}
+              onDelete={deleteDocumentRows}
+              onExport={exportDocumentRow}
             />
           ) : (
             <PopModule
@@ -5049,12 +5059,20 @@ function ModuleWorkspacePage() {
         </nav>
 
         <div
-          className={`grid min-w-0 transition-[grid-template-columns] duration-200 ${
+          className={`relative min-w-0 transition-[grid-template-columns] duration-200 lg:grid ${
             treeOpen ? "lg:grid-cols-[320px_minmax(0,1fr)]" : "lg:grid-cols-[0_minmax(0,1fr)]"
           }`}
         >
+          {treeOpen ? (
+            <button
+              type="button"
+              aria-label="Fechar navegação"
+              onClick={() => setTreeOpen(false)}
+              className="fixed bottom-0 left-[372px] right-0 top-14 z-20 bg-foreground/10 backdrop-blur-[1px] lg:hidden"
+            />
+          ) : null}
           <aside
-            className={`min-h-0 overflow-hidden border-r border-border bg-card/58 ${
+            className={`fixed bottom-0 left-[52px] top-14 z-30 min-h-0 w-[min(320px,calc(100vw-52px))] overflow-hidden border-r border-border bg-card shadow-xl lg:static lg:w-auto lg:bg-card/58 lg:shadow-none ${
               treeOpen ? "block" : "hidden lg:block"
             }`}
           >
@@ -5173,7 +5191,7 @@ function ModuleWorkspacePage() {
                 {railArea === "registrations" ? (
                   <div className="grid gap-1">
                     <ModuleTreeAnchor href="/?area=registrations&view=value-chains">
-                      Cadeias de Valor
+                      Cadeia de valor
                     </ModuleTreeAnchor>
                     <ModuleTreeAnchor href="/?area=registrations&view=processes">
                       Processos
@@ -5212,7 +5230,7 @@ function ModuleWorkspacePage() {
             </div>
           </aside>
 
-          <main className="min-w-0 p-5">
+          <main className="min-w-0 p-4 sm:p-5">
             <section className="min-w-0">{moduleMainContent}</section>
           </main>
         </div>
@@ -5779,56 +5797,6 @@ function ModuleSettingsPanel({
   );
 }
 
-function ModuleStartGate({
-  moduleLabel,
-  title,
-  onNew,
-  onSearch,
-}: {
-  moduleLabel: string;
-  title: string;
-  onNew: () => void;
-  onSearch: () => void;
-}) {
-  return (
-    <div className="grid gap-5">
-      <div className="rounded-lg border border-[#d2d2d7] bg-white/90 p-8 shadow-[0_18px_44px_rgba(0,0,0,.06)]">
-        <div className="text-[11px] font-black uppercase tracking-[0.22em] text-[#3f3f46]">
-          {moduleLabel} · cadastro controlado
-        </div>
-        <h1 className="mt-3 text-3xl font-black tracking-tight text-[#1d1d1f]">{title}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6e6e73]">
-          O preenchimento só é liberado após iniciar um novo cadastro ou abrir um documento já salvo
-          no sistema. Isso evita alterações soltas sem versionamento e sem vínculo com a
-          organização.
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <button
-          type="button"
-          onClick={onNew}
-          className="rounded-lg border border-[#2f2f2f] bg-[#2f2f2f] p-5 text-left text-white hover:bg-[#1f1f1f]"
-        >
-          <Plus className="mb-5 h-5 w-5" />
-          <div className="text-lg font-black">Novo</div>
-          <p className="mt-2 text-sm leading-5 text-white/78">Começa um documento limpo.</p>
-        </button>
-        <button
-          type="button"
-          onClick={onSearch}
-          className="rounded-lg border border-[#d2d2d7] bg-white p-5 text-left shadow-[0_18px_44px_rgba(0,0,0,.05)] hover:bg-[#f5f5f7]"
-        >
-          <Search className="mb-5 h-5 w-5 text-[#3f3f46]" />
-          <div className="text-lg font-black text-[#1d1d1f]">Consultar</div>
-          <p className="mt-2 text-sm leading-5 text-[#6e6e73]">
-            Abre um documento versionado da organização.
-          </p>
-        </button>
-      </div>
-    </div>
-  );
-}
-
 type ModuleGridRow = {
   id: string;
   code: string;
@@ -5875,7 +5843,7 @@ function moduleGridRowFromWorkspace(
     ...base,
     code: "FLX",
     name: workspace.bpmn.poolName || "Fluxograma sem título",
-    type: "BPMN 2.0",
+    type: "Fluxo de atividades",
     process: workspace.bpmn.poolName || "-",
     area: "-",
     owner: "-",
@@ -7382,7 +7350,7 @@ function TableInput({
       value={value}
       placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full min-w-[140px] rounded-lg border border-[#d2d2d7] bg-white px-2.5 py-2 text-xs outline-none focus:border-[#3f3f46]"
+      className="w-full min-w-[140px] rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
     />
   );
 }
@@ -7402,7 +7370,7 @@ function TableTextarea({
       placeholder={placeholder}
       rows={2}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full min-w-[190px] resize-y rounded-lg border border-[#d2d2d7] bg-white px-2.5 py-2 text-xs outline-none focus:border-[#3f3f46]"
+      className="w-full min-w-[190px] resize-y rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
     />
   );
 }
@@ -7420,7 +7388,7 @@ function TableSelect({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full min-w-[130px] rounded-lg border border-[#d2d2d7] bg-white px-2.5 py-2 text-xs font-semibold outline-none focus:border-[#3f3f46]"
+      className="w-full min-w-[130px] rounded-md border border-input bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
     >
       {options.map((option) => (
         <option key={option} value={option}>
@@ -7749,7 +7717,7 @@ function DdpModule({
           {data.systems.map((system) => (
             <div
               key={system.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 lg:grid-cols-[1fr_170px_170px_130px_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[1fr_170px_170px_130px_auto]"
             >
               <Field
                 compact
@@ -7844,7 +7812,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar sistema
@@ -7901,9 +7869,9 @@ function DdpModule({
       <Panel title="Fluxo AS IS" progress={sectionProgress.flow}>
         <div className="grid gap-3">
           {data.steps.map((step, index) => (
-            <div key={step.id} className="rounded-lg border border-[#d2d2d7] bg-white p-3">
+            <div key={step.id} className="rounded-lg border border-border bg-card p-3">
               <div className="mb-3 flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#f5f5f7] text-xs font-black text-[#3f3f46]">
+                <div className="grid h-9 w-9 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
                 <div className="grid flex-1 gap-3 md:grid-cols-2">
@@ -7964,13 +7932,11 @@ function DdpModule({
                   images={step.images}
                   onChange={(images) => updateStep(step.id, { images })}
                 />
-                <div className="rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] p-3">
+                <div className="rounded-lg border border-border bg-muted/35 p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-                        Subetapas
-                      </div>
-                      <div className="text-xs text-[#6e6e73]">
+                      <div className="text-[11px] font-semibold text-foreground">Subetapas</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
                         Detalhe subprocessos e adicione imagens específicas quando necessário.
                       </div>
                     </div>
@@ -7992,7 +7958,7 @@ function DdpModule({
                           ],
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm font-semibold text-[#3f3f46] hover:bg-[#f5f5f7]"
+                      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
                     >
                       <Plus className="h-4 w-4" />
                       Adicionar subetapa
@@ -8003,7 +7969,7 @@ function DdpModule({
                       {step.substeps.map((substep) => (
                         <div
                           key={substep.id}
-                          className="rounded-lg border border-[#d2d2d7] bg-white p-3"
+                          className="rounded-lg border border-border bg-card p-3"
                         >
                           <div className="mb-3 grid gap-3 md:grid-cols-[120px_1fr_auto]">
                             <Field
@@ -8075,7 +8041,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar etapa
@@ -8087,7 +8053,7 @@ function DdpModule({
           {data.sipocRows.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
             >
               {(["fornecedores", "entradas", "processo", "saidas", "clientes"] as const).map(
                 (field) => (
@@ -8136,7 +8102,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar linha SIPOC
@@ -8146,16 +8112,16 @@ function DdpModule({
       <Panel title="Gaps e causas-raiz" progress={sectionProgress.gaps}>
         <div className="grid gap-3">
           {data.gaps.map((gap) => (
-            <div key={gap.id} className="rounded-lg border border-[#d2d2d7] bg-white p-3">
+            <div key={gap.id} className="rounded-lg border border-border bg-card p-3">
               <div className="mb-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                 <label className="block">
-                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
+                  <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">
                     Causa reutilizável da organização
                   </span>
                   <select
                     value={gap.sharedCauseId ?? ""}
                     onChange={(event) => applySharedCauseToGap(gap.id, event.target.value)}
-                    className="w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#3f3f46]"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
                   >
                     <option value="">Causa local / nova</option>
                     {catalogs.causes.map((cause) => (
@@ -8168,7 +8134,7 @@ function DdpModule({
                 <button
                   type="button"
                   onClick={() => saveGapToCatalog(gap)}
-                  className="self-end inline-flex items-center justify-center gap-2 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2.5 text-sm font-bold text-[#3f3f46] hover:bg-[#f5f5f7]"
+                  className="self-end inline-flex items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted"
                 >
                   <Plus className="h-4 w-4" />
                   Salvar na biblioteca
@@ -8313,7 +8279,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar gap
@@ -8332,7 +8298,7 @@ function DdpModule({
           {data.glossary.map((item) => (
             <div
               key={item.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 md:grid-cols-[240px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[240px_1fr_auto]"
             >
               <Field
                 compact
@@ -8377,7 +8343,7 @@ function DdpModule({
                 glossary: [...data.glossary, { id: id("gloss"), termo: "", definicao: "" }],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar termo
@@ -8563,7 +8529,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
       <Panel title="Conteúdo do documento" progress={sectionProgress.sections}>
         <div className="grid gap-3">
           {data.sections.map((section) => (
-            <div key={section.id} className="rounded-lg border border-[#d2d2d7] bg-white p-3">
+            <div key={section.id} className="rounded-lg border border-border bg-card p-3">
               <div className="mb-3 flex gap-2">
                 <input
                   value={section.title}
@@ -8575,7 +8541,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
                       ),
                     })
                   }
-                  className="flex-1 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold outline-none focus:border-[#3f3f46]"
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
                 />
                 <IconButton
                   label="Excluir"
@@ -8666,7 +8632,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar seção
@@ -8678,7 +8644,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
           {data.responsibilities.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 md:grid-cols-[240px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[240px_1fr_auto]"
             >
               <Field
                 compact
@@ -8728,7 +8694,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar responsabilidade
@@ -8740,7 +8706,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
           {data.references.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 md:grid-cols-[160px_1fr_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[160px_1fr_1fr_auto]"
             >
               <Field
                 compact
@@ -8804,7 +8770,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar referência
@@ -8812,14 +8778,12 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
         </div>
       </Panel>
       <Panel title="Histórico e controle de alterações" progress={sectionProgress.history}>
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-[#6e6e73]">
-          Histórico
-        </h3>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Histórico</h3>
         <div className="grid gap-3">
           {data.history.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 lg:grid-cols-[120px_100px_140px_1fr_1fr_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[120px_100px_140px_1fr_1fr_1fr_auto]"
             >
               <Field
                 compact
@@ -8928,20 +8892,18 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar histórico
           </button>
         </div>
-        <h3 className="mb-3 mt-6 text-sm font-bold uppercase tracking-[0.16em] text-[#6e6e73]">
-          Alterações
-        </h3>
+        <h3 className="mb-3 mt-6 text-sm font-semibold text-foreground">Alterações</h3>
         <div className="grid gap-3">
           {data.changes.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 md:grid-cols-[120px_220px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[120px_220px_1fr_auto]"
             >
               <Field
                 compact
@@ -9002,7 +8964,7 @@ function PopModule({ data, update }: { data: PopState; update: (value: PopState)
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
             Adicionar alteração
@@ -9073,25 +9035,29 @@ function BpmnModule({ data, update }: { data: BpmnState; update: (value: BpmnSta
 
   function exportSvg() {
     const svg = svgRef.current?.outerHTML ?? "";
-    downloadText(`ateliam-bpmn-${today()}.svg`, svg, "image/svg+xml");
+    downloadText(`ateliam-fluxograma-${today()}.svg`, svg, "image/svg+xml");
   }
 
   function exportBpmnXml() {
-    const xml = `<definitions id="Ateliam_BPMN" targetNamespace="https://ateliam.local/bpmn">
+    const xml = `<definitions id="Ateliam_Fluxograma" targetNamespace="https://ateliam.local/fluxograma">
   <process id="Process_1" name="${escapeXml(data.poolName)}">
 ${data.nodes.map((node) => `    <${node.type === "start" ? "startEvent" : node.type === "end" ? "endEvent" : node.type === "gateway" ? "exclusiveGateway" : "task"} id="${node.id}" name="${escapeXml(node.label)}" />`).join("\n")}
 ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.from}" targetRef="${flow.to}" name="${escapeXml(flow.label ?? "")}" />`).join("\n")}
   </process>
 </definitions>`;
-    downloadText(`ateliam-bpmn-${today()}.bpmn`, xml, "application/xml");
+    downloadText(`ateliam-fluxograma-${today()}.xml`, xml, "application/xml");
   }
 
   return (
     <div className="grid gap-5">
-      <Hero title="Modelador BPMN 2.0" eyebrow="Fluxograma" progress={data.nodes.length ? 100 : 0}>
+      <Hero
+        title="Editor de fluxograma"
+        eyebrow="Fluxo de atividades"
+        progress={data.nodes.length ? 100 : 0}
+      >
         Um modelador visual leve para desenhar fluxo, movimentar elementos e exportar o diagrama.
       </Hero>
-      <Panel title="Área de desenho BPMN" progress={diagramProgress}>
+      <Panel title="Área de desenho" progress={diagramProgress}>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <ToolbarButton onClick={() => addNode("start")} icon={<Circle className="h-4 w-4" />}>
             Evento inicial
@@ -9116,7 +9082,7 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
           </ToolbarButton>
           <div className="flex-1" />
           <ToolbarButton onClick={exportBpmnXml} icon={<Download className="h-4 w-4" />}>
-            BPMN
+            XML
           </ToolbarButton>
           <ToolbarButton onClick={exportSvg} icon={<Download className="h-4 w-4" />}>
             SVG
@@ -9345,24 +9311,29 @@ function Hero({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-[#d2d2d7] bg-white/90 shadow-[0_18px_44px_rgba(0,0,0,.06)]">
-      <div className="grid gap-5 p-7 lg:grid-cols-[1fr_280px]">
-        <div>
-          <div className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[#3f3f46]">
+    <section className="border-b border-border pb-5">
+      <div className="grid items-end gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="min-w-0">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">
             {eyebrow}
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-[#1d1d1f]">{title}</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6e6e73]">{children}</p>
+          <h1 className="font-display text-3xl font-semibold text-foreground">{title}</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{children}</p>
         </div>
-        <div className="rounded-lg bg-[#1d1d1f] p-5 text-white">
-          <div className="text-xs uppercase tracking-[0.18em] text-white/55">Preenchimento</div>
-          <div className="mt-2 text-4xl font-black">{progress}%</div>
-          <div className="mt-4 h-2 rounded-full bg-white/15">
-            <div className="h-2 rounded-full bg-[#3f3f46]" style={{ width: `${progress}%` }} />
+        <div className="rounded-lg border border-border bg-muted/35 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-xs font-medium text-muted-foreground">Preenchimento</span>
+            <strong className="text-lg font-semibold text-foreground">{progress}%</strong>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full rounded-full bg-[var(--gold)] transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -9379,35 +9350,36 @@ function Panel({
 }) {
   const [open, setOpen] = useState(title ? defaultOpen : true);
   return (
-    <div className="rounded-lg border border-[#d2d2d7] bg-white/90 p-5 shadow-[0_18px_44px_rgba(0,0,0,.05)]">
+    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       {title ? (
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
-          className="mb-4 flex w-full items-center gap-3 text-left"
+          className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/45"
         >
           {open ? (
-            <ChevronDown className="h-4 w-4 text-[#6e6e73]" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-[#6e6e73]" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
-          <h2 className="min-w-0 flex-1 text-lg font-black tracking-tight text-[#1d1d1f]">
-            {title}
-          </h2>
+          <h2 className="min-w-0 flex-1 text-[15px] font-semibold text-foreground">{title}</h2>
           {typeof progress === "number" ? (
-            <span className="rounded-full border border-[#d2d2d7] bg-[#f5f5f7] px-2.5 py-1 text-xs font-bold text-[#515154]">
+            <span className="rounded-full border border-border bg-muted/70 px-2.5 py-1 text-xs font-semibold text-foreground">
               {progress}%
             </span>
           ) : null}
         </button>
       ) : null}
-      {typeof progress === "number" ? (
-        <div className="-mt-2 mb-4 h-1.5 overflow-hidden rounded-full bg-[#e5e5ea]">
-          <div className="h-full rounded-full bg-[#3f3f46]" style={{ width: `${progress}%` }} />
+      {title && typeof progress === "number" ? (
+        <div className="h-px bg-border">
+          <div
+            className="h-px bg-[var(--gold)] transition-[width]"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       ) : null}
-      {open ? children : null}
-    </div>
+      {open ? <div className={title ? "p-4 md:p-5" : "p-5"}>{children}</div> : null}
+    </section>
   );
 }
 
@@ -9508,14 +9480,12 @@ function CatalogSelectWithCreate({
 
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-        {label}
-      </span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <div className="flex gap-2">
         <select
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#3f3f46]"
+          className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
         >
           <option value="">Selecione</option>
           {visibleOptions.map((option) => (
@@ -9528,7 +9498,7 @@ function CatalogSelectWithCreate({
           type="button"
           onClick={createOption}
           disabled={creating}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#d2d2d7] bg-white text-[#3f3f46] hover:bg-[#f5f5f7] disabled:opacity-45"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-45"
           title={`Cadastrar ${label}`}
         >
           <Plus className="h-4 w-4" />
@@ -9555,9 +9525,7 @@ function RegisteredProcessSelect({
 
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-        {label}
-      </span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <select
         required={required}
         value={value}
@@ -9565,7 +9533,7 @@ function RegisteredProcessSelect({
           const process = processes.find((item) => item.id === event.target.value) ?? null;
           onSelect(process);
         }}
-        className="w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#3f3f46]"
+        className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
       >
         <option value="">Selecione um processo previamente cadastrado</option>
         {processes.map((process) => (
@@ -9575,7 +9543,7 @@ function RegisteredProcessSelect({
         ))}
       </select>
       {selected ? (
-        <span className="mt-1 block text-[11px] text-[#6e6e73]">
+        <span className="mt-1.5 block text-[11px] text-muted-foreground">
           Vinculado como {processTypeLabel(selected.type)} na versão {selected.current_version}.
         </span>
       ) : null}
@@ -9586,14 +9554,12 @@ function RegisteredProcessSelect({
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-        {label}
-      </span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <input
         readOnly
         value={value}
         placeholder="Preenchido pelo processo selecionado"
-        className="w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-3 py-2.5 text-sm text-[#515154] outline-none"
+        className="w-full rounded-md border border-border bg-muted/55 px-3 py-2.5 text-sm text-muted-foreground outline-none"
       />
     </label>
   );
@@ -9614,14 +9580,12 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-        {label}
-      </span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`w-full rounded-lg border border-[#d2d2d7] bg-white px-3 text-sm outline-none focus:border-[#3f3f46] ${compact ? "py-2" : "py-2.5"}`}
+        className={`w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10 ${compact ? "py-2" : "py-2.5"}`}
       />
     </label>
   );
@@ -9640,13 +9604,11 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-        {label}
-      </span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#3f3f46]"
+        className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -9669,14 +9631,12 @@ function TextArea({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-        {label}
-      </span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={5}
-        className="w-full resize-y rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3f3f46]"
+        className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
       />
     </label>
   );
@@ -9710,17 +9670,15 @@ function ImageManager({
   }
 
   return (
-    <div className="rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] p-3">
+    <div className="rounded-lg border border-border bg-muted/35 p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
-            {label}
-          </div>
-          <div className="text-xs text-[#6e6e73]">
+          <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
             {images.length ? `${images.length} imagem(ns) incorporada(s)` : "Nenhuma imagem ainda"}
           </div>
         </div>
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm font-semibold text-[#3f3f46] hover:bg-[#f5f5f7]">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted">
           <ImagePlus className="h-4 w-4" />
           Adicionar imagem
           <input
@@ -9740,9 +9698,9 @@ function ImageManager({
           {images.map((image) => (
             <div
               key={image.id}
-              className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 md:grid-cols-[160px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[160px_1fr_auto]"
             >
-              <div className="overflow-hidden rounded-lg border border-[#d2d2d7] bg-white">
+              <div className="overflow-hidden rounded-md border border-border bg-background">
                 <img src={image.src} alt={image.titulo} className="h-32 w-full object-contain" />
               </div>
               <div className="grid gap-3">
@@ -9800,9 +9758,9 @@ function ListEditor({
         {items.map((item, index) => (
           <div
             key={item.id}
-            className="flex items-center gap-2 rounded-lg border border-[#d2d2d7] bg-white p-2"
+            className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
           >
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#f3f4f6] text-xs font-black text-[#3f3f46]">
+            <div className="grid h-8 w-8 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
               {String(index + 1).padStart(2, "0")}
             </div>
             <input
@@ -9815,7 +9773,7 @@ function ListEditor({
                   ),
                 )
               }
-              className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm outline-none"
+              className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-foreground outline-none"
             />
             <IconButton
               label="Excluir"
@@ -9827,7 +9785,7 @@ function ListEditor({
         ))}
         <button
           onClick={() => onChange([...items, { id: id("item"), text: "" }])}
-          className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-sm font-semibold hover:bg-[#f5f5f7]"
+          className="mt-2 inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
         >
           <Plus className="h-4 w-4" />
           Adicionar
@@ -9849,7 +9807,7 @@ function ToolbarButton({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm font-semibold text-[#3f3f46] hover:bg-[#f5f5f7]"
+      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
     >
       {icon}
       {children}
@@ -9872,7 +9830,7 @@ function IconButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="grid h-10 w-10 place-items-center rounded-lg border border-[#d2d2d7] text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#3f3f46]"
+      className="grid h-10 w-10 place-items-center rounded-md border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
     >
       {children}
     </button>
@@ -9892,11 +9850,11 @@ function Modal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[#1d1d1f]/35 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-lg border border-[#d2d2d7] bg-white p-5 shadow-2xl"
+        className="w-full max-w-2xl rounded-lg border border-border bg-card p-5 text-foreground shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-4">

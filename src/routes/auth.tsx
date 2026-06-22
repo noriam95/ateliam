@@ -15,7 +15,7 @@ const LOGIN_MESSAGES = [
   {
     eyebrow: "workspace de processos",
     title: "Crie, versione e organize.\nEm um só lugar.",
-    text: "Um ambiente modular para processos BPMN, políticas, procedimentos e diagnósticos, com histórico completo de versões.",
+    text: "Um ambiente modular para fluxos de atividades, políticas, procedimentos e diagnósticos, com histórico completo de versões.",
   },
   {
     eyebrow: "diagnóstico de processo",
@@ -28,9 +28,9 @@ const LOGIN_MESSAGES = [
     text: "Crie POPs com objetivo, abrangência, responsabilidades, procedimento, referências e histórico de mudanças.",
   },
   {
-    eyebrow: "modelagem BPMN",
+    eyebrow: "fluxo de atividades",
     title: "Desenhe fluxos\ncom precisão.",
-    text: "Modele processos com elementos visuais, conexões organizadas e lógica próxima a ferramentas tradicionais de BPMN.",
+    text: "Modele processos com elementos visuais, conexões organizadas e uma experiência familiar de fluxograma.",
   },
   {
     eyebrow: "governança documental",

@@ -33,12 +33,40 @@ type ProcessType = {
   label: string;
   active: boolean;
 };
+type ValueChainCategory = "primary" | "support" | "management";
 type ValueChain = {
   id: string;
   name: string;
+  category: ValueChainCategory;
   description: string | null;
   status: string;
 };
+
+const VALUE_CHAIN_CATEGORIES: Array<{
+  value: ValueChainCategory;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "primary",
+    label: "Processos Primários / Finalísticos",
+    description: "Entregam valor diretamente ao cliente ou ao negócio.",
+  },
+  {
+    value: "support",
+    label: "Processos de Apoio / Suporte",
+    description: "Sustentam os processos principais e a operação.",
+  },
+  {
+    value: "management",
+    label: "Processos de Gestão / Estratégicos",
+    description: "Direcionam, controlam e apoiam a tomada de decisão.",
+  },
+];
+
+function valueChainCategoryLabel(value: ValueChainCategory) {
+  return VALUE_CHAIN_CATEGORIES.find((category) => category.value === value)?.label ?? value;
+}
 type Process = {
   id: string;
   code: string | null;
@@ -84,6 +112,7 @@ const DEMO_REGISTRY: RegistryData = {
     {
       id: "chain-operacao",
       name: "Operação e Gestão",
+      category: "management",
       description: "Cadeia de valor principal da organização.",
       status: "Ativa",
     },
@@ -120,6 +149,7 @@ type Draft = {
   roleTitle: string;
   label: string;
   active: boolean;
+  valueChainCategory: ValueChainCategory;
 };
 
 function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
@@ -139,6 +169,7 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
     roleTitle: "",
     label: "Macroprocesso",
     active: true,
+    valueChainCategory: "primary",
   };
 }
 
@@ -210,6 +241,7 @@ export function WorkspaceProcessRegistrations({
             id: draft.id || undefined,
             organizationId,
             name: draft.name,
+            category: draft.valueChainCategory,
             description: draft.description || null,
             status: draft.status as "Ativa" | "Inativa",
           },
@@ -502,6 +534,31 @@ function RegistrationFields({
             className={inputClass}
           />
         </Field>
+        <Field label="Categoria">
+          <select
+            required
+            value={draft.valueChainCategory}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                valueChainCategory: e.target.value as ValueChainCategory,
+              }))
+            }
+            className={inputClass}
+          >
+            {VALUE_CHAIN_CATEGORIES.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            {
+              VALUE_CHAIN_CATEGORIES.find((category) => category.value === draft.valueChainCategory)
+                ?.description
+            }
+          </p>
+        </Field>
         <Field label="Descrição">
           <textarea
             rows={4}
@@ -644,11 +701,11 @@ function RegistrationFields({
 function registryCopy(view: ProcessRegistrationView) {
   if (view === "value-chains")
     return {
-      title: "Cadeias de Valor",
+      title: "Cadeia de valor",
       singular: "Cadeia de valor",
       description:
         "Organize os grandes fluxos de geração de valor que agrupam os processos da organização.",
-      columns: ["Nome", "Descrição", "Status"],
+      columns: ["Nome", "Categoria", "Descrição", "Status"],
       icon: <Layers3 className="h-5 w-5" />,
     };
   if (view === "areas")
@@ -704,7 +761,12 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
   if (view === "value-chains")
     return data.valueChains.map((item) => ({
       id: item.id,
-      values: [item.name, item.description || "-", item.status],
+      values: [
+        item.name,
+        valueChainCategoryLabel(item.category),
+        item.description || "-",
+        item.status,
+      ],
     }));
   return data.processes.map((item) => ({
     id: item.id,
@@ -744,7 +806,14 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
   if (view === "value-chains") {
     const item = data.valueChains.find((row) => row.id === id);
     return item
-      ? { ...draft, id, name: item.name, description: item.description || "", status: item.status }
+      ? {
+          ...draft,
+          id,
+          name: item.name,
+          valueChainCategory: item.category,
+          description: item.description || "",
+          status: item.status,
+        }
       : draft;
   }
   const item = data.processes.find((row) => row.id === id);
@@ -803,6 +872,7 @@ function saveDemoRegistration(
         valueChains: upsert(current.valueChains, {
           id,
           name: draft.name,
+          category: draft.valueChainCategory,
           description: draft.description || null,
           status: draft.status,
         }),

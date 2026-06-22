@@ -2099,11 +2099,11 @@ body[data-local-role="viewer"] .sb-new-item{
 
   <div class="sb-module open" id="module-bpmn">
     <div class="sb-module-head" onclick="toggleModule('bpmn')">
-      <span>▧</span> Desenho BPMN 2.0 <span class="chev">▶</span>
+      <span>▧</span> Fluxograma <span class="chev">▶</span>
     </div>
     <div class="sb-module-items">
       <a class="sb-item sb-new-item" onclick="novoBPMN()" href="#">
-        <span>🧭</span> Abrir modelador <span class="sb-num">BPMN</span>
+        <span>🧭</span> Abrir editor <span class="sb-num">FLUXO</span>
       </a>
       <a class="sb-item" onclick="novoBPMN(); if(window.bpmnStableReset) bpmnStableReset();" href="#">
         <span>➕</span> Novo desenho <span class="sb-num">NOVO</span>
@@ -2166,7 +2166,7 @@ body[data-local-role="viewer"] .sb-new-item{
 
     <div class="module-actions" id="actions-bpmn">
       <button class="btn btn-primary" onclick="salvarBpmnLocal()" title="Salva o desenho no navegador">💾 Salvar rascunho</button>
-      <button class="btn btn-outline" onclick="baixarBpmnXML()">⬇️ Baixar BPMN</button>
+      <button class="btn btn-outline" onclick="baixarBpmnXML()">⬇️ Baixar XML</button>
       <button class="btn btn-outline" onclick="baixarBpmnSVG()">⬇️ Baixar SVG</button>
       <button class="btn btn-outline" onclick="baixarBpmnJPEG()">⬇️ Baixar JPEG</button>
       <button class="btn btn-outline btn-danger-action" onclick="limparBPMN()">Limpar</button>
@@ -2190,7 +2190,7 @@ body[data-local-role="viewer"] .sb-new-item{
     </div>
 
     <div class="module-tab-set" id="tabs-bpmn">
-      <button class="module-tab" onclick="goTo(15,'bpmn')">01 Modelador BPMN</button>
+      <button class="module-tab" onclick="goTo(15,'bpmn')">01 Fluxograma</button>
     </div>
 
     <div class="module-tab-set" id="tabs-pop">
@@ -2257,12 +2257,12 @@ body[data-local-role="viewer"] .sb-new-item{
         <div class="home-card ux-module-card ux-bpmn-card" data-module-card="bpmn">
           <div class="ux-module-icon">B</div>
           <div class="home-card-kicker">Modalidade 03</div>
-          <h3>Desenho BPMN 2.0</h3>
+          <h3>Fluxograma</h3>
           <p>Para modelar fluxos de processo de ponta a ponta com experiência visual próxima ao Bizagi.</p>
           <ul class="ux-mini-list">
             <li>Piscinas, raias, eventos, tarefas e gateways</li>
             <li>Conectores, validação e organização do desenho</li>
-            <li>Exportação em BPMN, SVG e JPEG</li>
+            <li>Exportação em XML, SVG e JPEG</li>
           </ul>
           <div class="home-actions">
             <button class="btn btn-primary" onclick="novoBPMN()">Abrir modelador</button>
@@ -2458,7 +2458,7 @@ body[data-local-role="viewer"] .sb-new-item{
       <div class="bpmn-shell">
         <aside class="bpmn-panel">
           <div class="bpmn-panel-head">
-            <div class="bpmn-panel-kicker">Biblioteca BPMN</div>
+            <div class="bpmn-panel-kicker">Biblioteca de fluxo</div>
             <div class="bpmn-panel-title">Elementos</div>
           </div>
           <div class="bpmn-panel-body">
@@ -2493,7 +2493,7 @@ body[data-local-role="viewer"] .sb-new-item{
 
             <div class="bpmn-mini-list">
               <div class="bpmn-mini-card"><strong>Uso básico:</strong> arraste elementos para dentro do pool. Clique em um elemento e arraste uma opção do menu rápido para posicionar a sequência.</div>
-              <div class="bpmn-mini-card"><strong>Exportação:</strong> o botão Baixar BPMN gera XML BPMN 2.0 com informações visuais.</div>
+              <div class="bpmn-mini-card"><strong>Exportação:</strong> o botão Baixar XML preserva as informações visuais do fluxo.</div>
             </div>
           </div>
         </aside>
@@ -2796,7 +2796,7 @@ body[data-local-role="viewer"] .sb-new-item{
             </label>
             <label class="permission-toggle">
               <input id="perm-bpmn" type="checkbox"/>
-              <span><strong>Desenho BPMN 2.0</strong>Modelador visual com raias, gateways e exportação.</span>
+              <span><strong>Fluxograma</strong>Editor visual com raias, decisões e exportação.</span>
             </label>
           </div>
         </div>
@@ -2929,7 +2929,7 @@ const ATELIAM_LOCAL_PROFILE_KEY = 'ateliam_local_profile_v1';
 const ATELIAM_MODULE_LABELS = {
   ddp: 'Diagnóstico de Processo',
   pop: 'Documentos Normativos e Operacionais',
-  bpmn: 'Desenho BPMN 2.0'
+  bpmn: 'Fluxograma'
 };
 const ATELIAM_ROLE_LABELS = {
   admin: 'Admin local',
@@ -5640,7 +5640,7 @@ function buildPdfReport(){
     return `<div class="process-block">
       <div class="process-title">SUBPROCESSO — ${esc(step.titulo).toUpperCase()} (SUBPROCESSO)</div>
       <div class="process-subtitle">${esc(step.descricao)}</div>
-      ${renderDiagramBlock(step.imagens,false,'BPMN DETALHADO')}
+      ${renderDiagramBlock(step.imagens,false,'FLUXO DETALHADO')}
       ${renderSubsteps(step)}
       ${renderObservation(step)}
     </div>`;
@@ -7791,7 +7791,7 @@ function novoBPMN(){
   normalizeBpmnPool();
   goTo(15,'bpmn');
   renderBpmn();
-  if(typeof showToast==='function') showToast('Modelador BPMN aberto.');
+  if(typeof showToast==='function') showToast('Editor de fluxograma aberto.');
 }
 
 function normalizeBpmnPool(){
@@ -9331,7 +9331,7 @@ closeBpmnContextMenu();
     const toolbar = root.querySelector('.bpmn-canvas-top');
     if(toolbar){
       toolbar.insertAdjacentHTML('afterbegin', `
-        <div class="bpmn-bizagi-toolbar" aria-label="Ferramentas BPMN">
+        <div class="bpmn-bizagi-toolbar" aria-label="Ferramentas do fluxograma">
           <button class="btn btn-outline" id="bpmn-undo-btn" type="button" onclick="bpmnStableUndo()" title="Desfazer (Ctrl+Z)">Undo</button>
           <button class="btn btn-outline" id="bpmn-redo-btn" type="button" onclick="bpmnStableRedo()" title="Refazer (Ctrl+Y)">Redo</button>
           <span class="bpmn-toolbar-sep"></span>
@@ -9372,7 +9372,7 @@ closeBpmnContextMenu();
     p.innerHTML = `
       <div class="bpmn-shell">
         <aside class="bpmn-panel">
-          <div class="bpmn-panel-head"><div class="bpmn-panel-kicker">Biblioteca BPMN</div><div class="bpmn-panel-title">Elementos</div></div>
+          <div class="bpmn-panel-head"><div class="bpmn-panel-kicker">Biblioteca de fluxo</div><div class="bpmn-panel-title">Elementos</div></div>
           <div class="bpmn-panel-body">
             <div class="bpmn-tool-grid">
               <button class="bpmn-tool" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'start')" onclick="bpmnStableAdd('start')"><span class="bpmn-tool-icon">S</span><span><strong>Evento inicial</strong><span>Dentro do pool</span></span></button>
@@ -9392,7 +9392,7 @@ closeBpmnContextMenu();
             <button class="btn btn-outline" onclick="bpmnStableAddLane()">+ Raia</button>
             <button class="btn btn-outline" onclick="bpmnStableExpand(200,0)">Expandir largura</button>
             <button class="btn btn-outline" onclick="bpmnStableExpand(0,130)">Expandir altura</button>
-            <span class="bpmn-status">Motor BPMN estável</span>
+            <span class="bpmn-status">Editor de fluxo pronto</span>
           </div>
           <div id="bpmn-svg-wrap">
             <svg id="bpmn-stable-svg" xmlns="http://www.w3.org/2000/svg" style="background:linear-gradient(#eef2f6 1px,transparent 1px),linear-gradient(90deg,#eef2f6 1px,transparent 1px);background-size:24px 24px;background-color:#f8fafc;" onclick="bpmnStableClear(event)"></svg>
@@ -9433,7 +9433,7 @@ closeBpmnContextMenu();
       if(b&&c) connect(b.id,c.id);
     }
     draw();
-    toast('Modelador BPMN aberto.');
+    toast('Editor de fluxograma aberto.');
   }
 
   function toast(msg){
@@ -9497,7 +9497,7 @@ closeBpmnContextMenu();
     lastValidation = validateDiagram();
     renderValidation();
     refreshWorkbenchControls();
-    toast(lastValidation.length ? 'Revise os pontos destacados na validacao BPMN.' : 'BPMN validado sem problemas.');
+    toast(lastValidation.length ? 'Revise os pontos destacados na validacao do fluxo.' : 'Fluxo validado sem problemas.');
   };
   window.bpmnStablePaletteDrag = function(evt,type,detail){
     if(!evt.dataTransfer) return;
@@ -9525,7 +9525,7 @@ closeBpmnContextMenu();
       const p = svgPoint(evt);
       addNode(item.type, p.x - sz.w/2, p.y - sz.h/2, '', null, item.detail);
     }catch(e){
-      toast('Nao foi possivel adicionar o elemento BPMN.');
+      toast('Nao foi possivel adicionar o elemento ao fluxo.');
     }
   };
   window.bpmnStableCanvasPan = function(evt){
@@ -9773,9 +9773,9 @@ closeBpmnContextMenu();
   };
   window.bpmnStableCloseMenu = function(){ document.getElementById('bpmn-stable-menu')?.classList.remove('open'); };
 
-  window.salvarBpmnLocal = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','write')) return; localStorage.setItem('bpmnStable',JSON.stringify(st)); toast('Rascunho BPMN salvo.'); };
+  window.salvarBpmnLocal = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','write')) return; localStorage.setItem('bpmnStable',JSON.stringify(st)); toast('Rascunho do fluxo salvo.'); };
   window.carregarBpmnLocal = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','open')) return; try{commit();st=JSON.parse(localStorage.getItem('bpmnStable'))||freshState();openModule('view');}catch(e){st=freshState();openModule('view');} };
-  window.limparBPMN = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','write')) return; if(confirm('Limpar BPMN?')){commit();st=freshState();draw();} };
+  window.limparBPMN = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','write')) return; if(confirm('Limpar fluxograma?')){commit();st=freshState();draw();} };
 
   function buildExportSvg(){
     ensureState();
@@ -9792,7 +9792,7 @@ closeBpmnContextMenu();
 
   window.baixarBpmnSVG = function(){
     const data='<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(buildExportSvg());
-    download('pool-bpmn.svg',data,'image/svg+xml');
+    download('fluxograma.svg',data,'image/svg+xml');
   };
 
   window.baixarBpmnJPEG = function(){
@@ -9808,7 +9808,7 @@ closeBpmnContextMenu();
       ctx.drawImage(img,0,0,c.width,c.height);
       URL.revokeObjectURL(url);
       c.toBlob(b=>{
-        const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='pool-bpmn.jpeg'; a.click();
+        const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='fluxograma.jpeg'; a.click();
         setTimeout(()=>URL.revokeObjectURL(a.href),200);
       },'image/jpeg',0.92);
     };
@@ -9854,7 +9854,7 @@ closeBpmnContextMenu();
       xml+=`</bpmndi:BPMNEdge>\n`;
     });
     xml+=`</bpmndi:BPMNPlane></bpmndi:BPMNDiagram>\n</bpmn:definitions>`;
-    download('desenho-bpmn.bpmn',xml,'application/xml');
+    download('fluxograma.xml',xml,'application/xml');
   };
 
   function download(name,data,type){

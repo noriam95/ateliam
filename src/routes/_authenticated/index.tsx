@@ -90,7 +90,6 @@ type DashboardTotals = {
   departments: number;
   owners: number;
   valueChains: number;
-  units: number;
 };
 type DashboardProcess = {
   id: string;
@@ -108,8 +107,6 @@ type AccessibleOrganization = {
   name: string;
   slug: string;
   logo_data_url: string | null;
-  units: Array<{ id: string; name: string; code: string | null; active: boolean }>;
-  defaultUnitId?: string | null;
   isDefault?: boolean;
 };
 
@@ -147,10 +144,6 @@ function WorkspaceHome() {
           typeof window === "undefined"
             ? null
             : window.localStorage.getItem("ateliam-demo-organization-logo"),
-        units: [
-          { id: "demo-unit-matriz", name: "Matriz", code: "MATRIZ", active: true },
-          { id: "demo-unit-agricola", name: "Operação Agrícola", code: "AGR", active: true },
-        ],
         isDefault: true,
       },
       {
@@ -158,7 +151,6 @@ function WorkspaceHome() {
         name: "Ateliam Lab",
         slug: "ateliam-lab",
         logo_data_url: null,
-        units: [{ id: "demo-unit-lab", name: "Unidade Principal", code: "LAB", active: true }],
       },
     ];
     if (typeof window === "undefined") return defaults;
@@ -173,9 +165,6 @@ function WorkspaceHome() {
     typeof window === "undefined"
       ? ""
       : window.localStorage.getItem("ateliam-active-organization") || "",
-  );
-  const [activeUnitId, setActiveUnitId] = useState(() =>
-    typeof window === "undefined" ? "" : window.localStorage.getItem("ateliam-active-unit") || "",
   );
   const [demoOrganizationLogo, setDemoOrganizationLogo] = useState(() =>
     typeof window === "undefined"
@@ -247,7 +236,6 @@ function WorkspaceHome() {
               departments: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
               owners: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
               valueChains: selectedDemoOrganization.id === "demo-bom-futuro" ? 1 : 0,
-              units: selectedDemoOrganization.units?.length ?? 0,
             },
             topDepartments:
               selectedDemoOrganization.id === "demo-bom-futuro"
@@ -320,7 +308,6 @@ function WorkspaceHome() {
                     },
                   ]
                 : [],
-            units: selectedDemoOrganization.units ?? [],
           }
         : dashboardQ.data,
     [dashboardQ.data, demoOrganizationLogo, isDemo, selectedDemoOrganization],
@@ -354,13 +341,7 @@ function WorkspaceHome() {
       setActiveOrganizationId(selectedOrganizationId);
     }
     window.localStorage.setItem("ateliam-active-organization", selectedOrganizationId);
-    const organization = accessibleOrganizations.find((item) => item.id === selectedOrganizationId);
-    const validUnit = organization?.units.find((unit) => unit.id === activeUnitId && unit.active);
-    const nextUnitId =
-      validUnit?.id || organization?.defaultUnitId || organization?.units[0]?.id || "";
-    if (nextUnitId !== activeUnitId) setActiveUnitId(nextUnitId);
-    if (nextUnitId) window.localStorage.setItem("ateliam-active-unit", nextUnitId);
-  }, [accessibleOrganizations, activeOrganizationId, activeUnitId, selectedOrganizationId]);
+  }, [activeOrganizationId, selectedOrganizationId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -460,11 +441,6 @@ function WorkspaceHome() {
   const organizationName = dashboard?.organization?.name ?? "Sua organização";
   const organizationLogo = dashboard?.organization?.logo_data_url ?? null;
   const totals = dashboard?.totals;
-  const activeOrganization = accessibleOrganizations.find(
-    (organization) => organization.id === selectedOrganizationId,
-  );
-  const activeUnits = activeOrganization?.units?.filter((unit) => unit.active) ?? [];
-
   return (
     <div className="min-h-screen bg-background text-foreground" style={workspaceGrayVars}>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
@@ -510,10 +486,7 @@ function WorkspaceHome() {
           <select
             aria-label="Organização ativa"
             value={selectedOrganizationId}
-            onChange={(event) => {
-              setActiveOrganizationId(event.target.value);
-              setActiveUnitId("");
-            }}
+            onChange={(event) => setActiveOrganizationId(event.target.value)}
             className="h-8 max-w-[190px] bg-transparent text-xs font-semibold outline-none"
           >
             {accessibleOrganizations.map((organization) => (
@@ -522,24 +495,6 @@ function WorkspaceHome() {
               </option>
             ))}
           </select>
-          {activeUnits.length ? <span className="h-4 w-px bg-border" /> : null}
-          {activeUnits.length ? (
-            <select
-              aria-label="Unidade ativa"
-              value={activeUnitId}
-              onChange={(event) => {
-                setActiveUnitId(event.target.value);
-                window.localStorage.setItem("ateliam-active-unit", event.target.value);
-              }}
-              className="h-8 max-w-[150px] bg-transparent text-xs text-muted-foreground outline-none"
-            >
-              {activeUnits.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.name}
-                </option>
-              ))}
-            </select>
-          ) : null}
         </div>
 
         <UserProfileMenu
@@ -718,7 +673,7 @@ function WorkspaceHome() {
                         active={view === "value-chains"}
                         onClick={() => setView("value-chains")}
                       >
-                        Cadeias de Valor
+                        Cadeia de valor
                       </TreeButton>
                       <TreeButton
                         active={view === "processes"}
@@ -1144,7 +1099,7 @@ function ExportsPanel() {
     {
       moduleId: "bpmn",
       title: "Fluxograma",
-      formats: "BPMN/SVG/imagem",
+      formats: "XML/SVG/imagem",
       text: "Arquivos de desenho para documentação, revisão e publicação do fluxo do processo.",
     },
   ];
@@ -1571,8 +1526,8 @@ function getModuleActions(moduleId: AteliamModule): Array<{
     {
       key: "library",
       label: "Biblioteca",
-      description: "Consulte elementos BPMN e padrões de desenho.",
-      eyebrow: "biblioteca BPMN",
+      description: "Consulte elementos e padrões para fluxos de atividades.",
+      eyebrow: "biblioteca de fluxo",
       title: "Elementos e padrões de desenho",
       body: "Centralize padrões de eventos, atividades, gateways, artefatos e conectores utilizados pela organização.",
     },
@@ -1587,7 +1542,7 @@ function getModuleActions(moduleId: AteliamModule): Array<{
     {
       key: "exports",
       label: "Exportações",
-      description: "Exporte BPMN, SVG ou imagem.",
+      description: "Exporte XML, SVG ou imagem.",
       eyebrow: "saídas do desenho",
       title: "Exportações do fluxograma",
       body: "Gere arquivos compatíveis para documentação, revisão e publicação do processo.",
@@ -1598,7 +1553,7 @@ function getModuleActions(moduleId: AteliamModule): Array<{
 function getModuleExportLabel(moduleId: AteliamModule) {
   if (moduleId === "ddp") return "HTML + Word";
   if (moduleId === "pop") return "Word";
-  return "BPMN/SVG";
+  return "XML/SVG";
 }
 
 function getModuleDocuments(
@@ -1643,7 +1598,7 @@ function getModuleDocuments(
         : [
             {
               id: "bpmn-demo-1",
-              name: "BPMN.PMO.007 - Fluxo de Demandas de BI Analytics",
+              name: "FLX.PMO.007 - Fluxo de Demandas de BI Analytics",
               module: "bpmn",
               current_version: 3,
               updated_at: new Date().toISOString(),
@@ -1684,9 +1639,9 @@ function getModuleFlow(moduleId: AteliamModule) {
 
   return [
     "Criar ou abrir um fluxograma.",
-    "Modelar o processo com elementos BPMN 2.0.",
+    "Modelar o processo como um fluxo de atividades.",
     "Versionar o desenho vinculado ao processo.",
-    "Exportar BPMN/SVG/imagem para documentação.",
+    "Exportar XML/SVG/imagem para documentação.",
   ];
 }
 
