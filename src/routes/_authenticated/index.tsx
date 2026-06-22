@@ -1,102 +1,2260 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Activity,
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  FileText,
+  FlaskConical,
+  GitBranch,
+  Home,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Network,
+  Settings,
+  Upload,
+  User,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { MODULES } from "@/lib/workspace-bridge";
-import { ArrowRight, LogOut, Settings } from "lucide-react";
+import { AteliamMark } from "@/components/ateliam-mark";
+import { ThemeControl } from "@/components/theme-control";
+import { UserProfileMenu } from "@/components/user-profile-menu";
+import { WorkspaceSystemSettings } from "@/components/workspace-system-settings";
+import {
+  WorkspaceProcessRegistrations,
+  type ProcessRegistrationView,
+} from "@/components/workspace-process-registrations";
+import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
+import { getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
+import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
 
 export const Route = createFileRoute("/_authenticated/")({
-  component: ModulePicker,
+  component: WorkspaceHome,
+  validateSearch: (search: Record<string, unknown>) => ({
+    area:
+      search.area === "modules" || search.area === "registrations" || search.area === "settings"
+        ? search.area
+        : undefined,
+    view: typeof search.view === "string" ? search.view : undefined,
+  }),
 });
 
-function ModulePicker() {
+type WorkspaceView =
+  | "overview"
+  | "organizations"
+  | "documents"
+  | "processes"
+  | "value-chains"
+  | "process-types"
+  | "areas"
+  | "owners"
+  | "causes"
+  | "systems"
+  | "exports"
+  | "settings"
+  | "appearance"
+  | "theme"
+  | "local-environment"
+  | "profile"
+  | "preferences"
+  | "users"
+  | "permissions"
+  | "roles"
+  | "access-profiles"
+  | "document-types"
+  | "document-models"
+  | "visual-identity"
+  | "integrations"
+  | "version-history"
+  | `module:${AteliamModule}:${ModuleTask}`
+  | `module:${AteliamModule}`;
+
+type ModuleTask = "home" | "consult" | "cause-new" | "cause-consult" | "cause-edit" | "library";
+type WorkspaceArea = "home" | "modules" | "registrations" | "settings";
+type DashboardTotals = {
+  processes: number;
+  activeProcesses: number;
+  reviewProcesses: number;
+  ddps: number;
+  pops: number;
+  departments: number;
+  owners: number;
+  valueChains: number;
+  units: number;
+};
+type DashboardProcess = {
+  id: string;
+  name: string;
+  type: string;
+  department: string | null;
+  owner: string | null;
+  status: string;
+  current_version: number;
+  created_at: string;
+  updated_at: string;
+};
+type AccessibleOrganization = {
+  id: string;
+  name: string;
+  slug: string;
+  logo_data_url: string | null;
+  units: Array<{ id: string; name: string; code: string | null; active: boolean }>;
+  defaultUnitId?: string | null;
+  isDefault?: boolean;
+};
+
+const PROFILE_PHOTO_PREFIX = "ateliam-profile-photo:";
+
+const workspaceGrayVars = {
+  "--accent": "color-mix(in oklab, var(--gold) 12%, var(--background))",
+  "--accent-foreground": "var(--foreground)",
+  "--brand": "var(--gold)",
+  "--brand-foreground": "var(--foreground)",
+  "--blue": "var(--gold)",
+  "--indigo": "var(--muted-foreground)",
+} as CSSProperties;
+
+function moduleWorkspaceView(moduleId: AteliamModule, task: ModuleTask = "home") {
+  return `module:${moduleId}:${task}` as WorkspaceView;
+}
+
+function isModuleView(view: WorkspaceView, moduleId: AteliamModule) {
+  return String(view).startsWith(`module:${moduleId}`);
+}
+
+function WorkspaceHome() {
+  const search = Route.useSearch();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [isDemo] = useState(() => isDemoSessionActive());
+  const [demoOrganizations, setDemoOrganizations] = useState<AccessibleOrganization[]>(() => {
+    const defaults: AccessibleOrganization[] = [
+      {
+        id: "demo-bom-futuro",
+        name: "Bom Futuro",
+        slug: "bom-futuro",
+        logo_data_url:
+          typeof window === "undefined"
+            ? null
+            : window.localStorage.getItem("ateliam-demo-organization-logo"),
+        units: [
+          { id: "demo-unit-matriz", name: "Matriz", code: "MATRIZ", active: true },
+          { id: "demo-unit-agricola", name: "Operação Agrícola", code: "AGR", active: true },
+        ],
+        isDefault: true,
+      },
+      {
+        id: "demo-ateliam-lab",
+        name: "Ateliam Lab",
+        slug: "ateliam-lab",
+        logo_data_url: null,
+        units: [{ id: "demo-unit-lab", name: "Unidade Principal", code: "LAB", active: true }],
+      },
+    ];
+    if (typeof window === "undefined") return defaults;
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("ateliam-demo-organizations") ?? "[]");
+      return Array.isArray(stored) && stored.length ? stored : defaults;
+    } catch {
+      return defaults;
+    }
+  });
+  const [activeOrganizationId, setActiveOrganizationId] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : window.localStorage.getItem("ateliam-active-organization") || "",
+  );
+  const [activeUnitId, setActiveUnitId] = useState(() =>
+    typeof window === "undefined" ? "" : window.localStorage.getItem("ateliam-active-unit") || "",
+  );
+  const [demoOrganizationLogo, setDemoOrganizationLogo] = useState(() =>
+    typeof window === "undefined"
+      ? null
+      : window.localStorage.getItem("ateliam-demo-organization-logo"),
+  );
+  const [treeOpen, setTreeOpen] = useState(!!search.area);
+  const [activeArea, setActiveArea] = useState<WorkspaceArea>(search.area ?? "home");
+  const [view, setView] = useState<WorkspaceView>(
+    (search.view as WorkspaceView | undefined) ?? "overview",
+  );
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    organization: true,
+    modules: true,
+    ddp: false,
+    pop: false,
+    bpmn: false,
+    causes: false,
+    registrations: true,
+    processRegistrations: true,
+    systemRegistrations: true,
+    governance: true,
+    settings: true,
+  });
+  const dashboardFn = useServerFn(getOrganizationDashboard);
+  const accessibleOrganizationsFn = useServerFn(listAccessibleOrganizations);
+  const accessibleOrganizationsQ = useQuery({
+    queryKey: ["accessible-organizations", isDemo ? "demo" : "cloud"],
+    queryFn: () => accessibleOrganizationsFn(),
+    enabled: !isDemo,
+  });
+  const accessibleOrganizations = useMemo(
+    () =>
+      isDemo
+        ? demoOrganizations
+        : ((accessibleOrganizationsQ.data ?? []) as AccessibleOrganization[]),
+    [accessibleOrganizationsQ.data, demoOrganizations, isDemo],
+  );
+  const selectedOrganizationId =
+    activeOrganizationId ||
+    accessibleOrganizations.find((organization) => organization.isDefault)?.id ||
+    accessibleOrganizations[0]?.id ||
+    "";
+  const dashboardQ = useQuery({
+    queryKey: ["organization-dashboard", isDemo ? "demo" : "cloud", selectedOrganizationId],
+    queryFn: () => dashboardFn({ data: { organizationId: selectedOrganizationId || null } }),
+    enabled: !isDemo && !!selectedOrganizationId,
+  });
+  const selectedDemoOrganization =
+    demoOrganizations.find((organization) => organization.id === selectedOrganizationId) ??
+    demoOrganizations[0];
+  const dashboard = useMemo(
+    () =>
+      isDemo
+        ? {
+            organization: {
+              ...selectedDemoOrganization,
+              logo_data_url:
+                selectedDemoOrganization.id === "demo-bom-futuro"
+                  ? demoOrganizationLogo
+                  : selectedDemoOrganization.logo_data_url,
+            },
+            totals: {
+              processes: selectedDemoOrganization.id === "demo-bom-futuro" ? 3 : 0,
+              activeProcesses: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
+              reviewProcesses: selectedDemoOrganization.id === "demo-bom-futuro" ? 1 : 0,
+              ddps: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
+              pops: selectedDemoOrganization.id === "demo-bom-futuro" ? 1 : 0,
+              departments: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
+              owners: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
+              valueChains: selectedDemoOrganization.id === "demo-bom-futuro" ? 1 : 0,
+              units: selectedDemoOrganization.units?.length ?? 0,
+            },
+            topDepartments:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? [
+                    { label: "Tecnologia da Informação", value: 2 },
+                    { label: "Processos", value: 1 },
+                  ]
+                : [],
+            topOwners:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? [
+                    { label: "Dono do processo", value: 2 },
+                    { label: "Gestor da área", value: 1 },
+                  ]
+                : [],
+            recentDocuments:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? [
+                    {
+                      id: "demo-ddp",
+                      name: "DDP.PMO.007 - Gestão de Demandas de BI Analytics",
+                      module: "ddp",
+                      current_version: 14,
+                      updated_at: new Date().toISOString(),
+                    },
+                    {
+                      id: "demo-pop",
+                      name: "POP.ADM.001 - Controle de Acesso às Unidades",
+                      module: "pop",
+                      current_version: 1,
+                      updated_at: new Date().toISOString(),
+                    },
+                  ]
+                : [],
+            recentProcesses:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? [
+                    {
+                      id: "demo-process-1",
+                      name: "Gestão de Demandas de BI Analytics",
+                      type: "process",
+                      department: "Tecnologia da Informação",
+                      owner: "PMO / Processos",
+                      status: "Ativo",
+                      current_version: 14,
+                      created_at: new Date(Date.now() - 86400000 * 45).toISOString(),
+                      updated_at: new Date().toISOString(),
+                    },
+                    {
+                      id: "demo-process-2",
+                      name: "Controle de Acesso às Unidades",
+                      type: "process",
+                      department: "Administrativo",
+                      owner: "Gestor da área",
+                      status: "Em revisão",
+                      current_version: 6,
+                      created_at: new Date(Date.now() - 86400000 * 70).toISOString(),
+                      updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
+                    },
+                    {
+                      id: "demo-process-3",
+                      name: "Gestão do Portfólio de Processos",
+                      type: "macroprocess",
+                      department: "Processos",
+                      owner: "Dono do processo",
+                      status: "Ativo",
+                      current_version: 2,
+                      created_at: new Date(Date.now() - 86400000 * 120).toISOString(),
+                      updated_at: new Date(Date.now() - 86400000 * 8).toISOString(),
+                    },
+                  ]
+                : [],
+            units: selectedDemoOrganization.units ?? [],
+          }
+        : dashboardQ.data,
+    [dashboardQ.data, demoOrganizationLogo, isDemo, selectedDemoOrganization],
+  );
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
+    function updateDemoBrand() {
+      setDemoOrganizationLogo(window.localStorage.getItem("ateliam-demo-organization-logo"));
+    }
+    function updateDemoOrganizations() {
+      try {
+        const stored = JSON.parse(
+          window.localStorage.getItem("ateliam-demo-organizations") ?? "[]",
+        );
+        if (Array.isArray(stored) && stored.length) setDemoOrganizations(stored);
+      } catch {
+        // Keep the current local organizations.
+      }
+    }
+    window.addEventListener("ateliam-organization-brand-changed", updateDemoBrand);
+    window.addEventListener("ateliam-organizations-changed", updateDemoOrganizations);
+    return () => {
+      window.removeEventListener("ateliam-organization-brand-changed", updateDemoBrand);
+      window.removeEventListener("ateliam-organizations-changed", updateDemoOrganizations);
+    };
   }, []);
 
+  useEffect(() => {
+    if (!selectedOrganizationId) return;
+    if (activeOrganizationId !== selectedOrganizationId) {
+      setActiveOrganizationId(selectedOrganizationId);
+    }
+    window.localStorage.setItem("ateliam-active-organization", selectedOrganizationId);
+    const organization = accessibleOrganizations.find((item) => item.id === selectedOrganizationId);
+    const validUnit = organization?.units.find((unit) => unit.id === activeUnitId && unit.active);
+    const nextUnitId =
+      validUnit?.id || organization?.defaultUnitId || organization?.units[0]?.id || "";
+    if (nextUnitId !== activeUnitId) setActiveUnitId(nextUnitId);
+    if (nextUnitId) window.localStorage.setItem("ateliam-active-unit", nextUnitId);
+  }, [accessibleOrganizations, activeOrganizationId, activeUnitId, selectedOrganizationId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (isDemo) {
+      setEmail("analista.local@ateliam");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    try {
+      supabase.auth
+        .getUser()
+        .then(({ data }) => {
+          if (!cancelled) setEmail(data.user?.email ?? "");
+        })
+        .catch(() => {
+          if (!cancelled) setEmail("");
+        });
+    } catch {
+      setEmail("");
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDemo]);
+
   async function signOut() {
-    await supabase.auth.signOut();
+    if (isDemo) {
+      endDemoSession();
+      navigate({ to: "/auth", replace: true });
+      return;
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // The route change below still clears the local view.
+    }
     navigate({ to: "/auth", replace: true });
   }
 
+  function toggle(section: string) {
+    setExpanded((current) => ({ ...current, [section]: !current[section] }));
+  }
+
+  function selectArea(area: WorkspaceArea) {
+    setActiveArea(area);
+    if (area === "home") {
+      setView("overview");
+      setTreeOpen(false);
+      return;
+    }
+    setTreeOpen(true);
+    if (area === "modules") {
+      setExpanded((current) => ({ ...current, modules: true }));
+    }
+    if (area === "registrations") {
+      setExpanded((current) => ({ ...current, registrations: true }));
+      if (
+        ![
+          "areas",
+          "roles",
+          "access-profiles",
+          "process-types",
+          "systems",
+          "owners",
+          "processes",
+          "causes",
+        ].includes(view)
+      ) {
+        setView("processes");
+      }
+    }
+    if (area === "settings") {
+      setExpanded((current) => ({ ...current, settings: true }));
+      if (
+        ![
+          "appearance",
+          "theme",
+          "preferences",
+          "visual-identity",
+          "integrations",
+          "local-environment",
+          "users",
+          "organizations",
+          "document-models",
+        ].includes(view)
+      ) {
+        setView("users");
+      }
+    }
+  }
+
+  const organizationName = dashboard?.organization?.name ?? "Sua organização";
+  const organizationLogo = dashboard?.organization?.logo_data_url ?? null;
+  const totals = dashboard?.totals;
+  const activeOrganization = accessibleOrganizations.find(
+    (organization) => organization.id === selectedOrganizationId,
+  );
+  const activeUnits = activeOrganization?.units?.filter((unit) => unit.active) ?? [];
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Topbar */}
-      <header className="h-14 bg-primary text-primary-foreground flex items-center gap-3 px-6 border-b border-primary/20">
+    <div className="min-h-screen bg-background text-foreground" style={workspaceGrayVars}>
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
+        {activeArea === "home" ? (
+          <div className="h-9 w-9" aria-hidden="true" />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setTreeOpen((current) => !current)}
+            className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            title={treeOpen ? "Ocultar navegação" : "Mostrar navegação"}
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        )}
+
         <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-md bg-background/10 grid place-items-center">
-            <div className="h-2.5 w-2.5 rounded-sm bg-brand rotate-45" />
-          </div>
-          <div className="font-display text-[17px] font-bold tracking-tight">Atelier</div>
-          <span className="text-[10px] font-display uppercase tracking-[0.22em] text-primary-foreground/55 ml-1 hidden sm:inline">
-            estúdio de processos
-          </span>
+          {organizationLogo ? (
+            <img
+              src={organizationLogo}
+              alt={`Logo ${organizationName}`}
+              className="h-8 w-20 object-contain object-left"
+            />
+          ) : (
+            <AteliamMark
+              className="h-7 w-7 text-foreground"
+              markClassName="h-3.5 w-3.5 after:h-1.5 after:w-1.5"
+            />
+          )}
         </div>
+
         <div className="flex-1" />
-        <button onClick={() => navigate({ to: "/settings" })} title="Configurações" className="p-2 rounded-md hover:bg-background/10">
-          <Settings className="h-4 w-4" />
-        </button>
-        <span className="hidden md:inline text-[12px] text-primary-foreground/70 max-w-[200px] truncate">{email}</span>
-        <button onClick={signOut} title="Sair" className="p-2 rounded-md hover:bg-background/10">
-          <LogOut className="h-4 w-4" />
-        </button>
+
+        {isDemo && (
+          <span className="hidden items-center gap-1.5 rounded-md border border-brand/20 bg-brand/12 px-2.5 py-1 text-[11px] font-medium text-brand sm:inline-flex">
+            <FlaskConical className="h-3.5 w-3.5" />
+            Teste local
+          </span>
+        )}
+
+        <div className="hidden items-center gap-1.5 rounded-md border border-border bg-card px-2 md:flex">
+          <Building2 className="h-3.5 w-3.5 text-foreground" />
+          <select
+            aria-label="Organização ativa"
+            value={selectedOrganizationId}
+            onChange={(event) => {
+              setActiveOrganizationId(event.target.value);
+              setActiveUnitId("");
+            }}
+            className="h-8 max-w-[190px] bg-transparent text-xs font-semibold outline-none"
+          >
+            {accessibleOrganizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+          {activeUnits.length ? <span className="h-4 w-px bg-border" /> : null}
+          {activeUnits.length ? (
+            <select
+              aria-label="Unidade ativa"
+              value={activeUnitId}
+              onChange={(event) => {
+                setActiveUnitId(event.target.value);
+                window.localStorage.setItem("ateliam-active-unit", event.target.value);
+              }}
+              className="h-8 max-w-[150px] bg-transparent text-xs text-muted-foreground outline-none"
+            >
+              {activeUnits.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+
+        <UserProfileMenu
+          email={email}
+          organizationName={organizationName}
+          isDemo={isDemo}
+          onSignOut={signOut}
+        />
       </header>
 
-      {/* Hero / picker */}
-      <main className="max-w-6xl mx-auto px-6 py-16">
-        <div className="mb-14">
-          <div className="text-[11px] font-display uppercase tracking-[0.28em] text-muted-foreground mb-3">
-            Workspace · {new Date().toLocaleDateString("pt-BR", { dateStyle: "long" })}
+      <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-[52px_minmax(0,1fr)]">
+        <nav className="sticky top-14 h-[calc(100vh-3.5rem)] border-r border-border bg-card/70 py-3">
+          <GlobalNavButton
+            active={activeArea === "home"}
+            label="Início"
+            onClick={() => selectArea("home")}
+          >
+            <Home className="h-4 w-4" />
+          </GlobalNavButton>
+          <GlobalNavButton
+            active={activeArea === "modules"}
+            label="Módulos"
+            onClick={() => selectArea("modules")}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </GlobalNavButton>
+          <GlobalNavButton
+            active={activeArea === "registrations"}
+            label="Cadastros"
+            onClick={() => selectArea("registrations")}
+          >
+            <Database className="h-4 w-4" />
+          </GlobalNavButton>
+          <div className="mt-auto" />
+          <GlobalNavButton
+            active={activeArea === "settings"}
+            label="Configurações"
+            onClick={() => selectArea("settings")}
+          >
+            <Settings className="h-4 w-4" />
+          </GlobalNavButton>
+        </nav>
+
+        <div
+          className={`grid min-w-0 transition-[grid-template-columns] duration-200 ${
+            activeArea === "home"
+              ? "lg:grid-cols-[minmax(0,1fr)]"
+              : treeOpen
+                ? "lg:grid-cols-[320px_minmax(0,1fr)]"
+                : "lg:grid-cols-[0_minmax(0,1fr)]"
+          }`}
+        >
+          {activeArea !== "home" ? (
+            <aside
+              className={`min-h-0 overflow-hidden border-r border-border bg-card/58 ${
+                treeOpen ? "block" : "hidden lg:block"
+              }`}
+            >
+              <div className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col">
+                <div className="border-b border-border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                      navegação
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTreeOpen(false)}
+                      className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                      title="Recolher painel"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    {activeArea === "home" ? (
+                      <Building2 className="h-4 w-4 text-foreground" />
+                    ) : activeArea === "modules" ? (
+                      <LayoutGrid className="h-4 w-4 text-foreground" />
+                    ) : activeArea === "registrations" ? (
+                      <Database className="h-4 w-4 text-foreground" />
+                    ) : (
+                      <Settings className="h-4 w-4 text-foreground" />
+                    )}
+                    <div className="truncate font-display text-base font-bold">
+                      {activeArea === "home"
+                        ? organizationName
+                        : activeArea === "modules"
+                          ? "Módulos"
+                          : activeArea === "registrations"
+                            ? "Cadastros"
+                            : "Configurações"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                  {activeArea === "home" ? (
+                    <TreeSection
+                      title="Organização Ativa"
+                      open={expanded.organization}
+                      onToggle={() => toggle("organization")}
+                    >
+                      <TreeButton active={view === "overview"} onClick={() => setView("overview")}>
+                        Visão Geral
+                      </TreeButton>
+                    </TreeSection>
+                  ) : null}
+
+                  {activeArea === "modules" ? (
+                    <div className="grid gap-1">
+                      <ModuleTreeGroup
+                        title="Mapeamento"
+                        active={isModuleView(view, "ddp")}
+                        open={expanded.ddp}
+                        onSelect={() => setView(moduleWorkspaceView("ddp"))}
+                        onToggle={() => toggle("ddp")}
+                      >
+                        <TreeLink moduleId="ddp" targetView="new">
+                          Novo
+                        </TreeLink>
+                        <TreeLink moduleId="ddp" targetView="consult">
+                          Consultar
+                        </TreeLink>
+                        <TreeSection
+                          title="Causas"
+                          open={expanded.causes}
+                          onToggle={() => toggle("causes")}
+                        >
+                          <TreeLink moduleId="ddp" targetView="cause-new">
+                            Novo
+                          </TreeLink>
+                          <TreeLink moduleId="ddp" targetView="cause-consult">
+                            Consultar
+                          </TreeLink>
+                          <TreeLink moduleId="ddp" targetView="cause-edit">
+                            Editar
+                          </TreeLink>
+                        </TreeSection>
+                      </ModuleTreeGroup>
+
+                      <ModuleTreeGroup
+                        title="Documentação"
+                        active={isModuleView(view, "pop")}
+                        open={expanded.pop}
+                        onSelect={() => setView(moduleWorkspaceView("pop"))}
+                        onToggle={() => toggle("pop")}
+                      >
+                        <TreeLink moduleId="pop" targetView="new">
+                          Novo
+                        </TreeLink>
+                        <TreeLink moduleId="pop" targetView="consult">
+                          Consultar
+                        </TreeLink>
+                      </ModuleTreeGroup>
+
+                      <ModuleTreeGroup
+                        title="Fluxograma"
+                        active={isModuleView(view, "bpmn")}
+                        open={expanded.bpmn}
+                        onSelect={() => setView(moduleWorkspaceView("bpmn"))}
+                        onToggle={() => toggle("bpmn")}
+                      >
+                        <TreeLink moduleId="bpmn" targetView="new">
+                          Novo
+                        </TreeLink>
+                        <TreeLink moduleId="bpmn" targetView="consult">
+                          Consultar
+                        </TreeLink>
+                      </ModuleTreeGroup>
+                    </div>
+                  ) : null}
+
+                  {activeArea === "registrations" ? (
+                    <div className="grid gap-1">
+                      <TreeButton
+                        active={view === "value-chains"}
+                        onClick={() => setView("value-chains")}
+                      >
+                        Cadeias de Valor
+                      </TreeButton>
+                      <TreeButton
+                        active={view === "processes"}
+                        onClick={() => setView("processes")}
+                      >
+                        Processos
+                      </TreeButton>
+                      <TreeButton active={view === "areas"} onClick={() => setView("areas")}>
+                        Áreas
+                      </TreeButton>
+                      <TreeButton active={view === "owners"} onClick={() => setView("owners")}>
+                        Donos de Processo
+                      </TreeButton>
+                      <TreeButton
+                        active={view === "process-types"}
+                        onClick={() => setView("process-types")}
+                      >
+                        Tipos
+                      </TreeButton>
+                    </div>
+                  ) : null}
+
+                  {activeArea === "settings" ? (
+                    <div className="grid gap-1">
+                      <TreeButton active={view === "users"} onClick={() => setView("users")}>
+                        Usuários
+                      </TreeButton>
+                      <TreeButton
+                        active={view === "organizations"}
+                        onClick={() => setView("organizations")}
+                      >
+                        Organizações
+                      </TreeButton>
+                      <TreeButton
+                        active={view === "document-models"}
+                        onClick={() => setView("document-models")}
+                      >
+                        Modelos de Documentos
+                      </TreeButton>
+                      <TreeButton active={view === "theme"} onClick={() => setView("theme")}>
+                        Tema
+                      </TreeButton>
+                      <TreeButton onClick={signOut}>Sair</TreeButton>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </aside>
+          ) : null}
+
+          <main className={`min-w-0 ${activeArea === "home" ? "p-5 lg:p-7" : "p-5"}`}>
+            <WorkspaceContent
+              view={view}
+              organizationName={organizationName}
+              organizationId={dashboard?.organization?.id ?? null}
+              totals={totals}
+              topDepartments={dashboard?.topDepartments ?? []}
+              topOwners={dashboard?.topOwners ?? []}
+              recentDocuments={dashboard?.recentDocuments ?? []}
+              recentProcesses={dashboard?.recentProcesses ?? []}
+              isLoading={dashboardQ.isLoading && !isDemo}
+              isDemo={isDemo}
+            />
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceContent({
+  view,
+  organizationName,
+  organizationId,
+  totals,
+  topDepartments,
+  topOwners,
+  recentDocuments,
+  recentProcesses,
+  isLoading,
+  isDemo,
+}: {
+  view: WorkspaceView;
+  organizationName: string;
+  organizationId: string | null;
+  totals: DashboardTotals | undefined;
+  topDepartments: { label: string; value: number }[];
+  topOwners: { label: string; value: number }[];
+  recentDocuments: Array<{
+    id: string;
+    name: string;
+    module: string;
+    current_version: number;
+    updated_at: string;
+  }>;
+  recentProcesses: DashboardProcess[];
+  isLoading: boolean;
+  isDemo: boolean;
+}) {
+  if (String(view).startsWith("module:")) {
+    const [, moduleId, task = "home"] = view.split(":") as [
+      "module",
+      AteliamModule,
+      ModuleTask | undefined,
+    ];
+    const moduleInfo = MODULES.find((item) => item.id === moduleId)!;
+    return (
+      <ModuleWorkspacePanel module={moduleInfo} task={task} recentDocuments={recentDocuments} />
+    );
+  }
+
+  if (view === "documents") {
+    return (
+      <section className="grid gap-4">
+        <div className="rounded-lg border border-border bg-card p-6">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            biblioteca
           </div>
-          <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-foreground max-w-3xl leading-[1.05]">
-            Escolha um módulo para começar.
-          </h1>
-          <p className="text-muted-foreground mt-4 max-w-2xl text-[15px] leading-relaxed">
-            Cada módulo é um ambiente independente, com as ferramentas certas para o trabalho.
-            Suas alterações ficam isoladas dentro do módulo escolhido.
+          <h1 className="mt-3 font-display text-3xl font-bold">Documentos da organização</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            Consulte mapeamentos, documentações, fluxogramas e versões salvas.
           </p>
         </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <ModuleSummaryCard moduleId="ddp" title="Mapeamentos" count={totals?.ddps ?? 0} />
+          <ModuleSummaryCard moduleId="pop" title="Documentações" count={totals?.pops ?? 0} />
+          <ModuleSummaryCard moduleId="bpmn" title="Fluxogramas" count={0} />
+        </div>
+        <div className="rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            últimas versões
+          </div>
+          <DocumentTable documents={recentDocuments} />
+        </div>
+      </section>
+    );
+  }
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {MODULES.map((m, i) => (
-            <Link
-              key={m.id}
-              to="/m/$module"
-              params={{ module: m.id }}
-              className="group relative bg-card border border-border rounded-2xl p-7 hover:border-primary/40 transition-all hover:shadow-[0_18px_40px_-22px_rgba(26,60,42,0.35)] hover:-translate-y-0.5"
-            >
-              <div className="absolute top-7 right-7 text-[10px] font-display uppercase tracking-[0.2em] text-muted-foreground/70">
-                0{i + 1}
-              </div>
-              <div
-                className="h-12 w-12 rounded-lg grid place-items-center text-2xl mb-6"
-                style={{ background: "var(--accent)", color: m.accent as string }}
-              >
-                {m.glyph}
-              </div>
-              <div className="text-[10px] font-display uppercase tracking-[0.22em] text-muted-foreground mb-1.5">
-                {m.tagline}
-              </div>
-              <h2 className="font-display text-[20px] font-bold leading-snug text-foreground mb-3">
-                {m.title}
-              </h2>
-              <p className="text-[13px] text-muted-foreground leading-relaxed mb-6 min-h-[60px]">
-                {m.description}
-              </p>
-              <div className="flex items-center gap-1.5 text-[13px] font-medium text-primary group-hover:gap-2.5 transition-all">
-                Abrir módulo <ArrowRight className="h-3.5 w-3.5" />
-              </div>
-            </Link>
+  if (view === "users" || view === "organizations" || view === "document-models") {
+    return (
+      <WorkspaceSystemSettings
+        view={view}
+        isDemo={isDemo}
+        organizationName={organizationName}
+        organizationId={organizationId}
+      />
+    );
+  }
+
+  if (
+    view === "value-chains" ||
+    view === "processes" ||
+    view === "areas" ||
+    view === "owners" ||
+    view === "process-types"
+  ) {
+    return (
+      <WorkspaceProcessRegistrations
+        key={`${view}-${organizationId ?? "default"}`}
+        view={view as ProcessRegistrationView}
+        organizationId={organizationId}
+        organizationName={organizationName}
+        isDemo={isDemo}
+      />
+    );
+  }
+
+  if (
+    [
+      "areas",
+      "roles",
+      "access-profiles",
+      "document-types",
+      "systems",
+      "owners",
+      "processes",
+      "causes",
+    ].includes(view)
+  ) {
+    const copy = getCatalogCopy(view, totals);
+    return (
+      <section className="grid gap-4">
+        <div className="rounded-lg border border-border bg-card p-6">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            cadastros
+          </div>
+          <h1 className="mt-3 font-display text-3xl font-bold">{copy.title}</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {copy.text}
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {copy.metrics.map((metric) => (
+            <DashboardMetric
+              key={metric.label}
+              icon={metric.icon}
+              label={metric.label}
+              value={metric.value}
+              detail={metric.detail}
+            />
           ))}
         </div>
-
-        <div className="mt-16 pt-8 border-t border-border text-[12px] text-muted-foreground flex items-center justify-between">
-          <span>Atelier · workspace pessoal de processos.</span>
-          <Link to="/settings" className="hover:text-foreground">Configurações & integrações →</Link>
+        <div className="rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            consulta rápida
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <RankingCard title="Áreas com mais processos" rows={topDepartments} />
+            <RankingCard title="Donos com mais processos" rows={topOwners} />
+          </div>
         </div>
-      </main>
+      </section>
+    );
+  }
+
+  if (view === "exports") {
+    return <ExportsPanel />;
+  }
+
+  if (view === "theme") {
+    return (
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          configurações
+        </div>
+        <h1 className="mt-2 text-2xl font-semibold">Tema</h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          O workspace usa o tema claro como padrão. Você ainda pode escolher outra preferência.
+        </p>
+        <div className="mt-6 max-w-xl">
+          <ThemeControl />
+        </div>
+      </section>
+    );
+  }
+
+  if (view === "profile") {
+    return (
+      <SimplePanel
+        eyebrow="perfil"
+        title="Perfil"
+        text="Use o avatar no canto superior direito para adicionar sua foto, trocar a senha ou sair do sistema."
+      />
+    );
+  }
+
+  if (
+    view === "appearance" ||
+    view === "preferences" ||
+    view === "visual-identity" ||
+    view === "integrations" ||
+    view === "local-environment" ||
+    view === "version-history"
+  ) {
+    return (
+      <SimplePanel
+        eyebrow="configurações"
+        title={
+          view === "appearance"
+            ? "Aparência"
+            : view === "theme"
+              ? "Tema"
+              : view === "profile"
+                ? "Perfil e acesso"
+                : view === "preferences"
+                  ? "Preferências"
+                  : view === "visual-identity"
+                    ? "Identidade visual"
+                    : view === "integrations"
+                      ? "Integrações"
+                      : view === "local-environment"
+                        ? "Ambiente de teste/local"
+                        : view === "version-history"
+                          ? "Histórico de versões"
+                          : "Configurações"
+        }
+        text="Ajuste aparência, tema, preferências, identidade visual, integrações, ambiente local e dados de acesso."
+      />
+    );
+  }
+
+  return (
+    <div className="mx-auto grid w-full max-w-[1600px] gap-4">
+      <section className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-5">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">
+            panorama organizacional
+          </div>
+          <h1 className="mt-2 font-display text-3xl font-bold leading-tight md:text-4xl">
+            Visão geral da {organizationName}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            Processos, documentação e governança reunidos para acompanhar a evolução operacional da
+            organização.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            atualização do painel
+          </div>
+          <div className="mt-1 text-sm font-semibold text-foreground">
+            {new Date().toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })}
+          </div>
+          {isLoading ? (
+            <span className="mt-2 inline-flex rounded-md bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
+              Atualizando dados...
+            </span>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        <DashboardMetric
+          icon={<GitBranch className="h-4 w-4" />}
+          label="Processos"
+          value={totals?.processes ?? 0}
+          detail="cadastrados"
+        />
+        <DashboardMetric
+          icon={<Activity className="h-4 w-4" />}
+          label="Ativos"
+          value={totals?.activeProcesses ?? 0}
+          detail={percentage(totals?.activeProcesses ?? 0, totals?.processes ?? 0)}
+        />
+        <DashboardMetric
+          icon={<AlertCircle className="h-4 w-4" />}
+          label="Em revisão"
+          value={totals?.reviewProcesses ?? 0}
+          detail="requerem acompanhamento"
+        />
+        <DashboardMetric
+          icon={<FileText className="h-4 w-4" />}
+          label="Mapeamentos"
+          value={totals?.ddps ?? 0}
+          detail="diagnósticos salvos"
+        />
+        <DashboardMetric
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          label="Documentações"
+          value={totals?.pops ?? 0}
+          detail="POPs cadastrados"
+        />
+        <DashboardMetric
+          icon={<Building2 className="h-4 w-4" />}
+          label="Governança"
+          value={totals?.departments ?? 0}
+          detail={`${totals?.owners ?? 0} donos de processo`}
+        />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
+        <CoverageOverview totals={totals} />
+        <OperationalFocus totals={totals} />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(380px,.85fr)]">
+        <RecentDocuments documents={recentDocuments} />
+        <RecentProcesses processes={recentProcesses} />
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <RankingCard title="Áreas com mais processos" rows={topDepartments} />
+        <RankingCard title="Donos com mais processos" rows={topOwners} />
+      </section>
     </div>
+  );
+}
+
+function ModuleSummaryCard({
+  moduleId,
+  title,
+  count,
+}: {
+  moduleId: AteliamModule;
+  title: string;
+  count: number;
+}) {
+  const module = MODULES.find((item) => item.id === moduleId)!;
+  return (
+    <Link
+      to="/m/$module"
+      params={{ module: moduleId }}
+      className="rounded-lg border border-border bg-card p-4 transition hover:border-[var(--gold)] hover:bg-muted/55"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className="grid h-10 w-10 place-items-center rounded-lg font-data text-sm font-bold"
+          style={{ background: "var(--accent)", color: module.accent }}
+        >
+          {module.glyph}
+        </span>
+        <span className="font-data text-2xl font-bold">{count}</span>
+      </div>
+      <div className="mt-4 font-display text-base font-bold">{title}</div>
+      <div className="mt-1 text-xs text-muted-foreground">Abrir módulo</div>
+    </Link>
+  );
+}
+
+function ExportsPanel() {
+  const exportCards: Array<{
+    moduleId: AteliamModule;
+    title: string;
+    formats: string;
+    text: string;
+  }> = [
+    {
+      moduleId: "ddp",
+      title: "Mapeamento",
+      formats: "HTML interativo + Word",
+      text: "Apresentação com zoom nas imagens de fluxo e relatório Word editável no modelo oficial.",
+    },
+    {
+      moduleId: "pop",
+      title: "Documentação",
+      formats: "Word editável",
+      text: "Documento normativo com cabeçalho, revisão, responsáveis, conteúdo e padrão visual da organização.",
+    },
+    {
+      moduleId: "bpmn",
+      title: "Fluxograma",
+      formats: "BPMN/SVG/imagem",
+      text: "Arquivos de desenho para documentação, revisão e publicação do fluxo do processo.",
+    },
+  ];
+
+  return (
+    <section className="grid gap-4">
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+          exportações
+        </div>
+        <h1 className="mt-3 font-display text-3xl font-bold">Arquivos padronizados</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          Cada módulo mantém suas próprias saídas. A exportação acontece dentro do editor do módulo,
+          preservando o modelo visual e estrutural de cada documento.
+        </p>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        {exportCards.map((card) => {
+          const module = MODULES.find((item) => item.id === card.moduleId)!;
+          return (
+            <Link
+              key={card.moduleId}
+              to="/m/$module"
+              params={{ module: card.moduleId }}
+              className="rounded-lg border border-border bg-card p-5 transition hover:border-[var(--gold)] hover:bg-muted/55"
+            >
+              <div
+                className="grid h-10 w-10 place-items-center rounded-lg font-data text-sm font-bold"
+                style={{ background: "var(--accent)", color: module.accent }}
+              >
+                {module.glyph}
+              </div>
+              <div className="mt-4 font-display text-lg font-bold">{card.title}</div>
+              <div className="mt-2 rounded-md bg-accent px-2 py-1 text-xs font-bold text-[var(--gold)]">
+                {card.formats}
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{card.text}</p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function getCatalogCopy(
+  view: WorkspaceView,
+  totals:
+    | {
+        processes: number;
+        activeProcesses: number;
+        reviewProcesses: number;
+        ddps: number;
+        pops: number;
+        departments: number;
+        owners: number;
+      }
+    | undefined,
+) {
+  const baseMetrics = [
+    {
+      icon: <GitBranch className="h-4 w-4" />,
+      label: "Processos",
+      value: totals?.processes ?? 0,
+      detail: `${totals?.activeProcesses ?? 0} ativos`,
+    },
+    {
+      icon: <Building2 className="h-4 w-4" />,
+      label: "Áreas",
+      value: totals?.departments ?? 0,
+      detail: "cadastradas",
+    },
+    {
+      icon: <Users className="h-4 w-4" />,
+      label: "Donos",
+      value: totals?.owners ?? 0,
+      detail: "responsáveis",
+    },
+  ];
+
+  if (view === "organizations") {
+    return {
+      title: "Organizações",
+      text: "Cadastre organizações, mantenha seus dados institucionais e controle o escopo das informações.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "users") {
+    return {
+      title: "Usuários",
+      text: "Cadastre usuários, credenciais e vínculo com a organização antes de liberar o acesso.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "areas") {
+    return {
+      title: "Áreas e departamentos",
+      text: "Gerencie as áreas que alimentam mapeamentos, documentos, processos e responsáveis.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "roles") {
+    return {
+      title: "Cargos e funções",
+      text: "Mantenha cargos e funções organizacionais reutilizáveis em responsabilidades e aprovações.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "access-profiles") {
+    return {
+      title: "Perfis de acesso",
+      text: "Defina perfis de consulta, edição, aprovação e administração para cada organização.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "document-types") {
+    return {
+      title: "Tipos de processo",
+      text: "Organize os tipos usados no catálogo de processos e mantenha o preenchimento padronizado.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "document-models") {
+    return {
+      title: "Modelos de documento",
+      text: "Mantenha modelos oficiais para orientar preenchimento, versionamento e exportação.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "owners") {
+    return {
+      title: "Responsáveis",
+      text: "Mantenha responsáveis selecionáveis para vincular processos, mapeamentos e documentos.",
+      metrics: baseMetrics,
+    };
+  }
+
+  if (view === "causes") {
+    return {
+      title: "Gestão de causas",
+      text: "Consulte causas cadastradas nos DDPs, acompanhe status, responsável, comentários e vínculos com processos.",
+      metrics: [
+        ...baseMetrics.slice(0, 2),
+        {
+          icon: <CheckCircle2 className="h-4 w-4" />,
+          label: "Em revisão",
+          value: totals?.reviewProcesses ?? 0,
+          detail: "pendências",
+        },
+      ],
+    };
+  }
+
+  if (view === "systems") {
+    return {
+      title: "Sistemas envolvidos",
+      text: "Cadastre sistemas para reutilizar nos diagnósticos e manter consistência entre processos.",
+      metrics: [
+        ...baseMetrics.slice(0, 2),
+        {
+          icon: <LayoutGrid className="h-4 w-4" />,
+          label: "Sistemas",
+          value: 0,
+          detail: "base local",
+        },
+      ],
+    };
+  }
+
+  return {
+    title: "Catálogo de processos",
+    text: "Centralize macroprocessos, subprocessos, áreas, responsáveis, causas e sistemas.",
+    metrics: baseMetrics,
+  };
+}
+
+type ModuleActionKey = ModuleTask | "new";
+
+function ModuleWorkspacePanel({
+  module,
+  task,
+  recentDocuments,
+}: {
+  module: (typeof MODULES)[number];
+  task: ModuleTask;
+  recentDocuments: Array<{
+    id: string;
+    name: string;
+    module: string;
+    current_version: number;
+    updated_at: string;
+  }>;
+}) {
+  const actions = getModuleActions(module.id);
+  const activeAction = actions.find((action) => action.key === task) ?? actions[0];
+  const moduleDocs = getModuleDocuments(module.id, recentDocuments);
+  const exportLabel = getModuleExportLabel(module.id);
+  const latestVersion = Math.max(...moduleDocs.map((document) => document.current_version));
+
+  return (
+    <div className="grid gap-4">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-[0_24px_70px_-55px_rgba(0,0,0,.75)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <span>workspace</span>
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/60" />
+              <span>módulos</span>
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/60" />
+              <span>{module.glyph}</span>
+            </div>
+            <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-4xl">
+              {module.title}
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {module.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <ModuleStat label="Documentos" value={moduleDocs.length} detail="na organização" />
+          <ModuleStat label="Última versão" value={`v${latestVersion}`} detail="disponível" />
+          <ModuleStat label="Exportação" value={exportLabel} detail="modelo preservado" />
+        </div>
+      </section>
+
+      <section className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-lg border border-border bg-card p-5">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            {activeAction?.eyebrow ?? "operação"}
+          </div>
+          <h2 className="mt-2 font-display text-2xl font-bold">{activeAction?.title}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {activeAction?.body}
+          </p>
+          <div className="mt-5 overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <thead className="bg-muted/70 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-3 font-semibold">Documento</th>
+                  <th className="px-3 py-3 font-semibold">Status</th>
+                  <th className="px-3 py-3 font-semibold">Responsável</th>
+                  <th className="px-3 py-3 font-semibold">Versão</th>
+                  <th className="px-3 py-3 font-semibold">Atualização</th>
+                  <th className="px-3 py-3 font-semibold">Saída</th>
+                </tr>
+              </thead>
+              <tbody>
+                {moduleDocs.map((document) => (
+                  <tr
+                    key={document.id}
+                    className="border-t border-border bg-background/58 align-top"
+                  >
+                    <td className="px-3 py-3">
+                      <div className="max-w-[320px] truncate font-semibold">{document.name}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{document.process}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="rounded-md bg-accent px-2 py-1 text-xs font-semibold text-[var(--gold)]">
+                        {document.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-muted-foreground">{document.owner}</td>
+                    <td className="px-3 py-3 font-data text-muted-foreground">
+                      v{document.current_version}
+                    </td>
+                    <td className="px-3 py-3 text-muted-foreground">
+                      {new Date(document.updated_at).toLocaleDateString("pt-BR")}
+                    </td>
+                    <td className="px-3 py-3">
+                      <Link
+                        to="/m/$module"
+                        params={{ module: module.id }}
+                        className="text-xs font-bold text-[var(--gold)] hover:underline"
+                      >
+                        {exportLabel}
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside className="rounded-lg border border-border bg-card p-5">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            fluxo recomendado
+          </div>
+          <div className="mt-4 grid gap-3">
+            {getModuleFlow(module.id).map((item, index) => (
+              <div key={item} className="flex gap-3">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-accent font-data text-xs font-bold text-[var(--gold)]">
+                  {index + 1}
+                </span>
+                <p className="pt-1 text-sm leading-relaxed text-muted-foreground">{item}</p>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+function ModuleStat({ label, value, detail }: { label: string; value: ReactNode; detail: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-background/55 p-3">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className="mt-2 font-data text-xl font-bold text-foreground">{value}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
+    </div>
+  );
+}
+
+function getModuleActions(moduleId: AteliamModule): Array<{
+  key: ModuleActionKey;
+  label: string;
+  description: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+}> {
+  if (moduleId === "ddp") {
+    return [
+      {
+        key: "new",
+        label: "Novo",
+        description: "Inicie um mapeamento estruturado.",
+        eyebrow: "novo mapeamento",
+        title: "Criar mapeamento",
+        body: "Abra o editor para preencher identificação, escopo, sistemas, fluxo, SIPOC, causas, próximos passos e glossário.",
+      },
+      {
+        key: "consult",
+        label: "Consultar",
+        description: "Localize mapeamentos por processo, área ou status.",
+        eyebrow: "consulta",
+        title: "Mapeamentos cadastrados",
+        body: "Acompanhe documentos salvos, responsáveis e versões atuais antes de abrir o editor completo.",
+      },
+      {
+        key: "versions",
+        label: "Versões",
+        description: "Veja o histórico de versões dos diagnósticos.",
+        eyebrow: "versionamento",
+        title: "Histórico de versões do mapeamento",
+        body: "Cada versão deve preservar o vínculo com processo, macroprocesso, subprocesso, causas e exportações geradas.",
+      },
+      {
+        key: "exports",
+        label: "Exportações",
+        description: "Gere HTML interativo e relatório Word.",
+        eyebrow: "saídas oficiais",
+        title: "Exportações do mapeamento",
+        body: "O mapeamento mantém duas saídas distintas: apresentação HTML com zoom de imagens e relatório Word editável no padrão do modelo.",
+      },
+    ];
+  }
+
+  if (moduleId === "pop") {
+    return [
+      {
+        key: "new",
+        label: "Novo",
+        description: "Crie uma documentação operacional.",
+        eyebrow: "nova documentação",
+        title: "Criar documentação",
+        body: "Abra o editor para preencher objetivo, abrangência, responsabilidades, procedimento, registros e revisões.",
+      },
+      {
+        key: "consult",
+        label: "Consultar",
+        description: "Encontre documentos por processo, área ou dono.",
+        eyebrow: "consulta",
+        title: "Documentações cadastradas",
+        body: "Consulte documentos normativos salvos pela organização e abra o editor quando precisar atualizar uma versão.",
+      },
+      {
+        key: "versions",
+        label: "Versões",
+        description: "Controle revisões publicadas.",
+        eyebrow: "versionamento",
+        title: "Histórico de versões da documentação",
+        body: "Mantenha a rastreabilidade entre o POP, processo relacionado, responsável e arquivo Word gerado.",
+      },
+      {
+        key: "exports",
+        label: "Exportações",
+        description: "Gere Word editável no padrão definido.",
+        eyebrow: "saída oficial",
+        title: "Exportação Word da documentação",
+        body: "A saída Word deve usar o cabeçalho, estilos e organização visual da organização ativa.",
+      },
+    ];
+  }
+
+  return [
+    {
+      key: "new",
+      label: "Novo",
+      description: "Abra o modelador de fluxograma.",
+      eyebrow: "novo fluxograma",
+      title: "Criar fluxograma",
+      body: "Modele raias, eventos, tarefas, gateways e conectores com comportamento visual próximo ao Bizagi.",
+    },
+    {
+      key: "consult",
+      label: "Consultar",
+      description: "Localize diagramas por processo.",
+      eyebrow: "consulta",
+      title: "Fluxogramas cadastrados",
+      body: "Encontre fluxos por processo, subprocesso, versão ou responsável e continue a modelagem no editor.",
+    },
+    {
+      key: "library",
+      label: "Biblioteca",
+      description: "Consulte elementos BPMN e padrões de desenho.",
+      eyebrow: "biblioteca BPMN",
+      title: "Elementos e padrões de desenho",
+      body: "Centralize padrões de eventos, atividades, gateways, artefatos e conectores utilizados pela organização.",
+    },
+    {
+      key: "versions",
+      label: "Versões",
+      description: "Acompanhe revisões dos fluxos.",
+      eyebrow: "versionamento",
+      title: "Histórico de versões do fluxograma",
+      body: "Cada fluxo deve manter vínculo com o processo e permitir comparação entre versões de desenho.",
+    },
+    {
+      key: "exports",
+      label: "Exportações",
+      description: "Exporte BPMN, SVG ou imagem.",
+      eyebrow: "saídas do desenho",
+      title: "Exportações do fluxograma",
+      body: "Gere arquivos compatíveis para documentação, revisão e publicação do processo.",
+    },
+  ];
+}
+
+function getModuleExportLabel(moduleId: AteliamModule) {
+  if (moduleId === "ddp") return "HTML + Word";
+  if (moduleId === "pop") return "Word";
+  return "BPMN/SVG";
+}
+
+function getModuleDocuments(
+  moduleId: AteliamModule,
+  recentDocuments: Array<{
+    id: string;
+    name: string;
+    module: string;
+    current_version: number;
+    updated_at: string;
+  }>,
+) {
+  const source = recentDocuments.filter((document) => document.module === moduleId);
+  const fallback =
+    moduleId === "ddp"
+      ? [
+          {
+            id: "ddp-demo-1",
+            name: "DDP.PMO.007 - Gestão de Demandas de BI Analytics",
+            module: "ddp",
+            current_version: 14,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: "ddp-demo-2",
+            name: "DDP.PMO.006 - Controle de Acesso às Unidades",
+            module: "ddp",
+            current_version: 6,
+            updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
+          },
+        ]
+      : moduleId === "pop"
+        ? [
+            {
+              id: "pop-demo-1",
+              name: "POP.ADM.001 - Controle de Acesso às Unidades",
+              module: "pop",
+              current_version: 1,
+              updated_at: new Date().toISOString(),
+            },
+          ]
+        : [
+            {
+              id: "bpmn-demo-1",
+              name: "BPMN.PMO.007 - Fluxo de Demandas de BI Analytics",
+              module: "bpmn",
+              current_version: 3,
+              updated_at: new Date().toISOString(),
+            },
+          ];
+
+  return (source.length ? source : fallback).map((document, index) => ({
+    ...document,
+    process:
+      moduleId === "bpmn"
+        ? "Fluxo vinculado ao processo"
+        : index === 0
+          ? "Gestão de Demandas de BI Analytics"
+          : "Controle de Acesso às Unidades",
+    status: index === 0 ? "Versionado" : "Em revisão",
+    owner: index === 0 ? "PMO / Processos" : "Dono do processo",
+  }));
+}
+
+function getModuleFlow(moduleId: AteliamModule) {
+  if (moduleId === "ddp") {
+    return [
+      "Criar ou abrir um diagnóstico.",
+      "Preencher dados do processo, sistemas, fluxo, SIPOC, causas e próximos passos.",
+      "Salvar uma nova versão no sistema.",
+      "Exportar apresentação HTML e relatório Word no modelo oficial.",
+    ];
+  }
+
+  if (moduleId === "pop") {
+    return [
+      "Criar ou abrir um POP existente.",
+      "Preencher estrutura normativa, responsáveis, conteúdo e revisão.",
+      "Salvar e versionar o procedimento.",
+      "Exportar Word editável no padrão da organização.",
+    ];
+  }
+
+  return [
+    "Criar ou abrir um fluxograma.",
+    "Modelar o processo com elementos BPMN 2.0.",
+    "Versionar o desenho vinculado ao processo.",
+    "Exportar BPMN/SVG/imagem para documentação.",
+  ];
+}
+
+function SimplePanel({
+  eyebrow,
+  title,
+  text,
+  actions = [],
+}: {
+  eyebrow: string;
+  title: string;
+  text: string;
+  actions?: { label: string; moduleId: AteliamModule }[];
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-6">
+      <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{eyebrow}</div>
+      <h1 className="mt-3 font-display text-3xl font-bold">{title}</h1>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">{text}</p>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {actions.map((action) => (
+          <Link
+            key={`${action.moduleId}-${action.label}`}
+            to="/m/$module"
+            params={{ module: action.moduleId }}
+            className="rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-muted"
+          >
+            {action.label}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProfileMenu({
+  email,
+  organizationName,
+  onSignOut,
+}: {
+  email: string;
+  organizationName: string;
+  onSignOut: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [photo, setPhoto] = useState<string>("");
+  const storageKey = `${PROFILE_PHOTO_PREFIX}${email || "local"}`;
+  const initials = (email || "Ateliam")
+    .split("@")[0]
+    .split(/[._\-\s]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  useEffect(() => {
+    try {
+      setPhoto(window.localStorage.getItem(storageKey) ?? "");
+    } catch {
+      setPhoto("");
+    }
+  }, [storageKey]);
+
+  function changePhoto(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result ?? "");
+      try {
+        window.localStorage.setItem(storageKey, value);
+      } catch {
+        toast.error("Não foi possível salvar a foto localmente.");
+        return;
+      }
+      setPhoto(value);
+      toast.success("Foto de perfil atualizada.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removePhoto() {
+    try {
+      window.localStorage.removeItem(storageKey);
+    } catch {
+      // Ignore local cleanup failures.
+    }
+    setPhoto("");
+    toast.success("Foto removida.");
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="grid h-9 w-9 overflow-hidden rounded-full border border-border bg-card text-sm font-bold text-foreground"
+        title="Perfil"
+      >
+        {photo ? (
+          <img src={photo} alt="Perfil" className="h-full w-full object-cover" />
+        ) : (
+          <span className="grid h-full w-full place-items-center">{initials || "AT"}</span>
+        )}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          changePhoto(event.target.files?.[0]);
+          event.currentTarget.value = "";
+        }}
+      />
+      {open ? (
+        <div className="absolute right-0 top-11 z-50 w-72 rounded-lg border border-border bg-popover p-2 shadow-2xl">
+          <div className="border-b border-border px-3 py-2">
+            <div className="text-sm font-bold text-popover-foreground">
+              {email || "Usuário local"}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">{organizationName}</div>
+          </div>
+          <ProfileMenuButton
+            icon={<Upload className="h-4 w-4" />}
+            onClick={() => inputRef.current?.click()}
+          >
+            Alterar foto
+          </ProfileMenuButton>
+          <ProfileMenuButton icon={<User className="h-4 w-4" />} onClick={removePhoto}>
+            Remover foto
+          </ProfileMenuButton>
+          <ProfileMenuButton icon={<LogOut className="h-4 w-4" />} onClick={onSignOut}>
+            Sair
+          </ProfileMenuButton>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function GlobalNavButton({
+  active,
+  label,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  label: string;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      onClick={onClick}
+      className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-lg transition ${
+        active
+          ? "bg-foreground text-background"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TreeSection({
+  title,
+  open,
+  children,
+  onToggle,
+}: {
+  title: string;
+  open: boolean;
+  children: ReactNode;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="mb-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {title}
+      </button>
+      {open ? <div className="ml-3 border-l border-border pl-2">{children}</div> : null}
+    </div>
+  );
+}
+
+function TreeButton({
+  active,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm ${
+        active
+          ? "bg-accent text-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ModuleTreeGroup({
+  title,
+  active,
+  open,
+  children,
+  onSelect,
+  onToggle,
+}: {
+  title: string;
+  active?: boolean;
+  open: boolean;
+  children: ReactNode;
+  onSelect: () => void;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="mb-1">
+      <div
+        className={`flex items-stretch rounded-md ${
+          active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-muted"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex min-w-0 flex-1 items-center px-2 py-1.5 text-left"
+        >
+          <span className="block min-w-0 truncate text-sm font-normal text-foreground">
+            {title}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="grid w-8 place-items-center rounded-r-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          title={open ? "Recolher módulo" : "Expandir módulo"}
+        >
+          {open ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+        </button>
+      </div>
+      {open ? <div className="ml-5 border-l border-border py-1 pl-2">{children}</div> : null}
+    </div>
+  );
+}
+
+function TreeLink({
+  moduleId,
+  targetView,
+  children,
+}: {
+  moduleId: AteliamModule;
+  targetView: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={`/m/${moduleId}?view=${encodeURIComponent(targetView)}`}
+      className="mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+      {children}
+    </a>
+  );
+}
+
+function percentage(value: number, total: number) {
+  if (!total) return "sem processos cadastrados";
+  return `${Math.round((value / total) * 100)}% do catálogo`;
+}
+
+function CoverageOverview({ totals }: { totals: DashboardTotals | undefined }) {
+  const total = totals?.processes ?? 0;
+  const rows = [
+    {
+      label: "Processos ativos",
+      value: totals?.activeProcesses ?? 0,
+      percent: total ? Math.min(100, ((totals?.activeProcesses ?? 0) / total) * 100) : 0,
+    },
+    {
+      label: "Processos com mapeamento",
+      value: totals?.ddps ?? 0,
+      percent: total ? Math.min(100, ((totals?.ddps ?? 0) / total) * 100) : 0,
+    },
+    {
+      label: "Processos com documentação",
+      value: totals?.pops ?? 0,
+      percent: total ? Math.min(100, ((totals?.pops ?? 0) / total) * 100) : 0,
+    },
+  ];
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            cobertura operacional
+          </div>
+          <h2 className="mt-1 font-display text-lg font-bold">Evolução do catálogo</h2>
+        </div>
+        <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-[var(--gold)]">
+          <Network className="h-4 w-4" />
+        </span>
+      </div>
+      <div className="mt-5 grid gap-4">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+              <span className="font-medium text-foreground">{row.label}</span>
+              <span className="font-data text-muted-foreground">
+                {row.value} de {total}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-border">
+              <div
+                className="h-full rounded-full bg-[var(--gold)] transition-[width]"
+                style={{ width: `${row.percent}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OperationalFocus({ totals }: { totals: DashboardTotals | undefined }) {
+  const processes = totals?.processes ?? 0;
+  const items = [
+    {
+      label: "Processos em revisão",
+      value: totals?.reviewProcesses ?? 0,
+      detail: "pedem validação ou atualização",
+    },
+    {
+      label: "Sem mapeamento vinculado",
+      value: Math.max(processes - (totals?.ddps ?? 0), 0),
+      detail: "oportunidades de diagnóstico",
+    },
+    {
+      label: "Sem documentação vinculada",
+      value: Math.max(processes - (totals?.pops ?? 0), 0),
+      detail: "oportunidades de padronização",
+    },
+  ];
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        pontos de atenção
+      </div>
+      <h2 className="mt-1 font-display text-lg font-bold">Prioridades da operação</h2>
+      <div className="mt-4 divide-y divide-border">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent font-data text-sm font-bold text-[var(--gold)]">
+              {item.value}
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground">{item.label}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{item.detail}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardMetric({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-3">
+      <div className="mb-3 flex items-center justify-between text-muted-foreground">
+        <span className="grid h-7 w-7 place-items-center rounded-md bg-[var(--accent)] text-[var(--gold)]">
+          {icon}
+        </span>
+        <span className="text-[9px] uppercase tracking-[0.14em]">{label}</span>
+      </div>
+      <div className="font-data text-2xl font-bold text-foreground">{value}</div>
+      <div className="mt-1 text-[11px] text-muted-foreground">{detail}</div>
+    </div>
+  );
+}
+
+function RecentDocuments({
+  documents,
+}: {
+  documents: Array<{
+    id: string;
+    name: string;
+    module: string;
+    current_version: number;
+    updated_at: string;
+  }>;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        últimas versões
+      </div>
+      <DocumentTable documents={documents.slice(0, 5)} />
+    </div>
+  );
+}
+
+function RecentProcesses({ processes }: { processes: DashboardProcess[] }) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        processos atualizados recentemente
+      </div>
+      {processes.length ? (
+        <div className="divide-y divide-border">
+          {processes.slice(0, 5).map((process) => (
+            <div
+              key={process.id}
+              className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-foreground">{process.name}</div>
+                <div className="mt-1 truncate text-xs text-muted-foreground">
+                  {process.department || "Área não informada"} · {process.owner || "Sem dono"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:justify-end">
+                <span className="rounded-md bg-accent px-2 py-1 text-[10px] font-semibold text-[var(--gold)]">
+                  {process.status}
+                </span>
+                <span className="font-data text-[10px] text-muted-foreground">
+                  v{process.current_version}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+          Nenhum processo cadastrado ainda.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DocumentTable({
+  documents,
+}: {
+  documents: Array<{
+    id: string;
+    name: string;
+    module: string;
+    current_version: number;
+    updated_at: string;
+  }>;
+}) {
+  if (!documents.length) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+        Nenhum documento salvo ainda.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      {documents.map((document) => (
+        <div
+          key={document.id}
+          className="grid gap-3 border-b border-border bg-background/72 px-3 py-3 last:border-b-0 md:grid-cols-[80px_minmax(0,1fr)_120px_120px]"
+        >
+          <span className="w-fit rounded-md bg-accent px-2 py-1 text-[10px] font-bold uppercase text-[var(--gold)]">
+            {document.module}
+          </span>
+          <span className="truncate text-sm font-semibold">{document.name}</span>
+          <span className="text-xs text-muted-foreground">v{document.current_version}</span>
+          <span className="text-xs text-muted-foreground">
+            {new Date(document.updated_at).toLocaleDateString("pt-BR")}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RankingCard({ title, rows }: { title: string; rows: { label: string; value: number }[] }) {
+  const max = Math.max(1, ...rows.map((row) => row.value));
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        {title}
+      </div>
+      <div className="grid gap-3">
+        {rows.length ? (
+          rows.map((row) => (
+            <div key={row.label}>
+              <div className="mb-1 flex items-center justify-between gap-3 text-[12px]">
+                <span className="truncate font-medium text-foreground">{row.label}</span>
+                <span className="font-data text-muted-foreground">{row.value}</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full rounded-full bg-[var(--gold)]"
+                  style={{ width: `${(row.value / max) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+            Cadastre processos para preencher este ranking.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProfileMenuButton({
+  icon,
+  children,
+  onClick,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-popover-foreground hover:bg-muted"
+    >
+      <span className="text-muted-foreground">{icon}</span>
+      {children}
+    </button>
   );
 }

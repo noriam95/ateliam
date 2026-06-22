@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>Noriam</title>
+<title>Ateliam</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 :root {
@@ -1569,15 +1569,109 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
 }
 
 
-/* Noriam / BPMN — acesso às opções do módulo */
+/* Ateliam / BPMN — acesso às opções do módulo */
 #module-bpmn.open .sb-module-items{display:block!important;}
 #module-bpmn .sb-item{cursor:pointer;}
 .bpmn-flow-path{cursor:pointer;}
 .bpmn-flow-path.selected{stroke:#111827!important;stroke-width:2.8!important;}
 .bpmn-flow-handle{cursor:grab;fill:#fff;stroke:#111827;stroke-width:2;}
 .bpmn-flow-handle:active{cursor:grabbing;}
+.bpmn-bizagi-toolbar{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  width:100%;
+  padding-bottom:8px;
+  border-bottom:1px solid #E2E8F0;
+}
+.bpmn-bizagi-toolbar .btn{
+  min-height:31px;
+  padding:6px 10px!important;
+  font-size:12px!important;
+}
+.bpmn-bizagi-toolbar .btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+.bpmn-toolbar-sep{
+  width:1px;
+  height:26px;
+  background:#D7DEE6;
+  margin:0 3px;
+}
+.bpmn-toolbar-hint{
+  margin-left:auto;
+  color:#64748B;
+  font-size:11px;
+}
+.bpmn-zoom-label{
+  min-width:44px;
+  text-align:center;
+  font-size:12px;
+  color:#334155;
+  border:1px solid #D8E0E6;
+  background:#fff;
+  border-radius:8px;
+  padding:6px 8px;
+}
+.bpmn-library-group{
+  margin:16px 0 8px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:1.4px;
+  text-transform:uppercase;
+  color:#64748B;
+}
+.bpmn-tool-grid-compact{gap:6px;}
+.bpmn-tool-grid-compact .bpmn-tool{padding:8px 9px;}
+.bpmn-tool-grid-compact .bpmn-tool-icon{
+  width:30px;
+  height:30px;
+  border-radius:9px;
+  font-size:12px;
+}
+.bpmn-side-section{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #E2E8F0;
+}
+.bpmn-side-title{
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:1.4px;
+  text-transform:uppercase;
+  color:#64748B;
+  margin-bottom:8px;
+}
+.bpmn-validation-panel{display:grid;gap:10px;}
+.bpmn-validation-idle,
+.bpmn-validation-ok,
+.bpmn-validation-error{
+  border-radius:12px;
+  padding:11px 12px;
+  font-size:12px;
+  line-height:1.45;
+}
+.bpmn-validation-idle{background:#F8FAFC;border:1px dashed #CBD5E1;color:#64748B;}
+.bpmn-validation-ok{background:#ECFDF3;border:1px solid #B7E4C7;color:#166534;}
+.bpmn-validation-error{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;}
+.bpmn-validation-list{
+  margin:0;
+  padding-left:18px;
+  font-size:12px;
+  color:#475569;
+  display:grid;
+  gap:6px;
+}
+#bpmn-svg-wrap.bpmn-pan-ready{cursor:grab;}
+#bpmn-svg-wrap.bpmn-pan-grabbing{cursor:grabbing!important;user-select:none;}
+#bpmn-svg-wrap.bpmn-drop-active{
+  outline:3px solid rgba(37,99,235,.22)!important;
+  outline-offset:-7px;
+}
 
-/* Noriam — marca limpa, sem logo e sem subtítulo repetido */
+/* Ateliam — marca limpa, sem logo e sem subtítulo repetido */
 .sb-brand.noriam-brand::before,
 .sb-brand::before{
   content:none!important;
@@ -1604,6 +1698,364 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
   text-transform:none!important;
   font-weight:800!important;
 }
+
+/* =========================================================
+   ATELIAM MODERN UI - camada final do app local
+   Mantem IDs/funcoes e aplica a premissa visual dos prints.
+   ========================================================= */
+:root{
+  --at-green:#173E2A;
+  --at-green-2:#214F36;
+  --at-ink:#111813;
+  --at-cream:#F4EFE6;
+  --at-card:#FFFDF8;
+  --at-line:#DED7C8;
+  --at-muted:#5F675F;
+  --at-gold:#E5B653;
+  --at-gold-soft:#F8E8BC;
+  --at-soft:#EEF3EA;
+  --at-radius:18px;
+  --at-shadow:0 18px 44px rgba(22,40,29,.10);
+}
+
+html,body{
+  background:var(--at-cream)!important;
+  color:var(--at-ink)!important;
+}
+
+body{
+  background:var(--at-cream)!important;
+}
+
+#app{
+  grid-template-columns:292px minmax(0,1fr)!important;
+  background:var(--at-cream)!important;
+}
+
+#sidebar{
+  background:linear-gradient(180deg,#123622 0%,#173E2A 50%,#102D1E 100%)!important;
+  box-shadow:12px 0 32px rgba(13,45,29,.18)!important;
+}
+
+.sb-brand.noriam-brand{
+  padding:26px 22px 24px!important;
+  gap:12px!important;
+  position:relative!important;
+}
+
+.sb-brand::before{
+  content:''!important;
+  display:grid!important;
+  width:42px!important;
+  height:42px!important;
+  border-radius:50%!important;
+  background:transparent!important;
+  border:2px solid var(--at-gold)!important;
+  box-shadow:0 0 0 8px rgba(255,255,255,.06)!important;
+  margin:0!important;
+}
+
+.sb-brand::after{
+  content:''!important;
+  position:absolute!important;
+  left:43px!important;
+  top:47px!important;
+  width:10px!important;
+  height:10px!important;
+  border-radius:50%!important;
+  background:var(--at-gold)!important;
+  transform:translate(-50%,-50%)!important;
+}
+
+.sb-brand.noriam-brand .title{
+  font-family:'Barlow',sans-serif!important;
+  font-size:23px!important;
+  font-weight:800!important;
+  color:#fff!important;
+}
+
+.sb-section{
+  color:rgba(255,255,255,.56)!important;
+}
+
+.sb-module-head{
+  background:transparent!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  color:rgba(255,255,255,.84)!important;
+}
+
+.sb-module.open .sb-module-head,
+.sb-module.active-module .sb-module-head{
+  background:rgba(255,255,255,.09)!important;
+  color:#fff!important;
+}
+
+.sb-item{
+  color:rgba(255,255,255,.74)!important;
+}
+
+.sb-item:hover,
+.sb-item.active,
+.sb-new-item{
+  background:rgba(255,255,255,.10)!important;
+  color:#fff!important;
+}
+
+.sb-new-item::before,
+.sb-item.active::before{
+  background:var(--at-gold)!important;
+}
+
+.sb-num{
+  background:rgba(229,182,83,.15)!important;
+  color:#F7DFA1!important;
+}
+
+#topbar{
+  background:rgba(255,253,248,.94)!important;
+  border-bottom:1px solid var(--at-line)!important;
+  box-shadow:0 8px 24px rgba(22,40,29,.06)!important;
+}
+
+.tb-title{
+  color:var(--at-ink)!important;
+  text-transform:none!important;
+}
+
+.tb-title::before{
+  content:'Ateliam workspace'!important;
+  color:var(--at-muted)!important;
+}
+
+.profile-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid rgba(23,62,42,.18);
+  background:var(--at-soft);
+  color:var(--at-green);
+  border-radius:999px;
+  padding:8px 12px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.profile-chip::before{
+  content:'';
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:var(--at-gold);
+}
+
+.profile-modal{
+  max-width:980px!important;
+}
+
+.access-grid{
+  display:grid;
+  grid-template-columns:1.05fr .95fr;
+  gap:18px;
+}
+
+.access-card{
+  background:#fff;
+  border:1px solid var(--at-line);
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 10px 24px rgba(22,40,29,.06);
+}
+
+.access-card h3{
+  margin:0 0 12px;
+  font-size:16px;
+  color:var(--at-ink);
+}
+
+.access-card .hint{
+  display:block;
+  margin-top:7px;
+}
+
+.permission-stack{
+  display:grid;
+  gap:10px;
+}
+
+.permission-toggle{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  border:1px solid var(--at-line);
+  border-radius:14px;
+  padding:12px;
+  background:#FFFDF8;
+}
+
+.permission-toggle input{
+  margin-top:3px;
+}
+
+.permission-toggle strong{
+  display:block;
+  color:var(--at-ink);
+  font-size:13px;
+}
+
+.permission-toggle span{
+  display:block;
+  color:var(--at-muted);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.role-summary{
+  display:grid;
+  gap:8px;
+  margin-top:10px;
+}
+
+.role-summary div{
+  border:1px solid var(--at-line);
+  border-radius:12px;
+  padding:10px 12px;
+  background:var(--at-soft);
+  color:var(--at-muted);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.home-card.module-access-disabled{
+  filter:grayscale(.15);
+}
+
+.home-card.module-access-disabled .btn{
+  pointer-events:none!important;
+}
+
+#module-tabs{
+  background:#F7F2E9!important;
+  border-bottom:1px solid var(--at-line)!important;
+}
+
+.module-tab{
+  background:var(--at-card)!important;
+  border-color:var(--at-line)!important;
+  color:#455145!important;
+}
+
+.module-tab.active{
+  background:var(--at-green)!important;
+  border-color:var(--at-green)!important;
+  color:#fff!important;
+}
+
+#content{
+  background:var(--at-cream)!important;
+}
+
+.section-panel.active,
+.home-card.ux-module-card,
+.ux-home-hero,
+.ux-flow-strip div,
+.ux-home-footer-note,
+#ux-guide-panel{
+  background:var(--at-card)!important;
+  border-color:var(--at-line)!important;
+  box-shadow:var(--at-shadow)!important;
+}
+
+.section-panel.active{
+  border-radius:24px!important;
+}
+
+.sec-tag,
+.home-eyebrow{
+  background:var(--at-soft)!important;
+  color:var(--at-green)!important;
+  border-color:#D3DDCF!important;
+}
+
+.sec-head h2,
+.ux-home-hero h2,
+.home-card.ux-module-card h3{
+  color:var(--at-ink)!important;
+  text-transform:none!important;
+  letter-spacing:-.02em!important;
+}
+
+.btn-primary{
+  background:var(--at-green)!important;
+  border-color:var(--at-green)!important;
+  color:#fff!important;
+}
+
+.btn-primary:hover{
+  background:var(--at-green-2)!important;
+  border-color:var(--at-green-2)!important;
+}
+
+.btn-outline{
+  background:var(--at-card)!important;
+  border-color:var(--at-line)!important;
+  color:var(--at-green)!important;
+}
+
+.btn-outline:hover{
+  background:var(--at-soft)!important;
+  border-color:#BFCDBB!important;
+}
+
+.ux-home-status,
+#ux-guide-panel .ux-guide-head{
+  background:linear-gradient(180deg,var(--at-green),#102D1E)!important;
+}
+
+.ux-flow-strip strong{
+  background:var(--at-green)!important;
+}
+
+.home-grid.ux-module-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+
+.ux-module-icon{
+  width:54px;
+  height:54px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  margin-bottom:18px;
+  background:#DAE8D6;
+  color:var(--at-green);
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:24px;
+  font-weight:800;
+}
+
+.ux-bpmn-card .ux-module-icon{background:#DCEBFA;color:#1D5F9F;}
+.ux-pop-card .ux-module-icon{background:#FFF0C8;color:#8A650F;}
+.ux-ddp-card .ux-module-icon{background:#DAE8D6;color:var(--at-green);}
+
+.module-access-disabled{
+  opacity:.45!important;
+}
+
+.module-access-disabled .sb-module-head,
+.module-access-disabled .sb-item{
+  pointer-events:none!important;
+}
+
+body[data-local-role="viewer"] .sb-new-item{
+  opacity:.62!important;
+}
+
+@media(max-width:1180px){
+  .home-grid.ux-module-grid{grid-template-columns:1fr!important;}
+  .access-grid{grid-template-columns:1fr!important;}
+}
 </style>
 </head>
 <body>
@@ -1612,7 +2064,7 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
 <!-- SIDEBAR -->
 <nav id="sidebar">
   <div class="sb-brand noriam-brand" onclick="showHome()" style="cursor:pointer;">
-    <div class="title">Noriam</div>
+    <div class="title">Ateliam</div>
   </div>
   <div class="sb-section">Módulos</div>
 
@@ -1684,6 +2136,10 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
       <a class="sb-item" onclick="definirPastaPOPs()" href="#">
         <span>📁</span> Definir pasta de documentos <span class="sb-num">PASTA</span>
       </a>
+      <div class="sb-config-label">Acesso local</div>
+      <a class="sb-item" onclick="abrirPerfilPermissoes()" href="#">
+        <span>🛡️</span> Perfil e permissões <span class="sb-num">ADM</span>
+      </a>
     </div>
   </div>
 </nav>
@@ -1693,7 +2149,8 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
 <div id="main">
   <div id="topbar">
     <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" onclick="toggleMobileMenu()" aria-label="Abrir menu" aria-expanded="false">☰</button>
-    <span class="tb-title" id="topbar-title">Noriam</span>
+    <span class="tb-title" id="topbar-title">Ateliam</span>
+    <button class="profile-chip" id="local-profile-chip" type="button" onclick="abrirPerfilPermissoes()">Admin local</button>
     <span class="view-mode-note" id="ddp-view-note">Visualização somente leitura</span>
     <button class="btn btn-outline top-preview-btn" id="top-preview-ddp" onclick="gerarRelatorio()">🧭 Pré-visualizar</button>
     <div class="spacer"></div>
@@ -1767,32 +2224,49 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
       </div>
 
       <div class="home-grid ux-module-grid">
-        <div class="home-card ux-module-card ux-ddp-card">
+        <div class="home-card ux-module-card ux-ddp-card" data-module-card="ddp">
+          <div class="ux-module-icon">D</div>
           <div class="home-card-kicker">Modalidade 01</div>
           <h3>Diagnóstico de Processo</h3>
-          <p>Para DDP, AS IS/TO BE, visão geral, sistemas, fluxo, SIPOC, gaps, próximos passos e glossário.</p>
+          <p>Para mapear o estado atual de um processo, consolidar evidências, registrar gaps e orientar próximos passos.</p>
           <ul class="ux-mini-list">
-            <li>Word com logo própria</li>
-            <li>HTML/apresentação com logo própria</li>
-            <li>Consulta e versionamento local</li>
+            <li>Metadados, visão geral, sistemas e SIPOC</li>
+            <li>Gaps, riscos, próximos passos e glossário</li>
+            <li>Relatório Word e apresentação HTML</li>
           </ul>
           <div class="home-actions">
             <button class="btn btn-primary" onclick="novoDiagnostico()">Iniciar DDP</button>
             <button class="btn btn-outline" onclick="consultarDiagnosticos()">Abrir DDP salvo</button>
           </div>
         </div>
-        <div class="home-card ux-module-card ux-pop-card">
+        <div class="home-card ux-module-card ux-pop-card" data-module-card="pop">
+          <div class="ux-module-icon">P</div>
           <div class="home-card-kicker">Modalidade 02</div>
           <h3>Documentos Normativos e Operacionais</h3>
-          <p>Para Norma, POP ou IT com identificação, objetivo, abrangência, conteúdo, responsabilidades, referências e histórico.</p>
+          <p>Para construir Norma, POP ou IT com estrutura guiada, responsabilidades claras e histórico controlado.</p>
           <ul class="ux-mini-list">
-            <li>Word padronizado</li>
-            <li>Fonte e logo próprias</li>
-            <li>Estrutura guiada por seção</li>
+            <li>Identificação, objetivo e abrangência</li>
+            <li>Conteúdo operacional por seções</li>
+            <li>Responsáveis, referências e revisões</li>
           </ul>
           <div class="home-actions">
             <button class="btn btn-primary" onclick="novoPOP()">Iniciar documento</button>
             <button class="btn btn-outline" onclick="consultarPOPs()">Abrir documento salvo</button>
+          </div>
+        </div>
+        <div class="home-card ux-module-card ux-bpmn-card" data-module-card="bpmn">
+          <div class="ux-module-icon">B</div>
+          <div class="home-card-kicker">Modalidade 03</div>
+          <h3>Desenho BPMN 2.0</h3>
+          <p>Para modelar fluxos de processo de ponta a ponta com experiência visual próxima ao Bizagi.</p>
+          <ul class="ux-mini-list">
+            <li>Piscinas, raias, eventos, tarefas e gateways</li>
+            <li>Conectores, validação e organização do desenho</li>
+            <li>Exportação em BPMN, SVG e JPEG</li>
+          </ul>
+          <div class="home-actions">
+            <button class="btn btn-primary" onclick="novoBPMN()">Abrir modelador</button>
+            <button class="btn btn-outline" onclick="carregarBpmnLocal()">Carregar rascunho</button>
           </div>
         </div>
       </div>
@@ -2230,7 +2704,7 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
       <div class="doc-config-logo-single" id="doc-config-logo-single-preview-wrap">
         <div class="form-row">
           <label>Prévia da logo</label>
-          <div class="doc-logo-preview" id="doc-config-logo-preview">Logo padrão Noriam</div>
+          <div class="doc-logo-preview" id="doc-config-logo-preview">Logo padrão Ateliam</div>
         </div>
       </div>
 
@@ -2257,11 +2731,11 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
         <div class="doc-config-grid">
           <div class="form-row">
             <label>Prévia da logo Word</label>
-            <div class="doc-logo-preview" id="doc-config-logo-word-preview">Logo padrão Noriam</div>
+            <div class="doc-logo-preview" id="doc-config-logo-word-preview">Logo padrão Ateliam</div>
           </div>
           <div class="form-row">
             <label>Prévia da logo HTML</label>
-            <div class="doc-logo-preview" id="doc-config-logo-html-preview">Logo padrão Noriam</div>
+            <div class="doc-logo-preview" id="doc-config-logo-html-preview">Logo padrão Ateliam</div>
           </div>
         </div>
       </div>
@@ -2270,6 +2744,74 @@ body.bpmn-active #ux-guide-panel{display:none!important;}
       <div class="config-actions">
         <button class="btn btn-outline" onclick="fecharConfigGeracao()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarConfigGeracao()">Salvar Configuração</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="config-modal-backdrop" id="perfil-acesso-modal">
+  <div class="config-modal profile-modal">
+    <div class="config-modal-head">
+      <div>
+        <h2>Perfil e Permissões</h2>
+        <p>Controle local de acesso aos módulos para validação do workspace.</p>
+      </div>
+      <button class="btn btn-outline" onclick="fecharPerfilPermissoes()">Fechar</button>
+    </div>
+    <div class="config-modal-body">
+      <div class="alert-info"><strong>Teste local:</strong> estas permissões ficam salvas somente neste navegador. No app com login, administradores podem ajustar usuários reais em Configurações.</div>
+      <div class="access-grid">
+        <div class="access-card">
+          <h3>Perfil ativo</h3>
+          <div class="doc-config-grid">
+            <div class="form-row">
+              <label>Nome exibido</label>
+              <input id="perfil-nome" type="text" placeholder="Administrador local"/>
+            </div>
+            <div class="form-row">
+              <label>E-mail</label>
+              <input id="perfil-email" type="email" placeholder="admin.local@ateliam"/>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Nível de acesso</label>
+            <select id="perfil-role">
+              <option value="admin">Admin local</option>
+              <option value="editor">Editor</option>
+              <option value="viewer">Visualizador</option>
+            </select>
+            <span class="hint">Admin configura, editor cria e visualizador consulta.</span>
+          </div>
+        </div>
+        <div class="access-card">
+          <h3>Módulos liberados</h3>
+          <div class="permission-stack">
+            <label class="permission-toggle">
+              <input id="perm-ddp" type="checkbox"/>
+              <span><strong>Diagnóstico de Processo</strong>DDP, AS IS/TO BE, SIPOC, gaps e relatório.</span>
+            </label>
+            <label class="permission-toggle">
+              <input id="perm-pop" type="checkbox"/>
+              <span><strong>Documentos Normativos e Operacionais</strong>Normas, POPs, ITs e histórico de revisão.</span>
+            </label>
+            <label class="permission-toggle">
+              <input id="perm-bpmn" type="checkbox"/>
+              <span><strong>Desenho BPMN 2.0</strong>Modelador visual com raias, gateways e exportação.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="access-card" style="margin-top:18px;">
+        <h3>Perfis disponíveis</h3>
+        <div class="role-summary">
+          <div><strong>Admin:</strong> gerencia permissões, configura documentos, cria, edita, salva e exporta.</div>
+          <div><strong>Editor:</strong> cria, edita, salva e exporta dentro dos módulos liberados.</div>
+          <div><strong>Visualizador:</strong> consulta versões e rascunhos, sem criar novos registros.</div>
+        </div>
+      </div>
+      <div class="config-actions">
+        <button class="btn btn-outline" onclick="fecharPerfilPermissoes()">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarPerfilPermissoes()">Salvar permissões</button>
       </div>
     </div>
   </div>
@@ -2383,6 +2925,111 @@ let ddpConsultaCache = [];
 let popConsultMode = false;
 let popConsultaCache = [];
 
+const ATELIAM_LOCAL_PROFILE_KEY = 'ateliam_local_profile_v1';
+const ATELIAM_MODULE_LABELS = {
+  ddp: 'Diagnóstico de Processo',
+  pop: 'Documentos Normativos e Operacionais',
+  bpmn: 'Desenho BPMN 2.0'
+};
+const ATELIAM_ROLE_LABELS = {
+  admin: 'Admin local',
+  editor: 'Editor',
+  viewer: 'Visualizador'
+};
+
+function perfilLocalPadrao(){
+  return {
+    name:'Administrador local',
+    email:'admin.local@ateliam',
+    role:'admin',
+    modules:{ddp:true,pop:true,bpmn:true}
+  };
+}
+
+function getPerfilLocal(){
+  const base = perfilLocalPadrao();
+  try{
+    const saved = JSON.parse(localStorage.getItem(ATELIAM_LOCAL_PROFILE_KEY) || '{}');
+    return {
+      ...base,
+      ...saved,
+      modules:{...base.modules,...(saved.modules || {})}
+    };
+  }catch(e){
+    return base;
+  }
+}
+
+function setPerfilLocal(profile){
+  localStorage.setItem(ATELIAM_LOCAL_PROFILE_KEY, JSON.stringify(profile));
+}
+
+function temPermissaoModulo(module, action){
+  const profile = getPerfilLocal();
+  const label = ATELIAM_MODULE_LABELS[module] || 'módulo';
+  if(profile.modules && profile.modules[module] === false){
+    showToast(`Sem permissão para acessar ${label}.`);
+    return false;
+  }
+  if(action === 'write' && profile.role === 'viewer'){
+    showToast('Perfil visualizador permite consulta, sem criação ou edição.');
+    return false;
+  }
+  return true;
+}
+
+function aplicarPerfilPermissoes(){
+  const profile = getPerfilLocal();
+  document.body.dataset.localRole = profile.role || 'admin';
+  const chip = document.getElementById('local-profile-chip');
+  if(chip) chip.textContent = ATELIAM_ROLE_LABELS[profile.role] || 'Perfil local';
+
+  ['ddp','pop','bpmn'].forEach(module=>{
+    const allowed = profile.modules && profile.modules[module] !== false;
+    const sidebarModule = document.getElementById('module-' + module);
+    if(sidebarModule) sidebarModule.classList.toggle('module-access-disabled', !allowed);
+    document.querySelectorAll(`[data-module-card="${module}"]`).forEach(card=>{
+      card.classList.toggle('module-access-disabled', !allowed);
+    });
+  });
+}
+
+function abrirPerfilPermissoes(){
+  const profile = getPerfilLocal();
+  const nome = document.getElementById('perfil-nome');
+  const email = document.getElementById('perfil-email');
+  const role = document.getElementById('perfil-role');
+  if(nome) nome.value = profile.name || '';
+  if(email) email.value = profile.email || '';
+  if(role) role.value = profile.role || 'admin';
+  ['ddp','pop','bpmn'].forEach(module=>{
+    const input = document.getElementById('perm-' + module);
+    if(input) input.checked = profile.modules && profile.modules[module] !== false;
+  });
+  document.getElementById('perfil-acesso-modal')?.classList.add('open');
+}
+
+function fecharPerfilPermissoes(){
+  document.getElementById('perfil-acesso-modal')?.classList.remove('open');
+}
+
+function salvarPerfilPermissoes(){
+  const profile = {
+    name:(document.getElementById('perfil-nome')?.value || 'Administrador local').trim(),
+    email:(document.getElementById('perfil-email')?.value || 'admin.local@ateliam').trim(),
+    role:document.getElementById('perfil-role')?.value || 'admin',
+    modules:{
+      ddp:!!document.getElementById('perm-ddp')?.checked,
+      pop:!!document.getElementById('perm-pop')?.checked,
+      bpmn:!!document.getElementById('perm-bpmn')?.checked
+    }
+  };
+  setPerfilLocal(profile);
+  aplicarPerfilPermissoes();
+  fecharPerfilPermissoes();
+  showToast('Perfil e permissões atualizados.');
+}
+
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
@@ -2397,7 +3044,7 @@ function showHome(){
   currentPanel = null;
 
   const title = document.getElementById('topbar-title');
-  if(title) title.textContent = 'Noriam';
+  if(title) title.textContent = 'Ateliam';
 
   ['actions-ddp','actions-ddp-view','actions-pop','actions-bpmn','top-preview-ddp','ddp-view-note'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2426,10 +3073,10 @@ function setTopbarModule(module){
   const title = document.getElementById('topbar-title');
   if(title){
     title.textContent = isBpmn
-      ? 'Noriam'
+      ? 'Ateliam'
       : (isPop
-        ? (isPopConsult ? 'Noriam' : 'Noriam')
-        : 'Noriam');
+        ? (isPopConsult ? 'Ateliam' : 'Ateliam')
+        : 'Ateliam');
   }
 
   const ddpActions = document.getElementById('actions-ddp');
@@ -2735,7 +3382,7 @@ function fecharConfigGeracao(){
 function atualizarPreviewLogoElemento(id, src){
   const preview = document.getElementById(id);
   if(!preview) return;
-  preview.innerHTML = src ? `<img src="${src}" alt="Logo configurada"/>` : 'Logo padrão Noriam';
+  preview.innerHTML = src ? `<img src="${src}" alt="Logo configurada"/>` : 'Logo padrão Ateliam';
 }
 function atualizarPreviewLogoConfig(){
   const cfg = getDocConfig(docConfigModalidadeAtual);
@@ -4034,6 +4681,7 @@ function salvarDiagnosticoLocal(){
   return registro;
 }
 async function consultarDiagnosticos(){
+  if(!temPermissaoModulo('ddp','open')) return;
   aplicarModoVisualizacaoDDP(false);
   ddpViewMode = false;
   document.body.classList.remove('ddp-view-mode');
@@ -4242,6 +4890,7 @@ async function excluirDiagnosticoLocal(id){
 // NOVOS DOCUMENTOS
 // ═══════════════════════════════════════════════════════
 function novoDiagnostico(){
+  if(!temPermissaoModulo('ddp','write')) return;
   aplicarModoVisualizacaoDDP(false);
   ddpViewMode = false;
   document.body.classList.remove('ddp-view-mode');
@@ -4279,6 +4928,7 @@ function novoDiagnostico(){
 const POP_EXEMPLO_CONTROLE_ACESSO = novoObjetoPOP('POP');
 
 function novoPOP(){
+  if(!temPermissaoModulo('pop','write')) return;
   popConsultMode=false;
   document.body.classList.remove('ddp-view-mode');
   state.pop = novoObjetoPOP('POP');
@@ -4642,7 +5292,7 @@ footer p{font-size:12px;color:var(--muted);}
 <!-- NAV -->
 <nav>
   <div class="nb">
-    <img class="nav-logo" src="${logoDocumento}" alt="Noriam"/>
+    <img class="nav-logo" src="${logoDocumento}" alt="Ateliam"/>
     <div class="bt">${esc(codigo)}</div>
   </div>
   <div class="nsl">Navegação</div>
@@ -4672,7 +5322,7 @@ footer p{font-size:12px;color:var(--muted);}
   <!-- CAPA -->
   <section id="capa">
     <div class="hero">
-      <div class="print-cover-top"><img class="print-cover-logo" src="${logoDocumento}" alt="Noriam"/></div>
+      <div class="print-cover-top"><img class="print-cover-logo" src="${logoDocumento}" alt="Ateliam"/></div>
       <div class="eyebrow">${esc(codigo)} · Diagnóstico de Processo</div>
       <h1>${esc(titulo)}</h1>
       <p>Relatório destinado a apresentar o diagnóstico de um processo, consolidando seu mapeamento atual, as principais causas dos problemas identificados e as propostas de solução para orientar a tomada de decisão e a melhoria operacional.</p>
@@ -5143,7 +5793,7 @@ body{font-family:'${fonteDocumento}',Arial,sans-serif;background:#e9ecef;color:v
 <div class="report">
   <section class="page cover-page">
     <div class="top-rule"></div>
-    <img class="cover-logo" src="${logoDocumento}" alt="Noriam"/>
+    <img class="cover-logo" src="${logoDocumento}" alt="Ateliam"/>
     <div class="cover-kicker">GESTÃO DE PROCESSOS · PMO</div>
     <h1 class="cover-title">RELATÓRIO ${esc(subtitulo).toUpperCase()} -<br/>${esc(cleanTitle).toUpperCase()}</h1>
     <div class="scope-card"><h2>ABRANGÊNCIA DO RELATÓRIO</h2><p>Relatório destinado a apresentar o diagnóstico de um processo, consolidando seu mapeamento atual, as principais causas dos problemas identificados e as propostas de solução para orientar a tomada de decisão e a melhoria operacional.</p></div>
@@ -5202,7 +5852,7 @@ body{font-family:'${fonteDocumento}',Arial,sans-serif;background:#e9ecef;color:v
   <section class="content-section">
     <div class="section-head"><div class="section-num">07</div><h2>GLOSSÁRIO</h2><p>Termos operacionais e técnicos utilizados no relatório.</p></div>
     <div class="glossary">${(state.glossario||[]).map(g=>`<div class="model-card"><h3>${esc(g.termo)}</h3><p>${esc(g.def)}</p></div>`).join('')}</div>
-    <div class="footer-note"><span>Documento interno de diagnóstico processual — ${esc(codigo)} · ${esc(cleanTitle)}.</span><img src="${logoDocumento}" alt="Noriam"/></div>
+    <div class="footer-note"><span>Documento interno de diagnóstico processual — ${esc(codigo)} · ${esc(cleanTitle)}.</span><img src="${logoDocumento}" alt="Ateliam"/></div>
   </section>
 </div>
 
@@ -5280,6 +5930,8 @@ function mirrorFormValuesForSave(clone){
 
 function salvarVersao(){
   try{
+    if(getActiveModule() === 'ddp' && !temPermissaoModulo('ddp','write')) return;
+    if(getActiveModule() === 'pop' && !temPermissaoModulo('pop','write')) return;
     // No DDP, Salvar versão registra o diagnóstico para consulta e edição futura.
     // Não baixa o HTML do editor; o download do editor fica fora desse fluxo.
     if(getActiveModule() === 'ddp' && moduleStarted && moduleStarted.ddp){
@@ -5439,7 +6091,7 @@ body{font-family:'${fonteDocumento}',Arial,sans-serif;background:var(--bg);color
   <a href="#glossario"><span>07 Glossário</span><small>9</small></a>
 </nav>
 <section class="slide cover" id="capa">
-  <img class="logo" src="${logoDocumento}" alt="Noriam"/>
+  <img class="logo" src="${logoDocumento}" alt="Ateliam"/>
   <div class="kicker">Relatório de Diagnóstico de Processo</div>
   <h1>${esc(cleanTitle)}</h1>
   <p>${esc(escopo || descricao)}</p>
@@ -5579,7 +6231,7 @@ function buildWordPdfHtml(){
   const sipocRows = (state.sipocRows||[]).map(r=>[r.fornecedores, r.entradas, r.processo||r.subprocesso, r.saidas, r.clientes]);
   const proxRows = (state.proxPassos||[]).map(r=>[r.titulo, r.desc||r.descricao, r.responsavel||'A definir', r.prazo||'A definir']);
   const glossRows = (state.glossario||[]).map(g=>[g.termo||g.title, g.def||g.desc||g.text]);
-  const logoHtml = logoDocumento ? `<img class="bf-logo" src="${logoDocumento}" alt="Noriam"/>` : `<div class="bf-logo-text">Noriam</div>`;
+  const logoHtml = logoDocumento ? `<img class="bf-logo" src="${logoDocumento}" alt="Ateliam"/>` : `<div class="bf-logo-text">Ateliam</div>`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -6177,6 +6829,7 @@ async function lerPOPsDaPasta(){
   }
 }
 async function consultarPOPs(){
+  if(!temPermissaoModulo('pop','open')) return;
   popConsultMode = true;
   moduleStarted.pop = false;
   ddpConsultMode = false;
@@ -6326,6 +6979,7 @@ function gerarWordPOP(){
 }
 async function salvarVersaoPOPWord(){
   try{
+    if(!temPermissaoModulo('pop','write')) return;
     const registro = salvarPOPLocal();
     const blob = buildPopDocx();
     baixarBlobWordPOP(blob, true);
@@ -6372,7 +7026,7 @@ function buildPopDocx(){
   const reportTitle = cleanText(meta.titulo || 'Documento');
   const dataRodape = meta.publicacao || meta.vigencia || '';
   const elaboradorRodape = meta.elaboracao || '--';
-  const headerLogoDrawing = headerLogo ? `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${emu(1.48)}" cy="${emu(0.48)}"/><wp:docPr id="99" name="Noriam"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="99" name="Noriam"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${headerLogoRelId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${emu(1.48)}" cy="${emu(0.48)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>` : p('Noriam',{size:11,bold:true,color:C.white,align:'center',after:0});
+  const headerLogoDrawing = headerLogo ? `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${emu(1.48)}" cy="${emu(0.48)}"/><wp:docPr id="99" name="Ateliam"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="99" name="Ateliam"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${headerLogoRelId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${emu(1.48)}" cy="${emu(0.48)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>` : p('Ateliam',{size:11,bold:true,color:C.white,align:'center',after:0});
   const headerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:tbl><w:tblPr><w:tblW w:w="11906" w:type="dxa"/><w:tblInd w:w="-800" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="8334"/><w:gridCol w:w="3572"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val="1590" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="8334" w:type="dxa"/><w:shd w:fill="009657"/><w:vAlign w:val="center"/><w:tcMar><w:top w:w="240" w:type="dxa"/><w:left w:w="680" w:type="dxa"/><w:bottom w:w="220" w:type="dxa"/><w:right w:w="220" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="120"/></w:pPr><w:r><w:rPr>${fontXml()}<w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">${x(codigoHeaderPOP)}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr>${fontXml()}<w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr><w:t xml:space="preserve">${x(reportTitle)}</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="3572" w:type="dxa"/><w:shd w:fill="009657"/><w:vAlign w:val="center"/><w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="600" w:type="dxa"/></w:tcMar></w:tcPr>${headerLogoDrawing}</w:tc></w:tr><w:tr><w:trPr><w:trHeight w:val="70" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="11906" w:type="dxa"/><w:shd w:fill="C9CCCB"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="2"/></w:rPr><w:t> </w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:hdr>`;
   const footerXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:tbl><w:tblPr><w:tblW w:w="${CONTENT_W}" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:color="${C.gray300}" w:sz="6"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="7000"/><w:gridCol w:w="3306"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val="420"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="7000" w:type="dxa"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tcMar></w:tcPr>${p(`${dataRodape} · por ${elaboradorRodape}`,{size:8,color:C.gray600,after:0})}</w:tc><w:tc><w:tcPr><w:tcW w:w="3306" w:type="dxa"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr>${run('Pág ',{size:8,color:C.gray600})}${field('PAGE','1')}${run(' de ',{size:8,color:C.gray600})}${field('NUMPAGES','1')}</w:p></w:tc></w:tr></w:tbl></w:ftr>`;
   function sectionTitle(title){
@@ -6724,7 +7378,7 @@ function buildParametrizedDocx(){
 
   const headerLogoData = getDocLogo('ddp','word');
   const headerLogo = dataUriInfo(headerLogoData);
-  const headerLogoDrawing = headerLogo ? `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${emu(1.48)}" cy="${emu(0.48)}"/><wp:docPr id="99" name="Noriam"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="99" name="Noriam"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${headerLogoRelId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${emu(1.48)}" cy="${emu(0.48)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>` : p('Noriam',{size:11,bold:true,color:C.white,align:'center',after:0});
+  const headerLogoDrawing = headerLogo ? `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${emu(1.48)}" cy="${emu(0.48)}"/><wp:docPr id="99" name="Ateliam"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="99" name="Ateliam"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${headerLogoRelId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${emu(1.48)}" cy="${emu(0.48)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>` : p('Ateliam',{size:11,bold:true,color:C.white,align:'center',after:0});
   const headerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:tbl><w:tblPr><w:tblW w:w="${PAGE_W}" w:type="dxa"/><w:tblInd w:w="-${MARGIN_X}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="8334"/><w:gridCol w:w="3572"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val="1590" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="8334" w:type="dxa"/><w:shd w:fill="${C.headerGreen}"/><w:vAlign w:val="center"/><w:tcMar><w:top w:w="240" w:type="dxa"/><w:left w:w="680" w:type="dxa"/><w:bottom w:w="220" w:type="dxa"/><w:right w:w="220" w:type="dxa"/></w:tcMar></w:tcPr>${p(codigo,{size:10,bold:true,color:C.white,after:6})}${p(reportTitle,{size:20,bold:true,color:C.white,after:0,line:1.0})}</w:tc><w:tc><w:tcPr><w:tcW w:w="3572" w:type="dxa"/><w:shd w:fill="${C.headerGreen}"/><w:vAlign w:val="center"/><w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="600" w:type="dxa"/></w:tcMar></w:tcPr>${headerLogoDrawing}</w:tc></w:tr><w:tr><w:trPr><w:trHeight w:val="70" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="${PAGE_W}" w:type="dxa"/><w:shd w:fill="${C.headerLine}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="2"/></w:rPr><w:t> </w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:hdr>`;
   const footerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:tbl><w:tblPr><w:tblW w:w="${CONTENT_W}" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:color="${C.gray300}" w:sz="6"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="7000"/><w:gridCol w:w="3306"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val="420"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="7000" w:type="dxa"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tcMar></w:tcPr>${p(`${dataRelatorio} · por ${elaborador}`,{size:8,color:C.gray600,after:0})}</w:tc><w:tc><w:tcPr><w:tcW w:w="3306" w:type="dxa"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr>${run('Pág ',{size:8,color:C.gray600})}${field('PAGE','1')}${run(' de ',{size:8,color:C.gray600})}${field('NUMPAGES','1')}</w:p></w:tc></w:tr></w:tbl></w:ftr>`;
 
@@ -6928,6 +7582,7 @@ function init(){
   document.querySelectorAll('.module-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.sb-module').forEach(m=>m.classList.remove('open'));
   showHome();
+  aplicarPerfilPermissoes();
   // Código permanece somente nos metadados e nas exportações.
 }
 init();
@@ -7883,11 +8538,13 @@ function escAttr(s){ return escSvg(s).replace(/"/g,'&quot;'); }
 function escXml(s){ return escSvg(s); }
 
 function salvarBpmnLocal(){
+  if(!temPermissaoModulo('bpmn','write')) return;
   localStorage.setItem('pmo_bpmn_rascunho_v1', JSON.stringify(bpmnState));
   if(typeof showToast==='function') showToast('Rascunho BPMN salvo no navegador.');
 }
 
 function carregarBpmnLocal(){
+  if(!temPermissaoModulo('bpmn','open')) return;
   const raw = localStorage.getItem('pmo_bpmn_rascunho_v1');
   if(!raw){
     novoBPMN();
@@ -8176,7 +8833,11 @@ closeBpmnContextMenu();
   const NS = 'http://www.w3.org/2000/svg';
   let st = null;
   let drag = null;
-  let connectFrom = null;
+  let undoStack = [];
+  let redoStack = [];
+  let lastValidation = null;
+  let spacePan = false;
+  const MAX_HISTORY = 80;
 
   function freshState(){
     return {
@@ -8190,15 +8851,45 @@ closeBpmnContextMenu();
       selected:null,
       selectedLane:null,
       selectedFlow:null,
+      zoom:1,
       id:1
     };
   }
 
   function ensureState(){
     if(!st) st = freshState();
+    st.zoom = Math.max(0.35, Math.min(1.8, Number(st.zoom || 1)));
     let y = st.pool.y;
     st.lanes.forEach(l => { l.y = y; y += Math.max(90, l.h || 180); });
     st.pool.h = Math.max(180, y - st.pool.y);
+  }
+
+  function snapshot(){
+    ensureState();
+    return JSON.stringify(st);
+  }
+
+  function commit(){
+    if(!st) return;
+    const raw = snapshot();
+    if(undoStack[undoStack.length - 1] !== raw){
+      undoStack.push(raw);
+      if(undoStack.length > MAX_HISTORY) undoStack.shift();
+    }
+    redoStack = [];
+    lastValidation = null;
+  }
+
+  function restoreState(raw){
+    try{
+      st = JSON.parse(raw);
+      ensureState();
+      draw();
+      return true;
+    }catch(e){
+      toast('Nao foi possivel restaurar o estado BPMN.');
+      return false;
+    }
   }
 
   function esc(s){
@@ -8238,7 +8929,7 @@ closeBpmnContextMenu();
     n.y = Math.max(r.y+12, Math.min(n.y, r.y+r.h-n.h-12));
   }
 
-  function addNode(type, x, y, label, laneId){
+  function addNode(type, x, y, label, laneId, detail){
     ensureState();
     const sz = size(type);
     let lane = laneId ? laneById(laneId) : null;
@@ -8254,8 +8945,13 @@ closeBpmnContextMenu();
         return null;
       }
     }
+    commit();
     const id = 'bpmn_' + (st.id++);
     const n = {id,type,x:Math.round(x),y:Math.round(y),w:sz.w,h:sz.h,lane:lane.id,label:label || ({start:'Início',task:'Tarefa',gateway:'Decisão?',end:'Fim'}[type]||'Elemento'),taskType:'task',gatewayType:'exclusiveGateway'};
+    if(type === 'task') n.taskType = detail || 'task';
+    if(type === 'gateway') n.gatewayType = detail || 'exclusiveGateway';
+    if(!label && type === 'start') n.label = 'Inicio';
+    if(!label && type === 'gateway') n.label = 'Decisao?';
     clampNode(n);
     st.nodes.push(n);
     st.selected = n.id;
@@ -8265,12 +8961,14 @@ closeBpmnContextMenu();
 
   function addLane(){
     ensureState();
+    commit();
     st.lanes.push({id:'lane'+(st.lanes.length+1),label:'Lane '+(st.lanes.length+1),h:210});
     draw();
   }
 
   function expandPool(dw,dh){
     ensureState();
+    commit();
     st.pool.w = Math.max(650, st.pool.w + (dw||0));
     if(dh){
       st.lanes[st.lanes.length-1].h = Math.max(120, st.lanes[st.lanes.length-1].h + dh);
@@ -8294,6 +8992,7 @@ closeBpmnContextMenu();
     if(st.flows.some(f=>f.a===a && f.b===b)) return;
     const na=nodeById(a), nb=nodeById(b);
     if(!na || !nb) return;
+    commit();
     st.flows.push({id:'flow_'+(st.id++),a,b,aAttach:defaultAttach(na,nb),bAttach:defaultAttach(nb,na)});
   }
 
@@ -8369,13 +9068,6 @@ closeBpmnContextMenu();
     return best;
   }
 
-  function autoConnect(id){
-    const a = nodeById(id), b = nearestNode(id);
-    if(!a || !b) return;
-    if(a.x < b.x) connect(a.id,b.id);
-    else connect(b.id,a.id);
-  }
-
   function quickAfter(srcId,type,x,y){
     const src = nodeById(srcId);
     if(!src) return;
@@ -8424,23 +9116,25 @@ closeBpmnContextMenu();
     if(n.type==='end') return `<g ${handlers} style="cursor:move"><circle cx="${cx}" cy="${cy}" r="${n.w/2}" fill="#fff" stroke="#111" stroke-width="${n.id===st.selected?5:4}"/><text x="${cx}" y="${n.y+n.h+18}" text-anchor="middle" font-size="12" font-family="Arial">${esc(n.label)}</text></g>`;
     if(n.type==='gateway'){
       const pts = `${cx},${n.y} ${n.x+n.w},${cy} ${cx},${n.y+n.h} ${n.x},${cy}`;
-      const icon = ({exclusiveGateway:'X',parallelGateway:'+',inclusiveGateway:'O',eventBasedGateway:'◇'})[n.gatewayType] || 'X';
-      return `<g ${handlers} style="cursor:move"><polygon points="${pts}" fill="#fff" ${sel}/><text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="18" font-weight="700" font-family="Arial">${icon}</text><text x="${cx}" y="${n.y+n.h+18}" text-anchor="middle" font-size="12" font-family="Arial">${esc(n.label)}</text></g>`;
+      const iconLabel = ({exclusiveGateway:'X',parallelGateway:'+',inclusiveGateway:'O',eventBasedGateway:'*'})[n.gatewayType] || 'X';
+      return `<g ${handlers} style="cursor:move"><polygon points="${pts}" fill="#fff" ${sel}/><text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="18" font-weight="700" font-family="Arial">${iconLabel}</text><text x="${cx}" y="${n.y+n.h+18}" text-anchor="middle" font-size="12" font-family="Arial">${esc(n.label)}</text></g>`;
     }
-    const icon = ({userTask:'👤',serviceTask:'⚙',manualTask:'✋',scriptTask:'⌘',businessRuleTask:'▦'})[n.taskType] || '';
-    return `<g ${handlers} style="cursor:move"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8" fill="#fff" ${sel}/><text x="${n.x+16}" y="${n.y+20}" font-size="13" font-family="Arial">${icon}</text><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" font-family="Arial">${esc(n.label)}</text></g>`;
+    if(n.type==='task'){
+      const taskIcon = ({userTask:'U',serviceTask:'S',manualTask:'M',scriptTask:'SC',businessRuleTask:'BR'})[n.taskType] || '';
+      return `<g ${handlers} style="cursor:move"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8" fill="#fff" ${sel}/><text x="${n.x+16}" y="${n.y+20}" font-size="13" font-weight="700" font-family="Arial">${taskIcon}</text><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" font-family="Arial">${esc(n.label)}</text></g>`;
+    }
   }
 
   function renderQuick(){
     const n = nodeById(st.selected);
     if(!n) return '';
     const x=n.x+n.w+22, y=n.y;
-    const items=[['task','▭'],['gateway','◇'],['end','◎']];
-    return `<g>${items.map((it,i)=>{
+    const quickItems=[['task','T'],['gateway','G'],['end','E']];
+    return `<g>${quickItems.map((it,i)=>{
       const cy=y+16+i*40;
       return `<g style="cursor:grab" onmousedown="bpmnStableQuickDrag(event,'${n.id}','${it[0]}')" onclick="bpmnStableQuickClick(event,'${n.id}','${it[0]}')">
         <circle cx="${x}" cy="${cy}" r="15" fill="#fff" stroke="#64748b"/>
-        <text x="${x}" y="${cy+5}" text-anchor="middle" font-size="14" font-family="Arial">${it[1]}</text>
+        <text x="${x}" y="${cy+5}" text-anchor="middle" font-size="13" font-weight="700" font-family="Arial">${it[1]}</text>
       </g>`;
     }).join('')}</g>`;
   }
@@ -8451,9 +9145,10 @@ closeBpmnContextMenu();
     if(!svg) return;
     const p=st.pool;
     const W = Math.max(5000,p.x+p.w+1500), H=Math.max(3000,p.y+p.h+1000);
+    const zoom = Math.max(0.35, Math.min(1.8, Number(st.zoom || 1)));
     svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-    svg.setAttribute('width',W);
-    svg.setAttribute('height',H);
+    svg.setAttribute('width',Math.round(W * zoom));
+    svg.setAttribute('height',Math.round(H * zoom));
     let s = `<defs><marker id="arrowStable" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker></defs>`;
     s += renderPool();
     st.flows.forEach(f=>{
@@ -8475,6 +9170,8 @@ closeBpmnContextMenu();
     s += renderQuick();
     svg.innerHTML = s;
     renderProps();
+    renderValidation();
+    refreshWorkbenchControls();
   }
 
   function renderProps(){
@@ -8548,6 +9245,127 @@ closeBpmnContextMenu();
     `;
   }
 
+  function validateDiagram(){
+    ensureState();
+    const issues = [];
+    const starts = st.nodes.filter(n => n.type === 'start');
+    const ends = st.nodes.filter(n => n.type === 'end');
+    if(starts.length !== 1) issues.push('O diagrama deve ter exatamente um evento inicial.');
+    if(ends.length < 1) issues.push('Inclua pelo menos um evento final.');
+    st.nodes.forEach(n => {
+      const incoming = st.flows.filter(f => f.b === n.id).length;
+      const outgoing = st.flows.filter(f => f.a === n.id).length;
+      if(n.type !== 'start' && incoming === 0) issues.push(`${n.label || n.id} nao tem fluxo de entrada.`);
+      if(n.type !== 'end' && outgoing === 0) issues.push(`${n.label || n.id} nao tem fluxo de saida.`);
+      if(n.type === 'start' && incoming > 0) issues.push(`${n.label || n.id} nao deve receber fluxo de entrada.`);
+      if(n.type === 'end' && outgoing > 0) issues.push(`${n.label || n.id} nao deve ter fluxo de saida.`);
+      if(n.type === 'gateway' && outgoing < 2) issues.push(`${n.label || n.id} deveria ter pelo menos duas saidas.`);
+    });
+    if(!st.lanes.length) issues.push('O pool precisa ter pelo menos uma raia.');
+    return issues;
+  }
+
+  function renderValidation(){
+    const box = document.getElementById('bpmn-validation-panel');
+    if(!box) return;
+    if(!lastValidation){
+      box.innerHTML = `
+        <div class="bpmn-validation-idle">
+          Execute a validacao antes de exportar para conferir eventos, conectores e gateways.
+        </div>
+        <button class="btn btn-outline" type="button" onclick="bpmnStableValidate()">Validar BPMN</button>
+      `;
+      return;
+    }
+    if(!lastValidation.length){
+      box.innerHTML = `
+        <div class="bpmn-validation-ok"><strong>Sem problemas encontrados.</strong><br>O fluxo esta pronto para exportacao.</div>
+      `;
+      return;
+    }
+    box.innerHTML = `
+      <div class="bpmn-validation-error"><strong>${lastValidation.length} ponto(s) para revisar</strong></div>
+      <ul class="bpmn-validation-list">${lastValidation.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+      <button class="btn btn-outline" type="button" onclick="bpmnStableValidate()">Validar novamente</button>
+    `;
+  }
+
+  function refreshWorkbenchControls(){
+    const zoom = Math.round((st?.zoom || 1) * 100);
+    const zoomLabel = document.getElementById('bpmn-zoom-label');
+    if(zoomLabel) zoomLabel.textContent = zoom + '%';
+    const status = document.getElementById('bpmn-bizagi-status');
+    if(status){
+      status.textContent = `${st.nodes.length} elemento(s) · ${st.flows.length} conexao(oes) · zoom ${zoom}%`;
+    }
+    const undo = document.getElementById('bpmn-undo-btn');
+    const redo = document.getElementById('bpmn-redo-btn');
+    if(undo) undo.disabled = !undoStack.length;
+    if(redo) redo.disabled = !redoStack.length;
+  }
+
+  function enhanceWorkbench(){
+    const root = panel();
+    if(!root || root.dataset.bizagiWorkbench === '1') return;
+    root.dataset.bizagiWorkbench = '1';
+
+    const leftBody = root.querySelector('.bpmn-panel .bpmn-panel-body');
+    if(leftBody){
+      leftBody.insertAdjacentHTML('beforeend', `
+        <div class="bpmn-library-group">Atividades especializadas</div>
+        <div class="bpmn-tool-grid bpmn-tool-grid-compact">
+          <button class="bpmn-tool" type="button" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'task','userTask')" onclick="bpmnStableAddDetailed('task','userTask')"><span class="bpmn-tool-icon">U</span><span><strong>Usuario</strong><span>Tarefa humana</span></span></button>
+          <button class="bpmn-tool" type="button" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'task','serviceTask')" onclick="bpmnStableAddDetailed('task','serviceTask')"><span class="bpmn-tool-icon">S</span><span><strong>Servico</strong><span>Sistema / integracao</span></span></button>
+          <button class="bpmn-tool" type="button" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'task','manualTask')" onclick="bpmnStableAddDetailed('task','manualTask')"><span class="bpmn-tool-icon">M</span><span><strong>Manual</strong><span>Execucao manual</span></span></button>
+          <button class="bpmn-tool" type="button" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'task','businessRuleTask')" onclick="bpmnStableAddDetailed('task','businessRuleTask')"><span class="bpmn-tool-icon">BR</span><span><strong>Regra</strong><span>Regra de negocio</span></span></button>
+        </div>
+        <div class="bpmn-library-group">Gateways</div>
+        <div class="bpmn-tool-grid bpmn-tool-grid-compact">
+          <button class="bpmn-tool" type="button" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'gateway','exclusiveGateway')" onclick="bpmnStableAddDetailed('gateway','exclusiveGateway')"><span class="bpmn-tool-icon">X</span><span><strong>Exclusivo</strong><span>Uma saida</span></span></button>
+          <button class="bpmn-tool" type="button" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'gateway','parallelGateway')" onclick="bpmnStableAddDetailed('gateway','parallelGateway')"><span class="bpmn-tool-icon">+</span><span><strong>Paralelo</strong><span>Fluxos simultaneos</span></span></button>
+          <button class="bpmn-tool" type="button" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'gateway','inclusiveGateway')" onclick="bpmnStableAddDetailed('gateway','inclusiveGateway')"><span class="bpmn-tool-icon">O</span><span><strong>Inclusivo</strong><span>Uma ou mais saidas</span></span></button>
+        </div>
+      `);
+    }
+
+    const toolbar = root.querySelector('.bpmn-canvas-top');
+    if(toolbar){
+      toolbar.insertAdjacentHTML('afterbegin', `
+        <div class="bpmn-bizagi-toolbar" aria-label="Ferramentas BPMN">
+          <button class="btn btn-outline" id="bpmn-undo-btn" type="button" onclick="bpmnStableUndo()" title="Desfazer (Ctrl+Z)">Undo</button>
+          <button class="btn btn-outline" id="bpmn-redo-btn" type="button" onclick="bpmnStableRedo()" title="Refazer (Ctrl+Y)">Redo</button>
+          <span class="bpmn-toolbar-sep"></span>
+          <button class="btn btn-outline" type="button" onclick="bpmnStableZoom(-0.1)" title="Diminuir zoom">-</button>
+          <span id="bpmn-zoom-label" class="bpmn-zoom-label">100%</span>
+          <button class="btn btn-outline" type="button" onclick="bpmnStableZoom(0.1)" title="Aumentar zoom">+</button>
+          <button class="btn btn-outline" type="button" onclick="bpmnStableFit()" title="Ajustar pool a tela">Fit</button>
+          <span class="bpmn-toolbar-sep"></span>
+          <button class="btn btn-outline" type="button" onclick="bpmnStableValidate()">Validar</button>
+          <span class="bpmn-toolbar-hint">Alt + arrastar para navegar</span>
+        </div>
+      `);
+      toolbar.insertAdjacentHTML('beforeend', `<span class="bpmn-status" id="bpmn-bizagi-status"></span>`);
+    }
+
+    const wrap = document.getElementById('bpmn-svg-wrap');
+    if(wrap){
+      wrap.setAttribute('ondragover','bpmnStableCanvasDragOver(event)');
+      wrap.setAttribute('ondragleave','bpmnStableCanvasDragLeave(event)');
+      wrap.setAttribute('ondrop','bpmnStableCanvasDrop(event)');
+      wrap.setAttribute('onmousedown','bpmnStableCanvasPan(event)');
+    }
+
+    const props = document.getElementById('bpmn-stable-props');
+    if(props){
+      props.insertAdjacentHTML('afterend', `
+        <div class="bpmn-side-section">
+          <div class="bpmn-side-title">Validacao</div>
+          <div id="bpmn-validation-panel" class="bpmn-validation-panel"></div>
+        </div>
+      `);
+    }
+  }
+
   function mount(){
     const p = panel();
     if(!p) return;
@@ -8557,11 +9375,11 @@ closeBpmnContextMenu();
           <div class="bpmn-panel-head"><div class="bpmn-panel-kicker">Biblioteca BPMN</div><div class="bpmn-panel-title">Elementos</div></div>
           <div class="bpmn-panel-body">
             <div class="bpmn-tool-grid">
-              <button class="bpmn-tool" onclick="bpmnStableAdd('start')"><span class="bpmn-tool-icon">○</span><span><strong>Evento inicial</strong><span>Dentro do pool</span></span></button>
-              <button class="bpmn-tool" onclick="bpmnStableAdd('task')"><span class="bpmn-tool-icon">▭</span><span><strong>Tarefa</strong><span>Atividade</span></span></button>
-              <button class="bpmn-tool" onclick="bpmnStableAdd('gateway')"><span class="bpmn-tool-icon">◇</span><span><strong>Gateway</strong><span>Decisão</span></span></button>
-              <button class="bpmn-tool" onclick="bpmnStableAdd('end')"><span class="bpmn-tool-icon">◎</span><span><strong>Evento final</strong><span>Fim</span></span></button>
-              <button class="bpmn-tool" onclick="bpmnStableAddLane()"><span class="bpmn-tool-icon">▤</span><span><strong>Adicionar raia</strong><span>Nova lane</span></span></button>
+              <button class="bpmn-tool" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'start')" onclick="bpmnStableAdd('start')"><span class="bpmn-tool-icon">S</span><span><strong>Evento inicial</strong><span>Dentro do pool</span></span></button>
+              <button class="bpmn-tool" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'task')" onclick="bpmnStableAdd('task')"><span class="bpmn-tool-icon">T</span><span><strong>Tarefa</strong><span>Atividade</span></span></button>
+              <button class="bpmn-tool" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'gateway')" onclick="bpmnStableAdd('gateway')"><span class="bpmn-tool-icon">G</span><span><strong>Gateway</strong><span>Decisão</span></span></button>
+              <button class="bpmn-tool" draggable="true" ondragstart="bpmnStablePaletteDrag(event,'end')" onclick="bpmnStableAdd('end')"><span class="bpmn-tool-icon">E</span><span><strong>Evento final</strong><span>Fim</span></span></button>
+              <button class="bpmn-tool" onclick="bpmnStableAddLane()"><span class="bpmn-tool-icon">L</span><span><strong>Adicionar raia</strong><span>Nova lane</span></span></button>
             </div>
           </div>
         </aside>
@@ -8589,7 +9407,9 @@ closeBpmnContextMenu();
     `;
   }
 
-  function openModule(){
+  function openModule(mode){
+    const action = mode === 'view' ? 'open' : 'write';
+    if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn', action)) return;
     if(!st) st = freshState();
     const content = document.getElementById('content');
     document.querySelectorAll('.section-panel').forEach(x=>x.classList.remove('active'));
@@ -8602,8 +9422,9 @@ closeBpmnContextMenu();
     document.querySelectorAll('.module-tab-set').forEach(x=>x.classList.remove('active'));
     document.getElementById('tabs-bpmn')?.classList.add('active');
     const title = document.getElementById('topbar-title');
-    if(title) title.textContent = 'Noriam';
+    if(title) title.textContent = 'Ateliam';
     mount();
+    enhanceWorkbench();
     if(!st.nodes.length){
       const a=addNode('start',310,150,'Início','lane1');
       const b=addNode('task',450,128,'Tarefa 1','lane1');
@@ -8620,11 +9441,115 @@ closeBpmnContextMenu();
     else console.log(msg);
   }
 
-  window.novoBPMN = function(){ openModule(); };
+  function clampZoom(value){
+    return Math.max(0.35, Math.min(1.8, Number(value || 1)));
+  }
+
+  window.novoBPMN = function(){ openModule('write'); };
   window.renderBpmn = function(){ draw(); };
   window.bpmnStableAdd = function(type){ addNode(type); };
+  window.bpmnStableAddDetailed = function(type, detail){ addNode(type, undefined, undefined, '', undefined, detail); };
   window.bpmnStableAddLane = function(){ addLane(); };
   window.bpmnStableExpand = function(w,h){ expandPool(w,h); };
+  window.bpmnStableReset = function(){
+    commit();
+    st = freshState();
+    undoStack = [];
+    redoStack = [];
+    lastValidation = null;
+    openModule('write');
+  };
+  window.bpmnStableUndo = function(){
+    if(!undoStack.length) return;
+    const current = snapshot();
+    redoStack.push(current);
+    const previous = undoStack.pop();
+    restoreState(previous);
+  };
+  window.bpmnStableRedo = function(){
+    if(!redoStack.length) return;
+    const current = snapshot();
+    undoStack.push(current);
+    const next = redoStack.pop();
+    restoreState(next);
+  };
+  window.bpmnStableZoom = function(delta){
+    ensureState();
+    st.zoom = clampZoom((st.zoom || 1) + Number(delta || 0));
+    draw();
+  };
+  window.bpmnStableFit = function(){
+    ensureState();
+    const wrap = document.getElementById('bpmn-svg-wrap');
+    if(!wrap) return;
+    const p = st.pool;
+    st.zoom = clampZoom(Math.min(
+      (wrap.clientWidth - 36) / Math.max(1, p.w + 120),
+      (wrap.clientHeight - 36) / Math.max(1, p.h + 120)
+    ));
+    draw();
+    setTimeout(function(){
+      wrap.scrollLeft = Math.max(0, (p.x - 60) * st.zoom);
+      wrap.scrollTop = Math.max(0, (p.y - 60) * st.zoom);
+    }, 0);
+  };
+  window.bpmnStableValidate = function(){
+    lastValidation = validateDiagram();
+    renderValidation();
+    refreshWorkbenchControls();
+    toast(lastValidation.length ? 'Revise os pontos destacados na validacao BPMN.' : 'BPMN validado sem problemas.');
+  };
+  window.bpmnStablePaletteDrag = function(evt,type,detail){
+    if(!evt.dataTransfer) return;
+    evt.dataTransfer.effectAllowed = 'copy';
+    evt.dataTransfer.setData('application/x-bpmn-stable', JSON.stringify({type,detail}));
+  };
+  window.bpmnStableCanvasDragOver = function(evt){
+    if(evt.dataTransfer && evt.dataTransfer.types && Array.from(evt.dataTransfer.types).includes('application/x-bpmn-stable')){
+      evt.preventDefault();
+      evt.dataTransfer.dropEffect = 'copy';
+      document.getElementById('bpmn-svg-wrap')?.classList.add('bpmn-drop-active');
+    }
+  };
+  window.bpmnStableCanvasDragLeave = function(){
+    document.getElementById('bpmn-svg-wrap')?.classList.remove('bpmn-drop-active');
+  };
+  window.bpmnStableCanvasDrop = function(evt){
+    const raw = evt.dataTransfer?.getData('application/x-bpmn-stable');
+    if(!raw) return;
+    evt.preventDefault();
+    document.getElementById('bpmn-svg-wrap')?.classList.remove('bpmn-drop-active');
+    try{
+      const item = JSON.parse(raw);
+      const sz = size(item.type);
+      const p = svgPoint(evt);
+      addNode(item.type, p.x - sz.w/2, p.y - sz.h/2, '', null, item.detail);
+    }catch(e){
+      toast('Nao foi possivel adicionar o elemento BPMN.');
+    }
+  };
+  window.bpmnStableCanvasPan = function(evt){
+    if(!(evt.button === 1 || evt.altKey || spacePan)) return;
+    const wrap = document.getElementById('bpmn-svg-wrap');
+    if(!wrap) return;
+    evt.preventDefault();
+    const startX = evt.clientX;
+    const startY = evt.clientY;
+    const left = wrap.scrollLeft;
+    const top = wrap.scrollTop;
+    wrap.classList.add('bpmn-pan-grabbing');
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    function move(e){
+      wrap.scrollLeft = left - (e.clientX - startX);
+      wrap.scrollTop = top - (e.clientY - startY);
+    }
+    function up(){
+      wrap.classList.remove('bpmn-pan-grabbing');
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    }
+  };
 
   window.bpmnStableSelect = function(evt,id){ evt.stopPropagation(); st.selected=id; st.selectedLane=null; st.selectedFlow=null; draw(); };
   window.bpmnStableSelectLane = function(evt,id){ evt.stopPropagation(); st.selected=null; st.selectedLane=id; st.selectedFlow=null; draw(); };
@@ -8642,6 +9567,7 @@ closeBpmnContextMenu();
     evt.preventDefault();
     const flow = st.flows.find(f=>f.id===flowId);
     if(!flow) return;
+    commit();
     st.selectedFlow=flowId;
     const node = nodeById(endpoint === 'a' ? flow.a : flow.b);
     if(!node) return;
@@ -8664,6 +9590,7 @@ closeBpmnContextMenu();
   window.bpmnStableDrag = function(evt,id){
     evt.stopPropagation(); evt.preventDefault();
     const n=nodeById(id); if(!n) return;
+    commit();
     st.selected=id;
     st.selectedLane=null;
     const p=svgPoint(evt);
@@ -8716,6 +9643,7 @@ closeBpmnContextMenu();
 
   window.bpmnStableUpdate = function(id,prop,value){
     const n=nodeById(id); if(!n) return;
+    commit();
     n[prop]=value;
     if(prop==='lane') clampNode(n);
     draw();
@@ -8724,6 +9652,7 @@ closeBpmnContextMenu();
   window.bpmnStableUpdateLane = function(id,prop,value){
     const lane = st.lanes.find(l=>l.id===id);
     if(!lane) return;
+    commit();
     if(prop==='h') lane.h = Math.max(90, Number(value)||90);
     else lane[prop] = value;
     st.nodes.forEach(clampNode);
@@ -8731,6 +9660,7 @@ closeBpmnContextMenu();
   };
 
   window.bpmnStableUpdatePoolWidth = function(value){
+    commit();
     st.pool.w = Math.max(650, Number(value)||650);
     st.nodes.forEach(clampNode);
     draw();
@@ -8741,6 +9671,7 @@ closeBpmnContextMenu();
     if(!f) return;
     const a=nodeById(f.a), b=nodeById(f.b);
     if(a && b){
+      commit();
       f.aAttach = defaultAttach(a,b);
       f.bAttach = defaultAttach(b,a);
     }
@@ -8752,6 +9683,7 @@ closeBpmnContextMenu();
       toast('O pool precisa ter pelo menos uma raia.');
       return;
     }
+    commit();
     const fallback = st.lanes.find(l=>l.id!==id);
     st.nodes.forEach(n=>{ if(n.lane===id) n.lane=fallback.id; });
     st.lanes = st.lanes.filter(l=>l.id!==id);
@@ -8764,6 +9696,7 @@ closeBpmnContextMenu();
     evt.stopPropagation(); evt.preventDefault();
     const lane = st.lanes.find(l=>l.id===id);
     if(!lane) return;
+    commit();
     st.selected=null;
     st.selectedLane=id;
     const p0=svgPoint(evt);
@@ -8791,6 +9724,7 @@ closeBpmnContextMenu();
 
   window.bpmnStableDelete = function(){
     if(st.selectedFlow){
+      commit();
       st.flows = st.flows.filter(f=>f.id!==st.selectedFlow);
       st.selectedFlow=null;
       draw();
@@ -8801,6 +9735,7 @@ closeBpmnContextMenu();
       return;
     }
     if(!st.selected) return;
+    commit();
     st.nodes=st.nodes.filter(n=>n.id!==st.selected);
     st.flows=st.flows.filter(f=>f.a!==st.selected && f.b!==st.selected);
     st.selected=null; draw();
@@ -8808,6 +9743,7 @@ closeBpmnContextMenu();
 
   window.bpmnStableResize = function(evt){
     evt.stopPropagation(); evt.preventDefault();
+    commit();
     const p0=svgPoint(evt), oldW=st.pool.w, oldH=st.pool.h;
     document.addEventListener('mousemove',move);
     document.addEventListener('mouseup',up);
@@ -8837,9 +9773,9 @@ closeBpmnContextMenu();
   };
   window.bpmnStableCloseMenu = function(){ document.getElementById('bpmn-stable-menu')?.classList.remove('open'); };
 
-  window.salvarBpmnLocal = function(){ localStorage.setItem('bpmnStable',JSON.stringify(st)); toast('Rascunho BPMN salvo.'); };
-  window.carregarBpmnLocal = function(){ try{st=JSON.parse(localStorage.getItem('bpmnStable'))||freshState();openModule();}catch(e){st=freshState();openModule();} };
-  window.limparBPMN = function(){ if(confirm('Limpar BPMN?')){st=freshState();draw();} };
+  window.salvarBpmnLocal = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','write')) return; localStorage.setItem('bpmnStable',JSON.stringify(st)); toast('Rascunho BPMN salvo.'); };
+  window.carregarBpmnLocal = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','open')) return; try{commit();st=JSON.parse(localStorage.getItem('bpmnStable'))||freshState();openModule('view');}catch(e){st=freshState();openModule('view');} };
+  window.limparBPMN = function(){ if(typeof temPermissaoModulo === 'function' && !temPermissaoModulo('bpmn','write')) return; if(confirm('Limpar BPMN?')){commit();st=freshState();draw();} };
 
   function buildExportSvg(){
     ensureState();
@@ -8882,13 +9818,42 @@ closeBpmnContextMenu();
   window.baixarBpmnXML = function(){
     ensureState();
     const typeTag=n=> n.type==='task'?(n.taskType||'task') : n.type==='gateway'?(n.gatewayType||'exclusiveGateway') : n.type==='start'?'startEvent':'endEvent';
+    const flowWaypoints = f => {
+      const pts = flowPoints(f);
+      if(!pts) return [];
+      const [p1,p2] = pts;
+      if(Math.abs(p2.x-p1.x) >= Math.abs(p2.y-p1.y)){
+        const m = Math.round((p1.x+p2.x)/2);
+        return [p1,{x:m,y:p1.y},{x:m,y:p2.y},p2];
+      }
+      const m = Math.round((p1.y+p2.y)/2);
+      return [p1,{x:p1.x,y:m},{x:p2.x,y:m},p2];
+    };
     let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bomfuturo.com.br/pmo/bpmn">\n`;
     xml+=`<bpmn:collaboration id="Collaboration_1"><bpmn:participant id="Participant_1" name="${esc(st.pool.label)}" processRef="Process_1"/></bpmn:collaboration>\n<bpmn:process id="Process_1" isExecutable="false">\n<bpmn:laneSet id="LaneSet_1">\n`;
     st.lanes.forEach(l=>{xml+=`<bpmn:lane id="${l.id}" name="${esc(l.label)}">`; st.nodes.filter(n=>n.lane===l.id).forEach(n=>xml+=`<bpmn:flowNodeRef>${n.id}</bpmn:flowNodeRef>`); xml+=`</bpmn:lane>\n`;});
     xml+=`</bpmn:laneSet>\n`;
-    st.nodes.forEach(n=>{xml+=`<bpmn:${typeTag(n)} id="${n.id}" name="${esc(n.label)}"></bpmn:${typeTag(n)}>\n`;});
+    st.nodes.forEach(n=>{
+      const incoming = st.flows.filter(f=>f.b===n.id).map(f=>`<bpmn:incoming>${f.id}</bpmn:incoming>`).join('');
+      const outgoing = st.flows.filter(f=>f.a===n.id).map(f=>`<bpmn:outgoing>${f.id}</bpmn:outgoing>`).join('');
+      xml+=`<bpmn:${typeTag(n)} id="${n.id}" name="${esc(n.label)}">${incoming}${outgoing}</bpmn:${typeTag(n)}>\n`;
+    });
     st.flows.forEach(f=>xml+=`<bpmn:sequenceFlow id="${f.id}" sourceRef="${f.a}" targetRef="${f.b}"/>\n`);
-    xml+=`</bpmn:process>\n</bpmn:definitions>`;
+    xml+=`</bpmn:process>\n`;
+    xml+=`<bpmndi:BPMNDiagram id="BPMNDiagram_1"><bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">\n`;
+    xml+=`<bpmndi:BPMNShape id="Participant_1_di" bpmnElement="Participant_1" isHorizontal="true"><dc:Bounds x="${Math.round(st.pool.x)}" y="${Math.round(st.pool.y)}" width="${Math.round(st.pool.w)}" height="${Math.round(st.pool.h)}"/></bpmndi:BPMNShape>\n`;
+    st.lanes.forEach(l=>{
+      xml+=`<bpmndi:BPMNShape id="${l.id}_di" bpmnElement="${l.id}" isHorizontal="true"><dc:Bounds x="${Math.round(st.pool.x+st.pool.poolHead)}" y="${Math.round(l.y)}" width="${Math.round(st.pool.w-st.pool.poolHead)}" height="${Math.round(l.h)}"/></bpmndi:BPMNShape>\n`;
+    });
+    st.nodes.forEach(n=>{
+      xml+=`<bpmndi:BPMNShape id="${n.id}_di" bpmnElement="${n.id}"><dc:Bounds x="${Math.round(n.x)}" y="${Math.round(n.y)}" width="${Math.round(n.w)}" height="${Math.round(n.h)}"/></bpmndi:BPMNShape>\n`;
+    });
+    st.flows.forEach(f=>{
+      xml+=`<bpmndi:BPMNEdge id="${f.id}_di" bpmnElement="${f.id}">`;
+      flowWaypoints(f).forEach(p=>{xml+=`<di:waypoint x="${Math.round(p.x)}" y="${Math.round(p.y)}"/>`;});
+      xml+=`</bpmndi:BPMNEdge>\n`;
+    });
+    xml+=`</bpmndi:BPMNPlane></bpmndi:BPMNDiagram>\n</bpmn:definitions>`;
     download('desenho-bpmn.bpmn',xml,'application/xml');
   };
 
@@ -8903,7 +9868,20 @@ closeBpmnContextMenu();
     if(!document.body.classList.contains('bpmn-active')) return;
     const tag=(document.activeElement?.tagName||'').toLowerCase();
     if(['input','textarea','select'].includes(tag)) return;
+    if(e.code === 'Space'){ spacePan = true; document.getElementById('bpmn-svg-wrap')?.classList.add('bpmn-pan-ready'); e.preventDefault(); return; }
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey){ e.preventDefault(); window.bpmnStableUndo(); return; }
+    if((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))){ e.preventDefault(); window.bpmnStableRedo(); return; }
+    if((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')){ e.preventDefault(); window.bpmnStableZoom(0.1); return; }
+    if((e.ctrlKey || e.metaKey) && e.key === '-'){ e.preventDefault(); window.bpmnStableZoom(-0.1); return; }
+    if((e.ctrlKey || e.metaKey) && e.key === '0'){ e.preventDefault(); window.bpmnStableFit(); return; }
+    if(e.key.toLowerCase() === 'v'){ e.preventDefault(); window.bpmnStableValidate(); return; }
     if((e.key==='Delete'||e.key==='Backspace') && (st?.selected || st?.selectedLane || st?.selectedFlow)){e.preventDefault(); window.bpmnStableDelete();}
+  });
+  document.addEventListener('keyup',e=>{
+    if(e.code === 'Space'){
+      spacePan = false;
+      document.getElementById('bpmn-svg-wrap')?.classList.remove('bpmn-pan-ready');
+    }
   });
 })();
 </script>

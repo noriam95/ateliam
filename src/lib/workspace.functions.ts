@@ -1,22 +1,38 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 
 async function sha256Hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-const WORKSPACE_NAME = "Workspace Atelier";
+const WORKSPACE_NAME = "Workspace Ateliam";
 
-/** Get or create the single workspace document for the current user. */
+async function userOrganizationId(context: { supabase: SupabaseClient<Database>; userId: string }) {
+  const { data, error } = await context.supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", context.userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.organization_id) throw new Error("Usuário sem organização vinculada.");
+  return data.organization_id;
+}
+
+/** Get or create the single workspace document for the current organization. */
 export const getOrCreateWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const organizationId = await userOrganizationId(context);
     const { data: existing, error: selErr } = await context.supabase
       .from("documents")
       .select("*")
-      .eq("owner_id", context.userId)
+      .eq("organization_id", organizationId)
       .eq("module", "workspace")
       .order("created_at", { ascending: true })
       .limit(1)
@@ -29,8 +45,9 @@ export const getOrCreateWorkspace = createServerFn({ method: "POST" })
       .insert({
         name: WORKSPACE_NAME,
         owner_id: context.userId,
+        organization_id: organizationId,
         module: "workspace",
-        description: "Workspace pessoal — contém todos os módulos (DDP, POP, BPMN).",
+        description: "Workspace da organização — contém todos os módulos (DDP, POP, BPMN).",
       })
       .select("*")
       .single();
@@ -41,18 +58,21 @@ export const getOrCreateWorkspace = createServerFn({ method: "POST" })
 /** Save a new version of the workspace (snapshot of iframe state). */
 export const saveWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { content: string; comment?: string }) =>
-    z.object({
-      content: z.string().min(2).max(20_000_000),
-      comment: z.string().max(500).optional(),
-    }).parse(d),
+  .validator((d: { content: string; comment?: string }) =>
+    z
+      .object({
+        content: z.string().min(2).max(20_000_000),
+        comment: z.string().max(500).optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
+    const organizationId = await userOrganizationId(context);
     // Find or create the workspace row
     const { data: existing } = await context.supabase
       .from("documents")
       .select("*")
-      .eq("owner_id", context.userId)
+      .eq("organization_id", organizationId)
       .eq("module", "workspace")
       .order("created_at", { ascending: true })
       .limit(1)
@@ -65,6 +85,7 @@ export const saveWorkspace = createServerFn({ method: "POST" })
         .insert({
           name: WORKSPACE_NAME,
           owner_id: context.userId,
+          organization_id: organizationId,
           module: "workspace",
         })
         .select("*")
@@ -95,7 +116,7 @@ export const saveWorkspace = createServerFn({ method: "POST" })
           const uploaded = await uploadFile({
             siteId: cfg.sharepoint_site_id,
             driveId: cfg.sharepoint_drive_id,
-            folderPath: cfg.sharepoint_folder_path ?? "/Atelier",
+            folderPath: cfg.sharepoint_folder_path ?? "/Ateliam",
             filename: `${doc.name.replace(/[^\w.-]+/g, "_")}.json`,
             content: data.content,
           });
@@ -138,10 +159,11 @@ export const saveWorkspace = createServerFn({ method: "POST" })
 export const listWorkspaceVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const organizationId = await userOrganizationId(context);
     const { data: doc } = await context.supabase
       .from("documents")
       .select("id")
-      .eq("owner_id", context.userId)
+      .eq("organization_id", organizationId)
       .eq("module", "workspace")
       .limit(1)
       .maybeSingle();
@@ -157,9 +179,7 @@ export const listWorkspaceVersions = createServerFn({ method: "POST" })
 
 export const getWorkspaceVersionContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { versionId: string }) =>
-    z.object({ versionId: z.string().uuid() }).parse(d),
-  )
+  .validator((d: { versionId: string }) => z.object({ versionId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: v, error } = await context.supabase
       .from("document_versions")

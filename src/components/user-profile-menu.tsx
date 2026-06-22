@@ -1,0 +1,234 @@
+import { Camera, KeyRound, LogOut, X } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+const PHOTO_PREFIX = "ateliam-profile-photo:";
+
+export function UserProfileMenu({
+  email,
+  organizationName,
+  isDemo = false,
+  onSignOut,
+}: {
+  email: string;
+  organizationName: string;
+  isDemo?: boolean;
+  onSignOut: () => void | Promise<void>;
+}) {
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [photo, setPhoto] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const storageKey = `${PHOTO_PREFIX}${email || "local"}`;
+  const initials = (email || "Ateliam")
+    .split("@")[0]
+    .split(/[._\-\s]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  useEffect(() => {
+    try {
+      setPhoto(window.localStorage.getItem(storageKey) ?? "");
+    } catch {
+      setPhoto("");
+    }
+  }, [storageKey]);
+
+  function addPhoto(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result ?? "");
+      try {
+        window.localStorage.setItem(storageKey, value);
+        setPhoto(value);
+        setOpen(false);
+        toast.success("Foto de perfil atualizada.");
+      } catch {
+        toast.error("Não foi possível salvar a foto.");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function changePassword() {
+    if (password.length < 6) {
+      toast.error("A nova senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (password !== confirmation) {
+      toast.error("A confirmação da senha não confere.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (!isDemo) {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+      }
+      setPassword("");
+      setConfirmation("");
+      setPasswordOpen(false);
+      setOpen(false);
+      toast.success(isDemo ? "Senha validada no teste local." : "Senha alterada com sucesso.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível alterar a senha.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="grid h-9 w-9 overflow-hidden rounded-full border border-border bg-card text-xs font-bold text-foreground shadow-sm hover:border-primary/40"
+        title="Perfil do usuário"
+        aria-label="Abrir perfil do usuário"
+      >
+        {photo ? (
+          <img src={photo} alt="Perfil" className="h-full w-full object-cover" />
+        ) : (
+          <span className="grid h-full w-full place-items-center">{initials || "AT"}</span>
+        )}
+      </button>
+
+      <input
+        ref={uploadRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          addPhoto(event.target.files?.[0]);
+          event.currentTarget.value = "";
+        }}
+      />
+
+      {open ? (
+        <div className="absolute right-0 top-11 z-50 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-[0_18px_50px_rgba(15,23,42,.16)]">
+          <div className="border-b border-border px-4 py-3">
+            <div className="truncate text-sm font-semibold text-popover-foreground">
+              {email || "Usuário local"}
+            </div>
+            <div className="mt-1 truncate text-xs text-muted-foreground">{organizationName}</div>
+          </div>
+          <div className="p-1.5">
+            <ProfileAction
+              icon={<Camera className="h-4 w-4" />}
+              onClick={() => uploadRef.current?.click()}
+            >
+              Adicionar foto
+            </ProfileAction>
+            <ProfileAction
+              icon={<KeyRound className="h-4 w-4" />}
+              onClick={() => setPasswordOpen(true)}
+            >
+              Trocar senha
+            </ProfileAction>
+            <ProfileAction icon={<LogOut className="h-4 w-4" />} onClick={onSignOut} danger>
+              Sair do sistema
+            </ProfileAction>
+          </div>
+        </div>
+      ) : null}
+
+      {passwordOpen ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/25 p-4 backdrop-blur-[2px]">
+          <section className="w-full max-w-md rounded-lg border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.2)]">
+            <header className="flex items-start justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold">Trocar senha</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Defina uma nova senha para seu acesso.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="grid gap-4 p-5">
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                Nova senha
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                Confirmar nova senha
+                <input
+                  type="password"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setPasswordOpen(false)}
+                className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={changePassword}
+                disabled={saving}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {saving ? "Salvando..." : "Alterar senha"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileAction({
+  children,
+  icon,
+  onClick,
+  danger = false,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  onClick: () => void | Promise<void>;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition ${
+        danger
+          ? "text-destructive hover:bg-destructive/8"
+          : "text-popover-foreground hover:bg-muted"
+      }`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}

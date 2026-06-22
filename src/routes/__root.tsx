@@ -47,17 +47,21 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">Não foi possível carregar a página</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Tente novamente em alguns instantes.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Tente novamente em alguns instantes.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
           >
             Tentar de novo
           </button>
-          <a href="/" className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
+          <a
+            href="/"
+            className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
             Início
           </a>
         </div>
@@ -71,8 +75,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Atelier — Workspace de processos" },
-      { name: "description", content: "Workspace modular para criar, versionar e gerenciar documentos de processo." },
+      { title: "Ateliam — Workspace de processos" },
+      {
+        name: "description",
+        content: "Workspace modular para criar, versionar e gerenciar documentos de processo.",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -80,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&family=Epilogue:wght@300;400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=IBM+Plex+Serif:wght@600;700&display=swap",
       },
     ],
   }),
@@ -92,8 +99,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <head><HeadContent /></head>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { try { const key = "ateliam-theme-preference"; const migrationKey = "ateliam-light-workspace-v1"; if (!localStorage.getItem(migrationKey)) { localStorage.setItem(key, "light"); localStorage.setItem(migrationKey, "1"); } let preference = localStorage.getItem(key) || "light"; if (!["dark","light","system"].includes(preference)) preference = "light"; const resolved = preference === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : preference; const root = document.documentElement; root.dataset.theme = resolved; root.dataset.themePreference = preference; root.classList.toggle("dark", resolved === "dark"); root.style.colorScheme = resolved; } catch { document.documentElement.dataset.theme = "light"; document.documentElement.classList.remove("dark"); document.documentElement.style.colorScheme = "light"; } })();`,
+          }}
+        />
+        <HeadContent />
+      </head>
       <body>
         {children}
         <Scripts />
