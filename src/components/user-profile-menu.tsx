@@ -4,6 +4,41 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const PHOTO_PREFIX = "ateliam-profile-photo:";
+const PHOTO_SIZE = 256;
+
+// Comprime a foto de perfil para um quadrado WebP 256x256 (recorte central),
+// reduzindo bastante o tamanho armazenado já que o avatar é exibido pequeno.
+async function compressProfilePhoto(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("read-failed"));
+    reader.readAsDataURL(file);
+  });
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("decode-failed"));
+    img.src = dataUrl;
+  });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = PHOTO_SIZE;
+  canvas.height = PHOTO_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+
+  // recorte central mantendo proporção (cover)
+  const side = Math.min(image.width, image.height);
+  const sx = (image.width - side) / 2;
+  const sy = (image.height - side) / 2;
+  ctx.drawImage(image, sx, sy, side, side, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
+
+  const webp = canvas.toDataURL("image/webp", 0.82);
+  // Alguns navegadores não suportam WebP no canvas; faz fallback para JPEG.
+  return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.82);
+}
 
 export function UserProfileMenu({
   email,
@@ -40,25 +75,21 @@ export function UserProfileMenu({
     }
   }, [storageKey]);
 
-  function addPhoto(file?: File) {
+  async function addPhoto(file?: File) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Selecione um arquivo de imagem.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = String(reader.result ?? "");
-      try {
-        window.localStorage.setItem(storageKey, value);
-        setPhoto(value);
-        setOpen(false);
-        toast.success("Foto de perfil atualizada.");
-      } catch {
-        toast.error("Não foi possível salvar a foto.");
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const value = await compressProfilePhoto(file);
+      window.localStorage.setItem(storageKey, value);
+      setPhoto(value);
+      setOpen(false);
+      toast.success("Foto de perfil atualizada.");
+    } catch {
+      toast.error("Não foi possível salvar a foto.");
+    }
   }
 
   async function changePassword() {
@@ -110,7 +141,7 @@ export function UserProfileMenu({
         accept="image/*"
         className="hidden"
         onChange={(event) => {
-          addPhoto(event.target.files?.[0]);
+          void addPhoto(event.target.files?.[0]);
           event.currentTarget.value = "";
         }}
       />

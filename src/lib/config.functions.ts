@@ -3,6 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
+import {
+  CODE_KINDS,
+  type CodeKind,
+  applyNextCode,
+  normalizeCodeSettings,
+} from "@/lib/code-generation";
 
 type AppRole = "maestro" | "admin" | "editor" | "viewer";
 type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
@@ -31,7 +37,16 @@ const orgSchema = z.object({
     .regex(/^#?[0-9A-Fa-f]{6}$/)
     .transform((value) => value.replace("#", "").toUpperCase()),
 });
-const orgUpdateSchema = orgSchema.extend({ id: z.string().uuid() });
+const codeRuleSchema = z.object({
+  mode: z.enum(["auto", "manual"]).default("manual"),
+  mask: z.string().trim().max(120).default(""),
+  next: z.number().int().min(1).default(1),
+});
+const codeSettingsSchema = z.record(z.enum(CODE_KINDS), codeRuleSchema).nullish();
+const orgUpdateSchema = orgSchema.extend({
+  id: z.string().uuid(),
+  code_settings: codeSettingsSchema,
+});
 const documentModelSchema = z.object({
   organizationId: z.string().uuid().optional().nullable(),
   model_key: z.enum(["ddp-word", "ddp-html", "pop-word"]),
@@ -333,6 +348,7 @@ export const updateOrganization = createServerFn({ method: "POST" })
         slug: data.slug,
         logo_data_url: data.logo_data_url ?? null,
         word_header_color: data.word_header_color,
+        ...(data.code_settings ? { code_settings: normalizeCodeSettings(data.code_settings) } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.id)
@@ -340,6 +356,37 @@ export const updateOrganization = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+// Gera o próximo código para um tipo de cadastro e incrementa a sequência da
+// organização de forma atômica (servidor é a fonte da verdade no modo real).
+export const reserveCode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { organizationId?: string | null; kind: CodeKind }) =>
+    z
+      .object({
+        organizationId: z.string().uuid().optional().nullable(),
+        kind: z.enum(CODE_KINDS),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: org, error } = await supabaseAdmin
+      .from("organizations")
+      .select("slug, code_settings")
+      .eq("id", access.organizationId)
+      .single();
+    if (error) throw new Error(error.message);
+    const settings = normalizeCodeSettings(org.code_settings);
+    const { code, settings: updated } = applyNextCode(settings, data.kind, { slug: org.slug });
+    const { error: updateError } = await supabaseAdmin
+      .from("organizations")
+      .update({ code_settings: updated, updated_at: new Date().toISOString() })
+      .eq("id", access.organizationId);
+    if (updateError) throw new Error(updateError.message);
+    return { code };
   });
 
 export const listOrganizationDocumentModels = createServerFn({ method: "GET" })
