@@ -606,6 +606,8 @@ function WorkspaceHome() {
                       <LayoutGrid className="h-4 w-4 text-foreground" />
                     ) : activeArea === "registrations" ? (
                       <Database className="h-4 w-4 text-foreground" />
+                    ) : activeArea === "reports" ? (
+                      <BarChart2 className="h-4 w-4 text-foreground" />
                     ) : (
                       <Settings className="h-4 w-4 text-foreground" />
                     )}
@@ -616,7 +618,9 @@ function WorkspaceHome() {
                           ? "Módulos"
                           : activeArea === "registrations"
                             ? "Cadastros"
-                            : "Configurações"}
+                            : activeArea === "reports"
+                              ? "Relatórios"
+                              : "Configurações"}
                     </div>
                   </div>
                 </div>

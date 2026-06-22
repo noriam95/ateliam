@@ -125,7 +125,7 @@ const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
   { id: "type-sub", code: "subprocess", label: "Subprocesso", active: true },
 ];
 
-const DEMO_REGISTRY: RegistryData = {
+export const DEMO_REGISTRY: RegistryData = {
   areas: [
     { id: "area-ti", name: "Tecnologia da Informação" },
     { id: "area-processos", name: "Processos" },
