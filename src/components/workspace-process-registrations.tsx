@@ -6,12 +6,43 @@ import { toast } from "sonner";
 import {
   deleteProcessRegistration,
   listProcessRegistrationData,
+  reserveCode,
   saveProcessArea,
   saveProcessOwnerRegistration,
   saveProcessRegistration,
   saveProcessTypeRegistration,
   saveValueChainRegistration,
 } from "@/lib/config.functions";
+import { type CodeKind, type CodeSettings, normalizeRule, formatCode } from "@/lib/code-generation";
+
+// Em modo demo não há servidor: a sequência é mantida por (organização, tipo)
+// no localStorage, inicializada a partir da regra configurada.
+function demoCodeNextKey(organizationId: string | null | undefined, kind: CodeKind) {
+  return `ateliam-demo-code-next:${organizationId ?? "default"}:${kind}`;
+}
+function readDemoCodeNext(
+  organizationId: string | null | undefined,
+  kind: CodeKind,
+  fallback: number,
+) {
+  if (typeof window === "undefined") return fallback;
+  const stored = Number(window.localStorage.getItem(demoCodeNextKey(organizationId, kind)));
+  return Number.isFinite(stored) && stored >= 1 ? Math.floor(stored) : fallback;
+}
+function reserveDemoCode(
+  organizationId: string | null | undefined,
+  kind: CodeKind,
+  settings: CodeSettings | null | undefined,
+  slug: string | null | undefined,
+) {
+  const rule = normalizeRule(kind, settings?.[kind]);
+  const next = readDemoCodeNext(organizationId, kind, rule.next);
+  const code = formatCode(rule.mask, next, { slug });
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(demoCodeNextKey(organizationId, kind), String(next + 1));
+  }
+  return code;
+}
 
 export type ProcessRegistrationView =
   | "value-chains"
@@ -177,11 +208,15 @@ export function WorkspaceProcessRegistrations({
   view,
   organizationId,
   organizationName,
+  organizationSlug,
+  codeSettings,
   isDemo,
 }: {
   view: ProcessRegistrationView;
   organizationId?: string | null;
   organizationName: string;
+  organizationSlug?: string | null;
+  codeSettings?: CodeSettings | null;
   isDemo: boolean;
 }) {
   const listRegistry = useServerFn(listProcessRegistrationData);
@@ -190,7 +225,17 @@ export function WorkspaceProcessRegistrations({
   const saveType = useServerFn(saveProcessTypeRegistration);
   const saveValueChain = useServerFn(saveValueChainRegistration);
   const saveProcess = useServerFn(saveProcessRegistration);
+  const reserveCodeFn = useServerFn(reserveCode);
   const removeRegistration = useServerFn(deleteProcessRegistration);
+  const processRule = normalizeRule("process", codeSettings?.process);
+  const isAutoProcessCode = view === "processes" && processRule.mode === "auto";
+  const processCodePreview = isAutoProcessCode
+    ? formatCode(
+        processRule.mask,
+        isDemo ? readDemoCodeNext(organizationId, "process", processRule.next) : processRule.next,
+        { slug: organizationSlug },
+      )
+    : "";
   const [demoData, setDemoData] = useState<RegistryData>(() =>
     organizationId === "demo-bom-futuro" ? DEMO_REGISTRY : emptyRegistryData(),
   );
@@ -208,7 +253,21 @@ export function WorkspaceProcessRegistrations({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (isDemo) return saveDemoRegistration(view, draft, demoData, setDemoData);
+      // Gera o código do processo quando configurado para geração automática.
+      let processCode = draft.code || null;
+      if (view === "processes" && !draft.id && isAutoProcessCode && !processCode) {
+        processCode = isDemo
+          ? reserveDemoCode(organizationId, "process", codeSettings, organizationSlug)
+          : (await reserveCodeFn({ data: { organizationId, kind: "process" } })).code;
+      }
+      if (isDemo) {
+        return saveDemoRegistration(
+          view,
+          { ...draft, code: processCode ?? draft.code },
+          demoData,
+          setDemoData,
+        );
+      }
       if (view === "areas") {
         return saveArea({
           data: { id: draft.id || undefined, organizationId, name: draft.name },
@@ -251,7 +310,7 @@ export function WorkspaceProcessRegistrations({
         data: {
           id: draft.id || undefined,
           organizationId,
-          code: draft.code || null,
+          code: processCode,
           name: draft.name,
           type: draft.type,
           valueChainId: draft.valueChainId || null,
@@ -418,7 +477,14 @@ export function WorkspaceProcessRegistrations({
               </button>
             </div>
             <div className="mt-5 grid gap-4">
-              <RegistrationFields view={view} draft={draft} setDraft={setDraft} data={data} />
+              <RegistrationFields
+                view={view}
+                draft={draft}
+                setDraft={setDraft}
+                data={data}
+                autoCode={isAutoProcessCode}
+                codePreview={processCodePreview}
+              />
               <button
                 type="submit"
                 disabled={saveMutation.isPending || !isValidDraft(view, draft)}
@@ -439,11 +505,15 @@ function RegistrationFields({
   draft,
   setDraft,
   data,
+  autoCode = false,
+  codePreview = "",
 }: {
   view: ProcessRegistrationView;
   draft: Draft;
   setDraft: Dispatch<SetStateAction<Draft>>;
   data: RegistryData;
+  autoCode?: boolean;
+  codePreview?: string;
 }) {
   if (view === "areas")
     return (
@@ -590,11 +660,20 @@ function RegistrationFields({
     <>
       <div className="grid grid-cols-[120px_1fr] gap-3">
         <Field label="Código">
-          <input
-            value={draft.code}
-            onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
-            className={inputClass}
-          />
+          {autoCode ? (
+            <input
+              value={draft.code || codePreview}
+              readOnly
+              title="Código gerado automaticamente"
+              className={`${inputClass} cursor-not-allowed bg-muted/60 text-muted-foreground`}
+            />
+          ) : (
+            <input
+              value={draft.code}
+              onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
+              className={inputClass}
+            />
+          )}
         </Field>
         <Field label="Nome">
           <input

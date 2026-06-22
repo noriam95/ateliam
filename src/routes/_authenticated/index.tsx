@@ -37,6 +37,7 @@ import {
 import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
 import { getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
+import type { CodeSettings } from "@/lib/code-generation";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: WorkspaceHome,
@@ -107,6 +108,7 @@ type AccessibleOrganization = {
   name: string;
   slug: string;
   logo_data_url: string | null;
+  code_settings?: CodeSettings | null;
   isDefault?: boolean;
 };
 
@@ -440,6 +442,9 @@ function WorkspaceHome() {
 
   const organizationName = dashboard?.organization?.name ?? "Sua organização";
   const organizationLogo = dashboard?.organization?.logo_data_url ?? null;
+  const activeOrganization = accessibleOrganizations.find(
+    (organization) => organization.id === selectedOrganizationId,
+  );
   const totals = dashboard?.totals;
   return (
     <div className="min-h-screen bg-background text-foreground" style={workspaceGrayVars}>
@@ -457,7 +462,13 @@ function WorkspaceHome() {
           </button>
         )}
 
-        <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => selectArea("home")}
+          className="flex items-center gap-2.5 rounded-md transition-opacity hover:opacity-80"
+          title="Ir para a página inicial"
+          aria-label="Ir para a página inicial"
+        >
           {organizationLogo ? (
             <img
               src={organizationLogo}
@@ -470,7 +481,7 @@ function WorkspaceHome() {
               markClassName="h-3.5 w-3.5 after:h-1.5 after:w-1.5"
             />
           )}
-        </div>
+        </button>
 
         <div className="flex-1" />
 
@@ -591,18 +602,6 @@ function WorkspaceHome() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                  {activeArea === "home" ? (
-                    <TreeSection
-                      title="Organização Ativa"
-                      open={expanded.organization}
-                      onToggle={() => toggle("organization")}
-                    >
-                      <TreeButton active={view === "overview"} onClick={() => setView("overview")}>
-                        Visão Geral
-                      </TreeButton>
-                    </TreeSection>
-                  ) : null}
-
                   {activeArea === "modules" ? (
                     <div className="grid gap-1">
                       <ModuleTreeGroup
@@ -729,6 +728,8 @@ function WorkspaceHome() {
               view={view}
               organizationName={organizationName}
               organizationId={dashboard?.organization?.id ?? null}
+              organizationSlug={activeOrganization?.slug ?? null}
+              codeSettings={activeOrganization?.code_settings ?? null}
               totals={totals}
               topDepartments={dashboard?.topDepartments ?? []}
               topOwners={dashboard?.topOwners ?? []}
@@ -748,6 +749,8 @@ function WorkspaceContent({
   view,
   organizationName,
   organizationId,
+  organizationSlug,
+  codeSettings,
   totals,
   topDepartments,
   topOwners,
@@ -759,6 +762,8 @@ function WorkspaceContent({
   view: WorkspaceView;
   organizationName: string;
   organizationId: string | null;
+  organizationSlug: string | null;
+  codeSettings: CodeSettings | null;
   totals: DashboardTotals | undefined;
   topDepartments: { label: string; value: number }[];
   topOwners: { label: string; value: number }[];
@@ -836,6 +841,8 @@ function WorkspaceContent({
         view={view as ProcessRegistrationView}
         organizationId={organizationId}
         organizationName={organizationName}
+        organizationSlug={organizationSlug}
+        codeSettings={codeSettings}
         isDemo={isDemo}
       />
     );
