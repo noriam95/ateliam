@@ -198,7 +198,7 @@ async function permissionContext(context: AuthContext, requestedOrganizationId?:
 
 async function assertMaestro(context: AuthContext) {
   const access = await permissionContext(context);
-  if (!access.isMaestro) throw new Error("Acesso restrito ao Maestro Ateliam.");
+  if (!access.isMaestro) throw new Error("Acesso restrito ao Maestro BF Flow.");
   return access;
 }
 
@@ -221,7 +221,7 @@ async function assertOrganizationEditor(context: AuthContext, organizationId?: s
 function rolesAllowedBy(access: Awaited<ReturnType<typeof permissionContext>>, roles: AppRole[]) {
   if (access.isMaestro) return roles;
   if (roles.includes("maestro"))
-    throw new Error("Somente o Maestro Ateliam pode conceder Maestro.");
+    throw new Error("Somente o Maestro BF Flow pode conceder Maestro.");
   return roles.filter((role) => role !== "maestro");
 }
 
