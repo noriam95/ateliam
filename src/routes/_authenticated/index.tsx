@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { AteliamMark } from "@/components/ateliam-mark";
+import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { WorkspaceSystemSettings } from "@/components/workspace-system-settings";
@@ -155,8 +155,8 @@ function WorkspaceHome() {
         isDefault: true,
       },
       {
-        id: "demo-ateliam-lab",
-        name: "Ateliam Lab",
+        id: "demo-bfflow-lab",
+        name: "BF Flow Lab",
         slug: "ateliam-lab",
         logo_data_url: null,
       },
@@ -355,7 +355,7 @@ function WorkspaceHome() {
     let cancelled = false;
 
     if (isDemo) {
-      setEmail("analista.local@ateliam");
+      setEmail("analista.local@bfflow");
       return () => {
         cancelled = true;
       };
@@ -489,7 +489,7 @@ function WorkspaceHome() {
               className="h-8 w-20 object-contain object-left"
             />
           ) : (
-            <AteliamMark
+            <BFFlowMark
               className="h-7 w-7 text-foreground"
               markClassName="h-3.5 w-3.5 after:h-1.5 after:w-1.5"
             />
@@ -1736,7 +1736,7 @@ function ProfileMenu({
   const [open, setOpen] = useState(false);
   const [photo, setPhoto] = useState<string>("");
   const storageKey = `${PROFILE_PHOTO_PREFIX}${email || "local"}`;
-  const initials = (email || "Ateliam")
+  const initials = (email || "BF Flow")
     .split("@")[0]
     .split(/[._\-\s]+/)
     .filter(Boolean)
