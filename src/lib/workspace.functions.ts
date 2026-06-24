@@ -11,7 +11,7 @@ async function sha256Hex(s: string): Promise<string> {
     .join("");
 }
 
-const WORKSPACE_NAME = "Workspace Ateliam";
+const WORKSPACE_NAME = "Workspace BF Flow";
 
 async function userOrganizationId(context: { supabase: SupabaseClient<Database>; userId: string }) {
   const { data, error } = await context.supabase
@@ -116,7 +116,7 @@ export const saveWorkspace = createServerFn({ method: "POST" })
           const uploaded = await uploadFile({
             siteId: cfg.sharepoint_site_id,
             driveId: cfg.sharepoint_drive_id,
-            folderPath: cfg.sharepoint_folder_path ?? "/Ateliam",
+            folderPath: cfg.sharepoint_folder_path ?? "/BFFlow",
             filename: `${doc.name.replace(/[^\w.-]+/g, "_")}.json`,
             content: data.content,
           });
