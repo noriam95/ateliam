@@ -30,7 +30,7 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AteliamMark } from "@/components/ateliam-mark";
+import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -71,7 +71,7 @@ function Settings() {
   const effectiveRoles = isDemo ? ["maestro", "admin", "editor"] : (meQ.data?.roles ?? []);
   const [siteId, setSiteId] = useState("");
   const [driveId, setDriveId] = useState("");
-  const [folder, setFolder] = useState("/Ateliam");
+  const [folder, setFolder] = useState("/BFFlow");
   const [search, setSearch] = useState("");
   const [displayName, setDisplayName] = useState("Administrador local");
   const [demoUsers, setDemoUsers] = useState<UserAccessRow[]>(DEMO_USERS);
@@ -94,7 +94,7 @@ function Settings() {
     if (cfgQ.data?.config) {
       setSiteId(cfgQ.data.config.sharepoint_site_id ?? "");
       setDriveId(cfgQ.data.config.sharepoint_drive_id ?? "");
-      setFolder(cfgQ.data.config.sharepoint_folder_path ?? "/Ateliam");
+      setFolder(cfgQ.data.config.sharepoint_folder_path ?? "/BFFlow");
     }
   }, [cfgQ.data]);
 
@@ -268,9 +268,9 @@ function Settings() {
         <Link to="/" className="flex items-center gap-2 text-[12px] hover:opacity-80">
           <ArrowLeft className="h-4 w-4" /> Workspace
         </Link>
-        <AteliamMark className="ml-2 h-7 w-7" markClassName="h-3.5 w-3.5 after:h-1.5 after:w-1.5" />
+        <BFFlowMark className="ml-2 h-7 w-7" markClassName="h-3.5 w-3.5 after:h-1.5 after:w-1.5" />
         <div className="ml-2 text-[15px] font-bold tracking-tight">
-          <span className="ateliam-wordmark">Ateliam</span> · Configurações
+          <span className="ateliam-wordmark">BF Flow</span> · Configurações
         </div>
       </header>
       <div className="p-8 max-w-3xl mx-auto space-y-6">
@@ -337,7 +337,7 @@ function Settings() {
 
         {!isDemo && !canAdmin && (
           <div className="bg-secondary border border-border rounded-lg p-4 text-sm text-muted-foreground">
-            Apenas administradores da organização ou o Maestro Ateliam podem alterar essas
+            Apenas administradores da organização ou o Maestro BF Flow podem alterar essas
             configurações.
           </div>
         )}
@@ -376,7 +376,7 @@ function Settings() {
                   E-mail
                 </label>
                 <input
-                  value={isDemo ? "admin.local@ateliam" : (meQ.data?.profile?.email ?? "")}
+                  value={isDemo ? "admin.local@bfflow" : (meQ.data?.profile?.email ?? "")}
                   className="w-full mt-1 px-3 py-2 border border-input rounded-md text-sm bg-secondary"
                   disabled
                 />
@@ -400,7 +400,7 @@ function Settings() {
               </div>
               <div className="mt-3 space-y-2 text-sm text-muted-foreground">
                 <p>
-                  <strong className="text-foreground">Maestro Ateliam:</strong> gerencia o sistema e
+                  <strong className="text-foreground">Maestro BF Flow:</strong> gerencia o sistema e
                   todas as organizações.
                 </p>
                 <p>
@@ -432,7 +432,7 @@ function Settings() {
                 </p>
               </div>
               <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                {isDemo ? "Teste local" : isMaestro ? "Maestro Ateliam" : "Admin da organização"}
+                {isDemo ? "Teste local" : isMaestro ? "Maestro BF Flow" : "Admin da organização"}
               </span>
             </div>
 
@@ -453,7 +453,7 @@ function Settings() {
                           current.slug ||
                           name
                             .normalize("NFD")
-                            .replace(/[\u0300-\u036f]/g, "")
+                            .replace(/[̀-ͯ]/g, "")
                             .toLowerCase()
                             .replace(/[^a-z0-9]+/g, "-")
                             .replace(/^-|-$/g, ""),
@@ -520,7 +520,7 @@ function Settings() {
                 </p>
               </div>
               <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                {isDemo ? "Teste local" : isMaestro ? "Maestro Ateliam" : "Admin"}
+                {isDemo ? "Teste local" : isMaestro ? "Maestro BF Flow" : "Admin"}
               </span>
             </div>
 
@@ -740,7 +740,7 @@ function Settings() {
               value={folder}
               onChange={(e) => setFolder(e.target.value)}
               className="w-full mt-1 px-3 py-2 border border-input rounded-md text-sm"
-              placeholder="/Ateliam"
+              placeholder="/BFFlow"
             />
           </div>
 
@@ -780,7 +780,7 @@ type UserAccessRow = {
 };
 
 const ROLE_LABELS: Record<AppRole, string> = {
-  maestro: "Maestro Ateliam",
+  maestro: "Maestro BF Flow",
   admin: "Admin",
   editor: "Editor",
   viewer: "Viewer",
@@ -788,9 +788,9 @@ const ROLE_LABELS: Record<AppRole, string> = {
 
 const DEMO_ORGANIZATIONS: OrganizationRow[] = [
   {
-    id: "demo-org-ateliam",
-    name: "Ateliam Demo",
-    slug: "ateliam-demo",
+    id: "demo-org-bfflow",
+    name: "BF Flow Demo",
+    slug: "bfflow-demo",
     logo_data_url: null,
     word_header_color: "1D1D1F",
     created_by: null,
@@ -802,26 +802,26 @@ const DEMO_ORGANIZATIONS: OrganizationRow[] = [
 const DEMO_USERS: UserAccessRow[] = [
   {
     id: "demo-admin",
-    email: "admin.local@ateliam",
+    email: "admin.local@bfflow",
     display_name: "Administrador local",
-    organization_id: "demo-org-ateliam",
-    organization: { id: "demo-org-ateliam", name: "Ateliam Demo", slug: "ateliam-demo" },
+    organization_id: "demo-org-bfflow",
+    organization: { id: "demo-org-bfflow", name: "BF Flow Demo", slug: "bfflow-demo" },
     roles: ["maestro", "admin", "editor"],
   },
   {
     id: "demo-editor",
-    email: "editor.local@ateliam",
+    email: "editor.local@bfflow",
     display_name: "Analista de processos",
-    organization_id: "demo-org-ateliam",
-    organization: { id: "demo-org-ateliam", name: "Ateliam Demo", slug: "ateliam-demo" },
+    organization_id: "demo-org-bfflow",
+    organization: { id: "demo-org-bfflow", name: "BF Flow Demo", slug: "bfflow-demo" },
     roles: ["editor"],
   },
   {
     id: "demo-viewer",
-    email: "consulta.local@ateliam",
+    email: "consulta.local@bfflow",
     display_name: "Usuário consulta",
-    organization_id: "demo-org-ateliam",
-    organization: { id: "demo-org-ateliam", name: "Ateliam Demo", slug: "ateliam-demo" },
+    organization_id: "demo-org-bfflow",
+    organization: { id: "demo-org-bfflow", name: "BF Flow Demo", slug: "bfflow-demo" },
     roles: ["viewer"],
   },
 ];
