@@ -1,1 +1,265 @@
-aW1wb3J0IHsgQ2FtZXJhLCBLZXlSb3VuZCwgTG9nT3V0LCBYIH0gZnJvbSAibHVjaWRlLXJlYWN0IjsKaW1wb3J0IHsgdHlwZSBSZWFjdE5vZGUsIHVzZUVmZmVjdCwgdXNlUmVmLCB1c2VTdGF0ZSB9IGZyb20gInJlYWN0IjsKaW1wb3J0IHsgdG9hc3QgfSBmcm9tICJzb25uZXIiOwppbXBvcnQgeyBzdXBhYmFzZSB9IGZyb20gIkAvaW50ZWdyYXRpb25zL3N1cGFiYXNlL2NsaWVudCI7Cgpjb25zdCBQSE9UT19QUkVGSVggPSAiYXRlbGlhbS1wcm9maWxlLXBob3RvOiI7CmNvbnN0IFBIT1RPX1NJWkUgPSAyNTY7CgovLyBDb21wcmltZSBhIGZvdG8gZGUgcGVyZmlsIHBhcmEgdW0gcXVhZHJhZG8gV2ViUCAyNTZ4MjU2IChyZWNvcnRlIGNlbnRyYWwpLAovLyByZWR1emluZG8gYmFzdGFudGUgbyB0YW1hbmhvIGFybWF6ZW5hZG8gasOhIHF1ZSBvIGF2YXRhciDDqSBleGliaWRvIHBlcXVlbm8uCmFzeW5jIGZ1bmN0aW9uIGNvbXByZXNzUHJvZmlsZVBob3RvKGZpbGU6IEZpbGUpOiBQcm9taXNlPHN0cmluZz4gewogIGNvbnN0IGRhdGFVcmwgPSBhd2FpdCBuZXcgUHJvbWlzZTxzdHJpbmc+KChyZXNvbHZlLCByZWplY3QpID0+IHsKICAgIGNvbnN0IHJlYWRlciA9IG5ldyBGaWxlUmVhZGVyKCk7CiAgICByZWFkZXIub25sb2FkID0gKCkgPT4gcmVzb2x2ZShTdHJpbmcocmVhZGVyLnJlc3VsdCA/PyAiIikpOwogICAgcmVhZGVyLm9uZXJyb3IgPSAoKSA9PiByZWplY3QobmV3IEVycm9yKCJyZWFkLWZhaWxlZCIpKTsKICAgIHJlYWRlci5yZWFkQXNEYXRhVVJMKGZpbGUpOwogIH0pOwoKICBjb25zdCBpbWFnZSA9IGF3YWl0IG5ldyBQcm9taXNlPEhUTUxJbWFnZUVsZW1lbnQ+KChyZXNvbHZlLCByZWplY3QpID0+IHsKICAgIGNvbnN0IGltZyA9IG5ldyBJbWFnZSgpOwogICAgaW1nLm9ubG9hZCA9ICgpID0+IHJlc29sdmUoaW1nKTsKICAgIGltZy5vbmVycm9yID0gKCkgPT4gcmVqZWN0KG5ldyBFcnJvcigiZGVjb2RlLWZhaWxlZCIpKTsKICAgIGltZy5zcmMgPSBkYXRhVXJsOwogIH0pOwoKICBjb25zdCBjYW52YXMgPSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KCJjYW52YXMiKTsKICBjYW52YXMud2lkdGggPSBQSE9UT19TSVpFOwogIGNhbnZhcy5oZWlnaHQgPSBQSE9UT19TSVpFOwogIGNvbnN0IGN0eCA9IGNhbnZhcy5nZXRDb250ZXh0KCIyZCIpOwogIGlmICghY3R4KSByZXR1cm4gZGF0YVVybDsKCiAgLy8gcmVjb3J0ZSBjZW50cmFsIG1hbnRlbmRvIHByb3BvcsOnw6NvIChjb3ZlcikKICBjb25zdCBzaWRlID0gTWF0aC5taW4oaW1hZ2Uud2lkdGgsIGltYWdlLmhlaWdodCk7CiAgY29uc3Qgc3ggPSAoaW1hZ2Uud2lkdGggLSBzaWRlKSAvIDI7CiAgY29uc3Qgc3kgPSAoaW1hZ2UuaGVpZ2h0IC0gc2lkZSkgLyAyOwogIGN0eC5kcmF3SW1hZ2UoaW1hZ2UsIHN4LCBzeSwgc2lkZSwgc2lkZSwgMCwgMCwgUEhPVE9fU0laRSwgUEhPVE9fU0laRSk7CgogIGNvbnN0IHdlYnAgPSBjYW52YXMudG9EYXRhVVJMKCJpbWFnZS93ZWJwIiwgMC44Mik7CiAgLy8gQWxndW5zIG5hdmVnYWRvcmVzIG7Do28gc3Vwb3J0YW0gV2ViUCBubyBjYW52YXM7IGZheiBmYWxsYmFjayBwYXJhIEpQRUcuCiAgcmV0dXJuIHdlYnAuc3RhcnRzV2l0aCgiZGF0YTppbWFnZS93ZWJwIikgPyB3ZWJwIDogY2FudmFzLnRvRGF0YVVSTCgiaW1hZ2UvanBlZyIsIDAuODIpOwp9CgpleHBvcnQgZnVuY3Rpb24gVXNlclByb2ZpbGVNZW51KHsKICBlbWFpbCwKICBvcmdhbml6YXRpb25OYW1lLAogIGlzRGVtbyA9IGZhbHNlLAogIG9uU2lnbk91dCwKfTogewogIGVtYWlsOiBzdHJpbmc7CiAgb3JnYW5pemF0aW9uTmFtZTogc3RyaW5nOwogIGlzRGVtbz86IGJvb2xlYW47CiAgb25TaWduT3V0OiAoKSA9PiB2b2lkIHwgUHJvbWlzZTx2b2lkPjsKfSkgewogIGNvbnN0IHVwbG9hZFJlZiA9IHVzZVJlZjxIVE1MSW5wdXRFbGVtZW50PihudWxsKTsKICBjb25zdCBbb3Blbiwgc2V0T3Blbl0gPSB1c2VTdGF0ZShmYWxzZSk7CiAgY29uc3QgW3Bhc3N3b3JkT3Blbiwgc2V0UGFzc3dvcmRPcGVuXSA9IHVzZVN0YXRlKGZhbHNlKTsKICBjb25zdCBbcGhvdG8sIHNldFBob3RvXSA9IHVzZVN0YXRlKCIiKTsKICBjb25zdCBbcGFzc3dvcmQsIHNldFBhc3N3b3JkXSA9IHVzZVN0YXRlKCIiKTsKICBjb25zdCBbY29uZmlybWF0aW9uLCBzZXRDb25maXJtYXRpb25dID0gdXNlU3RhdGUoIiIpOwogIGNvbnN0IFtzYXZpbmcsIHNldFNhdmluZ10gPSB1c2VTdGF0ZShmYWxzZSk7CiAgY29uc3Qgc3RvcmFnZUtleSA9IGAke1BIT1RPX1BSRUZJWH0ke2VtYWlsIHx8ICJsb2NhbCJ9YDsKICBjb25zdCBpbml0aWFscyA9IChlbWFpbCB8fCAiQkYgRmxvdyIpCiAgICAuc3BsaXQoIkAiKVswXQogICAgLnNwbGl0KC9bLl9cLVxzXSsvKQogICAgLmZpbHRlcihCb29sZWFuKQogICAgLnNsaWNlKDAsIDIpCiAgICAubWFwKChwYXJ0KSA9PiBwYXJ0WzBdPy50b1VwcGVyQ2FzZSgpKQogICAgLmpvaW4oIiIpOwoKICB1c2VFZmZlY3QoKCkgPT4gewogICAgdHJ5IHsKICAgICAgc2V0UGhvdG8od2luZG93LmxvY2FsU3RvcmFnZS5nZXRJdGVtKHN0b3JhZ2VLZXkpID8/ICIiKTsKICAgIH0gY2F0Y2ggewogICAgICBzZXRQaG90bygiIik7CiAgICB9CiAgfSwgW3N0b3JhZ2VLZXldKTsKCiAgYXN5bmMgZnVuY3Rpb24gYWRkUGhvdG8oZmlsZT86IEZpbGUpIHsKICAgIGlmICghZmlsZSkgcmV0dXJuOwogICAgaWYgKCFmaWxlLnR5cGUuc3RhcnRzV2l0aCgiaW1hZ2UvIikpIHsKICAgICAgdG9hc3QuZXJyb3IoIlNlbGVjaW9uZSB1bSBhcnF1aXZvIGRlIGltYWdlbS4iKTsKICAgICAgcmV0dXJuOwogICAgfQogICAgdHJ5IHsKICAgICAgY29uc3QgdmFsdWUgPSBhd2FpdCBjb21wcmVzc1Byb2ZpbGVQaG90byhmaWxlKTsKICAgICAgd2luZG93LmxvY2FsU3RvcmFnZS5zZXRJdGVtKHN0b3JhZ2VLZXksIHZhbHVlKTsKICAgICAgc2V0UGhvdG8odmFsdWUpOwogICAgICBzZXRPcGVuKGZhbHNlKTsKICAgICAgdG9hc3Quc3VjY2VzcygiRm90byBkZSBwZXJmaWwgYXR1YWxpemFkYS4iKTsKICAgIH0gY2F0Y2ggewogICAgICB0b2FzdC5lcnJvcigiTsOjbyBmb2kgcG9zc8OtdmVsIHNhbHZhciBhIGZvdG8uIik7CiAgICB9CiAgfQoKICBhc3luYyBmdW5jdGlvbiBjaGFuZ2VQYXNzd29yZCgpIHsKICAgIGlmIChwYXNzd29yZC5sZW5ndGggPCA2KSB7CiAgICAgIHRvYXN0LmVycm9yKCJBIG5vdmEgc2VuaGEgZGV2ZSB0ZXIgcGVsbyBtZW5vcyA2IGNhcmFjdGVyZXMuIik7CiAgICAgIHJldHVybjsKICAgIH0KICAgIGlmIChwYXNzd29yZCAhPT0gY29uZmlybWF0aW9uKSB7CiAgICAgIHRvYXN0LmVycm9yKCJBIGNvbmZpcm1hw6fDo28gZGEgc2VuaGEgbsOjbyBjb25mZXJlLiIpOwogICAgICByZXR1cm47CiAgICB9CiAgICBzZXRTYXZpbmcodHJ1ZSk7CiAgICB0cnkgewogICAgICBpZiAoIWlzRGVtbykgewogICAgICAgIGNvbnN0IHsgZXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGgudXBkYXRlVXNlcih7IHBhc3N3b3JkIH0pOwogICAgICAgIGlmIChlcnJvcikgdGhyb3cgZXJyb3I7CiAgICAgIH0KICAgICAgc2V0UGFzc3dvcmQoIiIpOwogICAgICBzZXRDb25maXJtYXRpb24oIiIpOwogICAgICBzZXRQYXNzd29yZE9wZW4oZmFsc2UpOwogICAgICBzZXRPcGVuKGZhbHNlKTsKICAgICAgdG9hc3Quc3VjY2Vzcyhpc0RlbW8gPyAiU2VuaGEgdmFsaWRhZGEgbm8gdGVzdGUgbG9jYWwuIiA6ICJTZW5oYSBhbHRlcmFkYSBjb20gc3VjZXNzby4iKTsKICAgIH0gY2F0Y2ggKGVycm9yKSB7CiAgICAgIHRvYXN0LmVycm9yKGVycm9yIGluc3RhbmNlb2YgRXJyb3IgPyBlcnJvci5tZXNzYWdlIDogIk7Do28gZm9pIHBvc3PDrXZlbCBhbHRlcmFyIGEgc2VuaGEuIik7CiAgICB9IGZpbmFsbHkgewogICAgICBzZXRTYXZpbmcoZmFsc2UpOwogICAgfQogIH0KCiAgcmV0dXJuICgKICAgIDxkaXYgY2xhc3NOYW1lPSJyZWxhdGl2ZSI+CiAgICAgIDxidXR0b24KICAgICAgICB0eXBlPSJidXR0b24iCiAgICAgICAgb25DbGljaz17KCkgPT4gc2V0T3BlbigoY3VycmVudCkgPT4gIWN1cnJlbnQpfQogICAgICAgIGNsYXNzTmFtZT0iZ3JpZCBoLTkgdy05IG92ZXJmbG93LWhpZGRlbiByb3VuZGVkLWZ1bGwgYm9yZGVyIGJvcmRlci1ib3JkZXIgYmctY2FyZCB0ZXh0LXhzIGZvbnQtYm9sZCB0ZXh0LWZvcmVncm91bmQgc2hhZG93LXNtIGhvdmVyOmJvcmRlci1wcmltYXJ5LzQwIgogICAgICAgIHRpdGxlPSJQZXJmaWwgZG8gdXN1w6FyaW8iCiAgICAgICAgYXJpYS1sYWJlbD0iQWJyaXIgcGVyZmlsIGRvIHVzdcOhcmlvIgogICAgICA+CiAgICAgICAge3Bob3RvID8gKAogICAgICAgICAgPGltZyBzcmM9e3Bob3RvfSBhbHQ9IlBlcmZpbCIgY2xhc3NOYW1lPSJoLWZ1bGwgdy1mdWxsIG9iamVjdC1jb3ZlciIgLz4KICAgICAgICApIDogKAogICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPSJncmlkIGgtZnVsbCB3LWZ1bGwgcGxhY2UtaXRlbXMtY2VudGVyIj57aW5pdGlhbHMgfHwgIkFUIn08L3NwYW4+CiAgICAgICAgKX0KICAgICAgPC9idXR0b24+CgogICAgICA8aW5wdXQKICAgICAgICByZWY9e3VwbG9hZFJlZn0KICAgICAgICB0eXBlPSJmaWxlIgogICAgICAgIGFjY2VwdD0iaW1hZ2UvKiIKICAgICAgICBjbGFzc05hbWU9ImhpZGRlbiIKICAgICAgICBvbkNoYW5nZT17KGV2ZW50KSA9PiB7CiAgICAgICAgICB2b2lkIGFkZFBob3RvKGV2ZW50LnRhcmdldC5maWxlcz8uWzBdKTsKICAgICAgICAgIGV2ZW50LmN1cnJlbnRUYXJnZXQudmFsdWUgPSAiIjsKICAgICAgICB9fQogICAgICAvPgoKICAgICAge29wZW4gPyAoCiAgICAgICAgPGRpdiBjbGFzc05hbWU9ImFic29sdXRlIHJpZ2h0LTAgdG9wLTExIHotNTAgdy03MiBvdmVyZmxvdy1oaWRkZW4gcm91bmRlZC1sZyBib3JkZXIgYm9yZGVyLWJvcmRlciBiZy1wb3BvdmVyIHNoYWRvdy1bMF8xOHB4XzUwcHhfcmdiYSgxNSwyMyw0MiwuMTYpXSI+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iYm9yZGVyLWIgYm9yZGVyLWJvcmRlciBweC00IHB5LTMiPgogICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0idHJ1bmNhdGUgdGV4dC1zbSBmb250LXNlbWlib2xkIHRleHQtcG9wb3Zlci1mb3JlZ3JvdW5kIj4KICAgICAgICAgICAgICB7ZW1haWwgfHwgIlVzdcOhcmlvIGxvY2FsIn0KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtdC0xIHRydW5jYXRlIHRleHQteHMgdGV4dC1tdXRlZC1mb3JlZ3JvdW5kIj57b3JnYW5pemF0aW9uTmFtZX08L2Rpdj4KICAgICAgICAgIDwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzc05hbWU9InAtMS41Ij4KICAgICAgICAgICAgPFByb2ZpbGVBY3Rpb24KICAgICAgICAgICAgICBpY29uPXs8Q2FtZXJhIGNsYXNzTmFtZT0iaC00IHctNCIgLz59CiAgICAgICAgICAgICAgb25DbGljaz17KCkgPT4gdXBsb2FkUmVmLmN1cnJlbnQ/LmNsaWNrKCl9CiAgICAgICAgICAgID4KICAgICAgICAgICAgICBBZGljaW9uYXIgZm90bwogICAgICAgICAgICA8L1Byb2ZpbGVBY3Rpb24+CiAgICAgICAgICAgIDxQcm9maWxlQWN0aW9uCiAgICAgICAgICAgICAgaWNvbj17PEtleVJvdW5kIGNsYXNzTmFtZT0iaC00IHctNCIgLz59CiAgICAgICAgICAgICAgb25DbGljaz17KCkgPT4gc2V0UGFzc3dvcmRPcGVuKHRydWUpfQogICAgICAgICAgICA+CiAgICAgICAgICAgICAgVHJvY2FyIHNlbmhhCiAgICAgICAgICAgIDwvUHJvZmlsZUFjdGlvbj4KICAgICAgICAgICAgPFByb2ZpbGVBY3Rpb24gaWNvbj17PExvZ091dCBjbGFzc05hbWU9ImgtNCB3LTQiIC8+fSBvbkNsaWNrPXtvblNpZ25PdXR9IGRhbmdlcj4KICAgICAgICAgICAgICBTYWlyIGRvIHNpc3RlbWEKICAgICAgICAgICAgPC9Qcm9maWxlQWN0aW9uPgogICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgICkgOiBudWxsfQoKICAgICAge3Bhc3N3b3JkT3BlbiA/ICgKICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iZml4ZWQgaW5zZXQtMCB6LVs4MF0gZ3JpZCBwbGFjZS1pdGVtcy1jZW50ZXIgYmctc2xhdGUtOTUwLzI1IHAtNCBiYWNrZHJvcC1ibHVyLVsycHhdIj4KICAgICAgICAgIDxzZWN0aW9uIGNsYXNzTmFtZT0idy1mdWxsIG1heC13LW1kIHJvdW5kZWQtbGcgYm9yZGVyIGJvcmRlci1ib3JkZXIgYmctY2FyZCBzaGFkb3ctWzBfMjRweF84MHB4X3JnYmEoMTUsMjMsNDIsLjIpXSI+CiAgICAgICAgICAgIDxoZWFkZXIgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLXN0YXJ0IGp1c3RpZnktYmV0d2VlbiBib3JkZXItYiBib3JkZXItYm9yZGVyIHB4LTUgcHktNCI+CiAgICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICAgIDxoMiBjbGFzc05hbWU9InRleHQtYmFzZSBmb250LXNlbWlib2xkIj5Ucm9jYXIgc2VuaGE8L2gyPgogICAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJtdC0xIHRleHQteHMgdGV4dC1tdXRlZC1mb3JlZ3JvdW5kIj4KICAgICAgICAgICAgICAgICAgRGVmaW5hIHVtYSBub3ZhIHNlbmhhIHBhcmEgc2V1IGFjZXNzby4KICAgICAgICAgICAgICAgIDwvcD4KICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICA8YnV0dG9uCiAgICAgICAgICAgICAgICB0eXBlPSJidXR0b24iCiAgICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRQYXNzd29yZE9wZW4oZmFsc2UpfQogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJncmlkIGgtOCB3LTggcGxhY2UtaXRlbXMtY2VudGVyIHJvdW5kZWQtbWQgdGV4dC1tdXRlZC1mb3JlZ3JvdW5kIGhvdmVyOmJnLW11dGVkIGhvdmVyOnRleHQtZm9yZWdyb3VuZCIKICAgICAgICAgICAgICAgIHRpdGxlPSJGZWNoYXIiCiAgICAgICAgICAgICAgPgogICAgICAgICAgICAgICAgPFggY2xhc3NOYW1lPSJoLTQgdy00IiAvPgogICAgICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgICAgICA8L2hlYWRlcj4KICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9ImdyaWQgZ2FwLTQgcC01Ij4KICAgICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPSJncmlkIGdhcC0xLjUgdGV4dC14cyBmb250LXNlbWlib2xkIHRleHQtZm9yZWdyb3VuZCI+CiAgICAgICAgICAgICAgICBOb3ZhIHNlbmhhCiAgICAgICAgICAgICAgICA8aW5wdXQKICAgICAgICAgICAgICAgICAgdHlwZT0icGFzc3dvcmQiCiAgICAgICAgICAgICAgICAgIHZhbHVlPXtwYXNzd29yZH0KICAgICAgICAgICAgICAgICAgb25DaGFuZ2U9eyhldmVudCkgPT4gc2V0UGFzc3dvcmQoZXZlbnQudGFyZ2V0LnZhbHVlKX0KICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJoLTEwIHJvdW5kZWQtbWQgYm9yZGVyIGJvcmRlci1pbnB1dCBiZy1iYWNrZ3JvdW5kIHB4LTMgdGV4dC1zbSBvdXRsaW5lLW5vbmUgZm9jdXM6Ym9yZGVyLXByaW1hcnkgZm9jdXM6cmluZy0yIGZvY3VzOnJpbmctcHJpbWFyeS8xMCIKICAgICAgICAgICAgICAgIC8+CiAgICAgICAgICAgICAgPC9sYWJlbD4KICAgICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPSJncmlkIGdhcC0xLjUgdGV4dC14cyBmb250LXNlbWlib2xkIHRleHQtZm9yZWdyb3VuZCI+CiAgICAgICAgICAgICAgICBDb25maXJtYXIgbm92YSBzZW5oYQogICAgICAgICAgICAgICAgPGlucHV0CiAgICAgICAgICAgICAgICAgIHR5cGU9InBhc3N3b3JkIgogICAgICAgICAgICAgICAgICB2YWx1ZT17Y29uZmlybWF0aW9ufQogICAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGV2ZW50KSA9PiBzZXRDb25maXJtYXRpb24oZXZlbnQudGFyZ2V0LnZhbHVlKX0KICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJoLTEwIHJvdW5kZWQtbWQgYm9yZGVyIGJvcmRlci1pbnB1dCBiZy1iYWNrZ3JvdW5kIHB4LTMgdGV4dC1zbSBvdXRsaW5lLW5vbmUgZm9jdXM6Ym9yZGVyLXByaW1hcnkgZm9jdXM6cmluZy0yIGZvY3VzOnJpbmctcHJpbWFyeS8xMCIKICAgICAgICAgICAgICAgIC8+CiAgICAgICAgICAgICAgPC9sYWJlbD4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgIDxmb290ZXIgY2xhc3NOYW1lPSJmbGV4IGp1c3RpZnktZW5kIGdhcC0yIGJvcmRlci10IGJvcmRlci1ib3JkZXIgcHgtNSBweS00Ij4KICAgICAgICAgICAgICA8YnV0dG9uCiAgICAgICAgICAgICAgICB0eXBlPSJidXR0b24iCiAgICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRQYXNzd29yZE9wZW4oZmFsc2UpfQogICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJyb3VuZGVkLW1kIGJvcmRlciBib3JkZXItYm9yZGVyIGJnLWNhcmQgcHgtNCBweS0yIHRleHQtc20gZm9udC1zZW1pYm9sZCBob3ZlcjpiZy1tdXRlZCIKICAgICAgICAgICAgICA+CiAgICAgICAgICAgICAgICBDYW5jZWxhcgogICAgICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgICAgICAgIDxidXR0b24KICAgICAgICAgICAgICAgIHR5cGU9ImJ1dHRvbiIKICAgICAgICAgICAgICAgIG9uQ2xpY2s9e2NoYW5nZVBhc3N3b3JkfQogICAgICAgICAgICAgICAgZGlzYWJsZWQ9e3NhdmluZ30KICAgICAgICAgICAgICAgIGNsYXNzTmFtZT0icm91bmRlZC1tZCBiZy1wcmltYXJ5IHB4LTQgcHktMiB0ZXh0LXNtIGZvbnQtc2VtaWJvbGQgdGV4dC1wcmltYXJ5LWZvcmVncm91bmQgaG92ZXI6b3BhY2l0eS05MCBkaXNhYmxlZDpvcGFjaXR5LTUwIgogICAgICAgICAgICAgID4KICAgICAgICAgICAgICAgIHtzYXZpbmcgPyAiU2FsdmFuZG8uLi4iIDogIkFsdGVyYXIgc2VuaGEifQogICAgICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgICAgICA8L2Zvb3Rlcj4KICAgICAgICAgIDwvc2VjdGlvbj4KICAgICAgICA8L2Rpdj4KICAgICAgKSA6IG51bGx9CiAgICA8L2Rpdj4KICApOwp9CgpmdW5jdGlvbiBQcm9maWxlQWN0aW9uKHsKICBjaGlsZHJlbiwKICBpY29uLAogIG9uQ2xpY2ssCiAgZGFuZ2VyID0gZmFsc2UsCn06IHsKICBjaGlsZHJlbjogUmVhY3ROb2RlOwogIGljb246IFJlYWN0Tm9kZTsKICBvbkNsaWNrOiAoKSA9PiB2b2lkIHwgUHJvbWlzZTx2b2lkPjsKICBkYW5nZXI/OiBib29sZWFuOwp9KSB7CiAgcmV0dXJuICgKICAgIDxidXR0b24KICAgICAgdHlwZT0iYnV0dG9uIgogICAgICBvbkNsaWNrPXtvbkNsaWNrfQogICAgICBjbGFzc05hbWU9e2BmbGV4IHctZnVsbCBpdGVtcy1jZW50ZXIgZ2FwLTMgcm91bmRlZC1tZCBweC0zIHB5LTIuNSB0ZXh0LWxlZnQgdGV4dC1zbSB0cmFuc2l0aW9uICR7CiAgICAgICAgZGFuZ2VyCiAgICAgICAgICA/ICJ0ZXh0LWRlc3RydWN0aXZlIGhvdmVyOmJnLWRlc3RydWN0aXZlLzgiCiAgICAgICAgICA6ICJ0ZXh0LXBvcG92ZXItZm9yZWdyb3VuZCBob3ZlcjpiZy1tdXRlZCIKICAgICAgfWB9CiAgICA+CiAgICAgIHtpY29ufQogICAgICB7Y2hpbGRyZW59CiAgICA8L2J1dHRvbj4KICApOwp9Cg==
+import { Camera, KeyRound, LogOut, X } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+const PHOTO_PREFIX = "ateliam-profile-photo:";
+const PHOTO_SIZE = 256;
+
+// Comprime a foto de perfil para um quadrado WebP 256x256 (recorte central),
+// reduzindo bastante o tamanho armazenado já que o avatar é exibido pequeno.
+async function compressProfilePhoto(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("read-failed"));
+    reader.readAsDataURL(file);
+  });
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("decode-failed"));
+    img.src = dataUrl;
+  });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = PHOTO_SIZE;
+  canvas.height = PHOTO_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+
+  // recorte central mantendo proporção (cover)
+  const side = Math.min(image.width, image.height);
+  const sx = (image.width - side) / 2;
+  const sy = (image.height - side) / 2;
+  ctx.drawImage(image, sx, sy, side, side, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
+
+  const webp = canvas.toDataURL("image/webp", 0.82);
+  // Alguns navegadores não suportam WebP no canvas; faz fallback para JPEG.
+  return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.82);
+}
+
+export function UserProfileMenu({
+  email,
+  organizationName,
+  isDemo = false,
+  onSignOut,
+}: {
+  email: string;
+  organizationName: string;
+  isDemo?: boolean;
+  onSignOut: () => void | Promise<void>;
+}) {
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [photo, setPhoto] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const storageKey = `${PHOTO_PREFIX}${email || "local"}`;
+  const initials = (email || "BF Flow")
+    .split("@")[0]
+    .split(/[._\-\s]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  useEffect(() => {
+    try {
+      setPhoto(window.localStorage.getItem(storageKey) ?? "");
+    } catch {
+      setPhoto("");
+    }
+  }, [storageKey]);
+
+  async function addPhoto(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem.");
+      return;
+    }
+    try {
+      const value = await compressProfilePhoto(file);
+      window.localStorage.setItem(storageKey, value);
+      setPhoto(value);
+      setOpen(false);
+      toast.success("Foto de perfil atualizada.");
+    } catch {
+      toast.error("Não foi possível salvar a foto.");
+    }
+  }
+
+  async function changePassword() {
+    if (password.length < 6) {
+      toast.error("A nova senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (password !== confirmation) {
+      toast.error("A confirmação da senha não confere.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (!isDemo) {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+      }
+      setPassword("");
+      setConfirmation("");
+      setPasswordOpen(false);
+      setOpen(false);
+      toast.success(isDemo ? "Senha validada no teste local." : "Senha alterada com sucesso.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível alterar a senha.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="grid h-9 w-9 overflow-hidden rounded-full border border-border bg-card text-xs font-bold text-foreground shadow-sm hover:border-primary/40"
+        title="Perfil do usuário"
+        aria-label="Abrir perfil do usuário"
+      >
+        {photo ? (
+          <img src={photo} alt="Perfil" className="h-full w-full object-cover" />
+        ) : (
+          <span className="grid h-full w-full place-items-center">{initials || "AT"}</span>
+        )}
+      </button>
+
+      <input
+        ref={uploadRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          void addPhoto(event.target.files?.[0]);
+          event.currentTarget.value = "";
+        }}
+      />
+
+      {open ? (
+        <div className="absolute right-0 top-11 z-50 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-[0_18px_50px_rgba(15,23,42,.16)]">
+          <div className="border-b border-border px-4 py-3">
+            <div className="truncate text-sm font-semibold text-popover-foreground">
+              {email || "Usuário local"}
+            </div>
+            <div className="mt-1 truncate text-xs text-muted-foreground">{organizationName}</div>
+          </div>
+          <div className="p-1.5">
+            <ProfileAction
+              icon={<Camera className="h-4 w-4" />}
+              onClick={() => uploadRef.current?.click()}
+            >
+              Adicionar foto
+            </ProfileAction>
+            <ProfileAction
+              icon={<KeyRound className="h-4 w-4" />}
+              onClick={() => setPasswordOpen(true)}
+            >
+              Trocar senha
+            </ProfileAction>
+            <ProfileAction icon={<LogOut className="h-4 w-4" />} onClick={onSignOut} danger>
+              Sair do sistema
+            </ProfileAction>
+          </div>
+        </div>
+      ) : null}
+
+      {passwordOpen ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/25 p-4 backdrop-blur-[2px]">
+          <section className="w-full max-w-md rounded-lg border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.2)]">
+            <header className="flex items-start justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold">Trocar senha</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Defina uma nova senha para seu acesso.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="grid gap-4 p-5">
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                Nova senha
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                Confirmar nova senha
+                <input
+                  type="password"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setPasswordOpen(false)}
+                className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={changePassword}
+                disabled={saving}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {saving ? "Salvando..." : "Alterar senha"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileAction({
+  children,
+  icon,
+  onClick,
+  danger = false,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  onClick: () => void | Promise<void>;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition ${
+        danger
+          ? "text-destructive hover:bg-destructive/8"
+          : "text-popover-foreground hover:bg-muted"
+      }`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
