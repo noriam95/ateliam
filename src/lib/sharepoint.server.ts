@@ -1,24 +1,23 @@
-// Server-only SharePoint helper using Lovable connector gateway.
+// Server-only SharePoint helper via Microsoft Graph API proxy.
 // Never import from client code.
+// Requires SHAREPOINT_GATEWAY_URL, SHAREPOINT_API_KEY env vars.
 
-const GATEWAY = "https://connector-gateway.lovable.dev/microsoft_sharepoint";
+const GATEWAY = process.env.SHAREPOINT_GATEWAY_URL ?? "";
 
 function authHeaders(): HeadersInit {
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  const spKey = process.env.MICROSOFT_SHAREPOINT_API_KEY;
-  if (!lovableKey || !spKey) {
+  const spKey = process.env.SHAREPOINT_API_KEY;
+  if (!GATEWAY || !spKey) {
     throw new Error(
-      "SharePoint não está conectado. Conecte o Microsoft SharePoint em Connectors.",
+      "SharePoint não está configurado. Defina SHAREPOINT_GATEWAY_URL e SHAREPOINT_API_KEY no .env.",
     );
   }
   return {
-    Authorization: `Bearer ${lovableKey}`,
-    "X-Connection-Api-Key": spKey,
+    Authorization: `Bearer ${spKey}`,
   };
 }
 
 export function isSharePointConfigured(): boolean {
-  return Boolean(process.env.LOVABLE_API_KEY && process.env.MICROSOFT_SHAREPOINT_API_KEY);
+  return Boolean(process.env.SHAREPOINT_GATEWAY_URL && process.env.SHAREPOINT_API_KEY);
 }
 
 async function gw(path: string, init: RequestInit = {}): Promise<Response> {
