@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import { toast } from "sonner";
-import { AteliamMark } from "@/components/ateliam-mark";
+import { BFFlowMark } from "@/components/bf-flow-mark";
 import {
   createOrganization,
   createUserAccess,
@@ -83,7 +83,7 @@ function mergeDocumentModels(rows: DocumentModelRow[]) {
 }
 
 const roleLabels: Record<AppRole, string> = {
-  maestro: "Maestro Ateliam",
+  maestro: "Maestro BF Flow",
   admin: "Administrador",
   editor: "Editor",
   viewer: "Consulta",
@@ -123,8 +123,8 @@ export function WorkspaceSystemSettings({
         word_header_color: "1D1D1F",
       },
       {
-        id: "demo-ateliam-lab",
-        name: "Ateliam Lab",
+        id: "demo-bfflow-lab",
+        name: "BF Flow Lab",
         slug: "ateliam-lab",
         logo_data_url: null,
         word_header_color: "1D1F23",
@@ -141,7 +141,7 @@ export function WorkspaceSystemSettings({
   const [demoUsers, setDemoUsers] = useState<UserAccessRow[]>([
     {
       id: "demo-admin",
-      email: "analista.local@ateliam",
+      email: "analista.local@bfflow",
       display_name: "Administrador local",
       organization_id: "demo-bom-futuro",
       organization: { id: "demo-bom-futuro", name: "Bom Futuro" },
@@ -153,9 +153,9 @@ export function WorkspaceSystemSettings({
           organization: { id: "demo-bom-futuro", name: "Bom Futuro" },
         },
         {
-          organization_id: "demo-ateliam-lab",
+          organization_id: "demo-bfflow-lab",
           is_default: false,
-          organization: { id: "demo-ateliam-lab", name: "Ateliam Lab" },
+          organization: { id: "demo-bfflow-lab", name: "BF Flow Lab" },
         },
       ],
     },
@@ -1136,7 +1136,7 @@ function DocumentModelsSettings({
                     />
                   ) : (
                     <span className="flex h-14 w-28 items-center justify-center gap-2 rounded-md border border-dashed border-border bg-card text-sm font-bold">
-                      <AteliamMark className="h-7 w-7" /> Ateliam
+                      <BFFlowMark className="h-7 w-7" /> BF Flow
                     </span>
                   )}
                   <div className="flex gap-2">
@@ -1154,7 +1154,7 @@ function DocumentModelsSettings({
                         type="button"
                         onClick={() => setDraft((current) => ({ ...current, logo_data_url: null }))}
                         className={iconButtonClass}
-                        title="Usar logo padrão do Ateliam"
+                        title="Usar logo padrão do BF Flow"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1163,7 +1163,7 @@ function DocumentModelsSettings({
                 </div>
                 <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
                   Esta logo será incorporada somente às exportações deste modelo. Sem imagem, o
-                  Ateliam será usado como padrão.
+                  BF Flow será usado como padrão.
                 </p>
               </div>
 
