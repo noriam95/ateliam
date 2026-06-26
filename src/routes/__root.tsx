@@ -75,7 +75,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Ateliam — Workspace de processos" },
+      { title: "BF Flow — Workspace de processos" },
       {
         name: "description",
         content: "Workspace modular para criar, versionar e gerenciar documentos de processo.",

@@ -104,11 +104,11 @@ function AuthPage() {
 
   function enterDemoMode() {
     if (!startDemoSession()) {
-      toast.error("Não foi possível iniciar o modo de teste.");
+      toast.error("Modo de teste disponível apenas no ambiente local.");
       return;
     }
 
-    toast.success("Modo de demonstração ativado.");
+    toast.success("Modo de teste local ativado.");
     router.invalidate();
     navigate({ to: "/", replace: true });
   }
@@ -119,7 +119,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-stretch bg-background">
       <section className="relative hidden flex-1 overflow-hidden bg-foreground p-12 text-background md:flex md:flex-col md:justify-between">
         <div className="relative z-10 flex items-center gap-2.5">
-          <BFFlowMark className="h-10" />
+          <BFFlowMark className="h-10 w-10" />
           <div className="ateliam-wordmark text-xl">BF Flow</div>
         </div>
 
@@ -157,7 +157,7 @@ function AuthPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 md:hidden">
             <div className="mb-6 flex items-center gap-2.5">
-              <BFFlowMark className="h-10" />
+              <BFFlowMark className="h-10 w-10" />
               <div className="ateliam-wordmark text-xl">BF Flow</div>
             </div>
           </div>
