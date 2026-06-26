@@ -23,6 +23,7 @@ import {
   ImagePlus,
   LayoutGrid,
   ListChecks,
+  Menu,
   MessageSquare,
   Pencil,
   Plus,
@@ -44,7 +45,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { AteliamMark } from "@/components/ateliam-mark";
+import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
@@ -5761,32 +5762,10 @@ function ModuleWorkspacePage() {
           className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           title={treeOpen ? "Ocultar navegação" : "Mostrar navegação"}
         >
-          {treeOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <Menu className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-2.5">
-          {organizationBrand.logo_data_url ? (
-            <img
-              src={organizationBrand.logo_data_url}
-              alt={`Logo ${organizationBrand.name}`}
-              className="h-8 w-20 object-contain object-left"
-            />
-          ) : (
-            <AteliamMark
-              className="h-7 w-7 text-foreground"
-              markClassName="h-3.5 w-3.5 after:h-1.5 after:w-1.5"
-            />
-          )}
-        </div>
-        <div className="h-6 w-px bg-border" />
-        <div className="hidden min-w-0 items-center gap-2 md:flex">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-muted text-foreground">
-            {moduleId === "ddp" ? <FileText className="h-4 w-4" /> : null}
-            {moduleId === "pop" ? <CheckCircle2 className="h-4 w-4" /> : null}
-            {moduleId === "bpmn" ? <GitBranch className="h-4 w-4" /> : null}
-          </span>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-bold">{moduleInfo.title}</div>
-          </div>
+        <div className="flex h-full items-center">
+          <BFFlowMark className="h-9" />
         </div>
         <div className="flex-1" />
         {(moduleId === "ddp" || moduleId === "pop") &&
@@ -5832,7 +5811,7 @@ function ModuleWorkspacePage() {
       </header>
 
       <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-[52px_minmax(0,1fr)]">
-        <nav className="sticky top-14 h-[calc(100vh-3.5rem)] border-r border-border bg-card/70 py-3">
+        <nav className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col border-r border-border bg-card/70 py-3">
           <ModuleRailButton
             active={railArea === "home"}
             label="Home"

@@ -119,7 +119,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-stretch bg-background">
       <section className="relative hidden flex-1 overflow-hidden bg-foreground p-12 text-background md:flex md:flex-col md:justify-between">
         <div className="relative z-10 flex items-center">
-          <BFFlowMark className="h-12" />
+          <BFFlowMark className="h-12" variant="color" />
         </div>
 
         <div
@@ -156,7 +156,7 @@ function AuthPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 md:hidden">
             <div className="mb-6 flex items-center">
-              <BFFlowMark className="h-12" />
+              <BFFlowMark className="h-12" variant="color" />
             </div>
           </div>
 
