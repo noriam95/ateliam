@@ -55,9 +55,7 @@ function createId() {
 }
 
 export function isDemoModeAvailable() {
-  return (
-    canUseStorage() && (import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_MODE === "true")
-  );
+  return canUseStorage();
 }
 
 export function isDemoSessionActive() {
