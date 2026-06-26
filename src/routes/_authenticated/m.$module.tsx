@@ -622,7 +622,7 @@ function defaultWorkspace(): WorkspaceState {
           comentarios: [],
         },
       ],
-      nextSteps: [{ id: id("next"), text: "Validar diagnóstico com o dono do processo" }],
+      nextSteps: [{ id: id("next"), text: "Validar mapeamento com o dono do processo" }],
       glossary: [
         {
           id: id("gloss"),
@@ -1382,7 +1382,7 @@ function importWorkspaceFromJson(
     };
   }
 
-  throw new Error("Nao reconheci este JSON como DDP, POP ou workspace Ateliam.");
+  throw new Error("Nao reconheci este JSON como Mapeamento, POP ou workspace BF Flow.");
 }
 
 function buildModuleJson(moduleId: AteliamModule, workspace: WorkspaceState) {
@@ -1634,7 +1634,7 @@ function buildDdpWord(data: DdpState) {
       data.glossary.map((item) => [item.termo, item.definicao]),
     )}
   `;
-  return docShell(`DDP - ${data.meta.titulo}`, body);
+  return docShell(`Mapeamento - ${data.meta.titulo}`, body);
 }
 
 function buildPopWord(data: PopState) {
@@ -3370,7 +3370,7 @@ function createDocxContext(params: {
 
 function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   const model = getDdpExportModel(data);
-  const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || "Diagnóstico";
+  const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || "Mapeamento";
   const doc = createDocxContext({
     code: model.meta.codigo,
     title,
@@ -3383,7 +3383,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     doc.table(
       [
         [
-          { xml: doc.labelValue("Tipo", "Relatório de Diagnóstico de Processo") },
+          { xml: doc.labelValue("Tipo", "Relatório de Mapeamento de Processo") },
           { xml: doc.labelValue("Subtítulo", model.meta.subtitulo) },
           { xml: doc.labelValue("Data", model.meta.dataRelatorio || model.meta.data) },
           { xml: doc.labelValue("Versão", model.meta.versao) },
@@ -3846,7 +3846,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>${code} - Apresentação DDP</title>
+<title>${code} - Apresentação de Mapeamento</title>
 <style>
 :root{--green:#${presentationColor};--dark:#${presentationColor};--line:#c9cccb;--paper:#f8f7f1;--text:#202124;--muted:#5f6368;--nav:256px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--text);font-family:"Segoe UI",Arial,sans-serif}
@@ -3862,14 +3862,14 @@ main{margin-left:var(--nav)}section{min-height:100vh;padding:58px 72px;border-bo
     .map(([href, label]) => `<a href="#${href}">${html(label)}</a>`)
     .join("")}</nav>
 <main>
-<section class="hero" id="capa"><div class="kicker">Relatório de Diagnóstico de Processo</div><h1>${title}</h1><p>${html(model.scope || model.description)}</p><div class="meta"><div><b>Documento:</b> ${code}</div><div><b>Versão:</b> ${html(model.meta.versao)}</div><div><b>Data:</b> ${html(model.meta.dataRelatorio || model.meta.data)}</div><div><b>Elaborador:</b> ${html(model.meta.elaborador)}</div><div><b>Revisor:</b> ${html(model.meta.revisor)}</div></div></section>
+<section class="hero" id="capa"><div class="kicker">Relatório de Mapeamento de Processo</div><h1>${title}</h1><p>${html(model.scope || model.description)}</p><div class="meta"><div><b>Documento:</b> ${code}</div><div><b>Versão:</b> ${html(model.meta.versao)}</div><div><b>Data:</b> ${html(model.meta.dataRelatorio || model.meta.data)}</div><div><b>Elaborador:</b> ${html(model.meta.elaborador)}</div><div><b>Revisor:</b> ${html(model.meta.revisor)}</div></div></section>
 <section id="sistemas"><div class="section-head"><span>02</span><div><h2>Sistemas Envolvidos e Escopo</h2><p>${html(model.scope)}</p></div></div>${cardGrid(
     model.systems.map((system) => ({
       title: system.name,
       text: joinClean([system.type, system.description], " - "),
     })),
   )}</section>
-<section id="fluxo"><div class="section-head"><span>03</span><div><h2>Fluxo AS IS</h2><p>Etapas e subprocessos principais identificados no diagnóstico.</p></div></div>${
+<section id="fluxo"><div class="section-head"><span>03</span><div><h2>Fluxo AS IS</h2><p>Etapas e subprocessos principais identificados no mapeamento.</p></div></div>${
     model.macroprocess.src
       ? `<div class="diagram"><h3>${html(model.macroprocess.title || "Macroprocesso")}</h3><img class="zoomable" src="${model.macroprocess.src}" alt="${html(
           model.macroprocess.title,
@@ -4183,6 +4183,7 @@ function ModuleWorkspacePage() {
     setModuleEditStarted(moduleId === "bpmn");
     setRailArea("modules");
     setContentMode("module");
+    setModuleSurface("editor");
     setExpandedTree((current) => ({
       ...current,
       modules: true,
@@ -4216,7 +4217,10 @@ function ModuleWorkspacePage() {
       setDdpView("editor");
       setModuleEditStarted(true);
       setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
+      return;
     }
+    // No view param — always reset to editor to avoid stale surface from previous navigation
+    setModuleSurface("editor");
   }, [moduleId, search.view]);
 
   useEffect(() => {
@@ -4415,7 +4419,7 @@ function ModuleWorkspacePage() {
 
   function downloadImportTemplate() {
     if (moduleId === "bpmn") {
-      toast.info("Modelo Excel textual está disponível para DDP e POP por enquanto.");
+      toast.info("Modelo Excel textual está disponível para Mapeamento e POP por enquanto.");
       return;
     }
     const blob =

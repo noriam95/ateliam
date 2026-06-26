@@ -264,7 +264,7 @@ function WorkspaceHome() {
                 ? [
                     {
                       id: "demo-ddp",
-                      name: "DDP.PMO.007 - Gestão de Demandas de BI Analytics",
+                      name: "MAP.PMO.007 - Gestão de Demandas de BI Analytics",
                       module: "ddp",
                       current_version: 14,
                       updated_at: new Date().toISOString(),
@@ -1107,11 +1107,11 @@ function WorkspaceContent({
           </div>
         </div>
 
-        {/* Card 3: Mapeamentos Pendentes & Diagnósticos */}
+        {/* Card 3: Mapeamentos Pendentes */}
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
-              Mapeamentos Pendentes & Diagnósticos
+              Mapeamentos Pendentes
             </span>
             <FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />
           </div>
@@ -1122,7 +1122,7 @@ function WorkspaceContent({
             </div>
             <div className="rounded-md bg-muted/40 p-3 text-center">
               <div className="font-data text-3xl font-bold text-foreground">{ddpCount}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Diagnósticos Salvos</div>
+              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Mapeamentos Salvos</div>
             </div>
           </div>
         </div>
@@ -1525,7 +1525,7 @@ function getCatalogCopy(
   if (view === "causes") {
     return {
       title: "Gestão de causas",
-      text: "Consulte causas cadastradas nos DDPs, acompanhe status, responsável, comentários e vínculos com processos.",
+      text: "Consulte causas cadastradas nos mapeamentos, acompanhe status, responsável, comentários e vínculos com processos.",
       metrics: [
         ...baseMetrics.slice(0, 2),
         {
@@ -1541,7 +1541,7 @@ function getCatalogCopy(
   if (view === "systems") {
     return {
       title: "Sistemas envolvidos",
-      text: "Cadastre sistemas para reutilizar nos diagnósticos e manter consistência entre processos.",
+      text: "Cadastre sistemas para reutilizar nos mapeamentos e manter consistência entre processos.",
       metrics: [
         ...baseMetrics.slice(0, 2),
         {
@@ -1730,7 +1730,7 @@ function getModuleActions(moduleId: AteliamModule): Array<{
       {
         key: "versions",
         label: "Versões",
-        description: "Veja o histórico de versões dos diagnósticos.",
+        description: "Veja o histórico de versões dos mapeamentos.",
         eyebrow: "versionamento",
         title: "Histórico de versões do mapeamento",
         body: "Cada versão deve preservar o vínculo com processo, macroprocesso, subprocesso, causas e exportações geradas.",
@@ -1849,14 +1849,14 @@ function getModuleDocuments(
       ? [
           {
             id: "ddp-demo-1",
-            name: "DDP.PMO.007 - Gestão de Demandas de BI Analytics",
+            name: "MAP.PMO.007 - Gestão de Demandas de BI Analytics",
             module: "ddp",
             current_version: 14,
             updated_at: new Date().toISOString(),
           },
           {
             id: "ddp-demo-2",
-            name: "DDP.PMO.006 - Controle de Acesso às Unidades",
+            name: "MAP.PMO.006 - Controle de Acesso às Unidades",
             module: "ddp",
             current_version: 6,
             updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
@@ -1898,7 +1898,7 @@ function getModuleDocuments(
 function getModuleFlow(moduleId: AteliamModule) {
   if (moduleId === "ddp") {
     return [
-      "Criar ou abrir um diagnóstico.",
+      "Criar ou abrir um mapeamento.",
       "Preencher dados do processo, sistemas, fluxo, SIPOC, causas e próximos passos.",
       "Salvar uma nova versão no sistema.",
       "Exportar apresentação HTML e relatório Word no modelo oficial.",
@@ -2292,7 +2292,7 @@ function OperationalFocus({ totals }: { totals: DashboardTotals | undefined }) {
     {
       label: "Sem mapeamento vinculado",
       value: Math.max(processes - (totals?.ddps ?? 0), 0),
-      detail: "oportunidades de diagnóstico",
+      detail: "oportunidades de mapeamento",
     },
     {
       label: "Sem documentação vinculada",
