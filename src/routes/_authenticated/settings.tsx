@@ -428,7 +428,7 @@ function Settings() {
                   </h2>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Logo e cor do cabeçalho dos relatórios Word de DDP e POP.
+                  Logo e cor do cabeçalho dos relatórios Word de Mapeamento e POP.
                 </p>
               </div>
               <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
