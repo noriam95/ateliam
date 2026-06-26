@@ -1,4 +1,4 @@
-import { Camera, KeyRound, LogOut, X } from "lucide-react";
+import { Camera, KeyRound, LogOut, Monitor, Moon, Palette, Sun, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +54,11 @@ export function UserProfileMenu({
   const uploadRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [activeTheme, setActiveTheme] = useState<"light" | "dark" | "system">(() => {
+    if (typeof window === "undefined") return "system";
+    return (window.localStorage.getItem("ateliam-theme") as "light" | "dark" | "system") ?? "system";
+  });
   const [photo, setPhoto] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -119,6 +124,17 @@ export function UserProfileMenu({
     }
   }
 
+  function applyTheme(theme: "light" | "dark" | "system") {
+    setActiveTheme(theme);
+    window.localStorage.setItem("ateliam-theme", theme);
+    const isDark =
+      theme === "dark" ||
+      (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    setThemeOpen(false);
+    setOpen(false);
+  }
+
   return (
     <div className="relative">
       <button
@@ -162,6 +178,12 @@ export function UserProfileMenu({
               Adicionar foto
             </ProfileAction>
             <ProfileAction
+              icon={<Palette className="h-4 w-4" />}
+              onClick={() => setThemeOpen(true)}
+            >
+              Tema da interface
+            </ProfileAction>
+            <ProfileAction
               icon={<KeyRound className="h-4 w-4" />}
               onClick={() => setPasswordOpen(true)}
             >
@@ -171,6 +193,49 @@ export function UserProfileMenu({
               Sair do sistema
             </ProfileAction>
           </div>
+        </div>
+      ) : null}
+
+      {themeOpen ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/25 p-4 backdrop-blur-[2px]">
+          <section className="w-full max-w-sm rounded-lg border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.2)]">
+            <header className="flex items-start justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold">Tema da interface</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Escolha a aparência do sistema.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setThemeOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="grid grid-cols-3 gap-3 p-5">
+              {(
+                [
+                  { key: "light", label: "Claro", icon: <Sun className="h-5 w-5" /> },
+                  { key: "dark", label: "Escuro", icon: <Moon className="h-5 w-5" /> },
+                  { key: "system", label: "Sistema", icon: <Monitor className="h-5 w-5" /> },
+                ] as const
+              ).map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyTheme(key)}
+                  className={`flex flex-col items-center gap-2 rounded-lg border px-3 py-4 text-sm font-semibold transition-colors ${
+                    activeTheme === key
+                      ? "border-[var(--gold)] bg-accent text-[var(--gold)]"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
       ) : null}
 
