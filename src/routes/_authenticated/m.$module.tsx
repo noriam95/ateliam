@@ -4867,9 +4867,14 @@ function ModuleWorkspacePage() {
     moduleId,
     (cloudDocsQ.data as CloudModuleDocument[] | undefined) ?? [],
     savedDemoDocument,
+    isDemo,
   );
 
   async function editDocumentRow(row: ModuleGridRow) {
+    if (row.id.startsWith("demo-row:")) {
+      toast.info("Registro de demonstração. Use “Novo” para criar um caso editável.");
+      return;
+    }
     if (row.id.startsWith("demo-saved:") && savedDemoDocument) {
       setWorkspace(savedDemoDocument.workspace);
       window.localStorage.setItem(draftKey, JSON.stringify(savedDemoDocument.workspace));
@@ -5981,6 +5986,58 @@ function moduleGridRowFromWorkspace(
   };
 }
 
+// Casos fictícios pré-preenchidos para o modo demo, para que as telas de
+// "Consultar registros" tenham volume suficiente para testes robustos.
+// Tupla: [code, name, process, area, owner, responsible, status, updatedAt]
+type DemoRowTuple = [string, string, string, string, string, string, string, string];
+const DEMO_MODULE_ROW_DATA: Record<AteliamModule, DemoRowTuple[]> = {
+  ddp: [
+    ["MAP.PMO.001", "Mapeamento — Planejamento Estratégico", "Planejamento Estratégico", "Processos & Qualidade", "Aline Ferreira", "Aline Ferreira", "Aprovado", "2026-05-12"],
+    ["MAP.PMO.002", "Mapeamento — Gestão de Indicadores", "Gestão de Indicadores e Desempenho", "Processos & Qualidade", "Aline Ferreira", "Bruno Cardoso", "Ativo", "2026-06-02"],
+    ["MAP.RH.001", "Mapeamento — Recrutamento e Seleção", "Recrutamento e Seleção", "Recursos Humanos", "Juliana Castro", "Juliana Castro", "Em revisão", "2026-06-18"],
+    ["MAP.RH.002", "Mapeamento — Integração e Onboarding", "Integração e Onboarding", "Recursos Humanos", "Juliana Castro", "Patrícia Lima", "Ativo", "2026-04-27"],
+    ["MAP.TI.001", "Mapeamento — Gestão de Demandas de TI", "Gestão de Demandas de TI", "Tecnologia da Informação", "Carlos Menezes", "Carlos Menezes", "Aprovado", "2026-05-30"],
+    ["MAP.TI.002", "Mapeamento — Segurança da Informação", "Gestão de Segurança da Informação", "Tecnologia da Informação", "Carlos Menezes", "Carlos Menezes", "Rascunho", "2026-06-21"],
+    ["MAP.COM.001", "Mapeamento — Prospecção e Leads", "Prospecção e Geração de Leads", "Comercial & Vendas", "Rafael Souza", "Rafael Souza", "Ativo", "2026-06-09"],
+    ["MAP.OPE.001", "Mapeamento — Planejamento da Produção", "Planejamento da Produção", "Operações", "Patrícia Lima", "Patrícia Lima", "Em revisão", "2026-06-15"],
+    ["MAP.FIN.001", "Mapeamento — Contas a Receber", "Contas a Receber", "Financeiro & Controladoria", "Bruno Cardoso", "Bruno Cardoso", "Aprovado", "2026-03-19"],
+  ],
+  pop: [
+    ["POP.RH.001", "POP — Admissão de Colaborador", "Recrutamento e Seleção", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-05-04"],
+    ["POP.RH.002", "POP — Desligamento de Colaborador", "Avaliação de Desempenho", "Recursos Humanos", "-", "Juliana Castro", "Ativo", "2026-06-01"],
+    ["IT.TI.001", "IT — Concessão de Acessos", "Gestão de Segurança da Informação", "Tecnologia da Informação", "-", "Carlos Menezes", "Aprovado", "2026-05-22"],
+    ["IT.TI.002", "IT — Rotina de Backup", "Gestão de Demandas de TI", "Tecnologia da Informação", "-", "Carlos Menezes", "Em revisão", "2026-06-17"],
+    ["POP.FIN.001", "POP — Conciliação Bancária", "Contas a Receber", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Ativo", "2026-04-30"],
+    ["POP.FIN.002", "POP — Aprovação de Pagamentos", "Contas a Pagar", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Rascunho", "2026-06-20"],
+    ["POP.OPE.001", "POP — Inspeção de Qualidade", "Controle de Qualidade na Produção", "Operações", "-", "Patrícia Lima", "Aprovado", "2026-05-15"],
+    ["POP.LOG.001", "POP — Recebimento de Mercadorias", "Logística & Supply Chain", "Logística & Supply Chain", "-", "Marcos Oliveira", "Ativo", "2026-06-07"],
+  ],
+  bpmn: [
+    ["FLX.COM.001", "Fluxograma — Ciclo de Vendas", "Comercialização & Vendas", "Comercial & Vendas", "-", "Rafael Souza", "Aprovado", "2026-05-18"],
+    ["FLX.OPE.001", "Fluxograma — Ordem de Produção", "Produção & Entrega", "Operações", "-", "Patrícia Lima", "Ativo", "2026-06-03"],
+    ["FLX.FIN.001", "Fluxograma — Contas a Pagar", "Gestão Financeira", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Em revisão", "2026-06-19"],
+    ["FLX.RH.001", "Fluxograma — Onboarding", "Gestão de Pessoas", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-04-25"],
+    ["FLX.LOG.001", "Fluxograma — Expedição", "Logística & Supply Chain", "Logística & Supply Chain", "-", "Marcos Oliveira", "Rascunho", "2026-06-22"],
+  ],
+};
+
+function buildDemoModuleRows(moduleId: AteliamModule): ModuleGridRow[] {
+  const tuples = DEMO_MODULE_ROW_DATA[moduleId] ?? [];
+  const typeLabel = moduleId === "ddp" ? "Mapeamento" : moduleId === "pop" ? "Documento" : "Fluxo de atividades";
+  return tuples.map(([code, name, process, area, owner, responsible, status, updatedAt]) => ({
+    id: `demo-row:${moduleId}:${code}`,
+    code,
+    name,
+    type: typeLabel,
+    process,
+    area,
+    owner,
+    responsible,
+    status,
+    updatedAt,
+  }));
+}
+
 function buildModuleGridRows(
   moduleId: AteliamModule,
   documents: CloudModuleDocument[],
@@ -5989,6 +6046,7 @@ function buildModuleGridRows(
     workspace: WorkspaceState;
     updatedAt: string;
   } | null,
+  isDemo: boolean,
 ) {
   const cloudRows = documents.map((document) => {
     const snapshot = parseWorkspace(document.content_inline);
@@ -5999,6 +6057,20 @@ function buildModuleGridRows(
     });
   });
   if (cloudRows.length) return cloudRows;
+  if (isDemo) {
+    const demoRows = buildDemoModuleRows(moduleId);
+    if (savedDemoDocument) {
+      return [
+        moduleGridRowFromWorkspace(moduleId, savedDemoDocument.workspace, {
+          id: savedDemoDocument.id,
+          status: "Salvo",
+          updatedAt: savedDemoDocument.updatedAt,
+        }),
+        ...demoRows,
+      ];
+    }
+    return demoRows;
+  }
   if (!savedDemoDocument) return [];
   return [
     moduleGridRowFromWorkspace(moduleId, savedDemoDocument.workspace, {
