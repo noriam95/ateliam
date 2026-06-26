@@ -729,6 +729,504 @@ function defaultWorkspace(): WorkspaceState {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Documentos de demonstração REAIS e encadeados com o DEMO_REGISTRY
+// (área → dono → cadeia de valor → processo → mapeamento/documento).
+// Servem para visualizar o preenchimento completo dos formulários.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type DemoDoc = { id: string; status: string; updatedAt: string; workspace: WorkspaceState };
+
+type DemoDdpSpec = {
+  id: string;
+  codigo: string;
+  titulo: string;
+  area: string;
+  donoProcesso: string;
+  responsavel: string;
+  elaborador: string;
+  revisor: string;
+  valueChainId: string;
+  valueChainName: string;
+  versao: string;
+  status: string;
+  updatedAt: string;
+  objetivo: string;
+  escopo: string;
+  estadoAtual: string;
+  kpis: string;
+  volume: string;
+  frequencia: string;
+  dores: string;
+  oportunidades: string;
+  systems: Array<[string, string, string, string]>; // nome, tipo, criticidade, descricao
+  steps: Array<[string, string, string, string, string, string, string]>; // etapa, resp, entrada, atividade, saida, sistema, risco
+  sipoc: Array<[string, string, string, string, string]>;
+  gaps: Array<[string, string, string, string, string, string, string, string]>; // causa, desc, impacto, acao, resp, prazo, prioridade, status
+  nextSteps: string[];
+  glossary: Array<[string, string]>;
+};
+
+function makeDemoDdpWorkspace(spec: DemoDdpSpec): WorkspaceState {
+  const base = defaultWorkspace();
+  return {
+    ...base,
+    ddp: {
+      ...base.ddp,
+      meta: {
+        ...base.ddp.meta,
+        codigo: spec.codigo,
+        titulo: spec.titulo,
+        area: spec.area,
+        responsavel: spec.responsavel,
+        valueChainId: spec.valueChainId,
+        valueChainName: spec.valueChainName,
+        versao: spec.versao,
+        elaborador: spec.elaborador,
+        revisor: spec.revisor,
+      },
+      overview: {
+        ...base.ddp.overview,
+        objetivo: spec.objetivo,
+        escopo: spec.escopo,
+        estadoAtual: spec.estadoAtual,
+        kpis: spec.kpis,
+        donoProcesso: spec.donoProcesso,
+        volume: spec.volume,
+        frequencia: spec.frequencia,
+        dores: spec.dores,
+        oportunidades: spec.oportunidades,
+      },
+      systems: spec.systems.map(([nome, tipo, criticidade, descricao]) => ({
+        id: id("sys"),
+        nome,
+        tipo,
+        dono: spec.donoProcesso,
+        criticidade,
+        descricao,
+      })),
+      macroprocess: { ...base.ddp.macroprocess, legenda: `Macroprocesso AS IS — ${spec.titulo}` },
+      steps: spec.steps.map(([etapa, responsavel, entrada, atividade, saida, sistema, risco]) => ({
+        id: id("step"),
+        etapa,
+        responsavel,
+        entrada,
+        atividade,
+        saida,
+        sistema,
+        risco,
+        observacoes: "",
+        images: [],
+        substeps: [],
+      })),
+      sipoc: { ...base.ddp.sipoc },
+      sipocRows: spec.sipoc.map(([fornecedores, entradas, processo, saidas, clientes]) => ({
+        id: id("sipoc"),
+        fornecedores,
+        entradas,
+        processo,
+        saidas,
+        clientes,
+      })),
+      gaps: spec.gaps.map(([causa, descricao, impacto, acao, responsavel, prazo, prioridade, status]) => ({
+        id: id("gap"),
+        causa,
+        descricao,
+        impacto,
+        acao,
+        responsavel,
+        prazo,
+        prioridade,
+        status,
+        comentarios: [],
+      })),
+      nextSteps: spec.nextSteps.map((text) => ({ id: id("next"), text })),
+      glossary: spec.glossary.map(([termo, definicao]) => ({ id: id("gloss"), termo, definicao })),
+    },
+  };
+}
+
+const DEMO_DDP_SPECS: DemoDdpSpec[] = [
+  {
+    id: "demo-doc:ddp:MAP.TI.002",
+    codigo: "MAP.TI.002",
+    titulo: "Gestão de Demandas de BI & Analytics",
+    area: "Tecnologia da Informação",
+    donoProcesso: "Carlos Menezes · TI",
+    responsavel: "Carlos Menezes · TI",
+    elaborador: "Aline Ferreira · Processos & Qualidade",
+    revisor: "Carlos Menezes · TI",
+    valueChainId: "chain-gestao-ti",
+    valueChainName: "Gestão de TI & Inovação",
+    versao: "03",
+    status: "Aprovado",
+    updatedAt: "2026-06-20",
+    objetivo:
+      "Mapear o ciclo de atendimento das demandas de BI e Analytics, do pedido do solicitante até a publicação do dashboard, identificando gargalos e retrabalho.",
+    escopo:
+      "Inclui solicitação, priorização, modelagem de dados, construção de dashboards e publicação. Não inclui a infraestrutura do data warehouse.",
+    estadoAtual:
+      "Demandas chegam por e-mail e canais diversos, sem padronização. A priorização é informal e depende da disponibilidade do time.",
+    kpis: "Lead time médio da demanda; % de dashboards publicados no prazo; nº de retrabalhos por demanda.",
+    volume: "~25 demandas/mês",
+    frequencia: "Fluxo contínuo (diário)",
+    dores:
+      "Falta de critério claro de priorização; requisitos incompletos; retrabalho por validação tardia com o solicitante.",
+    oportunidades:
+      "Portal único de demandas, template de requisitos e checkpoint de validação intermediária.",
+    systems: [
+      ["Power BI", "Plataforma de BI", "Alta", "Construção e publicação de dashboards e relatórios."],
+      ["Azure SQL / DW", "Banco de dados analítico", "Alta", "Camada de dados consolidada para análise."],
+      ["Jira", "Gestão de demandas", "Média", "Registro e acompanhamento das demandas priorizadas."],
+    ],
+    steps: [
+      ["Receber e registrar demanda", "Analista de BI", "Pedido do solicitante", "Registrar a demanda e capturar o objetivo de negócio.", "Demanda registrada", "Jira", "Requisito incompleto"],
+      ["Priorizar demanda", "Carlos Menezes · TI", "Backlog de demandas", "Classificar por valor e esforço no comitê semanal.", "Demanda priorizada", "Jira", "Priorização subjetiva"],
+      ["Modelar dados", "Engenheiro de Dados", "Fontes de dados", "Construir/ajustar o modelo de dados necessário.", "Modelo pronto", "Azure SQL / DW", "Qualidade de dados"],
+      ["Construir dashboard", "Analista de BI", "Modelo de dados", "Desenvolver visualizações conforme requisitos.", "Dashboard em homologação", "Power BI", "Divergência de requisito"],
+      ["Validar e publicar", "Solicitante", "Dashboard homologado", "Validar com o solicitante e publicar no workspace.", "Dashboard publicado", "Power BI", "Validação tardia"],
+    ],
+    sipoc: [
+      ["Áreas de negócio", "Pedido e regras de negócio", "Atendimento da demanda de BI", "Dashboard publicado", "Gestores e analistas"],
+      ["Sistemas transacionais", "Dados brutos", "Modelagem e consolidação", "Base analítica confiável", "Time de BI"],
+    ],
+    gaps: [
+      ["Priorização informal", "Não há critério objetivo para priorizar demandas.", "Atrasos e insatisfação das áreas", "Implantar matriz valor × esforço no comitê", "Carlos Menezes · TI", "2026-07-31", "Alta", "Pendente"],
+      ["Requisitos incompletos", "Demandas chegam sem detalhamento suficiente.", "Retrabalho e atraso", "Adotar template de requisitos no portal", "Aline Ferreira · Processos & Qualidade", "2026-07-15", "Alta", "Em andamento"],
+    ],
+    nextSteps: [
+      "Implantar portal único de demandas com template de requisitos",
+      "Definir SLA por tipo de demanda",
+      "Validar o mapeamento com o dono do processo",
+    ],
+    glossary: [
+      ["BI", "Business Intelligence — análise de dados para apoio à decisão."],
+      ["Lead time", "Tempo total entre a abertura e a entrega da demanda."],
+      ["DW", "Data Warehouse — repositório central de dados analíticos."],
+    ],
+  },
+  {
+    id: "demo-doc:ddp:MAP.RH.001",
+    codigo: "MAP.RH.001",
+    titulo: "Recrutamento e Seleção",
+    area: "Recursos Humanos",
+    donoProcesso: "Juliana Castro · RH",
+    responsavel: "Juliana Castro · RH",
+    elaborador: "Juliana Castro · RH",
+    revisor: "Aline Ferreira · Processos & Qualidade",
+    valueChainId: "chain-gestao-pessoas",
+    valueChainName: "Gestão de Pessoas",
+    versao: "02",
+    status: "Em revisão",
+    updatedAt: "2026-06-18",
+    objetivo:
+      "Mapear o fluxo de recrutamento e seleção, da abertura da vaga à admissão, reduzindo o tempo de contratação.",
+    escopo:
+      "Da requisição de pessoal até a proposta aceita. Não inclui onboarding, tratado em processo próprio.",
+    estadoAtual:
+      "Triagem manual de currículos e agenda de entrevistas por e-mail, gerando demora e perda de candidatos.",
+    kpis: "Tempo médio de contratação (time-to-hire); taxa de aceitação de propostas; nº de candidatos por vaga.",
+    volume: "~12 vagas/mês",
+    frequencia: "Conforme demanda das áreas",
+    dores: "Triagem demorada; baixa padronização de entrevistas; comunicação lenta com candidatos.",
+    oportunidades: "ATS para triagem; roteiro de entrevista padrão; comunicação automatizada.",
+    systems: [
+      ["Gupy (ATS)", "Recrutamento e seleção", "Alta", "Publicação de vagas e triagem de candidatos."],
+      ["LinkedIn Recruiter", "Sourcing", "Média", "Busca ativa de candidatos."],
+      ["Google Workspace", "Colaboração", "Média", "Agendamento e comunicação."],
+    ],
+    steps: [
+      ["Abrir requisição de vaga", "Gestor da área", "Necessidade de contratação", "Registrar a vaga com perfil e justificativa.", "Vaga aprovada", "Gupy (ATS)", "Perfil mal definido"],
+      ["Divulgar e captar", "Analista de R&S", "Vaga aprovada", "Publicar a vaga e fazer sourcing ativo.", "Pipeline de candidatos", "Gupy / LinkedIn", "Poucos candidatos"],
+      ["Triar candidatos", "Analista de R&S", "Currículos recebidos", "Avaliar fit técnico e cultural.", "Shortlist", "Gupy (ATS)", "Triagem subjetiva"],
+      ["Entrevistar", "Gestor da área", "Shortlist", "Conduzir entrevistas conforme roteiro.", "Candidato avaliado", "Google Workspace", "Falta de padronização"],
+      ["Fazer proposta e admitir", "Juliana Castro · RH", "Candidato aprovado", "Negociar proposta e iniciar admissão.", "Colaborador admitido", "Gupy (ATS)", "Recusa de proposta"],
+    ],
+    sipoc: [
+      ["Áreas requisitantes", "Requisição de pessoal", "Recrutamento e seleção", "Profissional contratado", "Área requisitante"],
+      ["Fontes de candidatos", "Currículos", "Triagem e avaliação", "Shortlist qualificada", "Gestores"],
+    ],
+    gaps: [
+      ["Triagem manual", "Currículos avaliados manualmente um a um.", "Demora e perda de talentos", "Configurar filtros e ranking no ATS", "Juliana Castro · RH", "2026-07-20", "Alta", "Pendente"],
+      ["Entrevistas sem roteiro", "Cada gestor entrevista de forma diferente.", "Decisão inconsistente", "Criar roteiro e ficha de avaliação padrão", "Juliana Castro · RH", "2026-07-10", "Média", "Em andamento"],
+    ],
+    nextSteps: [
+      "Padronizar roteiro de entrevista por nível",
+      "Automatizar comunicação com candidatos",
+      "Validar o mapeamento com o dono do processo",
+    ],
+    glossary: [
+      ["ATS", "Applicant Tracking System — sistema de gestão de candidaturas."],
+      ["Time-to-hire", "Tempo entre abertura da vaga e aceite da proposta."],
+      ["Sourcing", "Busca ativa de candidatos."],
+    ],
+  },
+  {
+    id: "demo-doc:ddp:MAP.FIN.001",
+    codigo: "MAP.FIN.001",
+    titulo: "Contas a Receber",
+    area: "Financeiro & Controladoria",
+    donoProcesso: "Bruno Cardoso · Financeiro",
+    responsavel: "Bruno Cardoso · Financeiro",
+    elaborador: "Bruno Cardoso · Financeiro",
+    revisor: "Aline Ferreira · Processos & Qualidade",
+    valueChainId: "chain-financeiro",
+    valueChainName: "Gestão Financeira",
+    versao: "04",
+    status: "Aprovado",
+    updatedAt: "2026-03-19",
+    objetivo:
+      "Mapear o ciclo de contas a receber, da emissão da fatura à baixa, melhorando o índice de inadimplência.",
+    escopo: "Da emissão da fatura à conciliação bancária. Não inclui negociação de crédito.",
+    estadoAtual:
+      "Cobrança reativa, sem régua definida; conciliação parcialmente manual no fim do mês.",
+    kpis: "DSO (prazo médio de recebimento); % de inadimplência; % de conciliação automática.",
+    volume: "~800 títulos/mês",
+    frequencia: "Diária",
+    dores: "Cobrança tardia; conciliação manual demorada; falta de visão de aging.",
+    oportunidades: "Régua de cobrança automatizada; conciliação via API bancária; painel de aging.",
+    systems: [
+      ["ERP TOTVS", "Sistema transacional", "Alta", "Emissão de faturas, baixa e razão contábil."],
+      ["Portal Bancário / API", "Integração financeira", "Alta", "Recebíveis e retorno bancário."],
+      ["Planilhas de aging", "Controle manual", "Média", "Acompanhamento de vencidos (a ser substituído)."],
+    ],
+    steps: [
+      ["Emitir fatura", "Analista Financeiro", "Pedido faturado", "Gerar a fatura e a nota fiscal.", "Fatura emitida", "ERP TOTVS", "Erro de dados cadastrais"],
+      ["Enviar cobrança", "Analista Financeiro", "Fatura emitida", "Enviar boleto e lembretes ao cliente.", "Cobrança enviada", "ERP TOTVS", "Cobrança tardia"],
+      ["Receber pagamento", "Cliente", "Boleto", "Cliente efetua o pagamento.", "Pagamento recebido", "Portal Bancário / API", "Pagamento divergente"],
+      ["Conciliar", "Analista Financeiro", "Retorno bancário", "Conciliar recebimentos e dar baixa.", "Título baixado", "ERP TOTVS", "Conciliação manual"],
+      ["Tratar inadimplência", "Bruno Cardoso · Financeiro", "Títulos vencidos", "Acionar régua de cobrança e negociação.", "Título regularizado", "ERP TOTVS", "Perda por inadimplência"],
+    ],
+    sipoc: [
+      ["Área Comercial", "Pedidos faturados", "Faturamento e cobrança", "Recebimento conciliado", "Tesouraria"],
+      ["Bancos", "Retorno bancário", "Conciliação e baixa", "Razão atualizado", "Controladoria"],
+    ],
+    gaps: [
+      ["Cobrança reativa", "Não há régua de cobrança automatizada.", "Aumento da inadimplência", "Implantar régua automática por faixa de atraso", "Bruno Cardoso · Financeiro", "2026-04-30", "Alta", "Concluído"],
+      ["Conciliação manual", "Conciliação feita em planilhas no fim do mês.", "Erros e atraso no fechamento", "Integrar conciliação via API bancária", "Bruno Cardoso · Financeiro", "2026-05-31", "Média", "Em andamento"],
+    ],
+    nextSteps: [
+      "Publicar painel de aging em tempo real",
+      "Automatizar a régua de cobrança",
+      "Validar o mapeamento com o dono do processo",
+    ],
+    glossary: [
+      ["DSO", "Days Sales Outstanding — prazo médio de recebimento."],
+      ["Aging", "Relatório de títulos por faixa de vencimento."],
+      ["Conciliação", "Confronto entre extrato bancário e títulos."],
+    ],
+  },
+  {
+    id: "demo-doc:ddp:MAP.COM.001",
+    codigo: "MAP.COM.001",
+    titulo: "Prospecção e Geração de Leads",
+    area: "Comercial & Vendas",
+    donoProcesso: "Rafael Souza · Comercial",
+    responsavel: "Rafael Souza · Comercial",
+    elaborador: "Rafael Souza · Comercial",
+    revisor: "Aline Ferreira · Processos & Qualidade",
+    valueChainId: "chain-comercial",
+    valueChainName: "Comercialização & Vendas",
+    versao: "01",
+    status: "Ativo",
+    updatedAt: "2026-06-09",
+    objetivo:
+      "Mapear a geração e qualificação de leads, do primeiro contato à passagem para vendas, aumentando a taxa de conversão.",
+    escopo: "Da captação do lead à qualificação (MQL→SQL). Não inclui negociação e fechamento.",
+    estadoAtual:
+      "Leads dispersos entre planilhas e e-mails; qualificação sem critério único; baixa rastreabilidade.",
+    kpis: "Taxa de conversão lead→SQL; custo por lead; tempo de resposta ao lead.",
+    volume: "~400 leads/mês",
+    frequencia: "Diária",
+    dores: "Leads sem follow-up; qualificação subjetiva; falta de integração marketing-vendas.",
+    oportunidades: "CRM único; critério BANT; automação de nutrição.",
+    systems: [
+      ["HubSpot CRM", "CRM", "Alta", "Gestão de leads, funil e atividades comerciais."],
+      ["RD Station", "Automação de marketing", "Média", "Captação e nutrição de leads."],
+      ["Planilhas de apoio", "Controle manual", "Baixa", "Controles paralelos (a eliminar)."],
+    ],
+    steps: [
+      ["Captar lead", "Marketing", "Campanhas e formulários", "Capturar o lead e registrar a origem.", "Lead registrado", "RD Station", "Lead duplicado"],
+      ["Qualificar (MQL)", "SDR", "Lead registrado", "Avaliar fit com critério BANT.", "Lead qualificado (MQL)", "HubSpot CRM", "Qualificação subjetiva"],
+      ["Abordar e nutrir", "SDR", "MQL", "Realizar abordagem e nutrição até o interesse.", "Lead engajado", "HubSpot CRM", "Falta de follow-up"],
+      ["Converter em SQL", "SDR", "Lead engajado", "Confirmar oportunidade e agendar reunião.", "SQL gerado", "HubSpot CRM", "Passagem incompleta"],
+      ["Passar para vendas", "Rafael Souza · Comercial", "SQL gerado", "Repassar o SQL ao executivo de vendas.", "Oportunidade no funil", "HubSpot CRM", "Perda na passagem"],
+    ],
+    sipoc: [
+      ["Marketing", "Leads captados", "Qualificação de leads", "SQL qualificado", "Time de Vendas"],
+      ["Canais digitais", "Dados de contato", "Nutrição e abordagem", "Lead engajado", "SDRs"],
+    ],
+    gaps: [
+      ["Sem critério único", "Qualificação varia entre SDRs.", "Conversão baixa e inconsistente", "Adotar critério BANT padronizado", "Rafael Souza · Comercial", "2026-07-15", "Alta", "Pendente"],
+      ["Follow-up manual", "Acompanhamento depende de memória do SDR.", "Leads esfriam", "Automatizar cadência de follow-up no CRM", "Rafael Souza · Comercial", "2026-07-05", "Média", "Pendente"],
+    ],
+    nextSteps: [
+      "Unificar a base de leads no CRM",
+      "Definir SLA de resposta ao lead",
+      "Validar o mapeamento com o dono do processo",
+    ],
+    glossary: [
+      ["MQL", "Marketing Qualified Lead — lead qualificado pelo marketing."],
+      ["SQL", "Sales Qualified Lead — lead qualificado para vendas."],
+      ["BANT", "Budget, Authority, Need, Timing — critério de qualificação."],
+    ],
+  },
+];
+
+type DemoPopSpec = {
+  id: string;
+  tipo: "POP" | "IT" | "Norma";
+  codigo: string;
+  titulo: string;
+  area: string;
+  processo: string;
+  responsavel: string;
+  elaboracao: string;
+  aprovacao: string;
+  versao: string;
+  status: string;
+  updatedAt: string;
+  objetivo: string;
+  abrangencia: string;
+  sections: Array<[string, string, string]>; // title, description, body
+  responsibilities: Array<[string, string]>; // area, responsabilidade
+};
+
+function makeDemoPopWorkspace(spec: DemoPopSpec): WorkspaceState {
+  const base = defaultWorkspace();
+  return {
+    ...base,
+    pop: {
+      ...base.pop,
+      meta: {
+        ...base.pop.meta,
+        tipo: spec.tipo,
+        codigo: spec.codigo,
+        titulo: spec.titulo,
+        area: spec.area,
+        processo: spec.processo,
+        versao: spec.versao,
+        elaboracao: spec.elaboracao,
+        aprovacao: spec.aprovacao,
+      },
+      purpose: {
+        ...base.pop.purpose,
+        objetivo: spec.objetivo,
+        abrangencia: spec.abrangencia,
+      },
+      sections: spec.sections.map(([title, description, body]) => ({
+        id: id("sec"),
+        title,
+        description,
+        body,
+        records: "",
+        risks: "",
+        images: [],
+      })),
+      responsibilities: spec.responsibilities.map(([area, responsabilidade]) => ({
+        id: id("resp"),
+        area,
+        responsabilidade,
+      })),
+    },
+  };
+}
+
+const DEMO_POP_SPECS: DemoPopSpec[] = [
+  {
+    id: "demo-doc:pop:POP.RH.001",
+    tipo: "POP",
+    codigo: "POP.RH.001",
+    titulo: "Admissão de Colaborador",
+    area: "Recursos Humanos",
+    processo: "Recrutamento e Seleção",
+    responsavel: "Juliana Castro · RH",
+    elaboracao: "Juliana Castro · RH",
+    aprovacao: "Aline Ferreira · Processos & Qualidade",
+    versao: "02",
+    status: "Aprovado",
+    updatedAt: "2026-05-04",
+    objetivo: "Padronizar a admissão de novos colaboradores, garantindo conformidade e prazo.",
+    abrangencia: "Aplica-se a todas as admissões CLT da organização.",
+    sections: [
+      ["1. Pré-requisitos", "Documentos e aprovações necessárias", "Proposta aceita, documentos pessoais do candidato e exame admissional agendado."],
+      ["2. Registro e contrato", "Cadastro e formalização", "Cadastrar o colaborador no sistema de folha, gerar e colher assinatura do contrato e anexos."],
+      ["3. Integração inicial", "Acessos e boas-vindas", "Solicitar acessos a TI, preparar estação de trabalho e agendar o onboarding."],
+    ],
+    responsibilities: [
+      ["RH", "Conduzir a admissão e validar a documentação."],
+      ["TI", "Provisionar acessos e equipamentos."],
+      ["Gestor", "Receber e integrar o novo colaborador."],
+    ],
+  },
+  {
+    id: "demo-doc:pop:IT.TI.001",
+    tipo: "IT",
+    codigo: "IT.TI.001",
+    titulo: "Concessão de Acessos",
+    area: "Tecnologia da Informação",
+    processo: "Gestão de Segurança da Informação",
+    responsavel: "Carlos Menezes · TI",
+    elaboracao: "Carlos Menezes · TI",
+    aprovacao: "Carlos Menezes · TI",
+    versao: "01",
+    status: "Aprovado",
+    updatedAt: "2026-05-22",
+    objetivo: "Definir as regras para concessão, revisão e revogação de acessos a sistemas.",
+    abrangencia: "Aplica-se a todos os sistemas corporativos e usuários internos.",
+    sections: [
+      ["1. Solicitação", "Abertura do pedido", "Gestor solicita o acesso via chamado, informando sistema, perfil e justificativa."],
+      ["2. Aprovação e provisionamento", "Análise e liberação", "TI valida o perfil mínimo necessário, aprova e provisiona o acesso registrando evidência."],
+      ["3. Revisão periódica", "Recertificação", "Revisar trimestralmente os acessos ativos e revogar os desnecessários."],
+    ],
+    responsibilities: [
+      ["Gestor solicitante", "Justificar a necessidade do acesso."],
+      ["TI / Segurança", "Conceder o acesso mínimo necessário e registrar."],
+    ],
+  },
+  {
+    id: "demo-doc:pop:POP.FIN.001",
+    tipo: "POP",
+    codigo: "POP.FIN.001",
+    titulo: "Conciliação Bancária",
+    area: "Financeiro & Controladoria",
+    processo: "Contas a Receber",
+    responsavel: "Bruno Cardoso · Financeiro",
+    elaboracao: "Bruno Cardoso · Financeiro",
+    aprovacao: "Aline Ferreira · Processos & Qualidade",
+    versao: "03",
+    status: "Ativo",
+    updatedAt: "2026-04-30",
+    objetivo: "Padronizar a conciliação entre extratos bancários e títulos no ERP.",
+    abrangencia: "Aplica-se a todas as contas correntes da organização.",
+    sections: [
+      ["1. Importar retorno bancário", "Coleta dos dados", "Baixar o arquivo de retorno e importar no ERP."],
+      ["2. Conciliar movimentos", "Confronto", "Confrontar recebimentos com títulos em aberto e dar baixa nos correspondentes."],
+      ["3. Tratar divergências", "Exceções", "Investigar divergências, registrar ajustes e escalar quando necessário."],
+    ],
+    responsibilities: [
+      ["Analista Financeiro", "Executar a conciliação diária."],
+      ["Controladoria", "Validar o fechamento mensal."],
+    ],
+  },
+];
+
+const DEMO_DOCUMENTS: Record<AteliamModule, DemoDoc[]> = {
+  ddp: DEMO_DDP_SPECS.map((spec) => ({
+    id: spec.id,
+    status: spec.status,
+    updatedAt: spec.updatedAt,
+    workspace: makeDemoDdpWorkspace(spec),
+  })),
+  pop: DEMO_POP_SPECS.map((spec) => ({
+    id: spec.id,
+    status: spec.status,
+    updatedAt: spec.updatedAt,
+    workspace: makeDemoPopWorkspace(spec),
+  })),
+  bpmn: [],
+};
+
 function asTextItem(value: unknown, prefix: string): TextItem {
   if (value && typeof value === "object" && "text" in value) {
     const row = value as Partial<TextItem>;
@@ -3867,6 +4365,65 @@ function buildReadonlyPreviewHtml(
 </div></body></html>`;
 }
 
+// Visualização somente-leitura de Documentação (POP/IT) com o conteúdo do
+// formulário, seguindo a identidade visual do sistema.
+function buildPopPreviewHtml(pop: PopState, brand?: OrganizationBrand) {
+  const accent = docxColor(brand?.word_header_color, "1D1F23");
+  const meta: Array<[string, string]> = [
+    ["Código", pop.meta.codigo],
+    ["Tipo", pop.meta.tipo],
+    ["Área", pop.meta.area],
+    ["Processo", pop.meta.processo],
+    ["Versão", pop.meta.versao],
+    ["Elaboração", pop.meta.elaboracao],
+    ["Aprovação", pop.meta.aprovacao],
+  ]
+    .filter(([, v]) => v && v !== "-")
+    .map(([k, v]) => `<div class="m"><span>${html(k)}</span><b>${html(v)}</b></div>`)
+    .join("");
+  const sections = pop.sections
+    .map(
+      (s) =>
+        `<article><h3>${html(s.title)}</h3>${s.description ? `<p class="d">${html(s.description)}</p>` : ""}<p>${html(
+          s.body,
+        )}</p></article>`,
+    )
+    .join("");
+  const resp = pop.responsibilities
+    .map((r) => `<tr><td>${html(r.area)}</td><td>${html(r.responsabilidade)}</td></tr>`)
+    .join("");
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${html(pop.meta.codigo)} - ${html(pop.meta.titulo)}</title>
+<style>
+:root{--accent:#${accent};--line:#d9d6cd;--muted:#5f6368;--paper:#f6f5f0}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:#202124;font-family:"Segoe UI",Arial,sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:40px 24px}
+.head{background:var(--accent);color:#fff;border-radius:14px;padding:30px 34px;margin-bottom:22px}
+.kicker{font-size:11px;letter-spacing:.32em;text-transform:uppercase;opacity:.78;font-weight:800}
+.head h1{margin:10px 0 0;font-size:30px;line-height:1.1}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:18px}
+.m{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:10px;padding:8px 12px;font-size:13px}
+.m span{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.78}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin-bottom:18px}
+.card h2{margin:0 0 14px;font-size:14px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+article{border-left:6px solid var(--accent);background:#fbfaf6;border:1px solid #ece9e0;border-left:6px solid var(--accent);border-radius:8px;padding:14px 18px;margin-bottom:12px}
+article h3{margin:0 0 6px;font-size:16px;color:#1f2937}
+article p{margin:4px 0;line-height:1.5;color:#374151}
+article .d{color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top;font-size:14px}
+th{background:var(--accent);color:#fff;text-transform:uppercase;font-size:11px;letter-spacing:.1em}
+.note{color:var(--muted);font-size:12.5px;line-height:1.5}
+</style></head><body><div class="wrap">
+<div class="head"><div class="kicker">Documentação · Visualização</div><h1>${html(pop.meta.titulo)}</h1><div class="meta">${meta}</div></div>
+${pop.purpose.objetivo || pop.purpose.abrangencia ? `<div class="card"><h2>Objetivo e abrangência</h2>${pop.purpose.objetivo ? `<p>${html(pop.purpose.objetivo)}</p>` : ""}${pop.purpose.abrangencia ? `<p class="note">${html(pop.purpose.abrangencia)}</p>` : ""}</div>` : ""}
+<div class="card"><h2>Procedimento</h2>${sections}</div>
+${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Área</th><th>Responsabilidade</th></tr></thead><tbody>${resp}</tbody></table></div>` : ""}
+<p class="note">Visualização somente-leitura — para alterar, use “Editar” na consulta de registros.</p>
+</div></body></html>`;
+}
+
 function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const model = getDdpExportModel(data);
   const presentationColor = docxColor(brand?.word_header_color, "1D1F23");
@@ -4926,6 +5483,16 @@ function ModuleWorkspacePage() {
   );
 
   async function editDocumentRow(row: ModuleGridRow) {
+    if (row.id.startsWith("demo-doc:")) {
+      const snapshot = resolveRowSnapshot(row);
+      if (snapshot) {
+        setWorkspace(snapshot);
+        window.localStorage.setItem(draftKey, JSON.stringify(snapshot));
+        setModuleSurface("editor");
+        setModuleEditStarted(true);
+      }
+      return;
+    }
     if (row.id.startsWith("demo-row:")) {
       toast.info("Registro de demonstração. Use “Novo” para criar um caso editável.");
       return;
@@ -4969,23 +5536,30 @@ function ModuleWorkspacePage() {
   }
 
   function resolveRowSnapshot(row: ModuleGridRow): WorkspaceState | null {
+    if (row.id.startsWith("demo-doc:")) {
+      return DEMO_DOCUMENTS[moduleId]?.find((doc) => doc.id === row.id)?.workspace ?? null;
+    }
+    if (row.id.startsWith("demo-saved:")) {
+      return savedDemoDocument?.workspace ?? null;
+    }
     const cloudDocument = (cloudDocsQ.data as CloudModuleDocument[] | undefined)?.find(
       (document) => document.id === row.id,
     );
-    return row.id.startsWith("demo-saved:")
-      ? (savedDemoDocument?.workspace ?? null)
-      : cloudDocument?.content_inline
-        ? parseWorkspace(cloudDocument.content_inline)
-        : null;
+    return cloudDocument?.content_inline ? parseWorkspace(cloudDocument.content_inline) : null;
   }
 
-  // Abre uma versão somente-leitura amigável do registro em nova aba.
+  // Abre uma versão somente-leitura amigável do registro em nova aba, com todas
+  // as informações preenchidas no formulário e seguindo a identidade visual.
   function viewDocumentRow(row: ModuleGridRow) {
     const snapshot = resolveRowSnapshot(row);
-    const docHtml =
-      snapshot && moduleId === "ddp"
-        ? buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html"))
-        : buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
+    let docHtml: string;
+    if (snapshot && moduleId === "ddp") {
+      docHtml = buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html"));
+    } else if (snapshot && moduleId === "pop") {
+      docHtml = buildPopPreviewHtml(snapshot.pop, brandForDocumentModel("pop-word"));
+    } else {
+      docHtml = buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
+    }
     const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
     const opened = window.open(url, "_blank", "noopener");
     if (!opened) toast.error("Habilite pop-ups para visualizar o registro.");
@@ -6155,18 +6729,27 @@ function buildModuleGridRows(
   });
   if (cloudRows.length) return cloudRows;
   if (isDemo) {
-    const demoRows = buildDemoModuleRows(moduleId);
-    if (savedDemoDocument) {
-      return [
-        moduleGridRowFromWorkspace(moduleId, savedDemoDocument.workspace, {
-          id: savedDemoDocument.id,
-          status: "Salvo",
-          updatedAt: savedDemoDocument.updatedAt,
-        }),
-        ...demoRows,
-      ];
-    }
-    return demoRows;
+    // Documentos de demonstração reais (preenchidos e encadeados ao registry).
+    const realDocs = DEMO_DOCUMENTS[moduleId] ?? [];
+    const realRows = realDocs.map((doc) =>
+      moduleGridRowFromWorkspace(moduleId, doc.workspace, {
+        id: doc.id,
+        status: doc.status,
+        updatedAt: doc.updatedAt,
+      }),
+    );
+    // Para módulos sem snapshots reais (ex.: fluxograma), mantém os cards de metadados.
+    const fallbackRows = realRows.length ? [] : buildDemoModuleRows(moduleId);
+    const savedRows = savedDemoDocument
+      ? [
+          moduleGridRowFromWorkspace(moduleId, savedDemoDocument.workspace, {
+            id: savedDemoDocument.id,
+            status: "Salvo",
+            updatedAt: savedDemoDocument.updatedAt,
+          }),
+        ]
+      : [];
+    return [...savedRows, ...realRows, ...fallbackRows];
   }
   if (!savedDemoDocument) return [];
   return [
@@ -6439,8 +7022,8 @@ function RowActions({
   }, [exportOpen]);
 
   const reportFormat: ExportFormat = moduleId === "ddp" ? "ddp-docx" : "pop-docx";
-  const presentationFormat: ExportFormat =
-    moduleId === "ddp" ? "ddp-presentation-doc" : "pop-presentation-doc";
+  // Apresentação no formato padrão (HTML) — disponível apenas para Mapeamento.
+  const hasPresentation = moduleId === "ddp";
   const iconBtn =
     "inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted";
 
@@ -6472,18 +7055,20 @@ function RowActions({
                 onExport(reportFormat);
               }}
             >
-              <FileText className="h-4 w-4 shrink-0" /> Relatório (Word)
+              <FileText className="h-4 w-4 shrink-0" /> Relatório
             </button>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-              onClick={() => {
-                setExportOpen(false);
-                onExport(presentationFormat);
-              }}
-            >
-              <Presentation className="h-4 w-4 shrink-0" /> Apresentação (Word)
-            </button>
+            {hasPresentation ? (
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  setExportOpen(false);
+                  onExport("ddp-html");
+                }}
+              >
+                <Presentation className="h-4 w-4 shrink-0" /> Apresentação
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
