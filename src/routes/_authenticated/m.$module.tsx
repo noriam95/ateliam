@@ -4183,6 +4183,7 @@ function ModuleWorkspacePage() {
     setModuleEditStarted(moduleId === "bpmn");
     setRailArea("modules");
     setContentMode("module");
+    setModuleSurface("editor");
     setExpandedTree((current) => ({
       ...current,
       modules: true,
@@ -4216,7 +4217,10 @@ function ModuleWorkspacePage() {
       setDdpView("editor");
       setModuleEditStarted(true);
       setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
+      return;
     }
+    // No view param — always reset to editor to avoid stale surface from previous navigation
+    setModuleSurface("editor");
   }, [moduleId, search.view]);
 
   useEffect(() => {
