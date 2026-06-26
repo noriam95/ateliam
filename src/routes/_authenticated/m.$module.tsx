@@ -5043,7 +5043,7 @@ function ModuleWorkspacePage() {
 
   async function importSpreadsheet(file: File) {
     if (moduleId === "bpmn") {
-      toast.info("Importação textual por Excel está disponível para DDP e POP por enquanto.");
+      toast.info("Importação textual por Excel está disponível para Mapeamento e POP por enquanto.");
       return;
     }
     const sheets = await readXlsxSheets(file);
@@ -7857,7 +7857,7 @@ function DdpCausesModule({
         eyebrow="Mapeamento · gestão · acompanhamento"
         progress={100}
       >
-        Consulte causas cadastradas no DDP, filtre por situação, acompanhe responsáveis e registre
+        Consulte causas cadastradas no Mapeamento, filtre por situação, acompanhe responsáveis e registre
         comentários sem sair do documento versionado.
       </Hero>
 
@@ -7961,7 +7961,7 @@ function DdpCausesModule({
                     </td>
                     <td className="px-3 py-3">
                       <span className="inline-flex rounded-full border border-[#d2d2d7] bg-white px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#515154]">
-                        {gap.sharedCauseId ? "Biblioteca" : "DDP"}
+                        {gap.sharedCauseId ? "Biblioteca" : "Mapeamento"}
                       </span>
                     </td>
                     <td className="px-3 py-3">
@@ -8082,7 +8082,7 @@ function DdpCausesModule({
                         <span>{cause.action || "-"}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-[#6e6e73]">A definir no DDP</td>
+                    <td className="px-3 py-3 text-[#6e6e73]">A definir no Mapeamento</td>
                     <td className="px-3 py-3 text-[#6e6e73]">-</td>
                     <td className="px-3 py-3">
                       <CausePill value={normalizeCausePriority(cause.priority)} tone="priority" />
@@ -8095,7 +8095,7 @@ function DdpCausesModule({
                         onClick={() => addCatalogCauseToDdp(cause)}
                         className="inline-flex items-center gap-2 rounded-lg bg-[#3f3f46] px-3 py-2 text-xs font-bold text-white hover:bg-[#27272a]"
                       >
-                        Usar neste DDP
+                        Usar neste Mapeamento
                       </button>
                     </td>
                   </tr>
@@ -8565,7 +8565,7 @@ function DdpModule({
 
   return (
     <div className="grid gap-5">
-      <Hero title="Diagnóstico de Processo" eyebrow="Mapeamento" progress={completion}>
+      <Hero title="Relatório de Mapeamento de Processo" eyebrow="Mapeamento" progress={completion}>
         Capture capa, metadados, visão geral, sistemas, fluxo AS IS, SIPOC, gaps, próximos passos e
         glossário em um documento exportável.
       </Hero>
