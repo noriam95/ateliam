@@ -10,9 +10,11 @@ import {
   Circle,
   Diamond,
   Download,
+  Eye,
   FileSpreadsheet,
   Database,
   FileText,
+  Presentation,
   FlaskConical,
   FolderOpen,
   GitBranch,
@@ -3812,6 +3814,59 @@ function ateliamLogoHtml(brand?: OrganizationBrand) {
   return `<span class="brand-mark"><span></span></span><strong>Ateliam</strong>`;
 }
 
+// Visualização somente-leitura genérica de um registro da consulta, a partir
+// dos metadados da linha. Usada para registros de demonstração e para a
+// pré-visualização amigável de Documentação/Fluxograma.
+function buildReadonlyPreviewHtml(
+  moduleId: AteliamModule,
+  row: ModuleGridRow,
+  brand?: OrganizationBrand,
+) {
+  const accent = docxColor(brand?.word_header_color, "1D1F23");
+  const label = moduleDocumentLabel(moduleId);
+  const processLabel =
+    moduleId === "pop" ? "Tipo" : moduleId === "bpmn" ? "Processo vinculado" : "Processo";
+  const fields: Array<[string, string]> = [
+    ["Código", row.code],
+    [moduleId === "ddp" ? "Nome do processo" : "Nome", row.name],
+    [processLabel, moduleId === "pop" ? row.type : row.process],
+    ["Área", row.area],
+    ...(moduleId === "ddp" ? ([["Dono do processo", row.owner]] as Array<[string, string]>) : []),
+    ["Responsável", row.responsible],
+    ["Status", row.status],
+    ["Última atualização", new Date(row.updatedAt).toLocaleString("pt-BR")],
+  ];
+  const rows = fields
+    .filter(([, value]) => value && value !== "-")
+    .map(
+      ([k, v]) =>
+        `<div class="field"><div class="k">${html(k)}</div><div class="v">${html(v)}</div></div>`,
+    )
+    .join("");
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${html(row.code)} - ${html(label)}</title>
+<style>
+:root{--accent:#${accent};--line:#d9d6cd;--muted:#5f6368;--paper:#f6f5f0}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:#202124;font-family:"Segoe UI",Arial,sans-serif}
+.wrap{max-width:880px;margin:0 auto;padding:40px 24px}
+.head{background:var(--accent);color:#fff;border-radius:14px;padding:28px 32px;margin-bottom:24px}
+.kicker{font-size:11px;letter-spacing:.32em;text-transform:uppercase;opacity:.78;font-weight:800}
+.head h1{margin:10px 0 0;font-size:30px;line-height:1.1}
+.badge{display:inline-block;margin-top:14px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 28px}
+.field{display:grid;grid-template-columns:230px 1fr;gap:18px;padding:16px 0;border-bottom:1px solid #ece9e0}
+.field:last-child{border-bottom:0}
+.k{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.v{font-size:15px;color:#1f2937}
+.note{margin-top:22px;color:var(--muted);font-size:12.5px;line-height:1.5}
+</style></head><body><div class="wrap">
+<div class="head"><div class="kicker">${html(label)} · Visualização</div><h1>${html(row.name)}</h1><span class="badge">${html(row.status)}</span></div>
+<div class="card">${rows}</div>
+<p class="note">Visualização somente-leitura — as informações não podem ser editadas nesta tela. Para alterar, use a opção “Editar” na consulta de registros.</p>
+</div></body></html>`;
+}
+
 function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const model = getDdpExportModel(data);
   const presentationColor = docxColor(brand?.word_header_color, "1D1F23");
@@ -4913,18 +4968,39 @@ function ModuleWorkspacePage() {
     }
   }
 
-  async function exportDocumentRow(
-    row: ModuleGridRow,
-    format: "ddp-html" | "ddp-docx" | "pop-docx",
-  ) {
+  function resolveRowSnapshot(row: ModuleGridRow): WorkspaceState | null {
     const cloudDocument = (cloudDocsQ.data as CloudModuleDocument[] | undefined)?.find(
       (document) => document.id === row.id,
     );
-    const snapshot = row.id.startsWith("demo-saved:")
-      ? savedDemoDocument?.workspace
+    return row.id.startsWith("demo-saved:")
+      ? (savedDemoDocument?.workspace ?? null)
       : cloudDocument?.content_inline
         ? parseWorkspace(cloudDocument.content_inline)
         : null;
+  }
+
+  // Abre uma versão somente-leitura amigável do registro em nova aba.
+  function viewDocumentRow(row: ModuleGridRow) {
+    const snapshot = resolveRowSnapshot(row);
+    const docHtml =
+      snapshot && moduleId === "ddp"
+        ? buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html"))
+        : buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
+    const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
+    const opened = window.open(url, "_blank", "noopener");
+    if (!opened) toast.error("Habilite pop-ups para visualizar o registro.");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
+  async function exportDocumentRow(
+    row: ModuleGridRow,
+    format: "ddp-html" | "ddp-docx" | "ddp-presentation-doc" | "pop-docx" | "pop-presentation-doc",
+  ) {
+    if (row.id.startsWith("demo-row:")) {
+      toast.info("Registro de demonstração. Crie um caso real em “Novo” para exportar.");
+      return;
+    }
+    const snapshot = resolveRowSnapshot(row);
     if (!snapshot) throw new Error("Documento salvo não encontrado.");
 
     if (format === "ddp-html") {
@@ -4936,11 +5012,29 @@ function ModuleWorkspacePage() {
         buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html")),
         "text/html;charset=utf-8",
       );
+    } else if (format === "ddp-presentation-doc") {
+      const filename = cleanFileName(
+        `${snapshot.ddp.meta.codigo}-${snapshot.ddp.meta.titulo}-apresentacao`,
+      );
+      downloadText(
+        `${filename}.doc`,
+        buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html")),
+        "application/msword;charset=utf-8",
+      );
     } else if (format === "ddp-docx") {
       const filename = cleanFileName(`${snapshot.ddp.meta.codigo}-${snapshot.ddp.meta.titulo}`);
       downloadBlob(
         `${filename}.docx`,
         buildDdpDocx(snapshot.ddp, brandForDocumentModel("ddp-word")),
+      );
+    } else if (format === "pop-presentation-doc") {
+      const filename = cleanFileName(
+        `${snapshot.pop.meta.codigo}-${snapshot.pop.meta.titulo}-apresentacao`,
+      );
+      downloadText(
+        `${filename}.doc`,
+        buildReadonlyPreviewHtml(moduleId, row, organizationBrand),
+        "application/msword;charset=utf-8",
       );
     } else {
       const filename = cleanFileName(
@@ -5000,6 +5094,7 @@ function ModuleWorkspacePage() {
         onEdit={editDocumentRow}
         onDelete={deleteDocumentRows}
         onExport={exportDocumentRow}
+        onView={viewDocumentRow}
       />
     ) : (
       <>
@@ -5041,6 +5136,7 @@ function ModuleWorkspacePage() {
               onEdit={editDocumentRow}
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
+              onView={viewDocumentRow}
             />
           ) : (
             <DdpModule
@@ -5060,6 +5156,7 @@ function ModuleWorkspacePage() {
               onEdit={editDocumentRow}
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
+              onView={viewDocumentRow}
             />
           ) : (
             <PopModule
@@ -6081,6 +6178,13 @@ function buildModuleGridRows(
   ];
 }
 
+type ExportFormat =
+  | "ddp-html"
+  | "ddp-docx"
+  | "ddp-presentation-doc"
+  | "pop-docx"
+  | "pop-presentation-doc";
+
 function ModuleDocumentGrid({
   moduleId,
   rows,
@@ -6088,16 +6192,15 @@ function ModuleDocumentGrid({
   onEdit,
   onDelete,
   onExport,
+  onView,
 }: {
   moduleId: AteliamModule;
   rows: ModuleGridRow[];
   loading: boolean;
   onEdit: (row: ModuleGridRow) => void | Promise<void>;
   onDelete: (ids: string[]) => void | Promise<void>;
-  onExport: (
-    row: ModuleGridRow,
-    format: "ddp-html" | "ddp-docx" | "pop-docx",
-  ) => void | Promise<void>;
+  onExport: (row: ModuleGridRow, format: ExportFormat) => void | Promise<void>;
+  onView: (row: ModuleGridRow) => void;
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -6168,8 +6271,11 @@ function ModuleDocumentGrid({
     setSelected([]);
   }
 
-  const selectedRow =
-    selected.length === 1 ? rows.find((row) => row.id === selected[0]) : undefined;
+  async function removeRow(row: ModuleGridRow) {
+    if (!window.confirm(`Excluir o registro ${row.code || row.name}?`)) return;
+    await onDelete([row.id]);
+    setSelected((current) => current.filter((id) => id !== row.id));
+  }
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
@@ -6182,52 +6288,14 @@ function ModuleDocumentGrid({
             <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={!selectedRow}
-              onClick={() => selectedRow && onEdit(selectedRow)}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Pencil className="h-4 w-4" />
-              Editar
-            </button>
-            <button
-              type="button"
-              disabled={!selected.length}
-              onClick={removeSelected}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Trash2 className="h-4 w-4" />
-              Excluir
-            </button>
-            {moduleId === "ddp" ? (
-              <>
-                <button
-                  type="button"
-                  disabled={!selectedRow}
-                  onClick={() => selectedRow && onExport(selectedRow, "ddp-html")}
-                  className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Download className="h-4 w-4" /> HTML
-                </button>
-                <button
-                  type="button"
-                  disabled={!selectedRow}
-                  onClick={() => selectedRow && onExport(selectedRow, "ddp-docx")}
-                  className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <FileText className="h-4 w-4" /> Word
-                </button>
-              </>
-            ) : null}
-            {moduleId === "pop" ? (
+            {selected.length > 1 ? (
               <button
                 type="button"
-                disabled={!selectedRow}
-                onClick={() => selectedRow && onExport(selectedRow, "pop-docx")}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={removeSelected}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-destructive hover:bg-destructive/5"
               >
-                <FileText className="h-4 w-4" /> Word
+                <Trash2 className="h-4 w-4" />
+                Excluir selecionados ({selected.length})
               </button>
             ) : null}
             <button
@@ -6252,7 +6320,7 @@ function ModuleDocumentGrid({
       </header>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] table-fixed border-collapse text-left text-sm">
+        <table className="w-full min-w-[960px] border-collapse text-left text-sm">
           <thead className="bg-muted/80 text-xs font-semibold text-muted-foreground">
             <tr>
               <th className="w-12 px-4 py-3">
@@ -6270,13 +6338,16 @@ function ModuleDocumentGrid({
                   {label}
                 </th>
               ))}
+              <th className="w-[160px] whitespace-nowrap px-4 py-3 text-right font-semibold">
+                Ações
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
                 <td
-                  colSpan={columns.length + 1}
+                  colSpan={columns.length + 2}
                   className="px-4 py-12 text-center text-muted-foreground"
                 >
                   Carregando registros...
@@ -6286,7 +6357,7 @@ function ModuleDocumentGrid({
             {!loading && !filtered.length ? (
               <tr>
                 <td
-                  colSpan={columns.length + 1}
+                  colSpan={columns.length + 2}
                   className="px-4 py-12 text-center text-muted-foreground"
                 >
                   Nenhum registro encontrado.
@@ -6318,6 +6389,15 @@ function ModuleDocumentGrid({
                         </td>
                       );
                     })}
+                    <td className="px-4 py-3">
+                      <RowActions
+                        moduleId={moduleId}
+                        onView={() => onView(row)}
+                        onEdit={() => onEdit(row)}
+                        onDelete={() => removeRow(row)}
+                        onExport={(format) => onExport(row, format)}
+                      />
+                    </td>
                   </tr>
                 ))
               : null}
@@ -6328,6 +6408,95 @@ function ModuleDocumentGrid({
         {filtered.length} registro(s) exibido(s) · {selected.length} selecionado(s)
       </footer>
     </section>
+  );
+}
+
+function RowActions({
+  moduleId,
+  onView,
+  onEdit,
+  onDelete,
+  onExport,
+}: {
+  moduleId: AteliamModule;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onExport: (format: ExportFormat) => void;
+}) {
+  const [exportOpen, setExportOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    function onDocClick(event: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [exportOpen]);
+
+  const reportFormat: ExportFormat = moduleId === "ddp" ? "ddp-docx" : "pop-docx";
+  const presentationFormat: ExportFormat =
+    moduleId === "ddp" ? "ddp-presentation-doc" : "pop-presentation-doc";
+  const iconBtn =
+    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted";
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <button type="button" title="Visualizar" aria-label="Visualizar" className={iconBtn} onClick={onView}>
+        <Eye className="h-4 w-4" />
+      </button>
+      <button type="button" title="Editar" aria-label="Editar" className={iconBtn} onClick={onEdit}>
+        <Pencil className="h-4 w-4" />
+      </button>
+      <div ref={wrapRef} className="relative">
+        <button
+          type="button"
+          title="Exportar"
+          aria-label="Exportar"
+          className={iconBtn}
+          onClick={() => setExportOpen((open) => !open)}
+        >
+          <Download className="h-4 w-4" />
+        </button>
+        {exportOpen ? (
+          <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+              onClick={() => {
+                setExportOpen(false);
+                onExport(reportFormat);
+              }}
+            >
+              <FileText className="h-4 w-4 shrink-0" /> Relatório (Word)
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+              onClick={() => {
+                setExportOpen(false);
+                onExport(presentationFormat);
+              }}
+            >
+              <Presentation className="h-4 w-4 shrink-0" /> Apresentação (Word)
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        title="Excluir"
+        aria-label="Excluir"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-destructive hover:bg-destructive/5"
+        onClick={onDelete}
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
 
