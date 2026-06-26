@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { FileSpreadsheet, ImageDown, Network } from "lucide-react";
@@ -92,7 +92,7 @@ function ValueChainReport({
       ) : (
         <>
           <PorterDiagram primary={primary} support={support} management={management} />
-          <ConsultationTable primary={primary} support={support} management={management} />
+          <ConsultationTable chains={chains} />
         </>
       )}
     </section>
@@ -208,60 +208,190 @@ const CATEGORY_LABELS: Record<string, string> = {
   support: "Processos de Suporte",
 };
 
-function ConsultationTable({
-  primary,
-  support,
-  management,
-}: {
-  primary: ValueChain[];
-  support: ValueChain[];
-  management: ValueChain[];
-}) {
-  const all = [...management, ...primary, ...support];
+type SortField = "index" | "name" | "category" | "status";
+type SortDir = "asc" | "desc";
+
+function isActiveChain(chain: ValueChain) {
+  return chain.status?.toLowerCase().startsWith("ativ");
+}
+
+function ConsultationTable({ chains }: { chains: ValueChain[] }) {
+  // Ordem base: gestão → negócios → suporte (mesma do diagrama),
+  // preservando uma numeração estável independente de filtros/ordenação.
+  const ordered = useMemo(() => {
+    const rank: Record<string, number> = { management: 0, primary: 1, support: 2 };
+    return [...chains]
+      .map((chain, i) => ({ chain, original: i }))
+      .sort((a, b) => {
+        const ra = rank[a.chain.category] ?? 9;
+        const rb = rank[b.chain.category] ?? 9;
+        if (ra !== rb) return ra - rb;
+        return a.original - b.original;
+      })
+      .map(({ chain }, i) => ({ chain, index: i + 1 }));
+  }, [chains]);
+
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [sortField, setSortField] = useState<SortField>("index");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const activeCount = ordered.filter((r) => isActiveChain(r.chain)).length;
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let result = ordered.filter(({ chain }) => {
+      if (statusFilter === "active" && !isActiveChain(chain)) return false;
+      if (statusFilter === "inactive" && isActiveChain(chain)) return false;
+      if (!q) return true;
+      return (
+        chain.name.toLowerCase().includes(q) ||
+        (CATEGORY_LABELS[chain.category] ?? chain.category).toLowerCase().includes(q) ||
+        (chain.description ?? "").toLowerCase().includes(q) ||
+        chain.status.toLowerCase().includes(q)
+      );
+    });
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    result = [...result].sort((a, b) => {
+      switch (sortField) {
+        case "name":
+          return a.chain.name.localeCompare(b.chain.name) * dir;
+        case "category":
+          return (
+            (CATEGORY_LABELS[a.chain.category] ?? a.chain.category).localeCompare(
+              CATEGORY_LABELS[b.chain.category] ?? b.chain.category,
+            ) * dir
+          );
+        case "status":
+          return a.chain.status.localeCompare(b.chain.status) * dir;
+        default:
+          return (a.index - b.index) * dir;
+      }
+    });
+    return result;
+  }, [ordered, query, statusFilter, sortField, sortDir]);
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  }
+
+  function SortHeader({
+    field,
+    children,
+    className,
+  }: {
+    field: SortField;
+    children: ReactNode;
+    className?: string;
+  }) {
+    const active = sortField === field;
+    return (
+      <th
+        className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground ${className ?? ""}`}
+      >
+        <button
+          type="button"
+          onClick={() => toggleSort(field)}
+          className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+        >
+          {children}
+          <span className={active ? "opacity-90" : "opacity-30"}>
+            {active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+          </span>
+        </button>
+      </th>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-5 py-4">
-        <h2 className="font-display text-base font-semibold">Cadeias de Valor</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {all.length} {all.length === 1 ? "registro" : "registros"} ativos
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <h2 className="font-display text-base font-semibold">Cadeias de Valor</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {ordered.length} {ordered.length === 1 ? "registro" : "registros"} ·{" "}
+            {activeCount} {activeCount === 1 ? "ativo" : "ativos"} ·{" "}
+            {ordered.length - activeCount} inativo
+            {ordered.length - activeCount === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filtrar..."
+            className="h-8 w-44 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+            className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+          >
+            <option value="all">Todos os status</option>
+            <option value="active">Apenas ativos</option>
+            <option value="inactive">Apenas inativos</option>
+          </select>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Nome
-              </th>
-              <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Categoria
-              </th>
+              <SortHeader field="index" className="w-16">
+                #
+              </SortHeader>
+              <SortHeader field="name">Nome</SortHeader>
+              <SortHeader field="category">Categoria</SortHeader>
               <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Descrição
               </th>
-              <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Status
-              </th>
+              <SortHeader field="status">Status</SortHeader>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {all.map((item) => (
-              <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                <td className="px-5 py-3 font-medium text-foreground">{item.name}</td>
-                <td className="px-5 py-3 text-muted-foreground">
-                  {CATEGORY_LABELS[item.category] ?? item.category}
-                </td>
-                <td className="px-5 py-3 text-muted-foreground">
-                  {item.description ?? <span className="italic opacity-50">—</span>}
-                </td>
-                <td className="px-5 py-3">
-                  <span className="inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] px-2.5 py-0.5 text-xs font-medium text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
-                    {item.status}
-                  </span>
+            {rows.map(({ chain, index }) => {
+              const active = isActiveChain(chain);
+              return (
+                <tr
+                  key={chain.id}
+                  className={`hover:bg-muted/30 transition-colors ${active ? "" : "opacity-60"}`}
+                >
+                  <td className="px-5 py-3 tabular-nums text-muted-foreground">{index}</td>
+                  <td className="px-5 py-3 font-medium text-foreground">{chain.name}</td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {CATEGORY_LABELS[chain.category] ?? chain.category}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {chain.description ?? <span className="italic opacity-50">—</span>}
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        active
+                          ? "bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {chain.status}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                  Nenhuma cadeia de valor encontrada com os filtros atuais.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

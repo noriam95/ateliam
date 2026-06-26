@@ -242,6 +242,28 @@ export const DEMO_REGISTRY: RegistryData = {
       description: "Auditorias, não conformidades, certificações e melhoria de processos.",
       status: "Ativa",
     },
+    // ── Cadeias inativas (não aparecem no diagrama, apenas na tabela) ──
+    {
+      id: "chain-marketing-legado",
+      name: "Marketing Tradicional (Legado)",
+      category: "primary",
+      description: "Cadeia descontinuada após a unificação com Comercialização & Vendas.",
+      status: "Inativa",
+    },
+    {
+      id: "chain-juridico",
+      name: "Jurídico & Compliance",
+      category: "support",
+      description: "Em estruturação — aguardando definição do responsável.",
+      status: "Inativa",
+    },
+    {
+      id: "chain-projetos-pmo",
+      name: "Escritório de Projetos (PMO)",
+      category: "management",
+      description: "Suspensa temporariamente durante a reorganização da governança.",
+      status: "Inativa",
+    },
   ],
   processes: [
     // ── Governança Corporativa ──
