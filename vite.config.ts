@@ -1,1 +1,41 @@
-aW1wb3J0IHsgZGVmaW5lQ29uZmlnIH0gZnJvbSAidml0ZSI7CmltcG9ydCByZWFjdCBmcm9tICJAdml0ZWpzL3BsdWdpbi1yZWFjdCI7CmltcG9ydCB0YWlsd2luZGNzcyBmcm9tICJAdGFpbHdpbmRjc3Mvdml0ZSI7CmltcG9ydCB0c0NvbmZpZ1BhdGhzIGZyb20gInZpdGUtdHNjb25maWctcGF0aHMiOwppbXBvcnQgeyB0YW5zdGFja1N0YXJ0IH0gZnJvbSAiQHRhbnN0YWNrL3JlYWN0LXN0YXJ0L3BsdWdpbi92aXRlIjsKaW1wb3J0IHsgcmVzb2x2ZSB9IGZyb20gInBhdGgiOwoKZXhwb3J0IGRlZmF1bHQgZGVmaW5lQ29uZmlnKHsKICBwbHVnaW5zOiBbCiAgICB0YWlsd2luZGNzcygpLAogICAgdHNDb25maWdQYXRocyh7IHByb2plY3RzOiBbIi4vdHNjb25maWcuanNvbiJdIH0pLAogICAgdGFuc3RhY2tTdGFydCh7CiAgICAgIHNlcnZlcjogeyBwcmVzZXQ6IHByb2Nlc3MuZW52LlZFUkNFTCA/ICJ2ZXJjZWwiIDogIm5vZGUiIH0sCiAgICAgIGltcG9ydFByb3RlY3Rpb246IHsKICAgICAgICBiZWhhdmlvcjogImVycm9yIiwKICAgICAgICBjbGllbnQ6IHsKICAgICAgICAgIGZpbGVzOiBbIioqL3NlcnZlci8qKiJdLAogICAgICAgICAgc3BlY2lmaWVyczogWyJzZXJ2ZXItb25seSJdLAogICAgICAgIH0sCiAgICAgIH0sCiAgICB9KSwKICAgIHJlYWN0KCksCiAgXSwKICByZXNvbHZlOiB7CiAgICBhbGlhczogewogICAgICAiQCI6IHJlc29sdmUoX19kaXJuYW1lLCAic3JjIiksCiAgICB9LAogICAgZGVkdXBlOiBbCiAgICAgICJyZWFjdCIsCiAgICAgICJyZWFjdC1kb20iLAogICAgICAicmVhY3QvanN4LXJ1bnRpbWUiLAogICAgICAicmVhY3QvanN4LWRldi1ydW50aW1lIiwKICAgICAgIkB0YW5zdGFjay9yZWFjdC1xdWVyeSIsCiAgICAgICJAdGFuc3RhY2svcXVlcnktY29yZSIsCiAgICBdLAogIH0sCiAgc2VydmVyOiB7CiAgICBob3N0OiAiMC4wLjAuMCIsCiAgICBwb3J0OiAzMDAwLAogIH0sCn0pOwo=
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import tsConfigPaths from "vite-tsconfig-paths";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { resolve } from "path";
+
+export default defineConfig({
+  plugins: [
+    tailwindcss(),
+    tsConfigPaths({ projects: ["./tsconfig.json"] }),
+    tanstackStart({
+      server: { preset: process.env.VERCEL ? "vercel" : "node" },
+      importProtection: {
+        behavior: "error",
+        client: {
+          files: ["**/server/**"],
+          specifiers: ["server-only"],
+        },
+      },
+    }),
+    react(),
+  ],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "src"),
+    },
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@tanstack/query-core",
+    ],
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 3000,
+  },
+});
