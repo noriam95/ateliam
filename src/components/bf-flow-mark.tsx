@@ -13,8 +13,6 @@ export function BFFlowMark({ className }: BFFlowMarkProps) {
     >
       <svg
         viewBox="0 0 1019 1933"
-        width="1019"
-        height="1933"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="h-full w-auto"
