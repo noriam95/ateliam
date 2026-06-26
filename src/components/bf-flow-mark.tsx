@@ -12,40 +12,31 @@ export function BFFlowMark({ className }: BFFlowMarkProps) {
       className={cn("inline-flex shrink-0 items-center justify-center", className)}
     >
       <svg
-        viewBox="0 0 1019 1933"
+        viewBox="0 0 520 980"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="h-full w-auto"
         role="img"
       >
-        {/* Folha verde — chama superior-esquerda */}
+        {/* Folha verde — superior esquerda */}
         <path
-          d="M705 18
-             C640 180, 520 420, 380 660
-             C250 880, 140 1000, 50 1082
-             C180 920, 330 680, 470 440
-             C580 250, 660 90, 705 18 Z"
-          fill="#1A9E6F"
+          d="M340 10 C300 60 240 140 170 240 C100 340 40 430 10 510
+             C50 450 110 360 180 260 C255 155 310 70 340 10 Z"
+          fill="#1BAA72"
         />
-        {/* Lâmina teal — varredura principal */}
+        {/* Lâmina teal — diagonal principal */}
         <path
-          d="M935 335
-             C880 520, 760 760, 600 1020
-             C420 1310, 230 1620, 95 1830
-             C80 1865, 72 1890, 70 1905
-             C140 1740, 260 1520, 410 1270
-             C580 990, 760 710, 870 510
-             C905 445, 925 385, 935 335 Z"
-          fill="#157E9B"
+          d="M470 140 C445 210 400 300 340 410 C270 535 185 670 100 800
+             C75 840 55 875 42 900
+             C70 845 110 780 165 700 C240 585 325 455 390 335
+             C435 255 460 190 470 140 Z"
+          fill="#1A8AAD"
         />
-        {/* Gota dourada — pétala inferior-direita */}
+        {/* Gota dourada — inferior direita */}
         <path
-          d="M638 985
-             C545 1075, 440 1175, 360 1300
-             C250 1470, 240 1620, 360 1700
-             C490 1788, 690 1775, 810 1660
-             C915 1555, 925 1370, 850 1230
-             C785 1108, 715 1020, 638 985 Z"
+          d="M318 495 C270 545 215 605 175 678 C120 775 118 860 195 910
+             C272 960 390 952 460 878 C518 816 522 710 478 626
+             C442 555 385 508 318 495 Z"
           fill="#F5B324"
         />
       </svg>
