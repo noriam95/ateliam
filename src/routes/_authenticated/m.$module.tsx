@@ -4726,6 +4726,29 @@ function ModuleWorkspacePage() {
     return result.code;
   }
 
+  // Código automático do CADASTRO DE PROCESSO (kind "process"), conforme a
+  // máscara/sequência configurada por organização em Configurações.
+  const processCodeRule = normalizeRule("process", codeSettings?.process);
+  const isAutoProcessCode = processCodeRule.mode === "auto";
+  const processCodePreview = isAutoProcessCode
+    ? formatCode(
+        processCodeRule.mask,
+        isDemo
+          ? readDemoCodeNext(codeOrganizationId, "process", processCodeRule.next)
+          : processCodeRule.next,
+        { slug: codeOrganizationSlug },
+      )
+    : "";
+  async function reserveProcessCode(): Promise<string> {
+    if (isDemo) {
+      return reserveDemoCode(codeOrganizationId, "process", codeSettings, codeOrganizationSlug);
+    }
+    const result = await reserveCodeFn({
+      data: { organizationId: codeOrganizationId, kind: "process" },
+    });
+    return result.code;
+  }
+
   const documentModels = isDemo
     ? demoDocumentModels
     : DEFAULT_DOCUMENT_MODELS.map((fallback) => ({
@@ -5647,6 +5670,12 @@ function ModuleWorkspacePage() {
           onCreateProcess={addProcessToCatalog}
           onUpdateProcess={updateProcessCatalog}
           onDeleteProcess={deleteProcessCatalog}
+
+          autoCode={isAutoProcessCode}
+
+          codePreview={processCodePreview}
+
+          onReserveCode={reserveProcessCode}
           onOpenEditor={() => {
             setDdpView("editor");
             openModuleBranch("ddp");
@@ -5702,6 +5731,12 @@ function ModuleWorkspacePage() {
               onCreateProcess={addProcessToCatalog}
               onUpdateProcess={updateProcessCatalog}
               onDeleteProcess={deleteProcessCatalog}
+
+              autoCode={isAutoProcessCode}
+
+              codePreview={processCodePreview}
+
+              onReserveCode={reserveProcessCode}
               onOpenEditor={() => setDdpView("editor")}
             />
           ) : ddpView === "causes" ? (
@@ -7314,6 +7349,9 @@ function ProcessRegistryModule({
   onUpdateProcess,
   onDeleteProcess,
   onOpenEditor,
+  autoCode = false,
+  codePreview = "",
+  onReserveCode,
 }: {
   catalogs: OrganizationCatalogs;
   processTypes: string[];
@@ -7323,6 +7361,9 @@ function ProcessRegistryModule({
   onUpdateProcess: (process: OrganizationProcess) => Promise<OrganizationProcess>;
   onDeleteProcess: (processId: string) => Promise<void>;
   onOpenEditor: () => void;
+  autoCode?: boolean;
+  codePreview?: string;
+  onReserveCode?: () => Promise<string>;
 }) {
   const processes = catalogs.processes;
   const [query, setQuery] = useState("");
@@ -7357,7 +7398,7 @@ function ProcessRegistryModule({
   function newDraft() {
     setDraft({
       id: "",
-      code: "",
+      code: autoCode ? codePreview : "",
       name: "",
       type: "process",
       parent_process_id: null,
@@ -7378,7 +7419,10 @@ function ProcessRegistryModule({
         await onUpdateProcess(draft);
         toast.success("Processo atualizado e versionado.");
       } else {
-        await onCreateProcess(draft);
+        // Código automático: reserva (consome) a sequência no momento de salvar.
+        const code =
+          autoCode && onReserveCode ? await onReserveCode() : draft.code;
+        await onCreateProcess({ ...draft, code });
         toast.success("Processo cadastrado.");
       }
       setDraft(null);
@@ -7552,11 +7596,22 @@ function ProcessRegistryModule({
           progress={completionPercent([draft.name, draft.type, draft.status])}
         >
           <div className="grid gap-4 md:grid-cols-3">
-            <Field
-              label="Código"
-              value={draft.code ?? ""}
-              onChange={(code) => setDraft({ ...draft, code })}
-            />
+            {autoCode ? (
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">
+                  Código (automático)
+                </span>
+                <div className="w-full rounded-md border border-input bg-muted px-3 py-2.5 text-sm font-mono text-foreground">
+                  {draft.code || codePreview}
+                </div>
+              </label>
+            ) : (
+              <Field
+                label="Código"
+                value={draft.code ?? ""}
+                onChange={(code) => setDraft({ ...draft, code })}
+              />
+            )}
             <Field
               label="Nome do processo"
               value={draft.name}
