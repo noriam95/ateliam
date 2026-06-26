@@ -104,11 +104,11 @@ function AuthPage() {
 
   function enterDemoMode() {
     if (!startDemoSession()) {
-      toast.error("Modo de teste disponível apenas no ambiente local.");
+      toast.error("Não foi possível iniciar o modo de teste.");
       return;
     }
 
-    toast.success("Modo de teste local ativado.");
+    toast.success("Modo de demonstração ativado.");
     router.invalidate();
     navigate({ to: "/", replace: true });
   }
