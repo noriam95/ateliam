@@ -18,6 +18,12 @@ dist-ssr
 .nitro
 *.local
 
+# Vercel build output
+.vercel/
+
+# Local test scripts
+test-*.mjs
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
