@@ -2112,7 +2112,13 @@ function TreeSection({
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         {title}
       </button>
-      {open ? <div className="ml-3 border-l border-border pl-2">{children}</div> : null}
+      <div
+        className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
+        <div className="overflow-hidden">
+          <div className="ml-3 border-l border-border pl-2">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2130,7 +2136,7 @@ function TreeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm ${
+      className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 ${
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -2157,7 +2163,7 @@ function ModuleTreeGroup({
   onToggle: () => void;
 }) {
   return (
-    <div className="mb-1">
+    <div className="mb-1 animate-in slide-in-from-left-2 fade-in duration-200">
       <div
         className={`flex items-stretch rounded-md ${
           active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-muted"
@@ -2185,7 +2191,13 @@ function ModuleTreeGroup({
           )}
         </button>
       </div>
-      {open ? <div className="ml-5 border-l border-border py-1 pl-2">{children}</div> : null}
+      <div
+        className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
+        <div className="overflow-hidden">
+          <div className="ml-5 border-l border-border py-1 pl-2">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2202,7 +2214,7 @@ function TreeLink({
   return (
     <a
       href={`/m/${moduleId}?view=${encodeURIComponent(targetView)}`}
-      className="mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+      className="mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150"
     >
       {children}
     </a>
