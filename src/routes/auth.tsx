@@ -118,9 +118,8 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-stretch bg-background">
       <section className="relative hidden flex-1 overflow-hidden bg-foreground p-12 text-background md:flex md:flex-col md:justify-between">
-        <div className="relative z-10 flex items-center gap-2.5">
-          <BFFlowMark className="h-10" />
-          <div className="ateliam-wordmark text-xl">BF Flow</div>
+        <div className="relative z-10 flex items-center">
+          <BFFlowMark className="h-12" />
         </div>
 
         <div
@@ -156,9 +155,8 @@ function AuthPage() {
       <section className="flex flex-1 items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 md:hidden">
-            <div className="mb-6 flex items-center gap-2.5">
-              <BFFlowMark className="h-10" />
-              <div className="ateliam-wordmark text-xl">BF Flow</div>
+            <div className="mb-6 flex items-center">
+              <BFFlowMark className="h-12" />
             </div>
           </div>
 

@@ -268,9 +268,9 @@ function Settings() {
         <Link to="/" className="flex items-center gap-2 text-[12px] hover:opacity-80">
           <ArrowLeft className="h-4 w-4" /> Workspace
         </Link>
-        <BFFlowMark className="ml-2 h-7 w-7" markClassName="h-3.5 w-3.5 after:h-1.5 after:w-1.5" />
+        <BFFlowMark className="ml-2 h-8" />
         <div className="ml-2 text-[15px] font-bold tracking-tight">
-          <span className="ateliam-wordmark">BF Flow</span> · Configurações
+          Configurações
         </div>
       </header>
       <div className="p-8 max-w-3xl mx-auto space-y-6">

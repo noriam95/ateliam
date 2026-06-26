@@ -1135,8 +1135,8 @@ function DocumentModelsSettings({
                       className="h-14 w-28 rounded-md border border-border bg-white object-contain p-1"
                     />
                   ) : (
-                    <span className="flex h-14 w-28 items-center justify-center gap-2 rounded-md border border-dashed border-border bg-card text-sm font-bold">
-                      <BFFlowMark className="h-7 w-7" /> BF Flow
+                    <span className="flex h-14 w-28 items-center justify-center rounded-md border border-dashed border-border bg-card p-2">
+                      <BFFlowMark className="h-8 max-w-full" />
                     </span>
                   )}
                   <div className="flex gap-2">
