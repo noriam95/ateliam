@@ -2,12 +2,12 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react";
 import { PlayCircle } from "lucide-react";
 import { toast } from "sonner";
-import { AteliamMark } from "@/components/ateliam-mark";
+import { BFFlowMark } from "@/components/bf-flow-mark";
 import { supabase } from "@/integrations/supabase/client";
 import { isDemoSessionActive, startDemoSession } from "@/lib/demo-session";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Entrar — Ateliam" }] }),
+  head: () => ({ meta: [{ title: "Entrar — BF Flow" }] }),
   component: AuthPage,
 });
 
@@ -119,8 +119,8 @@ function AuthPage() {
     <div className="flex min-h-screen items-stretch bg-background">
       <section className="relative hidden flex-1 overflow-hidden bg-foreground p-12 text-background md:flex md:flex-col md:justify-between">
         <div className="relative z-10 flex items-center gap-2.5">
-          <AteliamMark className="h-10 w-10" markClassName="h-5 w-5 after:h-2 after:w-2" />
-          <div className="ateliam-wordmark text-xl">Ateliam</div>
+          <BFFlowMark className="h-10" />
+          <div className="ateliam-wordmark text-xl">BF Flow</div>
         </div>
 
         <div
@@ -149,7 +149,7 @@ function AuthPage() {
         </div>
 
         <div className="relative z-10 text-[11px] text-background/50">
-          © {new Date().getFullYear()} <span className="ateliam-wordmark">Ateliam</span>
+          © {new Date().getFullYear()} <span className="ateliam-wordmark">BF Flow</span>
         </div>
       </section>
 
@@ -157,8 +157,8 @@ function AuthPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 md:hidden">
             <div className="mb-6 flex items-center gap-2.5">
-              <AteliamMark className="h-10 w-10" markClassName="h-5 w-5 after:h-2 after:w-2" />
-              <div className="ateliam-wordmark text-xl">Ateliam</div>
+              <BFFlowMark className="h-10" />
+              <div className="ateliam-wordmark text-xl">BF Flow</div>
             </div>
           </div>
 
