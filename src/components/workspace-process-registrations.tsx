@@ -54,8 +54,16 @@ type Owner = {
   id: string;
   name: string;
   department_id: string | null;
+  // Um dono pode ser gestor de várias áreas (mas cada área tem um único gestor).
+  department_ids?: string[];
   role_title: string | null;
 };
+
+// Áreas que um dono administra (compatível com o campo antigo department_id).
+function ownerAreaIds(owner: Owner): string[] {
+  if (owner.department_ids && owner.department_ids.length) return owner.department_ids;
+  return owner.department_id ? [owner.department_id] : [];
+}
 type ProcessType = {
   id: string;
   code: "macroprocess" | "process" | "subprocess";
@@ -535,6 +543,7 @@ type Draft = {
   parentProcessId: string;
   department: string;
   departmentId: string;
+  departmentIds: string[];
   owner: string;
   roleTitle: string;
   label: string;
@@ -555,6 +564,7 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
     parentProcessId: "",
     department: data.areas[0]?.name ?? "",
     departmentId: data.areas[0]?.id ?? "",
+    departmentIds: [],
     owner: data.owners[0]?.name ?? "",
     roleTitle: "",
     label: "Macroprocesso",
@@ -901,19 +911,55 @@ function RegistrationFields({
   if (view === "owners")
     return (
       <>
-        <Field label="Área">
-          <select
-            value={draft.departmentId}
-            onChange={(e) => setDraft((d) => ({ ...d, departmentId: e.target.value }))}
-            className={inputClass}
-          >
-            <option value="">Selecione</option>
-            {data.areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.name}
-              </option>
-            ))}
-          </select>
+        <Field label="Áreas (um dono pode gerir várias)">
+          <div className="grid max-h-56 gap-1 overflow-auto rounded-md border border-border p-2">
+            {data.areas.length === 0 ? (
+              <span className="px-1 text-xs text-muted-foreground">
+                Cadastre áreas antes de vincular um gestor.
+              </span>
+            ) : (
+              data.areas.map((area) => {
+                const otherManager = data.owners.find(
+                  (owner) => owner.id !== draft.id && ownerAreaIds(owner).includes(area.id),
+                );
+                const checked = draft.departmentIds.includes(area.id);
+                const disabled = !!otherManager && !checked;
+                return (
+                  <label
+                    key={area.id}
+                    className={`flex items-center gap-2 rounded px-1 py-1 text-sm ${
+                      disabled ? "opacity-50" : "hover:bg-muted/50"
+                    }`}
+                    title={
+                      disabled
+                        ? `Área já tem gestor: ${otherManager?.role_title || otherManager?.name}`
+                        : undefined
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      onChange={(e) =>
+                        setDraft((d) => {
+                          const next = e.target.checked
+                            ? [...d.departmentIds, area.id]
+                            : d.departmentIds.filter((id) => id !== area.id);
+                          return { ...d, departmentIds: next, departmentId: next[0] ?? "" };
+                        })
+                      }
+                    />
+                    <span>{area.name}</span>
+                    {disabled ? (
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        já tem gestor
+                      </span>
+                    ) : null}
+                  </label>
+                );
+              })
+            )}
+          </div>
         </Field>
         <Field label="Cargo">
           <input
@@ -1202,7 +1248,10 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
       id: item.id,
       values: [
         item.role_title || item.name,
-        data.areas.find((area) => area.id === item.department_id)?.name || "-",
+        ownerAreaIds(item)
+          .map((areaId) => data.areas.find((area) => area.id === areaId)?.name)
+          .filter(Boolean)
+          .join(", ") || "-",
       ],
     }));
   if (view === "process-types")
@@ -1247,6 +1296,7 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
           ...draft,
           id,
           departmentId: item.department_id || "",
+          departmentIds: ownerAreaIds(item),
           roleTitle: item.role_title || item.name,
         }
       : draft;
@@ -1297,14 +1347,22 @@ function saveDemoRegistration(
     if (view === "areas")
       return { ...current, areas: upsert(current.areas, { id, name: draft.name }) };
     if (view === "owners") {
-      const area = current.areas.find((item) => item.id === draft.departmentId);
+      const areaIds = draft.departmentIds.length
+        ? draft.departmentIds
+        : draft.departmentId
+          ? [draft.departmentId]
+          : [];
+      const areaNames = areaIds
+        .map((areaId) => current.areas.find((item) => item.id === areaId)?.name)
+        .filter(Boolean);
       return {
         ...current,
         owners: upsert(current.owners, {
           id,
-          department_id: draft.departmentId,
+          department_id: areaIds[0] ?? null,
+          department_ids: areaIds,
           role_title: draft.roleTitle,
-          name: `${draft.roleTitle} · ${area?.name || "Área"}`,
+          name: `${draft.roleTitle}${areaNames.length ? ` · ${areaNames.join(", ")}` : ""}`,
         }),
       };
     }
