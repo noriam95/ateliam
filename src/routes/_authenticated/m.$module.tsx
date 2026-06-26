@@ -4622,7 +4622,15 @@ function ModuleWorkspacePage() {
   const removeSharedCause = useServerFn(deleteOrganizationCause);
   const removeProcess = useServerFn(deleteOrganizationProcess);
   const [demoCatalogs, setDemoCatalogs] = useState<OrganizationCatalogs>(DEMO_CATALOGS);
-  const [processTypes, setProcessTypes] = useState(["macroprocess", "process", "subprocess"]);
+  const [processTypes, setProcessTypes] = useState([
+    "macroprocess",
+    "process",
+    "subprocess",
+    "atividade",
+    "tarefa",
+  ]);
+  // Alteração de status do documento na tela de consulta (Em andamento, etc.).
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
 
   const wsQ = useQuery({
     queryKey: ["workspace-modern"],
@@ -5481,7 +5489,14 @@ function ModuleWorkspacePage() {
     (cloudDocsQ.data as CloudModuleDocument[] | undefined) ?? [],
     savedDemoDocument,
     isDemo,
+  ).map((row) =>
+    statusOverrides[row.id] ? { ...row, status: statusOverrides[row.id] } : row,
   );
+
+  function changeRowStatus(row: ModuleGridRow, status: string) {
+    setStatusOverrides((current) => ({ ...current, [row.id]: status }));
+    toast.success(`Status atualizado para “${status}”.`);
+  }
 
   async function editDocumentRow(row: ModuleGridRow) {
     if (row.id.startsWith("demo-doc:")) {
@@ -5670,6 +5685,7 @@ function ModuleWorkspacePage() {
         onDelete={deleteDocumentRows}
         onExport={exportDocumentRow}
         onView={viewDocumentRow}
+        onChangeStatus={changeRowStatus}
       />
     ) : (
       <>
@@ -5712,6 +5728,7 @@ function ModuleWorkspacePage() {
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
               onView={viewDocumentRow}
+              onChangeStatus={changeRowStatus}
             />
           ) : (
             <DdpModule
@@ -5732,6 +5749,7 @@ function ModuleWorkspacePage() {
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
               onView={viewDocumentRow}
+              onChangeStatus={changeRowStatus}
             />
           ) : (
             <PopModule
@@ -6747,6 +6765,8 @@ type ExportFormat =
   | "pop-docx"
   | "pop-presentation-doc";
 
+const MODULE_STATUS_OPTIONS = ["Em andamento", "Em revisão", "Aprovado", "Concluído"];
+
 function ModuleDocumentGrid({
   moduleId,
   rows,
@@ -6755,6 +6775,7 @@ function ModuleDocumentGrid({
   onDelete,
   onExport,
   onView,
+  onChangeStatus,
 }: {
   moduleId: AteliamModule;
   rows: ModuleGridRow[];
@@ -6763,7 +6784,10 @@ function ModuleDocumentGrid({
   onDelete: (ids: string[]) => void | Promise<void>;
   onExport: (row: ModuleGridRow, format: ExportFormat) => void | Promise<void>;
   onView: (row: ModuleGridRow) => void;
+  onChangeStatus: (row: ModuleGridRow, status: string) => void;
 }) {
+  // Status editável direto na consulta de Mapeamento e Documentação.
+  const editableStatus = moduleId === "ddp" || moduleId === "pop";
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const filtered = useMemo(() => {
@@ -6945,6 +6969,27 @@ function ModuleDocumentGrid({
                     </td>
                     {columns.map(([key]) => {
                       const value = row[key as keyof ModuleGridRow];
+                      if (key === "status" && editableStatus) {
+                        const options = MODULE_STATUS_OPTIONS.includes(value)
+                          ? MODULE_STATUS_OPTIONS
+                          : [value, ...MODULE_STATUS_OPTIONS];
+                        return (
+                          <td key={key} className="px-3 py-3">
+                            <select
+                              value={value}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => onChangeStatus(row, event.target.value)}
+                              className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                            >
+                              {options.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        );
+                      }
                       return (
                         <td key={key} className="break-words px-3 py-3 text-foreground">
                           {key === "updatedAt" ? new Date(value).toLocaleString("pt-BR") : value}
@@ -7361,7 +7406,7 @@ function ProcessRegistryModule({
         {
           name: "Processos",
           rows: [
-            ["Código", "Processo", "Tipo", "Área", "Dono", "Status", "Versão"],
+            ["Código", "Processo", "Tipo", "Área", "Dono", "Status"],
             ...filtered.map((process) => [
               process.code || "-",
               process.name,
@@ -7369,7 +7414,6 @@ function ProcessRegistryModule({
               process.department || "-",
               process.owner || "-",
               process.status,
-              `v${process.current_version}`,
             ]),
           ],
         },
@@ -7444,7 +7488,6 @@ function ProcessRegistryModule({
                   <th className="px-3 py-3">Área</th>
                   <th className="px-3 py-3">Dono</th>
                   <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Versão</th>
                   <th className="px-3 py-3 text-right">Ações</th>
                 </tr>
               </thead>
@@ -7479,9 +7522,6 @@ function ProcessRegistryModule({
                         {process.status}
                       </span>
                     </td>
-                    <td className="px-3 py-3 font-bold text-[#3f3f46]">
-                      v{process.current_version}
-                    </td>
                     <td className="px-3 py-3 text-right">
                       <button
                         type="button"
@@ -7495,7 +7535,7 @@ function ProcessRegistryModule({
                 ))}
                 {!filtered.length ? (
                   <tr>
-                    <td colSpan={9} className="px-3 py-10 text-center text-sm text-[#6e6e73]">
+                    <td colSpan={8} className="px-3 py-10 text-center text-sm text-[#6e6e73]">
                       Nenhum processo encontrado.
                     </td>
                   </tr>
