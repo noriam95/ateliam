@@ -28,6 +28,34 @@ export function WorkspaceReports({
   return null;
 }
 
+// Diagrama da cadeia de valor (modelo de Porter) reutilizável fora do relatório,
+// como na página inicial. Mostra apenas as cadeias ativas, igual ao relatório.
+export function ValueChainMacro({
+  organizationId,
+  isDemo,
+}: {
+  organizationId: string | null;
+  isDemo: boolean;
+}) {
+  const fn = useServerFn(listProcessRegistrationData);
+  const catalogsQ = useQuery({
+    queryKey: ["process-registrations", organizationId],
+    queryFn: () => fn({ data: { organizationId: organizationId ?? "" } }),
+    enabled: !isDemo && !!organizationId,
+  });
+  const chains: ValueChain[] = useMemo(() => {
+    if (isDemo) return DEMO_REGISTRY.valueChains as unknown as ValueChain[];
+    return (catalogsQ.data?.valueChains ?? []) as unknown as ValueChain[];
+  }, [isDemo, catalogsQ.data]);
+  const primary = chains.filter((c) => c.category === "primary" && c.status === "Ativa");
+  const support = chains.filter((c) => c.category === "support" && c.status === "Ativa");
+  const management = chains.filter((c) => c.category === "management" && c.status === "Ativa");
+
+  if (catalogsQ.isLoading && !isDemo) return <LoadingSkeleton />;
+  if (chains.length === 0) return <EmptyState />;
+  return <PorterDiagram primary={primary} support={support} management={management} />;
+}
+
 function ValueChainReport({
   organizationId,
   isDemo,

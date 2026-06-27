@@ -35,7 +35,7 @@ import {
   WorkspaceProcessRegistrations,
   type ProcessRegistrationView,
 } from "@/components/workspace-process-registrations";
-import { WorkspaceReports } from "@/components/workspace-reports";
+import { WorkspaceReports, ValueChainMacro } from "@/components/workspace-reports";
 import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
 import { getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
@@ -1014,9 +1014,6 @@ function WorkspaceContent({
           <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">
             Página Inicial
           </div>
-          <h1 className="mt-1 font-display text-2xl font-bold leading-tight md:text-3xl">
-            Visão Geral da Governança de Processos da {organizationName}
-          </h1>
         </div>
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -1033,39 +1030,19 @@ function WorkspaceContent({
         </div>
       </div>
 
-      {/* 4 Top Cards */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Card 1: Visão Macro da Cadeia de Valor */}
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
-              Visão Macro da Cadeia de Valor
-            </span>
-            <GitBranch className="h-4 w-4 shrink-0 text-[var(--gold)]" />
-          </div>
-          <div className="flex items-center justify-center gap-2 py-2">
-            <div className="rounded border border-border bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
-              Input
-            </div>
-            <div className="h-px w-3 bg-border" />
-            <div className="flex flex-col gap-1">
-              {[...Array(Math.min(3, Math.max(1, Math.round(totalProcesses / 4))))].map((_, i) => (
-                <div key={i} className="rounded border border-[var(--gold)]/40 bg-accent px-2 py-0.5 text-[9px] font-medium text-[var(--gold)]">
-                  Processo {i + 1}
-                </div>
-              ))}
-            </div>
-            <div className="h-px w-3 bg-border" />
-            <div className="rounded border border-border bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
-              Output
-            </div>
-          </div>
-          <div className="mt-auto text-center">
-            <span className="font-data text-2xl font-bold text-foreground">{totalProcesses}</span>
-            <span className="ml-2 text-xs text-muted-foreground">Macroprocessos Ativos</span>
-          </div>
+      {/* Visão Macro da Cadeia de Valor — diagrama do relatório de cadeia de valor */}
+      <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
+            Visão Macro da Cadeia de Valor
+          </span>
+          <GitBranch className="h-4 w-4 shrink-0 text-[var(--gold)]" />
         </div>
+        <ValueChainMacro organizationId={organizationId} isDemo={isDemo} />
+      </section>
 
+      {/* Top Cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {/* Card 2: Índice de Mapeamento Operacional */}
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
