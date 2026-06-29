@@ -5840,7 +5840,7 @@ function ModuleWorkspacePage() {
               onOpenEditor={() => setDdpView("editor")}
             />
           ) : ddpView === "causes" ? (
-            <DdpCausesModule
+            <DdpCausesModuleV2
               data={workspace.ddp}
               catalogs={organizationCatalogs}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
@@ -6050,7 +6050,7 @@ function ModuleWorkspacePage() {
                       </ModuleTreeButton>
                       <ModuleTreeSection
                         title="Causas"
-                        icon={<MessageSquare className="h-4 w-4" />}
+                        icon={<FlaskConical className="h-4 w-4" />}
                         open={expandedTree.causes}
                         onToggle={() => toggleTree("causes")}
                       >
@@ -7730,6 +7730,559 @@ function ProcessRegistryModule({
               className="rounded-lg bg-[#3f3f46] px-4 py-2 text-sm font-bold text-white hover:bg-[#27272a]"
             >
               Salvar processo
+            </button>
+          </div>
+        </Panel>
+      ) : null}
+    </div>
+  );
+}
+
+function DdpCausesModuleV2({
+  data,
+  catalogs,
+  update,
+  onDeleteSharedCause,
+  mode = "consult",
+  onOpenEditor,
+}: {
+  data: DdpState;
+  catalogs: OrganizationCatalogs;
+  update: (value: DdpState) => void;
+  onDeleteSharedCause: (causeId: string) => Promise<void>;
+  mode?: "new" | "consult" | "edit";
+  onOpenEditor: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [draft, setDraft] = useState<GapItem | null>(null);
+  const [commentDraft, setCommentDraft] = useState("");
+  const initializedNew = useRef(false);
+  const filtered = useMemo(() => {
+    const normalized = normalizeLabel(query);
+    return data.gaps.filter((gap) =>
+      !normalized
+        ? true
+        : normalizeLabel(
+            [
+              gap.causa,
+              gap.descricao,
+              gap.impacto,
+              gap.acao,
+              gap.responsavel,
+              gap.prioridade,
+              gap.status,
+              gap.prazo,
+            ].join(" "),
+          ).includes(normalized),
+    );
+  }, [data.gaps, query]);
+
+  const selectedForEdit =
+    data.gaps.find((gap) => selectedIds.includes(gap.id)) ?? data.gaps[0] ?? null;
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((item) => data.gaps.some((gap) => gap.id === item)));
+  }, [data.gaps]);
+
+  useEffect(() => {
+    if (mode === "new" && !initializedNew.current) {
+      initializedNew.current = true;
+      openNewCause();
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === "edit" && selectedForEdit && !draft) {
+      openEditCause(selectedForEdit);
+    }
+  }, [mode, selectedForEdit?.id]);
+
+  function causeCode(index: number) {
+    return `CAU-${String(index + 1).padStart(3, "0")}`;
+  }
+
+  function lastUpdated(gap: GapItem) {
+    const dates = gap.comentarios
+      .map((comment) => comment.createdAt)
+      .filter(Boolean)
+      .sort();
+    const last = dates.at(-1);
+    return last ? new Date(last).toLocaleString("pt-BR") : "-";
+  }
+
+  function toggleRow(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
+
+  function updateGap(gapId: string, patch: Partial<GapItem>) {
+    update({
+      ...data,
+      gaps: data.gaps.map((gap) => (gap.id === gapId ? { ...gap, ...patch } : gap)),
+    });
+  }
+
+  function createDraft(): GapItem {
+    return {
+      id: "",
+      sharedCauseId: "",
+      causa: "",
+      descricao: "",
+      impacto: "",
+      acao: "",
+      responsavel: "",
+      prazo: "",
+      prioridade: "Média",
+      status: "Pendente",
+      comentarios: [],
+    };
+  }
+
+  function openNewCause() {
+    setDraft(createDraft());
+    setCommentDraft("");
+  }
+
+  function openEditCause(gap: GapItem | null) {
+    if (!gap) return;
+    setSelectedIds([gap.id]);
+    setDraft({ ...gap, comentarios: [...gap.comentarios] });
+    setCommentDraft("");
+  }
+
+  function updateDraft(patch: Partial<GapItem>) {
+    setDraft((current) => (current ? { ...current, ...patch } : current));
+  }
+
+  function applySharedCauseToDraft(causeId: string) {
+    const cause = catalogs.causes.find((item) => item.id === causeId);
+    if (!cause) {
+      updateDraft({ sharedCauseId: "" });
+      return;
+    }
+    updateDraft(gapPatchFromOrganizationCause(cause));
+  }
+
+  function saveDraft() {
+    if (!draft) return;
+    const normalized: GapItem = {
+      ...draft,
+      id: draft.id || id("gap"),
+      causa: draft.causa.trim() || "Causa sem nome",
+      comentarios: draft.comentarios ?? [],
+    };
+
+    if (draft.id) {
+      update({
+        ...data,
+        gaps: data.gaps.map((gap) => (gap.id === draft.id ? normalized : gap)),
+      });
+      toast.success("Causa atualizada.");
+    } else {
+      update({ ...data, gaps: [...data.gaps, normalized] });
+      toast.success("Causa cadastrada.");
+    }
+
+    setSelectedIds([normalized.id]);
+    setDraft(null);
+    setCommentDraft("");
+  }
+
+  async function removeRows(ids: string[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`Excluir ${ids.length} causa(s) selecionada(s)?`)) return;
+    const targets = data.gaps.filter((gap) => ids.includes(gap.id));
+    try {
+      for (const gap of targets) {
+        if (gap.sharedCauseId) await onDeleteSharedCause(gap.sharedCauseId);
+      }
+      update({ ...data, gaps: data.gaps.filter((gap) => !ids.includes(gap.id)) });
+      setSelectedIds([]);
+      if (draft?.id && ids.includes(draft.id)) setDraft(null);
+      toast.success(ids.length > 1 ? "Causas excluídas." : "Causa excluída.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir a causa.");
+    }
+  }
+
+  function exportRows(rows: GapItem[], fileName = `causas-${today()}.xlsx`) {
+    downloadBlob(
+      fileName,
+      buildXlsxWorkbook([
+        {
+          name: "Causas",
+          rows: [
+            [
+              "Código",
+              "Causa",
+              "Descrição",
+              "Impacto",
+              "Ação proposta",
+              "Responsável",
+              "Prazo",
+              "Prioridade",
+              "Status",
+              "Comentários",
+              "Última atualização",
+            ],
+            ...rows.map((gap, index) => [
+              causeCode(index),
+              gap.causa,
+              gap.descricao,
+              gap.impacto,
+              gap.acao,
+              gap.responsavel || "-",
+              gap.prazo || "-",
+              gap.prioridade,
+              gap.status,
+              gap.comentarios.length,
+              lastUpdated(gap),
+            ]),
+          ],
+        },
+      ]),
+    );
+    toast.success("Excel gerado com os registros exibidos.");
+  }
+
+  function addComment() {
+    if (!draft || !commentDraft.trim()) return;
+    setDraft({
+      ...draft,
+      comentarios: [
+        ...draft.comentarios,
+        {
+          id: id("comment"),
+          text: commentDraft.trim(),
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+    setCommentDraft("");
+  }
+
+  function removeComment(commentId: string) {
+    if (!draft) return;
+    setDraft({
+      ...draft,
+      comentarios: draft.comentarios.filter((comment) => comment.id !== commentId),
+    });
+  }
+
+  return (
+    <div className="grid gap-5">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <header className="border-b border-border bg-card px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Mapeamento
+              </div>
+              <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedIds.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => removeRows(selectedIds)}
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-destructive hover:bg-destructive/5"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir selecionados ({selectedIds.length})
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => exportRows(filtered)}
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Exportar para Excel
+              </button>
+            </div>
+          </div>
+          <div className="relative mt-4 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar na tabela"
+              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+            />
+          </div>
+        </header>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+            <thead className="bg-muted/80 text-xs font-semibold text-muted-foreground">
+              <tr>
+                <th className="w-12 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Selecionar causas exibidas"
+                    checked={
+                      !!filtered.length && filtered.every((gap) => selectedIds.includes(gap.id))
+                    }
+                    onChange={(event) =>
+                      setSelectedIds(event.target.checked ? filtered.map((gap) => gap.id) : [])
+                    }
+                  />
+                </th>
+                <th className="px-3 py-3 font-semibold">Código</th>
+                <th className="px-3 py-3 font-semibold">Causa</th>
+                <th className="px-3 py-3 font-semibold">Responsável</th>
+                <th className="px-3 py-3 font-semibold">Prazo</th>
+                <th className="px-3 py-3 font-semibold">Prioridade</th>
+                <th className="px-3 py-3 font-semibold">Status</th>
+                <th className="px-3 py-3 font-semibold">Última atualização</th>
+                <th className="w-[160px] whitespace-nowrap px-4 py-3 text-right font-semibold">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {!filtered.length ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                    Nenhum registro encontrado.
+                  </td>
+                </tr>
+              ) : null}
+              {filtered.map((gap, index) => (
+                <tr
+                  key={gap.id}
+                  onDoubleClick={() => openEditCause(gap)}
+                  className={`border-t border-border ${
+                    selectedIds.includes(gap.id) ? "bg-accent/70" : "bg-card hover:bg-muted/45"
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Selecionar ${gap.causa}`}
+                      checked={selectedIds.includes(gap.id)}
+                      onChange={() => toggleRow(gap.id)}
+                    />
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-foreground">
+                    {causeCode(index)}
+                  </td>
+                  <td className="break-words px-3 py-3 text-foreground">
+                    <div className="font-medium">{gap.causa || "Causa sem nome"}</div>
+                    <div className="mt-1 max-w-[420px] text-xs leading-5 text-muted-foreground">
+                      {gap.descricao || "Sem descrição registrada."}
+                    </div>
+                  </td>
+                  <td className="break-words px-3 py-3 text-foreground">
+                    {gap.responsavel || "-"}
+                  </td>
+                  <td className="break-words px-3 py-3 text-foreground">{gap.prazo || "-"}</td>
+                  <td className="px-3 py-3">
+                    <select
+                      value={gap.prioridade}
+                      onChange={(event) => updateGap(gap.id, { prioridade: event.target.value })}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {CAUSE_PRIORITY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-3">
+                    <select
+                      value={gap.status}
+                      onChange={(event) => updateGap(gap.id, { status: event.target.value })}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {CAUSE_STATUS_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="break-words px-3 py-3 text-foreground">{lastUpdated(gap)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        type="button"
+                        title="Visualizar"
+                        onClick={() => openEditCause(gap)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Editar"
+                        onClick={() => openEditCause(gap)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Exportar"
+                        onClick={() => exportRows([gap], `causa-${causeCode(index)}-${today()}.xlsx`)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Excluir"
+                        onClick={() => removeRows([gap.id])}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-destructive hover:bg-destructive/5"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
+          {filtered.length} registro(s) exibido(s) · {selectedIds.length} selecionado(s)
+        </footer>
+      </section>
+
+      {draft ? (
+        <Panel
+          title={draft.id ? "Editar causa" : "Nova causa"}
+          progress={completionPercent([draft.causa, draft.descricao, draft.responsavel, draft.status])}
+        >
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:col-span-2">
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Causa reutilizável da organização
+                  </span>
+                  <select
+                    value={draft.sharedCauseId ?? ""}
+                    onChange={(event) => applySharedCauseToDraft(event.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                  >
+                    <option value="">Causa local / nova</option>
+                    {catalogs.causes.map((cause) => (
+                      <option key={cause.id} value={cause.id}>
+                        {cause.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <Field label="Causa" value={draft.causa} onChange={(causa) => updateDraft({ causa })} />
+              <Field
+                label="Responsável"
+                value={draft.responsavel}
+                onChange={(responsavel) => updateDraft({ responsavel })}
+              />
+              <SelectField
+                label="Status"
+                value={draft.status}
+                options={[...CAUSE_STATUS_OPTIONS]}
+                onChange={(status) => updateDraft({ status })}
+              />
+              <SelectField
+                label="Prioridade"
+                value={draft.prioridade}
+                options={[...CAUSE_PRIORITY_OPTIONS]}
+                onChange={(prioridade) => updateDraft({ prioridade })}
+              />
+              <DateRangeField
+                label="Prazo"
+                value={draft.prazo}
+                onChange={(prazo) => updateDraft({ prazo })}
+              />
+              <TextArea
+                label="Descrição"
+                value={draft.descricao}
+                onChange={(descricao) => updateDraft({ descricao })}
+              />
+              <TextArea
+                label="Impacto"
+                value={draft.impacto}
+                onChange={(impacto) => updateDraft({ impacto })}
+              />
+              <TextArea
+                label="Ação proposta"
+                value={draft.acao}
+                onChange={(acao) => updateDraft({ acao })}
+              />
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/35 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Comentários</h3>
+              </div>
+              <textarea
+                value={commentDraft}
+                onChange={(event) => setCommentDraft(event.target.value)}
+                rows={4}
+                placeholder="Registre uma atualização, decisão ou pendência da causa."
+                className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={addComment}
+                disabled={!commentDraft.trim()}
+                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2.5 text-sm font-bold text-background hover:opacity-90 disabled:opacity-45"
+              >
+                Inserir comentário
+              </button>
+              <div className="mt-4 grid gap-2">
+                {draft.comentarios.map((comment) => (
+                  <div key={comment.id} className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm leading-5 text-foreground">{comment.text}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeComment(comment.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {comment.createdAt ? (
+                      <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        {new Date(comment.createdAt).toLocaleString("pt-BR")}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+                {!draft.comentarios.length ? (
+                  <div className="rounded-lg border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
+                    Nenhum comentário registrado.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(null);
+                setCommentDraft("");
+              }}
+              className="rounded-lg px-4 py-2 text-sm hover:bg-muted"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={saveDraft}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
+            >
+              Salvar causa
             </button>
           </div>
         </Panel>

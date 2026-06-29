@@ -623,7 +623,7 @@ function WorkspaceHome() {
                         </TreeLink>
                         <TreeSection
                           title="Causas"
-                          icon={<AlertCircle className="h-4 w-4" />}
+                          icon={<FlaskConical className="h-4 w-4" />}
                           open={expanded.causes}
                           onToggle={() => toggle("causes")}
                         >
