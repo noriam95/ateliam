@@ -53,6 +53,7 @@ import {
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
+import { WorkspaceRail, type WorkspaceRailArea } from "@/components/workspace-navigation";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -191,7 +192,7 @@ const moduleGrayVars = {
   "--indigo": "var(--muted-foreground)",
 } as CSSProperties;
 
-type RailArea = "home" | "modules" | "registrations" | "settings";
+type RailArea = WorkspaceRailArea;
 type ModuleContentMode = "module" | "registrations" | "settings";
 type ModuleSurface = "editor" | "consult";
 type ModuleRegistrationView = "areas" | "process-types" | "owners" | "processes";
@@ -5487,6 +5488,10 @@ function ModuleWorkspacePage() {
   }
 
   function selectRailArea(area: RailArea) {
+    if (area === "reports") {
+      navigate({ to: "/", search: { area: "reports", view: "value-chain-report" } });
+      return;
+    }
     setRailArea(area);
     setTreeOpen(true);
     if (area === "modules") {
@@ -5930,37 +5935,7 @@ function ModuleWorkspacePage() {
       </header>
 
       <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-[52px_minmax(0,1fr)]">
-        <nav className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col border-r border-border bg-card/70 py-3">
-          <ModuleRailButton
-            active={railArea === "home"}
-            label="Home"
-            onClick={() => selectRailArea("home")}
-          >
-            <Home className="h-4 w-4" />
-          </ModuleRailButton>
-          <ModuleRailButton
-            active={railArea === "modules"}
-            label="Módulos"
-            onClick={() => selectRailArea("modules")}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </ModuleRailButton>
-          <ModuleRailButton
-            active={railArea === "registrations"}
-            label="Cadastros"
-            onClick={() => selectRailArea("registrations")}
-          >
-            <Database className="h-4 w-4" />
-          </ModuleRailButton>
-          <div className="mt-auto" />
-          <ModuleRailButton
-            active={railArea === "settings"}
-            label="Configurações"
-            onClick={() => selectRailArea("settings")}
-          >
-            <Settings className="h-4 w-4" />
-          </ModuleRailButton>
-        </nav>
+        <WorkspaceRail activeArea={railArea} onSelect={selectRailArea} />
 
         <div
           className={`relative min-w-0 transition-[grid-template-columns] duration-200 lg:grid ${
@@ -6314,33 +6289,6 @@ function ModuleWorkspacePage() {
         </Modal>
       )}
     </div>
-  );
-}
-
-function ModuleRailButton({
-  active,
-  label,
-  children,
-  onClick,
-}: {
-  active?: boolean;
-  label: string;
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      onClick={onClick}
-      className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-lg transition ${
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 

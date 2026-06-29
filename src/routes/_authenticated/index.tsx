@@ -39,6 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
+import { WorkspaceRail } from "@/components/workspace-navigation";
 import { WorkspaceSystemSettings } from "@/components/workspace-system-settings";
 import {
   WorkspaceProcessRegistrations,
@@ -481,7 +482,6 @@ function WorkspaceHome() {
   }
 
   const organizationName = dashboard?.organization?.name ?? "Sua organização";
-  const organizationLogo = dashboard?.organization?.logo_data_url ?? null;
   const activeOrganization = accessibleOrganizations.find(
     (organization) => organization.id === selectedOrganizationId,
   );
@@ -509,15 +509,7 @@ function WorkspaceHome() {
           title="Ir para a página inicial"
           aria-label="Ir para a página inicial"
         >
-          {organizationLogo ? (
-            <img
-              src={organizationLogo}
-              alt={`Logo ${organizationName}`}
-              className="h-8 w-20 object-contain object-left"
-            />
-          ) : (
-            <BFFlowMark className="h-8 text-foreground" />
-          )}
+          <BFFlowMark className="h-8 text-foreground" />
         </button>
 
         <div className="flex-1" />
@@ -554,44 +546,7 @@ function WorkspaceHome() {
       </header>
 
       <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-[52px_minmax(0,1fr)]">
-        <nav className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col border-r border-border bg-card/70 py-3">
-          <GlobalNavButton
-            active={activeArea === "home"}
-            label="Início"
-            onClick={() => selectArea("home")}
-          >
-            <Home className="h-4 w-4" />
-          </GlobalNavButton>
-          <GlobalNavButton
-            active={activeArea === "modules"}
-            label="Módulos"
-            onClick={() => selectArea("modules")}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </GlobalNavButton>
-          <GlobalNavButton
-            active={activeArea === "reports"}
-            label="Relatórios"
-            onClick={() => selectArea("reports")}
-          >
-            <BarChart2 className="h-4 w-4" />
-          </GlobalNavButton>
-          <GlobalNavButton
-            active={activeArea === "registrations"}
-            label="Cadastros"
-            onClick={() => selectArea("registrations")}
-          >
-            <Database className="h-4 w-4" />
-          </GlobalNavButton>
-          <div className="flex-1" />
-          <GlobalNavButton
-            active={activeArea === "settings"}
-            label="Configurações"
-            onClick={() => selectArea("settings")}
-          >
-            <Settings className="h-4 w-4" />
-          </GlobalNavButton>
-        </nav>
+        <WorkspaceRail activeArea={activeArea} onSelect={selectArea} />
 
         <div
           className={`grid min-w-0 transition-[grid-template-columns] duration-200 ${
@@ -2249,33 +2204,6 @@ function ProfileMenu({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function GlobalNavButton({
-  active,
-  label,
-  children,
-  onClick,
-}: {
-  active?: boolean;
-  label: string;
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      onClick={onClick}
-      className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-lg transition ${
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
