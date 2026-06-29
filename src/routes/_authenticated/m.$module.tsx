@@ -5705,6 +5705,16 @@ function ModuleWorkspacePage() {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
+  // Visualiza, em nova aba, o que está sendo preenchido agora no formulário,
+  // na mesma modalidade somente-leitura disponível na consulta.
+  function previewCurrentDdp() {
+    const docHtml = buildDdpPresentationHtml(workspace.ddp, brandForDocumentModel("ddp-html"));
+    const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
+    const opened = window.open(url, "_blank", "noopener");
+    if (!opened) toast.error("Habilite pop-ups para visualizar o preenchimento.");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
   async function exportDocumentRow(
     row: ModuleGridRow,
     format: "ddp-html" | "ddp-docx" | "ddp-presentation-doc" | "pop-docx" | "pop-presentation-doc",
@@ -5869,6 +5879,7 @@ function ModuleWorkspacePage() {
               catalogs={organizationCatalogs}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
               onSave={() => setShowSave(true)}
+              onPreview={previewCurrentDdp}
             />
           )
         ) : null}
@@ -5919,7 +5930,7 @@ function ModuleWorkspacePage() {
           <BFFlowMark className="h-9" />
         </div>
         <div className="flex-1" />
-        {(moduleId === "ddp" || moduleId === "pop") &&
+        {moduleId === "pop" &&
         contentMode === "module" &&
         moduleSurface === "editor" &&
         moduleEditStarted ? (
@@ -9554,11 +9565,13 @@ function DdpModule({
   catalogs,
   update,
   onSave,
+  onPreview,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
   update: (value: DdpState) => void;
   onSave?: () => void;
+  onPreview?: () => void;
 }) {
   const selectedProcess = useMemo(
     () => catalogs.processes.find((process) => process.id === data.macroprocess.processId) ?? null,
@@ -9746,20 +9759,32 @@ function DdpModule({
 
   return (
     <div className="grid gap-5">
-      <Hero title="Relatório de Mapeamento de Processo" eyebrow="Mapeamento" progress={completion}>
-        Capture capa, metadados, visão geral, sistemas, fluxo AS IS, SIPOC, gaps, próximos passos e
-        glossário em um documento exportável.
-      </Hero>
-      {onSave ? (
-        <button
-          type="button"
-          onClick={onSave}
-          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
-          title="Salvar o preenchimento do mapeamento"
-        >
-          <Save className="h-4 w-4" />
-          Salvar mapeamento
-        </button>
+      <Hero title="Formulário de Preenchimento" eyebrow="Mapeamento" progress={completion} />
+      {onSave || onPreview ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {onSave ? (
+            <button
+              type="button"
+              onClick={onSave}
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
+              title="Salvar o preenchimento do mapeamento"
+            >
+              <Save className="h-4 w-4" />
+              Salvar preenchimento
+            </button>
+          ) : null}
+          {onPreview ? (
+            <button
+              type="button"
+              onClick={onPreview}
+              className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted"
+              title="Visualizar o que está sendo preenchido"
+            >
+              <Eye className="h-4 w-4" />
+              Visualizar preenchimento
+            </button>
+          ) : null}
+        </div>
       ) : null}
       <Panel title="Identificação" progress={sectionProgress.identification}>
         <div className="grid gap-4 md:grid-cols-3">
@@ -11448,7 +11473,7 @@ function Hero({
   title: string;
   eyebrow: string;
   progress: number;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <section className="border-b border-border pb-5">
@@ -11458,7 +11483,9 @@ function Hero({
             {eyebrow}
           </div>
           <h1 className="font-display text-3xl font-semibold text-foreground">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{children}</p>
+          {children ? (
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{children}</p>
+          ) : null}
         </div>
         <div className="rounded-lg border border-border bg-muted/35 p-4">
           <div className="flex items-center justify-between gap-4">
