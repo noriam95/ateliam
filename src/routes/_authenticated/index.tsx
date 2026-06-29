@@ -734,6 +734,9 @@ function WorkspaceHome() {
                       >
                         Vínculo Dono × Usuário
                       </TreeButton>
+                      <TreeButton active={view === "systems"} onClick={() => setView("systems")}>
+                        Sistemas
+                      </TreeButton>
                       <TreeButton
                         active={view === "process-types"}
                         onClick={() => setView("process-types")}
@@ -1062,6 +1065,7 @@ function WorkspaceContent({
     view === "areas" ||
     view === "owners" ||
     view === "owner-users" ||
+    view === "systems" ||
     view === "process-types"
   ) {
     return (
