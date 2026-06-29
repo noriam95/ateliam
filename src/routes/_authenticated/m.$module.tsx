@@ -21,9 +21,13 @@ import {
   History,
   Home,
   ImagePlus,
+  Layers,
   LayoutGrid,
+  Link2,
   ListChecks,
   Lock,
+  Network,
+  Users,
   Menu,
   MessageSquare,
   Pencil,
@@ -5993,59 +5997,64 @@ function ModuleWorkspacePage() {
                   <div className="grid gap-1">
                     <ModuleTreeBranch
                       title="Mapeamento"
+                      icon={<FileText className="h-4 w-4" />}
                       active={moduleId === "ddp"}
                       open={expandedTree.ddp}
                       onSelect={() => openModuleBranch("ddp")}
                       onToggle={() => toggleTree("ddp")}
                     >
                       <ModuleTreeButton onClick={() => openNewForModule("ddp")}>
-                        Novo
+                        <Plus className="h-4 w-4 shrink-0" /> Novo
                       </ModuleTreeButton>
                       <ModuleTreeButton onClick={() => openSearchForModule("ddp")}>
-                        Consultar
+                        <Search className="h-4 w-4 shrink-0" /> Consultar
                       </ModuleTreeButton>
                       <ModuleTreeSection
                         title="Causas"
                         open={expandedTree.causes}
                         onToggle={() => toggleTree("causes")}
                       >
-                        <ModuleTreeButton onClick={() => openCauses("new")}>Novo</ModuleTreeButton>
+                        <ModuleTreeButton onClick={() => openCauses("new")}>
+                          <Plus className="h-4 w-4 shrink-0" /> Novo
+                        </ModuleTreeButton>
                         <ModuleTreeButton onClick={() => openCauses("consult")}>
-                          Consultar
+                          <Search className="h-4 w-4 shrink-0" /> Consultar
                         </ModuleTreeButton>
                         <ModuleTreeButton onClick={() => openCauses("edit")}>
-                          Editar
+                          <Pencil className="h-4 w-4 shrink-0" /> Editar
                         </ModuleTreeButton>
                       </ModuleTreeSection>
                     </ModuleTreeBranch>
 
                     <ModuleTreeBranch
                       title="Documentação"
+                      icon={<CheckCircle2 className="h-4 w-4" />}
                       active={moduleId === "pop"}
                       open={expandedTree.pop}
                       onSelect={() => openModuleBranch("pop")}
                       onToggle={() => toggleTree("pop")}
                     >
                       <ModuleTreeButton onClick={() => openNewForModule("pop")}>
-                        Novo
+                        <Plus className="h-4 w-4 shrink-0" /> Novo
                       </ModuleTreeButton>
                       <ModuleTreeButton onClick={() => openSearchForModule("pop")}>
-                        Consultar
+                        <Search className="h-4 w-4 shrink-0" /> Consultar
                       </ModuleTreeButton>
                     </ModuleTreeBranch>
 
                     <ModuleTreeBranch
                       title="Fluxograma"
+                      icon={<GitBranch className="h-4 w-4" />}
                       active={moduleId === "bpmn"}
                       open={expandedTree.bpmn}
                       onSelect={() => openModuleBranch("bpmn")}
                       onToggle={() => toggleTree("bpmn")}
                     >
                       <ModuleTreeButton onClick={() => openNewForModule("bpmn")}>
-                        Novo
+                        <Plus className="h-4 w-4 shrink-0" /> Novo
                       </ModuleTreeButton>
                       <ModuleTreeButton onClick={() => openSearchForModule("bpmn")}>
-                        Consultar
+                        <Search className="h-4 w-4 shrink-0" /> Consultar
                       </ModuleTreeButton>
                     </ModuleTreeBranch>
                   </div>
@@ -6054,19 +6063,25 @@ function ModuleWorkspacePage() {
                 {railArea === "registrations" ? (
                   <div className="grid gap-1">
                     <ModuleTreeAnchor href="/?area=registrations&view=value-chains">
-                      Cadeia de valor
+                      <Network className="h-4 w-4 shrink-0" /> Cadeia de valor
                     </ModuleTreeAnchor>
                     <ModuleTreeAnchor href="/?area=registrations&view=processes">
-                      Processos
+                      <GitBranch className="h-4 w-4 shrink-0" /> Processos
                     </ModuleTreeAnchor>
                     <ModuleTreeAnchor href="/?area=registrations&view=areas">
-                      Áreas
+                      <Layers className="h-4 w-4 shrink-0" /> Áreas
                     </ModuleTreeAnchor>
                     <ModuleTreeAnchor href="/?area=registrations&view=owners">
-                      Donos de Processo
+                      <Users className="h-4 w-4 shrink-0" /> Donos de Processo
+                    </ModuleTreeAnchor>
+                    <ModuleTreeAnchor href="/?area=registrations&view=owner-users">
+                      <Link2 className="h-4 w-4 shrink-0" /> Vínculo Dono × Usuário
+                    </ModuleTreeAnchor>
+                    <ModuleTreeAnchor href="/?area=registrations&view=systems">
+                      <Database className="h-4 w-4 shrink-0" /> Sistemas
                     </ModuleTreeAnchor>
                     <ModuleTreeAnchor href="/?area=registrations&view=process-types">
-                      Tipos
+                      <ListChecks className="h-4 w-4 shrink-0" /> Tipos
                     </ModuleTreeAnchor>
                   </div>
                 ) : null}
@@ -6320,6 +6335,7 @@ function ModuleTreeSection({
 
 function ModuleTreeBranch({
   title,
+  icon,
   active,
   open,
   children,
@@ -6327,6 +6343,7 @@ function ModuleTreeBranch({
   onToggle,
 }: {
   title: string;
+  icon?: ReactNode;
   active?: boolean;
   open: boolean;
   children: ReactNode;
@@ -6334,7 +6351,7 @@ function ModuleTreeBranch({
   onToggle: () => void;
 }) {
   return (
-    <div className="mb-1">
+    <div className="mb-1 animate-in slide-in-from-left-2 fade-in duration-150">
       <div
         className={`flex items-stretch rounded-md ${
           active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-muted"
@@ -6343,8 +6360,9 @@ function ModuleTreeBranch({
         <button
           type="button"
           onClick={onSelect}
-          className="flex min-w-0 flex-1 items-center px-2 py-1.5 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left"
         >
+          {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
           <span className="block min-w-0 truncate text-sm font-normal text-foreground">
             {title}
           </span>
@@ -6380,7 +6398,7 @@ function ModuleTreeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm ${
+      className={`mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 ${
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -6395,7 +6413,7 @@ function ModuleTreeAnchor({ href, children }: { href: string; children: ReactNod
   return (
     <a
       href={href}
-      className="mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+      className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150"
     >
       {children}
     </a>
