@@ -8533,6 +8533,11 @@ function DdpModule({
     return catalogs.processes.filter((process) => branchIds.has(process.id));
   }, [catalogs.processes, selectedProcess]);
 
+  // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
+  const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
+  const toggleStep = (stepId: string) =>
+    setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
+
   function selectPrimaryProcess(process: OrganizationProcess | null) {
     const valueChain = process?.value_chain_id
       ? catalogs.valueChains.find((chain) => chain.id === process.value_chain_id)
@@ -8807,7 +8812,7 @@ function DdpModule({
           {data.systems.map((system) => (
             <div
               key={system.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[1fr_170px_170px_130px_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[1fr_auto]"
             >
               <SelectField
                 label="Sistema"
@@ -8822,45 +8827,6 @@ function DdpModule({
                   })
                 }
               />
-              <Field
-                compact
-                label="Tipo"
-                value={system.tipo}
-                onChange={(tipo) =>
-                  update({
-                    ...data,
-                    systems: data.systems.map((item) =>
-                      item.id === system.id ? { ...item, tipo } : item,
-                    ),
-                  })
-                }
-              />
-              <Field
-                compact
-                label="Dono"
-                value={system.dono}
-                onChange={(dono) =>
-                  update({
-                    ...data,
-                    systems: data.systems.map((item) =>
-                      item.id === system.id ? { ...item, dono } : item,
-                    ),
-                  })
-                }
-              />
-              <Field
-                compact
-                label="Criticidade"
-                value={system.criticidade}
-                onChange={(criticidade) =>
-                  update({
-                    ...data,
-                    systems: data.systems.map((item) =>
-                      item.id === system.id ? { ...item, criticidade } : item,
-                    ),
-                  })
-                }
-              />
               <IconButton
                 label="Excluir"
                 onClick={() =>
@@ -8869,7 +8835,7 @@ function DdpModule({
               >
                 <Trash2 className="h-4 w-4" />
               </IconButton>
-              <div className="lg:col-span-5">
+              <div className="lg:col-span-2">
                 <TextArea
                   label="Descrição / uso no processo"
                   value={system.descricao}
@@ -8960,8 +8926,21 @@ function DdpModule({
         <div className="grid gap-3">
           {data.steps.map((step, index) => (
             <div key={step.id} className="rounded-lg border border-border bg-card p-3">
-              <div className="mb-3 flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
+              <div className={`flex items-center gap-3 ${openSteps[step.id] ? "mb-3" : ""}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleStep(step.id)}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title={openSteps[step.id] ? "Recolher etapa" : "Expandir etapa"}
+                  aria-label={openSteps[step.id] ? "Recolher etapa" : "Expandir etapa"}
+                >
+                  {openSteps[step.id] ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
                 <div className="grid flex-1 gap-3 md:grid-cols-2">
@@ -8995,21 +8974,31 @@ function DdpModule({
                   <Trash2 className="h-4 w-4" />
                 </IconButton>
               </div>
+              {openSteps[step.id] ? (
+                <>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {(["entrada", "atividade", "saida", "sistema", "risco"] as const).map((field) => (
+                {(["entrada", "atividade", "saida"] as const).map((field) => (
                   <TextArea
                     key={field}
-                    label={
-                      field === "saida"
-                        ? "Saída"
-                        : field === "risco"
-                          ? "Risco / ponto de atenção"
-                          : field[0].toUpperCase() + field.slice(1)
-                    }
+                    label={field === "saida" ? "Saída" : field[0].toUpperCase() + field.slice(1)}
                     value={step[field]}
                     onChange={(value) => updateStep(step.id, { [field]: value })}
                   />
                 ))}
+                <SelectField
+                  label="Sistema"
+                  value={step.sistema}
+                  options={[
+                    "",
+                    ...data.systems.map((s) => s.nome).filter((nome): nome is string => !!nome),
+                  ]}
+                  onChange={(sistema) => updateStep(step.id, { sistema })}
+                />
+                <TextArea
+                  label="Risco / ponto de atenção"
+                  value={step.risco}
+                  onChange={(risco) => updateStep(step.id, { risco })}
+                />
                 <TextArea
                   label="Observações adicionais"
                   value={step.observacoes}
@@ -9105,6 +9094,8 @@ function DdpModule({
                   ) : null}
                 </div>
               </div>
+                </>
+              ) : null}
             </div>
           ))}
           <button
