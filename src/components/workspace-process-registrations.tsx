@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { GitBranch, Layers3, Pencil, Plus, Save, Trash2, UserRound, X } from "lucide-react";
+import { Database, GitBranch, Layers3, Pencil, Plus, Save, Trash2, UserRound, X } from "lucide-react";
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { toast } from "sonner";
 import {
@@ -48,9 +48,11 @@ export type ProcessRegistrationView =
   | "areas"
   | "owners"
   | "owner-users"
+  | "systems"
   | "process-types";
 
 type OwnerUser = { id: string; owner_id: string; user: string };
+type SystemItem = { id: string; name: string; description: string };
 
 type Area = { id: string; name: string };
 type Owner = {
@@ -127,6 +129,7 @@ type RegistryData = {
   valueChains: ValueChain[];
   processes: Process[];
   ownerUsers: OwnerUser[];
+  systems: SystemItem[];
 };
 
 const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
@@ -539,6 +542,14 @@ export const DEMO_REGISTRY: RegistryData = {
     { id: "ou-rh", owner_id: "owner-bphr", user: "juliana.castro@bomfuturo.com" },
     { id: "ou-fin", owner_id: "owner-ger-financeiro", user: "bruno.cardoso@bomfuturo.com" },
   ],
+  systems: [
+    { id: "sys-erp", name: "ERP TOTVS", description: "Sistema transacional de gestão (financeiro, fiscal, estoque)." },
+    { id: "sys-powerbi", name: "Power BI", description: "Plataforma de dashboards e relatórios analíticos." },
+    { id: "sys-crm", name: "HubSpot CRM", description: "Gestão de leads, funil e atividades comerciais." },
+    { id: "sys-ats", name: "Gupy (ATS)", description: "Recrutamento e seleção: publicação de vagas e triagem." },
+    { id: "sys-jira", name: "Jira", description: "Gestão de demandas e projetos de TI." },
+    { id: "sys-workspace", name: "Google Workspace", description: "E-mail, colaboração e agenda corporativa." },
+  ],
 };
 
 type Draft = {
@@ -667,6 +678,9 @@ export function WorkspaceProcessRegistrations({
       if (view === "owner-users") {
         // Vínculo dono × usuário disponível no modo de demonstração.
         throw new Error("Vínculo de usuário disponível no modo de demonstração.");
+      }
+      if (view === "systems") {
+        throw new Error("Cadastro de sistemas disponível no modo de demonstração.");
       }
       if (view === "process-types") {
         return saveType({
@@ -924,6 +938,28 @@ function RegistrationFields({
           className={inputClass}
         />
       </Field>
+    );
+  if (view === "systems")
+    return (
+      <>
+        <Field label="Sistema">
+          <input
+            value={draft.name}
+            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            placeholder="Nome do sistema"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Descrição">
+          <textarea
+            rows={4}
+            value={draft.description}
+            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+            placeholder="Informações pertinentes sobre o sistema"
+            className={`${inputClass} h-auto py-2`}
+          />
+        </Field>
+      </>
     );
   if (view === "owner-users")
     return (
@@ -1275,6 +1311,14 @@ function registryCopy(view: ProcessRegistrationView) {
       columns: ["Dono", "Usuário"],
       icon: <UserRound className="h-5 w-5" />,
     };
+  if (view === "systems")
+    return {
+      title: "Sistemas",
+      singular: "Sistema",
+      description: "Cadastre os sistemas da empresa para reutilizá-los nos mapeamentos.",
+      columns: ["Sistema", "Descrição"],
+      icon: <Database className="h-5 w-5" />,
+    };
   if (view === "process-types")
     return {
       title: "Tipos de Processo",
@@ -1314,6 +1358,11 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
         item.user,
       ],
     }));
+  if (view === "systems")
+    return (data.systems ?? []).map((item) => ({
+      id: item.id,
+      values: [item.name, item.description || "-"],
+    }));
   if (view === "process-types")
     return data.types.map((item) => ({
       id: item.id,
@@ -1351,6 +1400,10 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
   if (view === "owner-users") {
     const item = data.ownerUsers.find((row) => row.id === id);
     return item ? { ...draft, id, linkOwnerId: item.owner_id, userName: item.user } : draft;
+  }
+  if (view === "systems") {
+    const item = data.systems.find((row) => row.id === id);
+    return item ? { ...draft, id, name: item.name, description: item.description } : draft;
   }
   if (view === "owners") {
     const item = data.owners.find((row) => row.id === id);
@@ -1438,6 +1491,15 @@ function saveDemoRegistration(
           user: draft.userName.trim(),
         }),
       };
+    if (view === "systems")
+      return {
+        ...current,
+        systems: upsert(current.systems, {
+          id,
+          name: draft.name.trim(),
+          description: draft.description.trim(),
+        }),
+      };
     if (view === "process-types")
       return {
         ...current,
@@ -1492,6 +1554,8 @@ function deleteDemoRegistration(
         ? { ...current, owners: current.owners.filter((item) => item.id !== id) }
         : view === "owner-users"
           ? { ...current, ownerUsers: current.ownerUsers.filter((item) => item.id !== id) }
+          : view === "systems"
+            ? { ...current, systems: current.systems.filter((item) => item.id !== id) }
           : view === "value-chains"
             ? { ...current, valueChains: current.valueChains.filter((item) => item.id !== id) }
             : { ...current, processes: current.processes.filter((item) => item.id !== id) },
@@ -1510,11 +1574,13 @@ function emptyRegistryData(): RegistryData {
     valueChains: [],
     processes: [],
     ownerUsers: [],
+    systems: [],
   };
 }
 function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
   if (view === "owners") return draft.departmentIds.length > 0 && !!draft.roleTitle.trim();
   if (view === "owner-users") return !!draft.linkOwnerId && !!draft.userName.trim();
+  if (view === "systems") return !!draft.name.trim();
   if (view === "process-types") return !!draft.label.trim();
   return !!draft.name.trim();
 }

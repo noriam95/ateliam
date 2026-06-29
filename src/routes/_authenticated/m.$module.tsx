@@ -465,6 +465,14 @@ const DEMO_CATALOGS: OrganizationCatalogs = {
       current_version: 1,
     },
   ],
+  systems: [
+    { id: "sys-erp", name: "ERP TOTVS", description: "Sistema transacional de gestão (financeiro, fiscal, estoque)." },
+    { id: "sys-powerbi", name: "Power BI", description: "Plataforma de dashboards e relatórios analíticos." },
+    { id: "sys-crm", name: "HubSpot CRM", description: "Gestão de leads, funil e atividades comerciais." },
+    { id: "sys-ats", name: "Gupy (ATS)", description: "Recrutamento e seleção: publicação de vagas e triagem." },
+    { id: "sys-jira", name: "Jira", description: "Gestão de demandas e projetos de TI." },
+    { id: "sys-workspace", name: "Google Workspace", description: "E-mail, colaboração e agenda corporativa." },
+  ],
 };
 
 function moduleDocumentLabel(moduleId: AteliamModule) {
@@ -2338,12 +2346,14 @@ type OrganizationValueChain = {
   status: string;
   organization_id?: string;
 };
+type OrganizationSystem = { id: string; name: string; description: string };
 type OrganizationCatalogs = {
   departments: OrganizationCatalogItem[];
   processOwners: OrganizationCatalogItem[];
   causes: OrganizationCause[];
   processes: OrganizationProcess[];
   valueChains: OrganizationValueChain[];
+  systems: OrganizationSystem[];
 };
 
 function cleanFileName(name: string) {
@@ -4684,6 +4694,8 @@ function ModuleWorkspacePage() {
         causes: catalogsQ.data?.causes ?? [],
         processes: catalogsQ.data?.processes ?? [],
         valueChains: catalogsQ.data?.valueChains ?? [],
+        systems:
+          ((catalogsQ.data as { systems?: OrganizationSystem[] } | undefined)?.systems) ?? [],
       };
   const organizationBrand: OrganizationBrand = isDemo
     ? {
@@ -8747,10 +8759,10 @@ function DdpModule({
               key={system.id}
               className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[1fr_170px_170px_130px_auto]"
             >
-              <Field
-                compact
+              <SelectField
                 label="Sistema"
                 value={system.nome}
+                options={["", ...catalogs.systems.map((s) => s.name)]}
                 onChange={(nome) =>
                   update({
                     ...data,
@@ -8840,7 +8852,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar sistema
@@ -9069,7 +9081,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar etapa
@@ -9130,7 +9142,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar linha SIPOC
@@ -9307,7 +9319,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar gap
@@ -9371,7 +9383,7 @@ function DdpModule({
                 glossary: [...data.glossary, { id: id("gloss"), termo: "", definicao: "" }],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar termo
@@ -9674,7 +9686,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar seção
@@ -9736,7 +9748,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar responsabilidade
@@ -9812,7 +9824,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar referência
@@ -9934,7 +9946,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar histórico
@@ -10006,7 +10018,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
           >
             <Plus className="h-4 w-4" />
             Adicionar alteração
