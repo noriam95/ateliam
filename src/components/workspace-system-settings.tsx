@@ -395,9 +395,7 @@ function OrganizationsSettings({
         </button>
       }
     >
-      <div
-        className={`grid gap-4 ${formOpen ? "xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)]" : ""}`}
-      >
+      <div className="grid gap-4">
         <DataTableFrame loading={loading} error={error} empty={!rows.length}>
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
             <thead className="bg-muted/75 text-xs text-muted-foreground">
@@ -447,16 +445,20 @@ function OrganizationsSettings({
         </DataTableFrame>
 
         {formOpen ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              saveMut.mutate();
-            }}
-            className="rounded-lg border border-border bg-card p-5"
+          <div
+            className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/30 p-4 backdrop-blur-[2px]"
+            onClick={(e) => e.target === e.currentTarget && setFormOpen(false)}
           >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveMut.mutate();
+              }}
+              className="my-auto max-h-[92vh] w-full max-w-lg overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+            >
             <div className="flex items-center gap-3">
               <OrganizationLogo row={draft} large />
-              <div>
+              <div className="min-w-0">
                 <div className="font-display text-lg font-bold">
                   {draft.id ? "Editar organização" : "Nova organização"}
                 </div>
@@ -465,8 +467,8 @@ function OrganizationsSettings({
               <button
                 type="button"
                 onClick={() => setFormOpen(false)}
-                className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Fechar formulário"
+                className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Fechar"
                 aria-label="Fechar formulário"
               >
                 <X className="h-4 w-4" />
@@ -542,7 +544,8 @@ function OrganizationsSettings({
                 {saveMut.isPending ? "Salvando..." : "Salvar organização"}
               </button>
             </div>
-          </form>
+            </form>
+          </div>
         ) : null}
       </div>
     </SettingsSurface>
@@ -739,9 +742,7 @@ function UsersSettings({
         </button>
       }
     >
-      <div
-        className={`grid gap-4 ${formOpen ? "xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,.75fr)]" : ""}`}
-      >
+      <div className="grid gap-4">
         <DataTableFrame loading={loading} error={error} empty={!rows.length}>
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <thead className="bg-muted/75 text-xs text-muted-foreground">
@@ -796,13 +797,17 @@ function UsersSettings({
         </DataTableFrame>
 
         {formOpen ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              saveMut.mutate();
-            }}
-            className="rounded-lg border border-border bg-card p-5"
+          <div
+            className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/30 p-4 backdrop-blur-[2px]"
+            onClick={(e) => e.target === e.currentTarget && setFormOpen(false)}
           >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveMut.mutate();
+              }}
+              className="my-auto max-h-[92vh] w-full max-w-lg overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+            >
             <div className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold)]">
                 <UserRound className="h-5 w-5" />
@@ -926,7 +931,8 @@ function UsersSettings({
                 {saveMut.isPending ? "Salvando..." : "Salvar usuário"}
               </button>
             </div>
-          </form>
+            </form>
+          </div>
         ) : null}
       </div>
     </SettingsSurface>
@@ -986,9 +992,7 @@ function DocumentModelsSettings({
       title="Modelos de documentos"
       description="Configure individualmente a identidade usada nas exportações Word e HTML da organização."
     >
-      <div
-        className={`grid gap-4 ${formOpen ? "xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,.85fr)]" : ""}`}
-      >
+      <div className="grid gap-4">
         <DataTableFrame loading={loading} error={error} empty={!rows.length}>
           <table className="w-full min-w-[680px] border-collapse text-left text-sm">
             <thead className="bg-muted/75 text-xs text-muted-foreground">
@@ -1038,13 +1042,17 @@ function DocumentModelsSettings({
           </table>
         </DataTableFrame>
         {formOpen ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              saveMut.mutate();
-            }}
-            className="rounded-lg border border-border bg-card p-5"
+          <div
+            className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/30 p-4 backdrop-blur-[2px]"
+            onClick={(e) => e.target === e.currentTarget && setFormOpen(false)}
           >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveMut.mutate();
+              }}
+              className="my-auto max-h-[92vh] w-full max-w-lg overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+            >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold)]">
@@ -1183,7 +1191,8 @@ function DocumentModelsSettings({
                 {saveMut.isPending ? "Salvando..." : "Salvar modelo"}
               </button>
             </div>
-          </form>
+            </form>
+          </div>
         ) : null}
       </div>
     </SettingsSurface>
