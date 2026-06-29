@@ -25,7 +25,6 @@ import {
   Maximize2,
   Menu,
   Network,
-  Pencil,
   Plus,
   Search,
   Settings,
@@ -632,9 +631,6 @@ function WorkspaceHome() {
                           </TreeLink>
                           <TreeLink moduleId="ddp" targetView="cause-consult">
                             <Search className="h-4 w-4" /> Consultar
-                          </TreeLink>
-                          <TreeLink moduleId="ddp" targetView="cause-edit">
-                            <Pencil className="h-4 w-4" /> Editar
                           </TreeLink>
                         </TreeSection>
                       </ModuleTreeGroup>
