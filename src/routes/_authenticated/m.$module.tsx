@@ -23,6 +23,7 @@ import {
   ImagePlus,
   LayoutGrid,
   ListChecks,
+  Lock,
   Menu,
   MessageSquare,
   Pencil,
@@ -5782,6 +5783,7 @@ function ModuleWorkspacePage() {
               catalogs={organizationCatalogs}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
               onCreateSharedCause={addCauseToCatalog}
+              onSave={() => setShowSave(true)}
             />
           )
         ) : null}
@@ -8445,11 +8447,13 @@ function DdpModule({
   catalogs,
   update,
   onCreateSharedCause,
+  onSave,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
   update: (value: DdpState) => void;
   onCreateSharedCause: (gap: GapItem) => Promise<OrganizationCause>;
+  onSave?: () => void;
 }) {
   const selectedProcess = useMemo(
     () => catalogs.processes.find((process) => process.id === data.macroprocess.processId) ?? null,
@@ -8510,7 +8514,6 @@ function DdpModule({
       data.meta.revisor,
       data.overview.objetivo,
       data.overview.escopo,
-      data.overview.estadoAtual,
       data.overview.donoProcesso,
       data.sipocRows[0]?.processo,
     ];
@@ -8532,10 +8535,7 @@ function DdpModule({
     overview: completionPercent([
       data.overview.objetivo,
       data.overview.escopo,
-      data.overview.donoProcesso,
-      data.overview.volume,
       data.overview.frequencia,
-      data.overview.estadoAtual,
       data.overview.kpis,
       data.overview.dores,
       data.overview.oportunidades,
@@ -8653,6 +8653,17 @@ function DdpModule({
         Capture capa, metadados, visão geral, sistemas, fluxo AS IS, SIPOC, gaps, próximos passos e
         glossário em um documento exportável.
       </Hero>
+      {onSave ? (
+        <button
+          type="button"
+          onClick={onSave}
+          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
+          title="Salvar o preenchimento do mapeamento"
+        >
+          <Save className="h-4 w-4" />
+          Salvar mapeamento
+        </button>
+      ) : null}
       <Panel title="Identificação" progress={sectionProgress.identification}>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="md:col-span-3">
@@ -8674,6 +8685,12 @@ function DdpModule({
             value={selectedProcess ? `v${data.macroprocess.processVersion ?? 1}` : ""}
           />
           <Field
+            label="Data"
+            type="date"
+            value={data.meta.data}
+            onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
+          />
+          <Field
             label="Elaborador"
             value={data.meta.elaborador}
             onChange={(elaborador) => update({ ...data, meta: { ...data.meta, elaborador } })}
@@ -8682,16 +8699,6 @@ function DdpModule({
             label="Revisor"
             value={data.meta.revisor}
             onChange={(revisor) => update({ ...data, meta: { ...data.meta, revisor } })}
-          />
-          <ReadOnlyField
-            label="Versão"
-            value={data.meta.versao || "0"}
-          />
-          <Field
-            label="Data"
-            type="date"
-            value={data.meta.data}
-            onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
           />
         </div>
       </Panel>
@@ -8707,24 +8714,11 @@ function DdpModule({
             value={data.overview.escopo}
             onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
           />
-          <ReadOnlyField label="Dono do processo" value={data.overview.donoProcesso} />
-          <Field
-            label="Volume"
-            value={data.overview.volume}
-            onChange={(volume) => update({ ...data, overview: { ...data.overview, volume } })}
-          />
           <Field
             label="Frequência"
             value={data.overview.frequencia}
             onChange={(frequencia) =>
               update({ ...data, overview: { ...data.overview, frequencia } })
-            }
-          />
-          <TextArea
-            label="Estado atual"
-            value={data.overview.estadoAtual}
-            onChange={(estadoAtual) =>
-              update({ ...data, overview: { ...data.overview, estadoAtual } })
             }
           />
           <TextArea
@@ -10621,14 +10615,20 @@ function RegisteredProcessSelect({
 }
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  // Campo preenchido automaticamente pelo cadastro — visualmente "travado".
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+        <Lock className="h-3 w-3" />
+        {label}
+        <span className="font-normal italic opacity-70">· do cadastro</span>
+      </span>
       <input
         readOnly
+        tabIndex={-1}
         value={value}
         placeholder="Preenchido pelo processo selecionado"
-        className="w-full rounded-md border border-border bg-muted/55 px-3 py-2.5 text-sm text-muted-foreground outline-none"
+        className="w-full cursor-not-allowed rounded-md border border-dashed border-border bg-muted/70 px-3 py-2.5 text-sm text-muted-foreground outline-none"
       />
     </label>
   );
