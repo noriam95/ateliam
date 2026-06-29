@@ -7757,6 +7757,493 @@ function DdpCausesModule({
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [priorityFilter, setPriorityFilter] = useState("Todas");
   const [selectedId, setSelectedId] = useState(() => data.gaps[0]?.id ?? "");
+  const [draft, setDraft] = useState<GapItem | null>(null);
+  const [commentDraft, setCommentDraft] = useState("");
+  const initializedNew = useRef(false);
+  const selected = data.gaps.find((gap) => gap.id === selectedId) ?? data.gaps[0] ?? null;
+
+  useEffect(() => {
+    if (!selectedId && data.gaps[0]?.id) setSelectedId(data.gaps[0].id);
+    if (selectedId && !data.gaps.some((gap) => gap.id === selectedId)) {
+      setSelectedId(data.gaps[0]?.id ?? "");
+    }
+  }, [data.gaps, selectedId]);
+
+  useEffect(() => {
+    if (mode === "new" && !initializedNew.current) {
+      initializedNew.current = true;
+      openNewCause();
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === "edit" && selected && !draft) {
+      openEditCause(selected);
+    }
+  }, [mode, selected?.id]);
+
+  const filtered = useMemo(() => {
+    const normalizedQuery = normalizeLabel(query);
+    return data.gaps.filter((gap) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        normalizeLabel(
+          [gap.causa, gap.descricao, gap.responsavel, gap.impacto, gap.acao].join(" "),
+        ).includes(normalizedQuery);
+      const matchesStatus = statusFilter === "Todos" || gap.status === statusFilter;
+      const matchesPriority = priorityFilter === "Todas" || gap.prioridade === priorityFilter;
+      return matchesQuery && matchesStatus && matchesPriority;
+    });
+  }, [data.gaps, priorityFilter, query, statusFilter]);
+
+  function createDraft(): GapItem {
+    return {
+      id: "",
+      sharedCauseId: "",
+      causa: "",
+      descricao: "",
+      impacto: "",
+      acao: "",
+      responsavel: "",
+      prazo: "",
+      prioridade: "Média",
+      status: "Pendente",
+      comentarios: [],
+    };
+  }
+
+  function openNewCause() {
+    setDraft(createDraft());
+    setCommentDraft("");
+  }
+
+  function openEditCause(gap: GapItem | null) {
+    if (!gap) return;
+    setSelectedId(gap.id);
+    setDraft({ ...gap, comentarios: [...gap.comentarios] });
+    setCommentDraft("");
+  }
+
+  function updateDraft(patch: Partial<GapItem>) {
+    setDraft((current) => (current ? { ...current, ...patch } : current));
+  }
+
+  function applySharedCauseToDraft(causeId: string) {
+    const cause = catalogs.causes.find((item) => item.id === causeId);
+    if (!cause) {
+      updateDraft({ sharedCauseId: "" });
+      return;
+    }
+    updateDraft(gapPatchFromOrganizationCause(cause));
+  }
+
+  function saveDraft() {
+    if (!draft) return;
+    const normalized: GapItem = {
+      ...draft,
+      id: draft.id || id("gap"),
+      causa: draft.causa.trim() || "Causa sem nome",
+      comentarios: draft.comentarios ?? [],
+    };
+
+    if (draft.id) {
+      update({
+        ...data,
+        gaps: data.gaps.map((gap) => (gap.id === draft.id ? normalized : gap)),
+      });
+      toast.success("Causa atualizada.");
+    } else {
+      update({ ...data, gaps: [...data.gaps, normalized] });
+      toast.success("Causa cadastrada.");
+    }
+
+    setSelectedId(normalized.id);
+    setDraft(null);
+    setCommentDraft("");
+  }
+
+  function removeGap(gapId: string) {
+    update({ ...data, gaps: data.gaps.filter((gap) => gap.id !== gapId) });
+    if (draft?.id === gapId) setDraft(null);
+  }
+
+  async function deleteSelectedCause() {
+    if (!selected || !window.confirm("Excluir a causa selecionada?")) return;
+    try {
+      if (selected.sharedCauseId) await onDeleteSharedCause(selected.sharedCauseId);
+      removeGap(selected.id);
+      toast.success("Causa excluída.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir a causa.");
+    }
+  }
+
+  function exportVisibleCauses() {
+    downloadBlob(
+      `causas-${today()}.xlsx`,
+      buildXlsxWorkbook([
+        {
+          name: "Causas",
+          rows: [
+            [
+              "Código",
+              "Nome da causa",
+              "Prioridade",
+              "Descrição",
+              "Status",
+              "Responsável",
+              "Prazo",
+              "Atualizado em",
+            ],
+            ...filtered.map((gap, index) => [
+              `CAU-${String(index + 1).padStart(3, "0")}`,
+              gap.causa,
+              gap.prioridade,
+              gap.descricao,
+              gap.status,
+              gap.responsavel || "-",
+              gap.prazo || "-",
+              new Date().toLocaleString("pt-BR"),
+            ]),
+          ],
+        },
+      ]),
+    );
+  }
+
+  function addComment() {
+    if (!draft || !commentDraft.trim()) return;
+    setDraft({
+      ...draft,
+      comentarios: [
+        ...draft.comentarios,
+        {
+          id: id("comment"),
+          text: commentDraft.trim(),
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+    setCommentDraft("");
+  }
+
+  function removeComment(commentId: string) {
+    if (!draft) return;
+    setDraft({
+      ...draft,
+      comentarios: draft.comentarios.filter((comment) => comment.id !== commentId),
+    });
+  }
+
+  return (
+    <div className="grid gap-5">
+      <Hero
+        title={
+          mode === "new" ? "Nova Causa" : mode === "edit" ? "Editar Causa" : "Consulta de Causas"
+        }
+        eyebrow="Mapeamento · gestão · acompanhamento"
+        progress={100}
+      >
+        Consulte causas cadastradas no Mapeamento, filtre por situação, acompanhe responsáveis e
+        registre comentários sem sair do documento versionado.
+      </Hero>
+
+      <Panel title="Consulta de causas" progress={data.gaps.length ? 100 : 0}>
+        <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_190px_170px]">
+          <Field label="Buscar" value={query} onChange={setQuery} />
+          <SelectField
+            label="Status"
+            value={statusFilter}
+            options={["Todos", ...CAUSE_STATUS_OPTIONS]}
+            onChange={setStatusFilter}
+          />
+          <SelectField
+            label="Prioridade"
+            value={priorityFilter}
+            options={["Todas", ...CAUSE_PRIORITY_OPTIONS]}
+            onChange={setPriorityFilter}
+          />
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={openNewCause}
+            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
+          >
+            <Plus className="h-4 w-4" /> Nova causa
+          </button>
+          <button
+            type="button"
+            disabled={!selected}
+            onClick={() => openEditCause(selected)}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-40"
+          >
+            <Pencil className="h-4 w-4" /> Editar
+          </button>
+          <button
+            type="button"
+            disabled={!selected}
+            onClick={deleteSelectedCause}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" /> Excluir
+          </button>
+          <button
+            type="button"
+            onClick={exportVisibleCauses}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted"
+          >
+            <FileSpreadsheet className="h-4 w-4" /> Exportar para Excel
+          </button>
+          <button
+            type="button"
+            onClick={onOpenEditor}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted"
+          >
+            <FileText className="h-4 w-4" /> Editar Mapeamento
+          </button>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-[#d2d2d7] bg-white">
+          <div className="overflow-auto">
+            <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+              <thead className="bg-[#f5f5f7] text-[11px] uppercase tracking-[0.14em] text-[#6e6e73]">
+                <tr>
+                  <th className="w-12 px-3 py-3" />
+                  <th className="px-3 py-3">Código</th>
+                  <th className="px-3 py-3">Causa</th>
+                  <th className="px-3 py-3">Prioridade</th>
+                  <th className="px-3 py-3">Responsável</th>
+                  <th className="px-3 py-3">Prazo</th>
+                  <th className="px-3 py-3">Status</th>
+                  <th className="px-3 py-3">Comentários</th>
+                  <th className="px-3 py-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((gap, index) => (
+                  <tr
+                    key={gap.id}
+                    onClick={() => setSelectedId(gap.id)}
+                    className={`cursor-pointer border-t border-[#d2d2d7] ${
+                      selected?.id === gap.id ? "bg-accent/70" : "bg-white"
+                    }`}
+                  >
+                    <td className="px-3 py-3">
+                      <input
+                        type="radio"
+                        checked={selected?.id === gap.id}
+                        onChange={() => setSelectedId(gap.id)}
+                      />
+                    </td>
+                    <td className="px-3 py-3 font-mono text-xs font-bold text-[#515154]">
+                      CAU-{String(index + 1).padStart(3, "0")}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="font-semibold text-[#1d1d1f]">
+                        {gap.causa || "Causa sem nome"}
+                      </div>
+                      <div className="mt-1 max-w-[420px] text-xs leading-5 text-[#6e6e73]">
+                        {gap.descricao || "Sem descrição registrada."}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <CausePill value={gap.prioridade} tone="priority" />
+                    </td>
+                    <td className="px-3 py-3 text-[#515154]">{gap.responsavel || "-"}</td>
+                    <td className="px-3 py-3 text-[#515154]">{gap.prazo || "-"}</td>
+                    <td className="px-3 py-3">
+                      <CausePill value={gap.status} tone="status" />
+                    </td>
+                    <td className="px-3 py-3 text-[#515154]">{gap.comentarios.length}</td>
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openEditCause(gap);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-xs font-bold text-[#3f3f46] hover:bg-[#f5f5f7]"
+                      >
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!filtered.length ? (
+                  <tr>
+                    <td colSpan={9} className="px-3 py-10 text-center text-sm text-[#6e6e73]">
+                      Nenhuma causa encontrada para os filtros aplicados.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Panel>
+
+      {draft ? (
+        <Panel
+          title={draft.id ? "Editar causa" : "Nova causa"}
+          progress={completionPercent([draft.causa, draft.descricao, draft.responsavel, draft.status])}
+        >
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:col-span-2">
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
+                    Causa reutilizável da organização
+                  </span>
+                  <select
+                    value={draft.sharedCauseId ?? ""}
+                    onChange={(event) => applySharedCauseToDraft(event.target.value)}
+                    className="w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#3f3f46]"
+                  >
+                    <option value="">Causa local / nova</option>
+                    {catalogs.causes.map((cause) => (
+                      <option key={cause.id} value={cause.id}>
+                        {cause.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <Field label="Causa" value={draft.causa} onChange={(causa) => updateDraft({ causa })} />
+              <Field
+                label="Responsável"
+                value={draft.responsavel}
+                onChange={(responsavel) => updateDraft({ responsavel })}
+              />
+              <SelectField
+                label="Status"
+                value={draft.status}
+                options={[...CAUSE_STATUS_OPTIONS]}
+                onChange={(status) => updateDraft({ status })}
+              />
+              <SelectField
+                label="Prioridade"
+                value={draft.prioridade}
+                options={[...CAUSE_PRIORITY_OPTIONS]}
+                onChange={(prioridade) => updateDraft({ prioridade })}
+              />
+              <DateRangeField
+                label="Prazo"
+                value={draft.prazo}
+                onChange={(prazo) => updateDraft({ prazo })}
+              />
+              <TextArea
+                label="Descrição"
+                value={draft.descricao}
+                onChange={(descricao) => updateDraft({ descricao })}
+              />
+              <TextArea
+                label="Impacto"
+                value={draft.impacto}
+                onChange={(impacto) => updateDraft({ impacto })}
+              />
+              <TextArea
+                label="Ação proposta"
+                value={draft.acao}
+                onChange={(acao) => updateDraft({ acao })}
+              />
+            </div>
+
+            <div className="rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-[#3f3f46]" />
+                <h3 className="text-sm font-black uppercase tracking-[0.16em] text-[#1d1d1f]">
+                  Comentários
+                </h3>
+              </div>
+              <textarea
+                value={commentDraft}
+                onChange={(event) => setCommentDraft(event.target.value)}
+                rows={4}
+                placeholder="Registre uma atualização, decisão ou pendência da causa."
+                className="w-full resize-y rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3f3f46]"
+              />
+              <button
+                type="button"
+                onClick={addComment}
+                disabled={!commentDraft.trim()}
+                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1d1d1f] px-3 py-2.5 text-sm font-bold text-white hover:bg-[#2c2c2e] disabled:opacity-45"
+              >
+                Inserir comentário
+              </button>
+              <div className="mt-4 grid gap-2">
+                {draft.comentarios.map((comment) => (
+                  <div key={comment.id} className="rounded-lg border border-[#d2d2d7] bg-white p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm leading-5 text-[#1d1d1f]">{comment.text}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeComment(comment.id)}
+                        className="text-[#6e6e73] hover:text-[#ff3b30]"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {comment.createdAt ? (
+                      <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">
+                        {new Date(comment.createdAt).toLocaleString("pt-BR")}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+                {!draft.comentarios.length ? (
+                  <div className="rounded-lg border border-dashed border-[#c7c7cc] bg-white/60 p-4 text-center text-sm text-[#6e6e73]">
+                    Nenhum comentário registrado.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(null);
+                setCommentDraft("");
+              }}
+              className="rounded-lg px-4 py-2 text-sm hover:bg-[#f5f5f7]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={saveDraft}
+              className="rounded-lg bg-[#3f3f46] px-4 py-2 text-sm font-bold text-white hover:bg-[#27272a]"
+            >
+              Salvar causa
+            </button>
+          </div>
+        </Panel>
+      ) : null}
+    </div>
+  );
+}
+
+function DdpCausesModuleLegacy({
+  data,
+  catalogs,
+  update,
+  onDeleteSharedCause,
+  mode = "consult",
+  onOpenEditor,
+}: {
+  data: DdpState;
+  catalogs: OrganizationCatalogs;
+  update: (value: DdpState) => void;
+  onDeleteSharedCause: (causeId: string) => Promise<void>;
+  mode?: "new" | "consult" | "edit";
+  onOpenEditor: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Todos");
+  const [priorityFilter, setPriorityFilter] = useState("Todas");
+  const [selectedId, setSelectedId] = useState(() => data.gaps[0]?.id ?? "");
   const [commentDraft, setCommentDraft] = useState("");
   const initializedNew = useRef(false);
   const selected = data.gaps.find((gap) => gap.id === selectedId) ?? data.gaps[0] ?? null;
