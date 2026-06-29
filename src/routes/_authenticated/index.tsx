@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity,
   AlertCircle,
@@ -18,12 +19,14 @@ import {
   Home,
   LayoutGrid,
   LogOut,
+  Maximize2,
   Menu,
   Network,
   Settings,
   Upload,
   User,
   Users,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +37,7 @@ import { WorkspaceSystemSettings } from "@/components/workspace-system-settings"
 import {
   WorkspaceProcessRegistrations,
   type ProcessRegistrationView,
+  DEMO_REGISTRY,
 } from "@/components/workspace-process-registrations";
 import { WorkspaceReports, ValueChainMacro } from "@/components/workspace-reports";
 import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
@@ -236,16 +240,32 @@ function WorkspaceHome() {
                   ? demoOrganizationLogo
                   : selectedDemoOrganization.logo_data_url,
             },
-            totals: {
-              processes: selectedDemoOrganization.id === "demo-bom-futuro" ? 3 : 0,
-              activeProcesses: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
-              reviewProcesses: selectedDemoOrganization.id === "demo-bom-futuro" ? 1 : 0,
-              ddps: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
-              pops: selectedDemoOrganization.id === "demo-bom-futuro" ? 1 : 0,
-              departments: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
-              owners: selectedDemoOrganization.id === "demo-bom-futuro" ? 2 : 0,
-              valueChains: selectedDemoOrganization.id === "demo-bom-futuro" ? 1 : 0,
-            },
+            totals:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? {
+                    processes: DEMO_REGISTRY.processes.length,
+                    activeProcesses: DEMO_REGISTRY.processes.filter((p) => p.status === "Ativo")
+                      .length,
+                    reviewProcesses: DEMO_REGISTRY.processes.filter(
+                      (p) => p.status === "Em revisão",
+                    ).length,
+                    ddps: 4,
+                    pops: 3,
+                    departments: DEMO_REGISTRY.areas.length,
+                    owners: DEMO_REGISTRY.owners.length,
+                    valueChains: DEMO_REGISTRY.valueChains.filter((c) => c.status === "Ativa")
+                      .length,
+                  }
+                : {
+                    processes: 0,
+                    activeProcesses: 0,
+                    reviewProcesses: 0,
+                    ddps: 0,
+                    pops: 0,
+                    departments: 0,
+                    owners: 0,
+                    valueChains: 0,
+                  },
             topDepartments:
               selectedDemoOrganization.id === "demo-bom-futuro"
                 ? [
@@ -785,6 +805,175 @@ function WorkspaceHome() {
   );
 }
 
+// Card do painel inicial que pode ser expandido em tela cheia (janela).
+function ExpandableCard({
+  title,
+  icon,
+  className,
+  titleClassName = "text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground",
+  children,
+  expanded,
+}: {
+  title: string;
+  icon?: ReactNode;
+  className?: string;
+  titleClassName?: string;
+  children: ReactNode;
+  // Conteúdo detalhado (tabela) mostrado quando o card é aberto em tela cheia.
+  expanded?: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <>
+      <div className={className}>
+        <div className="flex items-center justify-between">
+          <span className={titleClassName}>{title}</span>
+          <div className="flex items-center gap-1.5">
+            {icon}
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              title="Expandir em tela cheia"
+              aria-label="Expandir em tela cheia"
+              className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        {children}
+      </div>
+      {open
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[70] flex flex-col bg-background/90 p-4 backdrop-blur-sm sm:p-8"
+              onClick={() => setOpen(false)}
+            >
+              <div
+                className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-border px-5 py-3">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    {icon}
+                    {title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    title="Fechar"
+                    aria-label="Fechar"
+                    className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-5">{expanded ?? children}</div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+// Tabela com os registros (processos) por trás dos números dos cards do painel,
+// no mesmo espírito do relatório de cadeia de valor (coluna de índice + filtro).
+function ProcessRecordsTable({
+  isDemo,
+  filter,
+}: {
+  isDemo: boolean;
+  filter?: (p: (typeof DEMO_REGISTRY.processes)[number]) => boolean;
+}) {
+  const [query, setQuery] = useState("");
+  if (!isDemo) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        O detalhamento dos registros está disponível no modo de demonstração.
+      </p>
+    );
+  }
+  const base = filter ? DEMO_REGISTRY.processes.filter(filter) : DEMO_REGISTRY.processes;
+  const q = query.trim().toLowerCase();
+  const rows = q
+    ? base.filter((p) =>
+        [p.code, p.name, p.department, p.owner, p.status].join(" ").toLowerCase().includes(q),
+      )
+    : base;
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">
+          {rows.length} {rows.length === 1 ? "registro" : "registros"}
+        </span>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Filtrar..."
+          className="h-8 w-48 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+        />
+      </div>
+      <div className="overflow-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-left">#</th>
+              <th className="px-3 py-2 text-left">Código</th>
+              <th className="px-3 py-2 text-left">Processo</th>
+              <th className="px-3 py-2 text-left">Tipo</th>
+              <th className="px-3 py-2 text-left">Cadeia de Valor</th>
+              <th className="px-3 py-2 text-left">Área</th>
+              <th className="px-3 py-2 text-left">Dono</th>
+              <th className="px-3 py-2 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((p, i) => (
+              <tr key={p.id} className="hover:bg-muted/30">
+                <td className="px-3 py-2 tabular-nums text-muted-foreground">{i + 1}</td>
+                <td className="px-3 py-2 font-medium">{p.code || "-"}</td>
+                <td className="px-3 py-2">{p.name}</td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {DEMO_REGISTRY.types.find((t) => t.code === p.type)?.label || p.type}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {DEMO_REGISTRY.valueChains.find((c) => c.id === p.value_chain_id)?.name || "-"}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">{p.department || "-"}</td>
+                <td className="px-3 py-2 text-muted-foreground">{p.owner || "-"}</td>
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] px-2.5 py-0.5 text-xs font-medium text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
+                    {p.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                  Nenhum registro encontrado.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function WorkspaceContent({
   view,
   organizationName,
@@ -1040,26 +1229,32 @@ function WorkspaceContent({
       </div>
 
       {/* Visão Macro da Cadeia de Valor — diagrama do relatório de cadeia de valor */}
-      <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
-            Visão Macro da Cadeia de Valor
-          </span>
-          <GitBranch className="h-4 w-4 shrink-0 text-[var(--gold)]" />
+      <ExpandableCard
+        title="Visão Macro da Cadeia de Valor"
+        icon={<GitBranch className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
+        className="rounded-lg border border-border bg-card p-4 shadow-sm"
+        expanded={
+          <WorkspaceReports
+            view="value-chain-report"
+            organizationId={organizationId}
+            isDemo={isDemo}
+          />
+        }
+      >
+        <div className="mt-3">
+          <ValueChainMacro organizationId={organizationId} isDemo={isDemo} />
         </div>
-        <ValueChainMacro organizationId={organizationId} isDemo={isDemo} />
-      </section>
+      </ExpandableCard>
 
       {/* Top Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {/* Card 2: Índice de Mapeamento Operacional */}
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
-              Índice de Mapeamento Operacional
-            </span>
-            <Activity className="h-4 w-4 shrink-0 text-[var(--gold)]" />
-          </div>
+        <ExpandableCard
+          title="Índice de Mapeamento Operacional"
+          icon={<Activity className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
+          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+          expanded={<ProcessRecordsTable isDemo={isDemo} />}
+        >
           <div className="grid gap-2">
             <div className="grid gap-1">
               <div className="flex justify-between text-[11px]">
@@ -1091,16 +1286,15 @@ function WorkspaceContent({
             <span className="ml-2 text-xs text-muted-foreground">Cobertura de Processos</span>
             <div className="text-[11px] text-muted-foreground">{activeProcesses} de {totalProcesses} Processos</div>
           </div>
-        </div>
+        </ExpandableCard>
 
         {/* Card 3: Mapeamentos Pendentes */}
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
-              Mapeamentos Pendentes
-            </span>
-            <FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />
-          </div>
+        <ExpandableCard
+          title="Mapeamentos Pendentes"
+          icon={<FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
+          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+          expanded={<ProcessRecordsTable isDemo={isDemo} />}
+        >
           <div className="mt-auto grid grid-cols-2 gap-3">
             <div className="rounded-md bg-accent p-3 text-center">
               <div className="font-data text-3xl font-bold text-[var(--gold)]">{Math.max(0, totalProcesses - ddpCount)}</div>
@@ -1111,16 +1305,15 @@ function WorkspaceContent({
               <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Mapeamentos Salvos</div>
             </div>
           </div>
-        </div>
+        </ExpandableCard>
 
         {/* Card 4: Processos & Documentos em Revisão */}
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
-              Processos & Documentos em Revisão
-            </span>
-            <AlertCircle className="h-4 w-4 shrink-0 text-[var(--gold)]" />
-          </div>
+        <ExpandableCard
+          title="Processos & Documentos em Revisão"
+          icon={<AlertCircle className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
+          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+          expanded={<ProcessRecordsTable isDemo={isDemo} filter={(p) => p.status === "Em revisão"} />}
+        >
           <div className="mt-auto grid grid-cols-2 gap-3">
             <div className="rounded-md bg-accent p-3 text-center">
               <div className="font-data text-3xl font-bold text-[var(--gold)]">{reviewProcesses}</div>
@@ -1131,18 +1324,19 @@ function WorkspaceContent({
               <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Documentos em Revisão</div>
             </div>
           </div>
-        </div>
+        </ExpandableCard>
       </section>
 
       {/* Bottom: Catálogo e Conformidade + Painel de Atividade Recente */}
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Catálogo e Conformidade */}
-        <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Catálogo e Conformidade</h2>
-            <CheckCircle2 className="h-4 w-4 text-[var(--gold)]" />
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2">
+        <ExpandableCard
+          title="Catálogo e Conformidade"
+          icon={<CheckCircle2 className="h-4 w-4 text-[var(--gold)]" />}
+          titleClassName="text-sm font-semibold text-foreground"
+          className="rounded-lg border border-border bg-card p-5 shadow-sm"
+        >
+          <div className="mt-4 grid gap-5 sm:grid-cols-2">
             {/* Controle de Documentos */}
             <div>
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -1231,16 +1425,16 @@ function WorkspaceContent({
               )}
             </div>
           </div>
-        </div>
+        </ExpandableCard>
 
         {/* Painel de Atividade Recente */}
-        <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Painel de Atividade Recente</h2>
-            <Activity className="h-4 w-4 text-[var(--gold)]" />
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2">
+        <ExpandableCard
+          title="Painel de Atividade Recente"
+          icon={<Activity className="h-4 w-4 text-[var(--gold)]" />}
+          titleClassName="text-sm font-semibold text-foreground"
+          className="rounded-lg border border-border bg-card p-5 shadow-sm"
+        >
+          <div className="mt-4 grid gap-5 sm:grid-cols-2">
             {/* Últimas atualizações de processos */}
             <div>
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -1303,7 +1497,7 @@ function WorkspaceContent({
               )}
             </div>
           </div>
-        </div>
+        </ExpandableCard>
       </section>
     </div>
   );
