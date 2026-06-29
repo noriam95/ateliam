@@ -460,7 +460,6 @@ function WorkspaceHome() {
       if (
         ![
           "appearance",
-          "theme",
           "preferences",
           "visual-identity",
           "integrations",
@@ -772,10 +771,6 @@ function WorkspaceHome() {
                       >
                         Modelos de Documentos
                       </TreeButton>
-                      <TreeButton active={view === "theme"} onClick={() => setView("theme")}>
-                        Tema
-                      </TreeButton>
-                      <TreeButton onClick={signOut}>Sair</TreeButton>
                     </div>
                   ) : null}
                 </div>
