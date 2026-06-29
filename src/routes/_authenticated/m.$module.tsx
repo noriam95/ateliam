@@ -5127,9 +5127,14 @@ function ModuleWorkspacePage() {
       // Geração automática de código: reserva a sequência quando configurado e
       // o documento ainda não tem código.
       let workspaceToSave = workspace;
-      if (isAutoCodeModule && !currentModuleCode(workspace)) {
+      if (moduleId === "ddp") {
+        workspaceToSave = await syncDdpGapsToCatalog(workspaceToSave);
+      }
+      if (isAutoCodeModule && !currentModuleCode(workspaceToSave)) {
         const reserved = await reserveModuleCode();
-        workspaceToSave = withModuleCode(workspace, reserved);
+        workspaceToSave = withModuleCode(workspaceToSave, reserved);
+      }
+      if (workspaceToSave !== workspace) {
         setWorkspace(workspaceToSave);
         window.localStorage.setItem(draftKey, JSON.stringify(workspaceToSave));
       }
@@ -5272,6 +5277,41 @@ function ModuleWorkspacePage() {
     const row = await createSharedCause({ data: payload });
     await catalogsQ.refetch();
     return row;
+  }
+
+  async function syncDdpGapsToCatalog(source: WorkspaceState) {
+    if (moduleId !== "ddp") return source;
+    const knownCauses = new Map(
+      organizationCatalogs.causes.map((cause) => [normalizeLabel(cause.title), cause]),
+    );
+    let changed = false;
+    const gaps: GapItem[] = [];
+
+    for (const gap of source.ddp.gaps) {
+      const title = plain(gap.causa);
+      if (!title) {
+        gaps.push(gap);
+        continue;
+      }
+
+      const linked = organizationCatalogs.causes.find((item) => item.id === gap.sharedCauseId);
+      const payload = {
+        title,
+        description: plain(gap.descricao) || null,
+        impact: plain(gap.impacto) || null,
+        action: plain(gap.acao) || null,
+        priority: gap.prioridade || "Média",
+      };
+      const cause = linked
+        ? await updateCauseCatalog({ ...linked, ...payload })
+        : (knownCauses.get(normalizeLabel(title)) ?? (await addCauseToCatalog(gap)));
+
+      knownCauses.set(normalizeLabel(cause.title), cause);
+      if (gap.sharedCauseId !== cause.id) changed = true;
+      gaps.push(gap.sharedCauseId === cause.id ? gap : { ...gap, sharedCauseId: cause.id });
+    }
+
+    return changed ? { ...source, ddp: { ...source.ddp, gaps } } : source;
   }
 
   async function addProcessToCatalog(
@@ -5772,8 +5812,6 @@ function ModuleWorkspacePage() {
               data={workspace.ddp}
               catalogs={organizationCatalogs}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
-              onCreateSharedCause={addCauseToCatalog}
-              onUpdateSharedCause={updateCauseCatalog}
               onDeleteSharedCause={deleteCauseCatalog}
               mode={
                 search.view?.startsWith("cause-")
@@ -5798,7 +5836,6 @@ function ModuleWorkspacePage() {
               data={workspace.ddp}
               catalogs={organizationCatalogs}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
-              onCreateSharedCause={addCauseToCatalog}
               onSave={() => setShowSave(true)}
             />
           )
@@ -7726,8 +7763,6 @@ function DdpCausesModule({
   data,
   catalogs,
   update,
-  onCreateSharedCause,
-  onUpdateSharedCause,
   onDeleteSharedCause,
   mode = "consult",
   onOpenEditor,
@@ -7735,8 +7770,6 @@ function DdpCausesModule({
   data: DdpState;
   catalogs: OrganizationCatalogs;
   update: (value: DdpState) => void;
-  onCreateSharedCause: (gap: GapItem) => Promise<OrganizationCause>;
-  onUpdateSharedCause: (cause: OrganizationCause) => Promise<OrganizationCause>;
   onDeleteSharedCause: (causeId: string) => Promise<void>;
   mode?: "new" | "consult" | "edit";
   onOpenEditor: () => void;
@@ -7875,28 +7908,6 @@ function DdpCausesModule({
     setSelectedId(next.id);
   }
 
-  async function saveGapToLibrary(gap: GapItem) {
-    try {
-      const linked = catalogs.causes.find((item) => item.id === gap.sharedCauseId);
-      const cause = linked
-        ? await onUpdateSharedCause({
-            ...linked,
-            title: gap.causa,
-            description: gap.descricao || null,
-            impact: gap.impacto || null,
-            action: gap.acao || null,
-            priority: gap.prioridade,
-          })
-        : await onCreateSharedCause(gap);
-      updateGap(gap.id, { sharedCauseId: cause.id });
-      toast.success(
-        linked ? "Causa compartilhada atualizada." : "Causa disponível para outros mapeamentos.",
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel cadastrar a causa.");
-    }
-  }
-
   function removeGap(gapId: string) {
     update({ ...data, gaps: data.gaps.filter((gap) => gap.id !== gapId) });
   }
@@ -7985,7 +7996,7 @@ function DdpCausesModule({
         <CauseMetric label="Concluídas" value={finished} detail={`${totalComments} comentários`} />
       </div>
 
-      <Panel title="Causas cadastradas" progress={data.gaps.length ? 100 : 0}>
+      <Panel title="Consulta de causas" progress={data.gaps.length ? 100 : 0}>
         <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_190px_170px]">
           <Field label="Buscar" value={query} onChange={setQuery} />
           <SelectField
@@ -8012,7 +8023,7 @@ function DdpCausesModule({
           <button
             type="button"
             disabled={!selected}
-            onClick={() => selected && saveGapToLibrary(selected)}
+            onClick={() => selected && setSelectedId(selected.id)}
             className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-40"
           >
             <Pencil className="h-4 w-4" /> Editar
@@ -8131,10 +8142,9 @@ function DdpCausesModule({
                       />
                     </td>
                     <td className="px-3 py-3">
-                      <TableInput
+                      <TableDateRange
                         value={gap.prazo}
                         onChange={(prazo) => updateGap(gap.id, { prazo })}
-                        placeholder="Prazo"
                       />
                     </td>
                     <td className="px-3 py-3">
@@ -8162,13 +8172,6 @@ function DdpCausesModule({
                     </td>
                     <td className="px-3 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveGapToLibrary(gap)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-xs font-bold text-[#3f3f46] hover:bg-[#f5f5f7]"
-                        >
-                          Biblioteca
-                        </button>
                         <button
                           type="button"
                           onClick={() => removeGap(gap.id)}
@@ -8219,7 +8222,7 @@ function DdpCausesModule({
                 ))}
                 {!filtered.length && !filteredCatalogCauses.length ? (
                   <tr>
-                    <td colSpan={11} className="px-3 py-10 text-center text-sm text-[#6e6e73]">
+                    <td colSpan={12} className="px-3 py-10 text-center text-sm text-[#6e6e73]">
                       Nenhuma causa encontrada para os filtros aplicados.
                     </td>
                   </tr>
@@ -8242,7 +8245,7 @@ function DdpCausesModule({
         >
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-3 md:col-span-2 md:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid gap-3 md:col-span-2">
                 <label className="block">
                   <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]">
                     Causa reutilizável da organização
@@ -8260,14 +8263,6 @@ function DdpCausesModule({
                     ))}
                   </select>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => saveGapToLibrary(selected)}
-                  className="self-end inline-flex items-center justify-center gap-2 rounded-lg border border-[#d2d2d7] bg-white px-3 py-2.5 text-sm font-bold text-[#3f3f46] hover:bg-[#f5f5f7]"
-                >
-                  <Plus className="h-4 w-4" />
-                  Salvar na biblioteca
-                </button>
               </div>
               <Field
                 label="Causa"
@@ -8291,7 +8286,7 @@ function DdpCausesModule({
                 options={[...CAUSE_PRIORITY_OPTIONS]}
                 onChange={(prioridade) => updateGap(selected.id, { prioridade })}
               />
-              <Field
+              <DateRangeField
                 label="Prazo"
                 value={selected.prazo}
                 onChange={(prazo) => updateGap(selected.id, { prazo })}
@@ -8409,6 +8404,69 @@ function gapPatchFromOrganizationCause(cause: OrganizationCause): Partial<GapIte
   };
 }
 
+function parseGapDateRange(value: string) {
+  const parts = value
+    .split(/\s+(?:até|a)\s+|\|/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const isIsoDate = (part: string) => /^\d{4}-\d{2}-\d{2}$/.test(part);
+  return {
+    start: isIsoDate(parts[0] ?? "") ? parts[0] : "",
+    end: isIsoDate(parts[1] ?? "") ? parts[1] : isIsoDate(parts[0] ?? "") ? parts[0] : "",
+  };
+}
+
+function formatGapDateRange(start: string, end: string) {
+  if (start && end && start !== end) return `${start} até ${end}`;
+  return start || end;
+}
+
+function DateRangeField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <TableDateRange value={value} onChange={onChange} />
+    </label>
+  );
+}
+
+function TableDateRange({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const range = parseGapDateRange(value);
+  return (
+    <div className="grid min-w-[220px] gap-2 sm:grid-cols-2">
+      <input
+        type="date"
+        value={range.start}
+        aria-label="Início do prazo"
+        onChange={(event) => onChange(formatGapDateRange(event.target.value, range.end))}
+        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+      />
+      <input
+        type="date"
+        value={range.end}
+        aria-label="Fim do prazo"
+        min={range.start || undefined}
+        onChange={(event) => onChange(formatGapDateRange(range.start, event.target.value))}
+        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+      />
+    </div>
+  );
+}
+
 function TableInput({
   value,
   onChange,
@@ -8476,13 +8534,11 @@ function DdpModule({
   data,
   catalogs,
   update,
-  onCreateSharedCause,
   onSave,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
   update: (value: DdpState) => void;
-  onCreateSharedCause: (gap: GapItem) => Promise<OrganizationCause>;
   onSave?: () => void;
 }) {
   const selectedProcess = useMemo(
@@ -8665,16 +8721,6 @@ function DdpModule({
       return;
     }
     updateGap(gapId, gapPatchFromOrganizationCause(cause));
-  }
-
-  async function saveGapToCatalog(gap: GapItem) {
-    try {
-      const cause = await onCreateSharedCause(gap);
-      updateGap(gap.id, { sharedCauseId: cause.id });
-      toast.success("Causa disponivel para outros DDPs.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel cadastrar a causa.");
-    }
   }
 
   return (
@@ -9169,152 +9215,132 @@ function DdpModule({
       </Panel>
       <Panel title="Gaps e causas-raiz" progress={sectionProgress.gaps}>
         <div className="grid gap-3">
-          {data.gaps.map((gap) => (
-            <div key={gap.id} className="rounded-lg border border-border bg-card p-3">
-              <div className="mb-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                <label className="block">
-                  <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">
-                    Causa reutilizável da organização
-                  </span>
-                  <select
-                    value={gap.sharedCauseId ?? ""}
-                    onChange={(event) => applySharedCauseToGap(gap.id, event.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
-                  >
-                    <option value="">Causa local / nova</option>
-                    {catalogs.causes.map((cause) => (
-                      <option key={cause.id} value={cause.id}>
-                        {cause.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => saveGapToCatalog(gap)}
-                  className="self-end inline-flex items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted"
-                >
-                  <Plus className="h-4 w-4" />
-                  Salvar na biblioteca
-                </button>
-              </div>
-              <div className="mb-3 flex items-start gap-3">
-                <div className="grid flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_150px_150px]">
-                  <Field
-                    compact
-                    label="Causa"
-                    value={gap.causa}
-                    onChange={(causa) =>
-                      update({
-                        ...data,
-                        gaps: data.gaps.map((item) =>
-                          item.id === gap.id ? { ...item, causa } : item,
-                        ),
-                      })
-                    }
-                  />
-                  <Field
-                    compact
-                    label="Responsável"
-                    value={gap.responsavel}
-                    onChange={(responsavel) =>
-                      update({
-                        ...data,
-                        gaps: data.gaps.map((item) =>
-                          item.id === gap.id ? { ...item, responsavel } : item,
-                        ),
-                      })
-                    }
-                  />
-                  <SelectField
-                    label="Prioridade"
-                    value={gap.prioridade}
-                    options={[...CAUSE_PRIORITY_OPTIONS]}
-                    onChange={(prioridade) =>
-                      update({
-                        ...data,
-                        gaps: data.gaps.map((item) =>
-                          item.id === gap.id ? { ...item, prioridade } : item,
-                        ),
-                      })
-                    }
-                  />
-                  <SelectField
-                    label="Status"
-                    value={gap.status}
-                    options={[...CAUSE_STATUS_OPTIONS]}
-                    onChange={(status) =>
-                      update({
-                        ...data,
-                        gaps: data.gaps.map((item) =>
-                          item.id === gap.id ? { ...item, status } : item,
-                        ),
-                      })
-                    }
-                  />
-                </div>
-                <IconButton
-                  label="Excluir"
-                  onClick={() =>
-                    update({ ...data, gaps: data.gaps.filter((item) => item.id !== gap.id) })
-                  }
-                >
-                  <Trash2 className="h-4 w-4" />
-                </IconButton>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <TextArea
-                  label="Descrição"
-                  value={gap.descricao}
-                  onChange={(descricao) =>
-                    update({
-                      ...data,
-                      gaps: data.gaps.map((item) =>
-                        item.id === gap.id ? { ...item, descricao } : item,
-                      ),
-                    })
-                  }
-                />
-                <TextArea
-                  label="Impacto"
-                  value={gap.impacto}
-                  onChange={(impacto) =>
-                    update({
-                      ...data,
-                      gaps: data.gaps.map((item) =>
-                        item.id === gap.id ? { ...item, impacto } : item,
-                      ),
-                    })
-                  }
-                />
-                <TextArea
-                  label="Ação proposta"
-                  value={gap.acao}
-                  onChange={(acao) =>
-                    update({
-                      ...data,
-                      gaps: data.gaps.map((item) =>
-                        item.id === gap.id ? { ...item, acao } : item,
-                      ),
-                    })
-                  }
-                />
-                <Field
-                  compact
-                  label="Prazo"
-                  value={gap.prazo}
-                  onChange={(prazo) =>
-                    update({
-                      ...data,
-                      gaps: data.gaps.map((item) =>
-                        item.id === gap.id ? { ...item, prazo } : item,
-                      ),
-                    })
-                  }
-                />
-              </div>
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <div className="overflow-auto">
+              <table className="w-full min-w-[1540px] border-collapse text-left text-sm">
+                <thead className="bg-muted text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3">Origem</th>
+                    <th className="px-3 py-3">Causa reutilizável</th>
+                    <th className="px-3 py-3">Causa</th>
+                    <th className="px-3 py-3">Descrição</th>
+                    <th className="px-3 py-3">Impacto</th>
+                    <th className="px-3 py-3">Ação proposta</th>
+                    <th className="px-3 py-3">Responsável</th>
+                    <th className="px-3 py-3">Prazo</th>
+                    <th className="px-3 py-3">Prioridade</th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.gaps.map((gap) => (
+                    <tr key={gap.id} className="border-t border-border align-top">
+                      <td className="px-3 py-3">
+                        <span className="inline-flex rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                          {gap.sharedCauseId ? "Biblioteca" : "Mapeamento"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <select
+                          value={gap.sharedCauseId ?? ""}
+                          onChange={(event) => applySharedCauseToGap(gap.id, event.target.value)}
+                          className="w-full min-w-[190px] rounded-md border border-input bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+                        >
+                          <option value="">Causa local / nova</option>
+                          {catalogs.causes.map((cause) => (
+                            <option key={cause.id} value={cause.id}>
+                              {cause.title}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableInput
+                          value={gap.causa}
+                          onChange={(causa) => updateGap(gap.id, { causa })}
+                          placeholder="Nome da causa"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableTextarea
+                          value={gap.descricao}
+                          onChange={(descricao) => updateGap(gap.id, { descricao })}
+                          placeholder="Descreva a causa"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableTextarea
+                          value={gap.impacto}
+                          onChange={(impacto) => updateGap(gap.id, { impacto })}
+                          placeholder="Impacto"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableTextarea
+                          value={gap.acao}
+                          onChange={(acao) => updateGap(gap.id, { acao })}
+                          placeholder="Ação proposta"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableInput
+                          value={gap.responsavel}
+                          onChange={(responsavel) => updateGap(gap.id, { responsavel })}
+                          placeholder="Responsável"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableDateRange
+                          value={gap.prazo}
+                          onChange={(prazo) => updateGap(gap.id, { prazo })}
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableSelect
+                          value={gap.prioridade}
+                          options={[...CAUSE_PRIORITY_OPTIONS]}
+                          onChange={(prioridade) => updateGap(gap.id, { prioridade })}
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <TableSelect
+                          value={gap.status}
+                          options={[...CAUSE_STATUS_OPTIONS]}
+                          onChange={(status) => updateGap(gap.id, { status })}
+                        />
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            update({
+                              ...data,
+                              gaps: data.gaps.filter((item) => item.id !== gap.id),
+                            })
+                          }
+                          className="inline-flex items-center gap-2 rounded-md border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/5"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!data.gaps.length ? (
+                    <tr>
+                      <td
+                        colSpan={11}
+                        className="px-3 py-10 text-center text-sm text-muted-foreground"
+                      >
+                        Nenhum gap cadastrado.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
-          ))}
+          </div>
           <button
             onClick={() =>
               update({
