@@ -47,7 +47,10 @@ export type ProcessRegistrationView =
   | "processes"
   | "areas"
   | "owners"
+  | "owner-users"
   | "process-types";
+
+type OwnerUser = { id: string; owner_id: string; user: string };
 
 type Area = { id: string; name: string };
 type Owner = {
@@ -123,6 +126,7 @@ type RegistryData = {
   types: ProcessType[];
   valueChains: ValueChain[];
   processes: Process[];
+  ownerUsers: OwnerUser[];
 };
 
 const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
@@ -530,6 +534,11 @@ export const DEMO_REGISTRY: RegistryData = {
       current_version: 3,
     },
   ],
+  ownerUsers: [
+    { id: "ou-ti", owner_id: "owner-gerente-ti", user: "carlos.menezes@bomfuturo.com" },
+    { id: "ou-rh", owner_id: "owner-bphr", user: "juliana.castro@bomfuturo.com" },
+    { id: "ou-fin", owner_id: "owner-ger-financeiro", user: "bruno.cardoso@bomfuturo.com" },
+  ],
 };
 
 type Draft = {
@@ -546,6 +555,8 @@ type Draft = {
   departmentIds: string[];
   owner: string;
   roleTitle: string;
+  linkOwnerId: string;
+  userName: string;
   label: string;
   active: boolean;
   valueChainCategory: ValueChainCategory;
@@ -567,6 +578,8 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
     departmentIds: [],
     owner: data.owners[0]?.name ?? "",
     roleTitle: "",
+    linkOwnerId: data.owners[0]?.id ?? "",
+    userName: "",
     label: "Macroprocesso",
     active: true,
     valueChainCategory: "primary",
@@ -650,6 +663,10 @@ export function WorkspaceProcessRegistrations({
             roleTitle: draft.roleTitle,
           },
         });
+      }
+      if (view === "owner-users") {
+        // Vínculo dono × usuário disponível no modo de demonstração.
+        throw new Error("Vínculo de usuário disponível no modo de demonstração.");
       }
       if (view === "process-types") {
         return saveType({
@@ -907,6 +924,33 @@ function RegistrationFields({
           className={inputClass}
         />
       </Field>
+    );
+  if (view === "owner-users")
+    return (
+      <>
+        <Field label="Dono de processo">
+          <select
+            value={draft.linkOwnerId}
+            onChange={(e) => setDraft((d) => ({ ...d, linkOwnerId: e.target.value }))}
+            className={inputClass}
+          >
+            <option value="">Selecione</option>
+            {data.owners.map((owner) => (
+              <option key={owner.id} value={owner.id}>
+                {owner.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Usuário (e-mail ou nome)">
+          <input
+            value={draft.userName}
+            onChange={(e) => setDraft((d) => ({ ...d, userName: e.target.value }))}
+            placeholder="usuario@empresa.com"
+            className={inputClass}
+          />
+        </Field>
+      </>
     );
   if (view === "owners")
     return (
@@ -1223,6 +1267,14 @@ function registryCopy(view: ProcessRegistrationView) {
       columns: ["Cargo", "Área"],
       icon: <UserRound className="h-5 w-5" />,
     };
+  if (view === "owner-users")
+    return {
+      title: "Vínculo Dono × Usuário",
+      singular: "Vínculo",
+      description: "Associe cada dono de processo a um usuário do sistema.",
+      columns: ["Dono", "Usuário"],
+      icon: <UserRound className="h-5 w-5" />,
+    };
   if (view === "process-types")
     return {
       title: "Tipos de Processo",
@@ -1236,7 +1288,7 @@ function registryCopy(view: ProcessRegistrationView) {
     singular: "Processo",
     description:
       "Cadastre e versione Macroprocessos, Processos e Subprocessos vinculados à Cadeia de Valor.",
-    columns: ["Código", "Processo", "Tipo", "Cadeia de Valor", "Área", "Dono", "Versão"],
+    columns: ["Código", "Processo", "Tipo", "Cadeia de Valor", "Área", "Dono"],
     icon: <GitBranch className="h-5 w-5" />,
   };
 }
@@ -1252,6 +1304,14 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
           .map((areaId) => data.areas.find((area) => area.id === areaId)?.name)
           .filter(Boolean)
           .join(", ") || "-",
+      ],
+    }));
+  if (view === "owner-users")
+    return (data.ownerUsers ?? []).map((item) => ({
+      id: item.id,
+      values: [
+        data.owners.find((owner) => owner.id === item.owner_id)?.name || "-",
+        item.user,
       ],
     }));
   if (view === "process-types")
@@ -1278,7 +1338,6 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
       data.valueChains.find((chain) => chain.id === item.value_chain_id)?.name || "-",
       item.department || "-",
       item.owner || "-",
-      `v${item.current_version}`,
     ],
   }));
 }
@@ -1288,6 +1347,10 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
   if (view === "areas") {
     const item = data.areas.find((row) => row.id === id);
     return item ? { ...draft, id, name: item.name } : draft;
+  }
+  if (view === "owner-users") {
+    const item = data.ownerUsers.find((row) => row.id === id);
+    return item ? { ...draft, id, linkOwnerId: item.owner_id, userName: item.user } : draft;
   }
   if (view === "owners") {
     const item = data.owners.find((row) => row.id === id);
@@ -1366,6 +1429,15 @@ function saveDemoRegistration(
         }),
       };
     }
+    if (view === "owner-users")
+      return {
+        ...current,
+        ownerUsers: upsert(current.ownerUsers, {
+          id,
+          owner_id: draft.linkOwnerId,
+          user: draft.userName.trim(),
+        }),
+      };
     if (view === "process-types")
       return {
         ...current,
@@ -1418,9 +1490,11 @@ function deleteDemoRegistration(
       ? { ...current, areas: current.areas.filter((item) => item.id !== id) }
       : view === "owners"
         ? { ...current, owners: current.owners.filter((item) => item.id !== id) }
-        : view === "value-chains"
-          ? { ...current, valueChains: current.valueChains.filter((item) => item.id !== id) }
-          : { ...current, processes: current.processes.filter((item) => item.id !== id) },
+        : view === "owner-users"
+          ? { ...current, ownerUsers: current.ownerUsers.filter((item) => item.id !== id) }
+          : view === "value-chains"
+            ? { ...current, valueChains: current.valueChains.filter((item) => item.id !== id) }
+            : { ...current, processes: current.processes.filter((item) => item.id !== id) },
   );
 }
 function upsert<T extends { id: string }>(rows: T[], row: T) {
@@ -1435,10 +1509,12 @@ function emptyRegistryData(): RegistryData {
     types: STRUCTURAL_PROCESS_TYPES,
     valueChains: [],
     processes: [],
+    ownerUsers: [],
   };
 }
 function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
-  if (view === "owners") return !!draft.departmentId && !!draft.roleTitle.trim();
+  if (view === "owners") return draft.departmentIds.length > 0 && !!draft.roleTitle.trim();
+  if (view === "owner-users") return !!draft.linkOwnerId && !!draft.userName.trim();
   if (view === "process-types") return !!draft.label.trim();
   return !!draft.name.trim();
 }

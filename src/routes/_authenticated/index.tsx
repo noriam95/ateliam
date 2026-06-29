@@ -64,6 +64,7 @@ type WorkspaceView =
   | "process-types"
   | "areas"
   | "owners"
+  | "owner-users"
   | "causes"
   | "systems"
   | "exports"
@@ -419,6 +420,7 @@ function WorkspaceHome() {
           "process-types",
           "systems",
           "owners",
+          "owner-users",
           "processes",
           "causes",
           "value-chains",
@@ -708,6 +710,12 @@ function WorkspaceHome() {
                         Donos de Processo
                       </TreeButton>
                       <TreeButton
+                        active={view === "owner-users"}
+                        onClick={() => setView("owner-users")}
+                      >
+                        Vínculo Dono × Usuário
+                      </TreeButton>
+                      <TreeButton
                         active={view === "process-types"}
                         onClick={() => setView("process-types")}
                       >
@@ -869,6 +877,7 @@ function WorkspaceContent({
     view === "processes" ||
     view === "areas" ||
     view === "owners" ||
+    view === "owner-users" ||
     view === "process-types"
   ) {
     return (
