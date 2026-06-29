@@ -17,11 +17,17 @@ import {
   FlaskConical,
   GitBranch,
   Home,
+  Layers,
   LayoutGrid,
+  Link2,
+  ListChecks,
   LogOut,
   Maximize2,
   Menu,
   Network,
+  Pencil,
+  Plus,
+  Search,
   Settings,
   Upload,
   User,
@@ -648,16 +654,17 @@ function WorkspaceHome() {
                     <div key="modules" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
                       <ModuleTreeGroup
                         title="Mapeamento"
+                        icon={<FileText className="h-4 w-4" />}
                         active={isModuleView(view, "ddp")}
                         open={expanded.ddp}
                         onSelect={() => navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })}
                         onToggle={() => toggle("ddp")}
                       >
                         <TreeLink moduleId="ddp" targetView="new">
-                          Novo
+                          <Plus className="h-4 w-4" /> Novo
                         </TreeLink>
                         <TreeLink moduleId="ddp" targetView="consult">
-                          Consultar
+                          <Search className="h-4 w-4" /> Consultar
                         </TreeLink>
                         <TreeSection
                           title="Causas"
@@ -665,44 +672,46 @@ function WorkspaceHome() {
                           onToggle={() => toggle("causes")}
                         >
                           <TreeLink moduleId="ddp" targetView="cause-new">
-                            Novo
+                            <Plus className="h-4 w-4" /> Novo
                           </TreeLink>
                           <TreeLink moduleId="ddp" targetView="cause-consult">
-                            Consultar
+                            <Search className="h-4 w-4" /> Consultar
                           </TreeLink>
                           <TreeLink moduleId="ddp" targetView="cause-edit">
-                            Editar
+                            <Pencil className="h-4 w-4" /> Editar
                           </TreeLink>
                         </TreeSection>
                       </ModuleTreeGroup>
 
                       <ModuleTreeGroup
                         title="Documentação"
+                        icon={<CheckCircle2 className="h-4 w-4" />}
                         active={isModuleView(view, "pop")}
                         open={expanded.pop}
                         onSelect={() => navigate({ to: "/m/$module", params: { module: "pop" }, search: { view: "consult" } })}
                         onToggle={() => toggle("pop")}
                       >
                         <TreeLink moduleId="pop" targetView="new">
-                          Novo
+                          <Plus className="h-4 w-4" /> Novo
                         </TreeLink>
                         <TreeLink moduleId="pop" targetView="consult">
-                          Consultar
+                          <Search className="h-4 w-4" /> Consultar
                         </TreeLink>
                       </ModuleTreeGroup>
 
                       <ModuleTreeGroup
                         title="Fluxograma"
+                        icon={<GitBranch className="h-4 w-4" />}
                         active={isModuleView(view, "bpmn")}
                         open={expanded.bpmn}
                         onSelect={() => navigate({ to: "/m/$module", params: { module: "bpmn" }, search: { view: "consult" } })}
                         onToggle={() => toggle("bpmn")}
                       >
                         <TreeLink moduleId="bpmn" targetView="new">
-                          Novo
+                          <Plus className="h-4 w-4" /> Novo
                         </TreeLink>
                         <TreeLink moduleId="bpmn" targetView="consult">
-                          Consultar
+                          <Search className="h-4 w-4" /> Consultar
                         </TreeLink>
                       </ModuleTreeGroup>
                     </div>
@@ -714,34 +723,34 @@ function WorkspaceHome() {
                         active={view === "value-chains"}
                         onClick={() => setView("value-chains")}
                       >
-                        Cadeia de valor
+                        <Network className="h-4 w-4" /> Cadeia de valor
                       </TreeButton>
                       <TreeButton
                         active={view === "processes"}
                         onClick={() => setView("processes")}
                       >
-                        Processos
+                        <GitBranch className="h-4 w-4" /> Processos
                       </TreeButton>
                       <TreeButton active={view === "areas"} onClick={() => setView("areas")}>
-                        Áreas
+                        <Layers className="h-4 w-4" /> Áreas
                       </TreeButton>
                       <TreeButton active={view === "owners"} onClick={() => setView("owners")}>
-                        Donos de Processo
+                        <Users className="h-4 w-4" /> Donos de Processo
                       </TreeButton>
                       <TreeButton
                         active={view === "owner-users"}
                         onClick={() => setView("owner-users")}
                       >
-                        Vínculo Dono × Usuário
+                        <Link2 className="h-4 w-4" /> Vínculo Dono × Usuário
                       </TreeButton>
                       <TreeButton active={view === "systems"} onClick={() => setView("systems")}>
-                        Sistemas
+                        <Database className="h-4 w-4" /> Sistemas
                       </TreeButton>
                       <TreeButton
                         active={view === "process-types"}
                         onClick={() => setView("process-types")}
                       >
-                        Tipos
+                        <ListChecks className="h-4 w-4" /> Tipos
                       </TreeButton>
                     </div>
                   ) : null}
@@ -752,7 +761,7 @@ function WorkspaceHome() {
                         active={view === "value-chain-report"}
                         onClick={() => setView("value-chain-report")}
                       >
-                        Cadeia de Valor
+                        <Network className="h-4 w-4" /> Cadeia de Valor
                       </TreeButton>
                     </div>
                   ) : null}
@@ -760,19 +769,19 @@ function WorkspaceHome() {
                   {activeArea === "settings" ? (
                     <div key="settings" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
                       <TreeButton active={view === "users"} onClick={() => setView("users")}>
-                        Usuários
+                        <Users className="h-4 w-4" /> Usuários
                       </TreeButton>
                       <TreeButton
                         active={view === "organizations"}
                         onClick={() => setView("organizations")}
                       >
-                        Organizações
+                        <Building2 className="h-4 w-4" /> Organizações
                       </TreeButton>
                       <TreeButton
                         active={view === "document-models"}
                         onClick={() => setView("document-models")}
                       >
-                        Modelos de Documentos
+                        <FileText className="h-4 w-4" /> Modelos de Documentos
                       </TreeButton>
                     </div>
                   ) : null}
@@ -2315,7 +2324,7 @@ function TreeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 ${
+      className={`mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold)] ${
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -2328,6 +2337,7 @@ function TreeButton({
 
 function ModuleTreeGroup({
   title,
+  icon,
   active,
   open,
   children,
@@ -2335,6 +2345,7 @@ function ModuleTreeGroup({
   onToggle,
 }: {
   title: string;
+  icon?: ReactNode;
   active?: boolean;
   open: boolean;
   children: ReactNode;
@@ -2351,8 +2362,9 @@ function ModuleTreeGroup({
         <button
           type="button"
           onClick={onSelect}
-          className="flex min-w-0 flex-1 items-center px-2 py-1.5 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left"
         >
+          {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
           <span className="block min-w-0 truncate text-sm font-normal text-foreground">
             {title}
           </span>
@@ -2393,7 +2405,7 @@ function TreeLink({
   return (
     <a
       href={`/m/${moduleId}?view=${encodeURIComponent(targetView)}`}
-      className="mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150"
+      className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold)]"
     >
       {children}
     </a>
