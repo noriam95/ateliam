@@ -173,10 +173,10 @@ function PorterDiagram({
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[600px] overflow-hidden rounded-lg border border-border">
+      <div className="min-w-[600px] overflow-hidden rounded-xl border border-border shadow-sm ring-1 ring-black/[0.02]">
         {/* ORGANIZAÇÃO header */}
-        <div className="bg-[color-mix(in_oklab,var(--foreground)_8%,var(--card))] px-6 py-3 text-center">
-          <span className="text-[11px] font-bold uppercase tracking-[0.26em] text-foreground/70">
+        <div className="bg-gradient-to-r from-[color-mix(in_oklab,var(--foreground)_10%,var(--card))] to-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-6 py-3.5 text-center">
+          <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-foreground/70">
             Organização
           </span>
         </div>
@@ -184,12 +184,13 @@ function PorterDiagram({
         {/* Bands + MARGENS column */}
         <div className="flex">
           {/* Left: three horizontal bands */}
-          <div className="flex-1 divide-y divide-border">
+          <div className="flex-1 divide-y divide-border/70">
             {bands.map((band) => (
-              <div key={band.key} className={`${band.bg} px-5 py-4`}>
+              <div key={band.key} className={`${band.bg} px-5 py-4 transition-colors`}>
                 <div
-                  className={`mb-3 text-[10px] font-bold uppercase tracking-[0.22em] ${band.labelColor}`}
+                  className={`mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] ${band.labelColor}`}
                 >
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-current/70" />
                   {band.label}
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -198,7 +199,7 @@ function PorterDiagram({
                       <div
                         key={item.id}
                         title={item.description ?? undefined}
-                        className={`rounded-md border px-3 py-1.5 text-xs font-medium ${band.cardBg} ${band.cardBorder} ${band.cardText}`}
+                        className={`group cursor-default select-none rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-md hover:ring-2 hover:ring-[var(--gold)]/50 ${band.cardBg} ${band.cardBorder} ${band.cardText}`}
                       >
                         {item.name}
                       </div>
@@ -214,7 +215,7 @@ function PorterDiagram({
           </div>
 
           {/* Right: MARGENS column */}
-          <div className="flex w-14 shrink-0 items-center justify-center bg-[var(--gold)] border-l border-border">
+          <div className="flex w-14 shrink-0 items-center justify-center bg-gradient-to-b from-[var(--gold)] to-[color-mix(in_oklab,var(--gold)_82%,black)] border-l border-border">
             <span
               className="text-[11px] font-bold uppercase tracking-[0.22em] text-[oklch(0.205_0.01_78)]"
               style={{ writingMode: "vertical-lr", transform: "rotate(180deg)" }}
