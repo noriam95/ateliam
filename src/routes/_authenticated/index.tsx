@@ -623,6 +623,7 @@ function WorkspaceHome() {
                         </TreeLink>
                         <TreeSection
                           title="Causas"
+                          icon={<AlertCircle className="h-4 w-4" />}
                           open={expanded.causes}
                           onToggle={() => toggle("causes")}
                         >
@@ -2209,11 +2210,13 @@ function ProfileMenu({
 
 function TreeSection({
   title,
+  icon,
   open,
   children,
   onToggle,
 }: {
   title: string;
+  icon?: ReactNode;
   open: boolean;
   children: ReactNode;
   onToggle: () => void;
@@ -2223,9 +2226,10 @@ function TreeSection({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
         {title}
       </button>
       <div

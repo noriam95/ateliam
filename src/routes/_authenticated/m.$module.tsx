@@ -199,6 +199,7 @@ type ModuleRegistrationView = "areas" | "process-types" | "owners" | "processes"
 type ModuleSettingsView = "theme";
 
 type TextItem = { id: string; text: string };
+type NextStepItem = TextItem & { responsavel?: string; prazo?: string };
 type ModuleImage = { id: string; titulo: string; legenda: string; src: string };
 type DdpSystem = {
   id: string;
@@ -331,7 +332,7 @@ type DdpState = {
   };
   sipocRows: SipocRow[];
   gaps: GapItem[];
-  nextSteps: TextItem[];
+  nextSteps: NextStepItem[];
   glossary: GlossaryItem[];
   legacy?: JsonObject;
 };
@@ -1248,6 +1249,19 @@ function asTextItem(value: unknown, prefix: string): TextItem {
   return { id: id(prefix), text: String(value ?? "") };
 }
 
+function asNextStepItem(value: unknown): NextStepItem {
+  if (value && typeof value === "object") {
+    const row = value as Partial<NextStepItem> & { owner?: unknown; due?: unknown };
+    return {
+      id: row.id || id("next"),
+      text: String(row.text ?? ""),
+      responsavel: String(row.responsavel ?? row.owner ?? ""),
+      prazo: String(row.prazo ?? row.due ?? ""),
+    };
+  }
+  return { id: id("next"), text: String(value ?? ""), responsavel: "", prazo: "" };
+}
+
 function normalizeCauseStatus(value: unknown) {
   const normalized = normalizeLabel(String(value ?? ""));
   if (normalized.includes("andamento")) return "Em andamento";
@@ -1406,7 +1420,7 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
         ),
       };
     }),
-    nextSteps: (input?.nextSteps ?? fallback.nextSteps).map((item) => asTextItem(item, "next")),
+    nextSteps: (input?.nextSteps ?? fallback.nextSteps).map(asNextStepItem),
     glossary: (input?.glossary ?? fallback.glossary).map((item) => {
       const legacy = item as Partial<GlossaryItem> & { def?: string; text?: string };
       return {
@@ -2028,7 +2042,15 @@ function table(headers: string[], rows: unknown[][]) {
 
 function list(items: TextItem[]) {
   if (!items.length) return "<p>Sem registros.</p>";
-  return `<ol>${items.map((item) => `<li>${html(item.text)}</li>`).join("")}</ol>`;
+  return `<ol>${items
+    .map((item) => {
+      const next = item as NextStepItem;
+      const meta = [next.responsavel ? `Responsável: ${next.responsavel}` : "", next.prazo ? `Prazo: ${next.prazo}` : ""]
+        .filter(Boolean)
+        .join(" · ");
+      return `<li>${html(item.text)}${meta ? `<br><small>${html(meta)}</small>` : ""}</li>`;
+    })
+    .join("")}</ol>`;
 }
 
 function docShell(title: string, body: string) {
@@ -2585,8 +2607,8 @@ function getDdpExportModel(data: DdpState) {
         return {
           title: parts[0] || item.text,
           description: parts[1] || "",
-          owner: parts[2] || "",
-          due: parts[3] || "",
+          owner: item.responsavel || parts[2] || "",
+          due: item.prazo || parts[3] || "",
         };
       });
 
@@ -3070,7 +3092,10 @@ function buildDdpImportTemplate(data: DdpState) {
     },
     {
       name: "Proximos passos",
-      rows: [["texto"], ...data.nextSteps.map((item) => [item.text])],
+      rows: [
+        ["texto", "responsavel", "prazo"],
+        ...data.nextSteps.map((item) => [item.text, item.responsavel ?? "", item.prazo ?? ""]),
+      ],
     },
     {
       name: "Glossario",
@@ -3427,6 +3452,8 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
       nextSteps: rowObjects(sheetRows(sheets, "Proximos passos")).map((row, index) => ({
         id: current.nextSteps[index]?.id || id("next"),
         text: rowValue(row, "texto"),
+        responsavel: rowValue(row, "responsavel"),
+        prazo: rowValue(row, "prazo"),
       })),
       glossary: rowObjects(sheetRows(sheets, "Glossario")).map((row, index) => ({
         id: current.glossary[index]?.id || id("gloss"),
@@ -6023,6 +6050,7 @@ function ModuleWorkspacePage() {
                       </ModuleTreeButton>
                       <ModuleTreeSection
                         title="Causas"
+                        icon={<MessageSquare className="h-4 w-4" />}
                         open={expandedTree.causes}
                         onToggle={() => toggleTree("causes")}
                       >
@@ -6294,11 +6322,13 @@ function ModuleWorkspacePage() {
 
 function ModuleTreeSection({
   title,
+  icon,
   open,
   children,
   onToggle,
 }: {
   title: string;
+  icon?: ReactNode;
   open: boolean;
   children: ReactNode;
   onToggle: () => void;
@@ -6308,9 +6338,10 @@ function ModuleTreeSection({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
         {title}
       </button>
       {open ? <div className="ml-3 border-l border-border pl-2">{children}</div> : null}
@@ -8628,7 +8659,9 @@ function DdpModule({
         gap.status,
       ]),
     ),
-    nextSteps: completionPercent(data.nextSteps.map((item) => item.text)),
+    nextSteps: completionPercent(
+      data.nextSteps.flatMap((item) => [item.text, item.responsavel, item.prazo]),
+    ),
     glossary: completionPercent(data.glossary.flatMap((item) => [item.termo, item.definicao])),
   };
 
@@ -10820,8 +10853,8 @@ function ListEditor({
   progress,
 }: {
   title: string;
-  items: TextItem[];
-  onChange: (items: TextItem[]) => void;
+  items: NextStepItem[];
+  onChange: (items: NextStepItem[]) => void;
   placeholder: string;
   progress?: number;
 }) {
@@ -10831,7 +10864,7 @@ function ListEditor({
         {items.map((item, index) => (
           <div
             key={item.id}
-            className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
+            className="grid gap-2 rounded-lg border border-border bg-card p-2 md:grid-cols-[auto_minmax(0,1fr)_180px_160px_auto]"
           >
             <div className="grid h-8 w-8 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
               {String(index + 1).padStart(2, "0")}
@@ -10846,7 +10879,34 @@ function ListEditor({
                   ),
                 )
               }
-              className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-foreground outline-none"
+              className="min-w-0 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-foreground outline-none transition focus:border-input focus:bg-background"
+            />
+            <input
+              value={item.responsavel ?? ""}
+              placeholder="Responsável"
+              onChange={(event) =>
+                onChange(
+                  items.map((current) =>
+                    current.id === item.id
+                      ? { ...current, responsavel: event.target.value }
+                      : current,
+                  ),
+                )
+              }
+              className="min-w-0 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-foreground outline-none transition focus:border-input focus:bg-background"
+            />
+            <input
+              type="date"
+              value={item.prazo ?? ""}
+              aria-label="Prazo"
+              onChange={(event) =>
+                onChange(
+                  items.map((current) =>
+                    current.id === item.id ? { ...current, prazo: event.target.value } : current,
+                  ),
+                )
+              }
+              className="min-w-0 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-foreground outline-none transition focus:border-input focus:bg-background"
             />
             <IconButton
               label="Excluir"
@@ -10857,7 +10917,7 @@ function ListEditor({
           </div>
         ))}
         <button
-          onClick={() => onChange([...items, { id: id("item"), text: "" }])}
+          onClick={() => onChange([...items, { id: id("item"), text: "", responsavel: "", prazo: "" }])}
           className="mt-2 inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
         >
           <Plus className="h-4 w-4" />
