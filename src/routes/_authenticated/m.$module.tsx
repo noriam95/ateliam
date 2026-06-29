@@ -73,6 +73,7 @@ import {
   getModuleDocumentContent,
   getModuleDocumentVersionContent,
   getMe,
+  listUserAccess,
   listModuleDocumentVersions,
   listModuleDocuments,
   listOrganizationCatalogs,
@@ -302,6 +303,7 @@ type DdpState = {
     dataRelatorio: string;
     elaborador: string;
     revisor: string;
+    status?: string;
   };
   overview: {
     objetivo: string;
@@ -522,6 +524,7 @@ function defaultWorkspace(): WorkspaceState {
         dataRelatorio: "",
         elaborador: "",
         revisor: "",
+        status: "Em andamento",
       },
       overview: {
         objetivo: "Entender o estado atual, riscos e oportunidades do processo.",
@@ -4372,7 +4375,7 @@ function buildReadonlyPreviewHtml(
     [processLabel, moduleId === "pop" ? row.type : row.process],
     ["Área", row.area],
     ...(moduleId === "ddp" ? ([["Dono do processo", row.owner]] as Array<[string, string]>) : []),
-    ["Responsável", row.responsible],
+    [moduleId === "ddp" ? "Elaborador" : "Responsável", row.responsible],
     ["Status", row.status],
     ["Última atualização", new Date(row.updatedAt).toLocaleString("pt-BR")],
   ];
@@ -4644,6 +4647,7 @@ function ModuleWorkspacePage() {
   const listVersions = useServerFn(listWorkspaceVersions);
   const getVersion = useServerFn(getWorkspaceVersionContent);
   const me = useServerFn(getMe);
+  const listUsers = useServerFn(listUserAccess);
   const listCatalogs = useServerFn(listOrganizationCatalogs);
   const listDocumentModels = useServerFn(listOrganizationDocumentModels);
   const createDepartment = useServerFn(createOrganizationDepartment);
@@ -4684,6 +4688,15 @@ function ModuleWorkspacePage() {
     queryKey: ["module-me"],
     queryFn: () => me(),
     enabled: !isDemo,
+  });
+
+  const canListUsers =
+    !isDemo && !!meQ.data?.roles?.some((role) => role === "maestro" || role === "admin");
+  const usersQ = useQuery({
+    queryKey: ["module-users", isDemo ? "demo" : (meQ.data?.organization?.id ?? "cloud")],
+    queryFn: () => listUsers({ data: { organizationId: null } }),
+    enabled: canListUsers,
+    retry: false,
   });
 
   const documentModelsQ = useQuery({
@@ -4736,6 +4749,19 @@ function ModuleWorkspacePage() {
         logo_data_url: demoOrganizationLogo,
       }
     : (meQ.data?.organization ?? { name: "Ateliam", word_header_color: "1D1D1F" });
+  const elaboratorOptions = useMemo(() => {
+    const fromUsers =
+      (usersQ.data as Array<{ email?: string | null; display_name?: string | null }> | undefined)
+        ?.map((user) => user.display_name || user.email || "")
+        .filter(Boolean) ?? [];
+    const currentUser = !isDemo
+      ? [meQ.data?.profile?.display_name || meQ.data?.profile?.email || ""].filter(Boolean)
+      : [];
+    const demoUsers = isDemo
+      ? ["Administrador local", "Analista de processos", "Usuário consulta"]
+      : [];
+    return Array.from(new Set([...fromUsers, ...currentUser, ...demoUsers]));
+  }, [isDemo, meQ.data?.profile?.display_name, meQ.data?.profile?.email, usersQ.data]);
 
   // Contexto de codificação da organização ativa (modo demo via localStorage).
   const codeKind = MODULE_CODE_KIND[moduleId];
@@ -5877,6 +5903,7 @@ function ModuleWorkspacePage() {
             <DdpModule
               data={workspace.ddp}
               catalogs={organizationCatalogs}
+              userOptions={elaboratorOptions}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
               onSave={() => setShowSave(true)}
               onPreview={previewCurrentDdp}
@@ -6723,13 +6750,14 @@ function moduleGridRowFromWorkspace(
   if (moduleId === "ddp") {
     return {
       ...base,
+      status: workspace.ddp.meta.status || base.status,
       code: workspace.ddp.meta.codigo || "-",
       name: workspace.ddp.meta.titulo || "Mapeamento sem título",
       type: "Mapeamento",
       process: workspace.ddp.macroprocess.titulo || "-",
       area: workspace.ddp.meta.area || "-",
       owner: workspace.ddp.overview.donoProcesso || "-",
-      responsible: workspace.ddp.meta.responsavel || workspace.ddp.meta.elaborador || "-",
+      responsible: workspace.ddp.meta.elaborador || "-",
     };
   }
   if (moduleId === "pop") {
@@ -6888,8 +6916,6 @@ function ModuleDocumentGrid({
   onView: (row: ModuleGridRow) => void;
   onChangeStatus: (row: ModuleGridRow, status: string) => void;
 }) {
-  // Status editável direto na consulta de Mapeamento e Documentação.
-  const editableStatus = moduleId === "ddp" || moduleId === "pop";
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const filtered = useMemo(() => {
@@ -6905,7 +6931,7 @@ function ModuleDocumentGrid({
           ["name", "Nome do processo"],
           ["area", "Área"],
           ["owner", "Dono do processo"],
-          ["responsible", "Responsável"],
+          ["responsible", "Elaborador"],
           ["status", "Status"],
           ["updatedAt", "Última atualização"],
         ]
@@ -7071,7 +7097,7 @@ function ModuleDocumentGrid({
                     </td>
                     {columns.map(([key]) => {
                       const value = row[key as keyof ModuleGridRow];
-                      if (key === "status" && editableStatus) {
+                      if (key === "status" && moduleId === "pop") {
                         const options = MODULE_STATUS_OPTIONS.includes(value)
                           ? MODULE_STATUS_OPTIONS
                           : [value, ...MODULE_STATUS_OPTIONS];
@@ -8503,12 +8529,14 @@ function TableSelect({
 function DdpModule({
   data,
   catalogs,
+  userOptions = [],
   update,
   onSave,
   onPreview,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
+  userOptions?: string[];
   update: (value: DdpState) => void;
   onSave?: () => void;
   onPreview?: () => void;
@@ -8757,15 +8785,22 @@ function DdpModule({
             value={data.meta.data}
             onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
           />
-          <Field
+          <UserSearchField
             label="Elaborador"
             value={data.meta.elaborador}
+            options={userOptions}
             onChange={(elaborador) => update({ ...data, meta: { ...data.meta, elaborador } })}
           />
           <Field
             label="Revisor"
             value={data.meta.revisor}
             onChange={(revisor) => update({ ...data, meta: { ...data.meta, revisor } })}
+          />
+          <SelectField
+            label="Status"
+            value={data.meta.status || "Em andamento"}
+            options={MODULE_STATUS_OPTIONS}
+            onChange={(status) => update({ ...data, meta: { ...data.meta, status } })}
           />
         </div>
       </Panel>
@@ -8781,9 +8816,10 @@ function DdpModule({
             value={data.overview.escopo}
             onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
           />
-          <Field
+          <SelectField
             label="Frequência"
             value={data.overview.frequencia}
+            options={["Conforme demanda", "Diário", "Semanal", "Mensal", "Anual"]}
             onChange={(frequencia) =>
               update({ ...data, overview: { ...data.overview, frequencia } })
             }
@@ -10695,6 +10731,40 @@ function Field({
   );
 }
 
+function UserSearchField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  const listId = useRef(`user-options-${id("list")}`);
+  const uniqueOptions = useMemo(() => Array.from(new Set(options.filter(Boolean))), [options]);
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <input
+        list={uniqueOptions.length ? listId.current : undefined}
+        value={value}
+        placeholder={uniqueOptions.length ? "Pesquise um usuário cadastrado" : "Informe o usuário"}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+      />
+      {uniqueOptions.length ? (
+        <datalist id={listId.current}>
+          {uniqueOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      ) : null}
+    </label>
+  );
+}
+
 function SelectField({
   label,
   value,
@@ -10915,8 +10985,9 @@ function ListEditor({
           </div>
         ))}
         <button
+          type="button"
           onClick={() => onChange([...items, { id: id("item"), text: "", responsavel: "", prazo: "" }])}
-          className="mt-2 inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+          className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
         >
           <Plus className="h-4 w-4" />
           Adicionar
