@@ -501,12 +501,10 @@ function defaultWorkspace(): WorkspaceState {
         responsavel: "",
         valueChainId: "",
         valueChainName: "",
-        versao: "01",
+        // Versão zerada na criação; a contagem começa a partir da 1ª revisão.
+        versao: "0",
         data: today(),
-        dataRelatorio: new Date().toLocaleDateString("pt-BR", {
-          month: "long",
-          year: "numeric",
-        }),
+        dataRelatorio: "",
         elaborador: "",
         revisor: "",
       },
@@ -2059,7 +2057,7 @@ function buildDdpWord(data: DdpState) {
         ["Título", data.meta.titulo],
         ["Área", data.meta.area],
         ["Responsável", data.meta.responsavel],
-        ["Data do relatório", data.meta.dataRelatorio || data.meta.data],
+        ["Data", data.meta.data],
         ["Elaborador", data.meta.elaborador],
         ["Revisor", data.meta.revisor],
       ],
@@ -5137,9 +5135,22 @@ function ModuleWorkspacePage() {
       return { version: row.current_version, document: row };
     },
     onSuccess: (result) => {
-      toast.success(`Versão v${result.version} salva.`);
+      // Versão exibida: 0 na criação, +1 a cada revisão (save = nº de salvamentos).
+      const revisionVersion = Math.max(0, (result.version ?? 1) - 1);
+      toast.success(`Versão v${revisionVersion} salva.`);
       setShowSave(false);
       setComment("");
+      // O campo Versão do Mapeamento puxa automaticamente a versão atual.
+      if (moduleId === "ddp") {
+        setWorkspace((current) => {
+          const next = {
+            ...current,
+            ddp: { ...current.ddp, meta: { ...current.ddp.meta, versao: String(revisionVersion) } },
+          };
+          window.localStorage.setItem(draftKey, JSON.stringify(next));
+          return next;
+        });
+      }
       if (isDemo) setDemoVersion(result.version);
       if (!isDemo && "document" in result) {
         setActiveCloudDocument({
@@ -8517,7 +8528,6 @@ function DdpModule({
       data.meta.revisor,
       data.meta.versao,
       data.meta.data,
-      data.meta.dataRelatorio,
     ]),
     overview: completionPercent([
       data.overview.objetivo,
@@ -8673,21 +8683,15 @@ function DdpModule({
             value={data.meta.revisor}
             onChange={(revisor) => update({ ...data, meta: { ...data.meta, revisor } })}
           />
-          <Field
+          <ReadOnlyField
             label="Versão"
-            value={data.meta.versao}
-            onChange={(versao) => update({ ...data, meta: { ...data.meta, versao } })}
+            value={data.meta.versao || "0"}
           />
           <Field
             label="Data"
             type="date"
             value={data.meta.data}
             onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
-          />
-          <Field
-            label="Data do relatório"
-            value={data.meta.dataRelatorio}
-            onChange={(dataRelatorio) => update({ ...data, meta: { ...data.meta, dataRelatorio } })}
           />
         </div>
       </Panel>
