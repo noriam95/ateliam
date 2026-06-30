@@ -75,9 +75,29 @@ function ValueChainReport({
     return (catalogsQ.data?.valueChains ?? []) as unknown as ValueChain[];
   }, [isDemo, catalogsQ.data]);
 
-  const primary = chains.filter((c) => c.category === "primary" && c.status === "Ativa");
-  const support = chains.filter((c) => c.category === "support" && c.status === "Ativa");
-  const management = chains.filter((c) => c.category === "management" && c.status === "Ativa");
+  // Filtro compartilhado entre a tabela e o diagrama. Por padrão exibe os ativos.
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
+
+  const filteredChains = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return chains.filter((c) => {
+      if (statusFilter === "active" && !isActiveChain(c)) return false;
+      if (statusFilter === "inactive" && isActiveChain(c)) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        (CATEGORY_LABELS[c.category] ?? c.category).toLowerCase().includes(q) ||
+        (c.description ?? "").toLowerCase().includes(q) ||
+        c.status.toLowerCase().includes(q)
+      );
+    });
+  }, [chains, query, statusFilter]);
+
+  // Diagrama reflete o que está filtrado na tabela.
+  const primary = filteredChains.filter((c) => c.category === "primary");
+  const support = filteredChains.filter((c) => c.category === "support");
+  const management = filteredChains.filter((c) => c.category === "management");
   const isEmpty = chains.length === 0 && !catalogsQ.isLoading;
 
   return (
@@ -90,27 +110,6 @@ function ValueChainReport({
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
           Representação visual da cadeia de valor da organização no modelo de Porter.
         </p>
-
-        {!isEmpty && (
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => exportPNG(primary, support, management)}
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"
-            >
-              <ImageDown className="h-4 w-4" />
-              Exportar imagem (PNG)
-            </button>
-            <button
-              type="button"
-              onClick={() => exportCSV(primary, support, management)}
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Exportar Excel
-            </button>
-          </div>
-        )}
       </div>
 
       {catalogsQ.isLoading && !isDemo ? (
@@ -119,8 +118,26 @@ function ValueChainReport({
         <EmptyState />
       ) : (
         <>
-          <PorterDiagram primary={primary} support={support} management={management} />
-          <ConsultationTable chains={chains} />
+          <PorterDiagram
+            primary={primary}
+            support={support}
+            management={management}
+            onExportPng={() => exportPNG(primary, support, management)}
+          />
+          <ConsultationTable
+            chains={chains}
+            query={query}
+            setQuery={setQuery}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            onExportExcel={() =>
+              exportCSV(
+                chains.filter((c) => c.category === "primary"),
+                chains.filter((c) => c.category === "support"),
+                chains.filter((c) => c.category === "management"),
+              )
+            }
+          />
         </>
       )}
     </section>
@@ -133,10 +150,12 @@ function PorterDiagram({
   primary,
   support,
   management,
+  onExportPng,
 }: {
   primary: ValueChain[];
   support: ValueChain[];
   management: ValueChain[];
+  onExportPng?: () => void;
 }) {
   const bands = [
     {
@@ -155,8 +174,8 @@ function PorterDiagram({
       items: primary,
       bg: "bg-[#F5B324]",
       labelColor: "text-[#451a03]",
-      cardBg: "bg-black/10",
-      cardBorder: "border-black/20",
+      cardBg: "bg-white/35",
+      cardBorder: "border-black/15",
       cardText: "text-[#451a03]",
     },
     {
@@ -172,56 +191,74 @@ function PorterDiagram({
   ];
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[600px] overflow-hidden rounded-xl border border-border shadow-sm ring-1 ring-black/[0.02]">
-        {/* ORGANIZAÇÃO header */}
-        <div className="bg-gradient-to-r from-[color-mix(in_oklab,var(--foreground)_10%,var(--card))] to-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-6 py-3.5 text-center">
-          <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-foreground/70">
-            Organização
-          </span>
-        </div>
-
-        {/* Bands + MARGENS column */}
-        <div className="flex">
-          {/* Left: three horizontal bands */}
-          <div className="flex-1 divide-y divide-border/70">
-            {bands.map((band) => (
-              <div key={band.key} className={`${band.bg} px-5 py-4 transition-colors`}>
-                <div
-                  className={`mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] ${band.labelColor}`}
-                >
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-current/70" />
-                  {band.label}
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
+          Diagrama da cadeia de valor
+        </span>
+        {onExportPng ? (
+          <button
+            type="button"
+            onClick={onExportPng}
+            title="Exportar imagem (PNG)"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <ImageDown className="h-4 w-4" />
+            Exportar imagem (PNG)
+          </button>
+        ) : null}
+      </div>
+      <div className="overflow-x-auto pr-1">
+        <div className="flex min-w-[660px] items-stretch">
+          {/* Left block: organização + bandas (formas arredondadas) */}
+          <div className="flex-1 overflow-hidden rounded-3xl border border-border shadow-sm">
+            <div className="bg-gradient-to-r from-[color-mix(in_oklab,var(--foreground)_10%,var(--card))] to-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-6 py-3.5 text-center">
+              <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-foreground/70">
+                Organização
+              </span>
+            </div>
+            <div className="divide-y divide-border/60">
+              {bands.map((band) => (
+                <div key={band.key} className={`${band.bg} px-5 py-4`}>
+                  <div
+                    className={`mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] ${band.labelColor}`}
+                  >
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-current/70" />
+                    {band.label}
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {band.items.length > 0 ? (
+                      band.items.map((item) => (
+                        <div
+                          key={item.id}
+                          title={item.description ?? undefined}
+                          className={`cursor-default select-none rounded-full border px-4 py-2 text-xs font-semibold shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-md hover:ring-2 hover:ring-[var(--gold)]/50 ${band.cardBg} ${band.cardBorder} ${band.cardText}`}
+                        >
+                          {item.name}
+                        </div>
+                      ))
+                    ) : (
+                      <span className={`text-xs italic opacity-50 ${band.cardText}`}>
+                        Nenhum processo
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {band.items.length > 0 ? (
-                    band.items.map((item) => (
-                      <div
-                        key={item.id}
-                        title={item.description ?? undefined}
-                        className={`group cursor-default select-none rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-md hover:ring-2 hover:ring-[var(--gold)]/50 ${band.cardBg} ${band.cardBorder} ${band.cardText}`}
-                      >
-                        {item.name}
-                      </div>
-                    ))
-                  ) : (
-                    <span className={`text-xs italic opacity-50 ${band.cardText}`}>
-                      Nenhum processo cadastrado
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          {/* Right: MARGENS column */}
-          <div className="flex w-14 shrink-0 items-center justify-center bg-gradient-to-b from-[var(--gold)] to-[color-mix(in_oklab,var(--gold)_82%,black)] border-l border-border">
-            <span
-              className="text-[11px] font-bold uppercase tracking-[0.22em] text-[oklch(0.205_0.01_78)]"
-              style={{ writingMode: "vertical-lr", transform: "rotate(180deg)" }}
-            >
-              Margens
-            </span>
+          {/* Margem — seta apontando para a direita */}
+          <div className="relative ml-[-14px] w-32 shrink-0">
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-[color-mix(in_oklab,var(--gold)_88%,white)] to-[var(--gold)] shadow-sm"
+              style={{ clipPath: "polygon(0 6%, 62% 6%, 62% 0, 100% 50%, 62% 100%, 62% 94%, 0 94%)" }}
+            />
+            <div className="relative flex h-full items-center justify-center pr-7">
+              <span className="text-[12px] font-black uppercase tracking-[0.18em] text-[oklch(0.205_0.01_78)]">
+                Margem
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -244,7 +281,21 @@ function isActiveChain(chain: ValueChain) {
   return chain.status?.toLowerCase().startsWith("ativ");
 }
 
-function ConsultationTable({ chains }: { chains: ValueChain[] }) {
+function ConsultationTable({
+  chains,
+  query,
+  setQuery,
+  statusFilter,
+  setStatusFilter,
+  onExportExcel,
+}: {
+  chains: ValueChain[];
+  query: string;
+  setQuery: (value: string) => void;
+  statusFilter: "all" | "active" | "inactive";
+  setStatusFilter: (value: "all" | "active" | "inactive") => void;
+  onExportExcel: () => void;
+}) {
   // Ordem base: gestão → negócios → suporte (mesma do diagrama),
   // preservando uma numeração estável independente de filtros/ordenação.
   const ordered = useMemo(() => {
@@ -260,8 +311,6 @@ function ConsultationTable({ chains }: { chains: ValueChain[] }) {
       .map(({ chain }, i) => ({ chain, index: i + 1 }));
   }, [chains]);
 
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [sortField, setSortField] = useState<SortField>("index");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -367,6 +416,15 @@ function ConsultationTable({ chains }: { chains: ValueChain[] }) {
             <option value="active">Apenas ativos</option>
             <option value="inactive">Apenas inativos</option>
           </select>
+          <button
+            type="button"
+            onClick={onExportExcel}
+            title="Exportar todos os registros para Excel"
+            aria-label="Exportar para Excel"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+          </button>
         </div>
       </div>
       <div className="overflow-x-auto">
