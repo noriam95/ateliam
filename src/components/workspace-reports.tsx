@@ -14,6 +14,20 @@ type ValueChain = {
   status: string;
 };
 
+type ProcessRecord = {
+  id: string;
+  code: string | null;
+  name: string;
+  type: string;
+  value_chain_id: string | null;
+  parent_process_id: string | null;
+  department: string | null;
+  owner: string | null;
+  description: string | null;
+  status: string;
+  current_version: number;
+};
+
 export function WorkspaceReports({
   view,
   organizationId,
@@ -77,8 +91,15 @@ function ValueChainReport({
   }, [isDemo, catalogsQ.data]);
 
   // Filtro compartilhado entre a tabela e o diagrama. Por padrão exibe os ativos.
+  const processes: ProcessRecord[] = useMemo(() => {
+    if (isDemo) return DEMO_REGISTRY.processes as unknown as ProcessRecord[];
+    return (catalogsQ.data?.processes ?? []) as unknown as ProcessRecord[];
+  }, [isDemo, catalogsQ.data]);
+
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
+  const [activeTab, setActiveTab] = useState<"value-chain" | "processes">("value-chain");
+  const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
 
   const filteredChains = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -123,14 +144,23 @@ function ValueChainReport({
             primary={primary}
             support={support}
             management={management}
+            onSelectChain={(chain) => {
+              setSelectedChainId(chain.id);
+              setActiveTab("processes");
+            }}
             onExportPng={() => exportPNG(primary, support, management)}
           />
           <ConsultationTable
             chains={chains}
+            processes={processes}
             query={query}
             setQuery={setQuery}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedChainId={selectedChainId}
+            setSelectedChainId={setSelectedChainId}
             onExportExcel={() =>
               exportCSV(
                 chains.filter((c) => c.category === "primary"),
@@ -149,11 +179,13 @@ function PorterDiagram({
   primary,
   support,
   management,
+  onSelectChain,
   onExportPng,
 }: {
   primary: ValueChain[];
   support: ValueChain[];
   management: ValueChain[];
+  onSelectChain?: (chain: ValueChain) => void;
   onExportPng?: () => void;
 }) {
   const bands = [
@@ -223,13 +255,15 @@ function PorterDiagram({
                   {band.items.length ? (
                     <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
                       {band.items.map((item) => (
-                        <div
+                        <button
+                          type="button"
                           key={item.id}
+                          onClick={() => onSelectChain?.(item)}
                           title={item.description ?? undefined}
-                          className={`grid min-h-16 place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text}`}
+                          className={`grid min-h-16 place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text} transition-colors hover:bg-muted/40`}
                         >
                           {item.name}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   ) : (
@@ -267,25 +301,46 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 type SortField = "index" | "name" | "category" | "status";
+type ProcessSortField = "index" | "code" | "name" | "type" | "valueChain" | "status";
 type SortDir = "asc" | "desc";
 
 function isActiveChain(chain: ValueChain) {
   return chain.status?.toLowerCase().startsWith("ativ");
 }
 
+function isActiveProcess(process: ProcessRecord) {
+  return process.status?.toLowerCase().startsWith("ativ");
+}
+
+const PROCESS_TYPE_LABELS: Record<string, string> = {
+  macroprocess: "Macroprocesso",
+  process: "Processo",
+  subprocess: "Subprocesso",
+};
+
 function ConsultationTable({
   chains,
+  processes,
   query,
   setQuery,
   statusFilter,
   setStatusFilter,
+  activeTab,
+  setActiveTab,
+  selectedChainId,
+  setSelectedChainId,
   onExportExcel,
 }: {
   chains: ValueChain[];
+  processes: ProcessRecord[];
   query: string;
   setQuery: (value: string) => void;
   statusFilter: "all" | "active" | "inactive";
   setStatusFilter: (value: "all" | "active" | "inactive") => void;
+  activeTab: "value-chain" | "processes";
+  setActiveTab: (value: "value-chain" | "processes") => void;
+  selectedChainId: string | null;
+  setSelectedChainId: (value: string | null) => void;
   onExportExcel: () => void;
 }) {
   // Ordem base: gestão → negócios → suporte (mesma do diagrama),
@@ -305,6 +360,11 @@ function ConsultationTable({
 
   const [sortField, setSortField] = useState<SortField>("index");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [processQuery, setProcessQuery] = useState("");
+  const [processStatusFilter, setProcessStatusFilter] =
+    useState<"all" | "active" | "inactive">("active");
+  const [processSortField, setProcessSortField] = useState<ProcessSortField>("index");
+  const [processSortDir, setProcessSortDir] = useState<SortDir>("asc");
 
   const activeCount = ordered.filter((r) => isActiveChain(r.chain)).length;
 
@@ -342,12 +402,87 @@ function ConsultationTable({
     return result;
   }, [ordered, query, statusFilter, sortField, sortDir]);
 
+  const chainById = useMemo(
+    () => new Map(chains.map((chain) => [chain.id, chain])),
+    [chains],
+  );
+
+  const orderedProcesses = useMemo(
+    () => processes.map((process, i) => ({ process, index: i + 1 })),
+    [processes],
+  );
+
+  const activeProcessCount = orderedProcesses.filter((r) => isActiveProcess(r.process)).length;
+  const selectedChain = selectedChainId ? chainById.get(selectedChainId) ?? null : null;
+
+  const processRows = useMemo(() => {
+    const q = processQuery.trim().toLowerCase();
+    let result = orderedProcesses.filter(({ process }) => {
+      const chain = process.value_chain_id ? chainById.get(process.value_chain_id) : null;
+      if (selectedChainId && process.value_chain_id !== selectedChainId) return false;
+      if (processStatusFilter === "active" && !isActiveProcess(process)) return false;
+      if (processStatusFilter === "inactive" && isActiveProcess(process)) return false;
+      if (!q) return true;
+      return (
+        (process.code ?? "").toLowerCase().includes(q) ||
+        process.name.toLowerCase().includes(q) ||
+        (PROCESS_TYPE_LABELS[process.type] ?? process.type).toLowerCase().includes(q) ||
+        (chain?.name ?? "").toLowerCase().includes(q) ||
+        (process.department ?? "").toLowerCase().includes(q) ||
+        (process.owner ?? "").toLowerCase().includes(q) ||
+        process.status.toLowerCase().includes(q)
+      );
+    });
+
+    const dir = processSortDir === "asc" ? 1 : -1;
+    result = [...result].sort((a, b) => {
+      const aChain = a.process.value_chain_id ? chainById.get(a.process.value_chain_id) : null;
+      const bChain = b.process.value_chain_id ? chainById.get(b.process.value_chain_id) : null;
+      switch (processSortField) {
+        case "code":
+          return (a.process.code ?? "").localeCompare(b.process.code ?? "") * dir;
+        case "name":
+          return a.process.name.localeCompare(b.process.name) * dir;
+        case "type":
+          return (
+            (PROCESS_TYPE_LABELS[a.process.type] ?? a.process.type).localeCompare(
+              PROCESS_TYPE_LABELS[b.process.type] ?? b.process.type,
+            ) * dir
+          );
+        case "valueChain":
+          return (aChain?.name ?? "").localeCompare(bChain?.name ?? "") * dir;
+        case "status":
+          return a.process.status.localeCompare(b.process.status) * dir;
+        default:
+          return (a.index - b.index) * dir;
+      }
+    });
+    return result;
+  }, [
+    orderedProcesses,
+    processQuery,
+    processStatusFilter,
+    processSortField,
+    processSortDir,
+    selectedChainId,
+    chainById,
+  ]);
+
   function toggleSort(field: SortField) {
     if (sortField === field) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
       setSortDir("asc");
+    }
+  }
+
+  function toggleProcessSort(field: ProcessSortField) {
+    if (processSortField === field) {
+      setProcessSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setProcessSortField(field);
+      setProcessSortDir("asc");
     }
   }
 
@@ -379,38 +514,149 @@ function ConsultationTable({
     );
   }
 
+  function ProcessSortHeader({
+    field,
+    children,
+    className,
+  }: {
+    field: ProcessSortField;
+    children: ReactNode;
+    className?: string;
+  }) {
+    const active = processSortField === field;
+    return (
+      <th
+        className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground ${className ?? ""}`}
+      >
+        <button
+          type="button"
+          onClick={() => toggleProcessSort(field)}
+          className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+        >
+          {children}
+          <span className={active ? "opacity-90" : "opacity-30"}>
+            {active ? (processSortDir === "asc" ? "â–²" : "â–¼") : "â†•"}
+          </span>
+        </button>
+      </th>
+    );
+  }
+
+  function handleExportExcel() {
+    if (activeTab === "value-chain") {
+      onExportExcel();
+      return;
+    }
+    exportProcessesCSV(
+      processRows.map(({ process }) => process),
+      chainById,
+    );
+  }
+
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <div>
-          <h2 className="font-display text-base font-semibold">Cadeias de Valor</h2>
+        <div className="grid gap-2">
+          <h2 className="font-display text-base font-semibold">Cadeia de Valor</h2>
+          <div className="inline-flex w-fit rounded-md border border-border bg-muted/40 p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("value-chain")}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${
+                activeTab === "value-chain"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Cadeia de Valor
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("processes")}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${
+                activeTab === "processes"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Processos
+            </button>
+          </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {ordered.length} {ordered.length === 1 ? "registro" : "registros"} ·{" "}
-            {activeCount} {activeCount === 1 ? "ativo" : "ativos"} ·{" "}
-            {ordered.length - activeCount} inativo
-            {ordered.length - activeCount === 1 ? "" : "s"}
+            {activeTab === "value-chain" ? (
+              <>
+                {ordered.length} {ordered.length === 1 ? "registro" : "registros"} ·{" "}
+                {activeCount} {activeCount === 1 ? "ativo" : "ativos"} ·{" "}
+                {ordered.length - activeCount} inativo
+                {ordered.length - activeCount === 1 ? "" : "s"}
+              </>
+            ) : (
+              <>
+                {processRows.length}{" "}
+                {processRows.length === 1 ? "registro exibido" : "registros exibidos"} ·{" "}
+                {activeProcessCount} {activeProcessCount === 1 ? "ativo" : "ativos"} ·{" "}
+                {orderedProcesses.length - activeProcessCount} inativo
+                {orderedProcesses.length - activeProcessCount === 1 ? "" : "s"}
+                {selectedChain ? ` · Filtro: ${selectedChain.name}` : ""}
+              </>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filtrar..."
-            className="h-8 w-44 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-            className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
-          >
-            <option value="all">Todos os status</option>
-            <option value="active">Apenas ativos</option>
-            <option value="inactive">Apenas inativos</option>
-          </select>
+          {activeTab === "value-chain" ? (
+            <>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filtrar..."
+                className="h-8 w-44 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+                className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              >
+                <option value="all">Todos os status</option>
+                <option value="active">Apenas ativos</option>
+                <option value="inactive">Apenas inativos</option>
+              </select>
+            </>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={processQuery}
+                onChange={(e) => setProcessQuery(e.target.value)}
+                placeholder="Filtrar processos..."
+                className="h-8 w-48 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              />
+              <select
+                value={selectedChainId ?? ""}
+                onChange={(e) => setSelectedChainId(e.target.value || null)}
+                className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              >
+                <option value="">Todas as cadeias</option>
+                {ordered.map(({ chain }) => (
+                  <option key={chain.id} value={chain.id}>
+                    {chain.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={processStatusFilter}
+                onChange={(e) => setProcessStatusFilter(e.target.value as "all" | "active" | "inactive")}
+                className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              >
+                <option value="all">Todos os status</option>
+                <option value="active">Apenas ativos</option>
+                <option value="inactive">Apenas inativos</option>
+              </select>
+            </>
+          )}
           <button
             type="button"
-            onClick={onExportExcel}
+            onClick={handleExportExcel}
             title="Exportar todos os registros para Excel"
             aria-label="Exportar para Excel"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
@@ -420,59 +666,119 @@ function ConsultationTable({
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/40">
-              <SortHeader field="index" className="w-16">
-                #
-              </SortHeader>
-              <SortHeader field="name">Nome</SortHeader>
-              <SortHeader field="category">Categoria</SortHeader>
-              <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Descrição
-              </th>
-              <SortHeader field="status">Status</SortHeader>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map(({ chain, index }) => {
-              const active = isActiveChain(chain);
-              return (
-                <tr
-                  key={chain.id}
-                  className={`hover:bg-muted/30 transition-colors ${active ? "" : "opacity-60"}`}
-                >
-                  <td className="px-5 py-3 tabular-nums text-muted-foreground">{index}</td>
-                  <td className="px-5 py-3 font-medium text-foreground">{chain.name}</td>
-                  <td className="px-5 py-3 text-muted-foreground">
-                    {CATEGORY_LABELS[chain.category] ?? chain.category}
-                  </td>
-                  <td className="px-5 py-3 text-muted-foreground">
-                    {chain.description ?? <span className="italic opacity-50">—</span>}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        active
-                          ? "bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {chain.status}
-                    </span>
+        {activeTab === "value-chain" ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <SortHeader field="index" className="w-16">#</SortHeader>
+                <SortHeader field="name">Nome</SortHeader>
+                <SortHeader field="category">Categoria</SortHeader>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Descrição
+                </th>
+                <SortHeader field="status">Status</SortHeader>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map(({ chain, index }) => {
+                const active = isActiveChain(chain);
+                return (
+                  <tr
+                    key={chain.id}
+                    onClick={() => {
+                      setSelectedChainId(chain.id);
+                      setActiveTab("processes");
+                    }}
+                    className={`cursor-pointer hover:bg-muted/30 transition-colors ${active ? "" : "opacity-60"}`}
+                  >
+                    <td className="px-5 py-3 tabular-nums text-muted-foreground">{index}</td>
+                    <td className="px-5 py-3 font-medium text-foreground">{chain.name}</td>
+                    <td className="px-5 py-3 text-muted-foreground">
+                      {CATEGORY_LABELS[chain.category] ?? chain.category}
+                    </td>
+                    <td className="px-5 py-3 text-muted-foreground">
+                      {chain.description ?? <span className="italic opacity-50">-</span>}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          active
+                            ? "bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {chain.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                    Nenhuma cadeia de valor encontrada com os filtros atuais.
                   </td>
                 </tr>
-              );
-            })}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-sm text-muted-foreground">
-                  Nenhuma cadeia de valor encontrada com os filtros atuais.
-                </td>
+              )}
+            </tbody>
+          </table>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <ProcessSortHeader field="index" className="w-16">#</ProcessSortHeader>
+                <ProcessSortHeader field="code">Código</ProcessSortHeader>
+                <ProcessSortHeader field="name">Processo</ProcessSortHeader>
+                <ProcessSortHeader field="type">Tipo</ProcessSortHeader>
+                <ProcessSortHeader field="valueChain">Cadeia de Valor</ProcessSortHeader>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Área
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Dono
+                </th>
+                <ProcessSortHeader field="status">Status</ProcessSortHeader>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {processRows.map(({ process, index }) => {
+                const active = isActiveProcess(process);
+                const chain = process.value_chain_id ? chainById.get(process.value_chain_id) : null;
+                return (
+                  <tr key={process.id} className={`hover:bg-muted/30 transition-colors ${active ? "" : "opacity-60"}`}>
+                    <td className="px-5 py-3 tabular-nums text-muted-foreground">{index}</td>
+                    <td className="px-5 py-3 font-medium text-muted-foreground">{process.code || "-"}</td>
+                    <td className="px-5 py-3 font-medium text-foreground">{process.name}</td>
+                    <td className="px-5 py-3 text-muted-foreground">
+                      {PROCESS_TYPE_LABELS[process.type] ?? process.type}
+                    </td>
+                    <td className="px-5 py-3 text-muted-foreground">{chain?.name ?? "-"}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{process.department || "-"}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{process.owner || "-"}</td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          active
+                            ? "bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {process.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {processRows.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                    Nenhum processo encontrado com os filtros atuais.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
@@ -704,6 +1010,29 @@ function exportCSV(primary: ValueChain[], support: ValueChain[], management: Val
     ...all.map(({ c, band }, i) => [i + 1, band, c.name, c.description ?? "", c.status]),
   ];
   downloadXlsx("cadeia-de-valor", "Cadeia de Valor", rows);
+}
+
+function exportProcessesCSV(
+  processes: ProcessRecord[],
+  chainById: Map<string, ValueChain>,
+) {
+  const rows = [
+    ["#", "Código", "Processo", "Tipo", "Cadeia de Valor", "Área", "Dono", "Status"],
+    ...processes.map((process, i) => {
+      const chain = process.value_chain_id ? chainById.get(process.value_chain_id) : null;
+      return [
+        i + 1,
+        process.code ?? "",
+        process.name,
+        PROCESS_TYPE_LABELS[process.type] ?? process.type,
+        chain?.name ?? "",
+        process.department ?? "",
+        process.owner ?? "",
+        process.status,
+      ];
+    }),
+  ];
+  downloadXlsx("processos-cadeia-de-valor", "Processos", rows);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
