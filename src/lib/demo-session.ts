@@ -29,6 +29,11 @@ function canUseStorage() {
   return storageAvailable;
 }
 
+function isLocalDemoHost() {
+  if (typeof window === "undefined") return false;
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
 function isWorkspaceState(value: unknown): value is Record<string, string> {
   return (
     !!value &&
@@ -55,7 +60,7 @@ function createId() {
 }
 
 export function isDemoModeAvailable() {
-  return canUseStorage();
+  return isLocalDemoHost() && canUseStorage();
 }
 
 export function isDemoSessionActive() {

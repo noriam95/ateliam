@@ -222,8 +222,11 @@ function WorkspaceHome() {
         : ((accessibleOrganizationsQ.data ?? []) as AccessibleOrganization[]),
     [accessibleOrganizationsQ.data, demoOrganizations, isDemo],
   );
+  const activeOrganizationIsAvailable = accessibleOrganizations.some(
+    (organization) => organization.id === activeOrganizationId,
+  );
   const selectedOrganizationId =
-    activeOrganizationId ||
+    (activeOrganizationIsAvailable ? activeOrganizationId : "") ||
     accessibleOrganizations.find((organization) => organization.isDefault)?.id ||
     accessibleOrganizations[0]?.id ||
     "";

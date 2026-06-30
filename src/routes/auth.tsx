@@ -4,7 +4,7 @@ import { PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { supabase } from "@/integrations/supabase/client";
-import { isDemoSessionActive, startDemoSession } from "@/lib/demo-session";
+import { isDemoModeAvailable, isDemoSessionActive, startDemoSession } from "@/lib/demo-session";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Entrar — BF Flow" }] }),
@@ -51,6 +51,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
+  const demoModeAvailable = isDemoModeAvailable();
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -62,23 +63,19 @@ function AuthPage() {
   useEffect(() => {
     let cancelled = false;
 
-    if (isDemoSessionActive()) {
-      navigate({ to: "/" });
-      return () => {
-        cancelled = true;
-      };
-    }
-
     try {
       supabase.auth
         .getSession()
         .then(({ data }) => {
           if (!cancelled && data.session) navigate({ to: "/" });
+          if (!cancelled && !data.session && isDemoSessionActive()) navigate({ to: "/" });
         })
         .catch(() => {
+          if (!cancelled && isDemoSessionActive()) navigate({ to: "/" });
           // Keep the auth screen available even when Supabase is not configured locally.
         });
     } catch {
+      if (isDemoSessionActive()) navigate({ to: "/" });
       // Keep the local demo entry available.
     }
 
@@ -194,15 +191,17 @@ function AuthPage() {
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={enterDemoMode}
-            disabled={busy}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-input py-2.5 text-sm font-medium text-muted-foreground hover:border-[var(--gold)] hover:text-foreground disabled:opacity-50"
-          >
-            <PlayCircle className="h-4 w-4" />
-            Testar localmente sem login
-          </button>
+          {demoModeAvailable && (
+            <button
+              type="button"
+              onClick={enterDemoMode}
+              disabled={busy}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-input py-2.5 text-sm font-medium text-muted-foreground hover:border-[var(--gold)] hover:text-foreground disabled:opacity-50"
+            >
+              <PlayCircle className="h-4 w-4" />
+              Testar localmente sem login
+            </button>
+          )}
         </div>
       </section>
     </div>
