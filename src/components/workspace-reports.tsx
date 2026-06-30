@@ -159,39 +159,36 @@ function PorterDiagram({
   const bands = [
     {
       key: "management",
-      label: "Processos de Gestão (NPG)",
+      label: "Processos de Gestão",
       items: management,
-      tone: "from-[#7be0d4] to-[#1f8f3f]",
-      border: "border-[#1ea672]",
-      header: "bg-[#22c7ad]",
-      text: "text-[#124f3b]",
+      tone: "from-[#15b889] to-[#007f5f]",
+      border: "border-[#009b78]",
+      header: "bg-[#009b78]",
+      text: "text-[#00523f]",
     },
     {
       key: "primary",
-      label: "Processos Finalísticos (NPF)",
+      label: "Processos Finalísticos",
       items: primary,
-      tone: "from-[#ffe58a] to-[#f0b400]",
-      border: "border-[#f0b400]",
-      header: "bg-[#f0b400]",
-      text: "text-[#5a3b00]",
+      tone: "from-[#ffd45c] to-[#f5b51b]",
+      border: "border-[#f5b51b]",
+      header: "bg-[#f5b51b]",
+      text: "text-[#5f3d00]",
     },
     {
       key: "support",
-      label: "Processos de Suporte (NPS)",
+      label: "Processos de Suporte",
       items: support,
-      tone: "from-[#42c5ff] to-[#144d8d]",
-      border: "border-[#1f9de4]",
-      header: "bg-[#1f9de4]",
-      text: "text-[#133b63]",
+      tone: "from-[#00a8bc] to-[#007f94]",
+      border: "border-[#008da3]",
+      header: "bg-[#008da3]",
+      text: "text-[#004c59]",
     },
   ];
 
   return (
     <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
-          Diagrama da cadeia de valor
-        </span>
+      <div className="flex items-center justify-end gap-3">
         {onExportPng ? (
           <button
             type="button"
@@ -246,11 +243,11 @@ function PorterDiagram({
           </div>
           <div className="relative ml-2 w-44 shrink-0">
             <div
-              className="absolute inset-y-9 left-0 right-0 bg-gradient-to-r from-[#4dd8cb] to-[#9df1e8] shadow-sm"
+              className="absolute inset-y-9 left-0 right-0 bg-gradient-to-r from-[#009b78] via-[#00a8bc] to-[#6fded2] shadow-sm"
               style={{ clipPath: "polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%)" }}
             />
             <div className="relative flex h-full items-center justify-center pr-7">
-              <span className="text-3xl font-black text-[#128878]">
+              <span className="text-3xl font-black text-[#005f54]">
                 Missão
               </span>
             </div>
@@ -503,21 +500,21 @@ function buildDiagramSVG(
     header: "#777777",
     white: "#ffffff",
     grayText: "#404040",
-    primaryA: "#FFE58A",
-    primaryB: "#F0B400",
-    primaryBorder: "#F0B400",
-    primaryText: "#5A3B00",
-    supportA: "#42C5FF",
-    supportB: "#144D8D",
-    supportBorder: "#1F9DE4",
-    supportText: "#133B63",
-    managementA: "#7BE0D4",
-    managementB: "#1F8F3F",
-    managementBorder: "#1EA672",
-    managementText: "#124F3B",
-    missionA: "#4DD8CB",
-    missionB: "#9DF1E8",
-    missionText: "#128878",
+    primaryA: "#FFD45C",
+    primaryB: "#F5B51B",
+    primaryBorder: "#F5B51B",
+    primaryText: "#5F3D00",
+    supportA: "#00A8BC",
+    supportB: "#007F94",
+    supportBorder: "#008DA3",
+    supportText: "#004C59",
+    managementA: "#15B889",
+    managementB: "#007F5F",
+    managementBorder: "#009B78",
+    managementText: "#00523F",
+    missionA: "#009B78",
+    missionB: "#6FDED2",
+    missionText: "#005F54",
   };
 
   function bandHeight(items: ValueChain[]) {
@@ -584,7 +581,7 @@ function buildDiagramSVG(
 
   const bands = [
     {
-      label: "Processos Finalísticos (NPF)",
+      label: "Processos Finalísticos",
       items: primary,
       a: C.primaryA,
       b: C.primaryB,
@@ -593,7 +590,7 @@ function buildDiagramSVG(
     },
     {
       items: support,
-      label: "Processos de Suporte (NPS)",
+      label: "Processos de Suporte",
       a: C.supportA,
       b: C.supportB,
       stroke: C.supportBorder,
@@ -601,7 +598,7 @@ function buildDiagramSVG(
     },
     {
       items: management,
-      label: "Processos de Gestão (NPG)",
+      label: "Processos de Gestão",
       a: C.managementA,
       b: C.managementB,
       stroke: C.managementBorder,
