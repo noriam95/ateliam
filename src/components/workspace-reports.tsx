@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { FileSpreadsheet, ImageDown, Network } from "lucide-react";
 import { listProcessRegistrationData } from "@/lib/config.functions";
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
+import { downloadXlsx } from "@/lib/xlsx-export";
 
 type ValueChain = {
   id: string;
@@ -677,39 +678,17 @@ function exportPNG(primary: ValueChain[], support: ValueChain[], management: Val
 // ─── CSV / Excel export ───────────────────────────────────────────────────────
 
 function exportCSV(primary: ValueChain[], support: ValueChain[], management: ValueChain[]) {
-  const allBands = [
-    { label: "Processos de Gestão", items: management },
-    { label: "Processos de Negócios", items: primary },
-    { label: "Processos de Suporte", items: support },
+  // Exporta no formato .xlsx (planilha comum do Excel), uma linha por cadeia.
+  const all = [
+    ...management.map((c) => ({ c, band: "Processos de Gestão" })),
+    ...primary.map((c) => ({ c, band: "Processos de Negócios" })),
+    ...support.map((c) => ({ c, band: "Processos de Suporte" })),
   ];
-
-  const maxRows = Math.max(...allBands.map((b) => b.items.length), 1);
-
-  // Header row: band names as column groups (2 cols each: Nome, Descrição)
-  const headerRow1 = allBands.flatMap((b) => [b.label, ""]).concat(["Margens"]);
-  const headerRow2 = allBands.flatMap(() => ["Nome", "Descrição"]).concat([""]);
-
-  const dataRows: string[][] = Array.from({ length: maxRows }, (_, i) =>
-    allBands
-      .flatMap((b) => {
-        const item = b.items[i];
-        return item ? [item.name, item.description ?? ""] : ["", ""];
-      })
-      .concat([""]),
-  );
-
-  const rows = [headerRow1, headerRow2, ...dataRows];
-  const csv = rows
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\r\n");
-
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "cadeia-de-valor.csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  const rows: (string | number)[][] = [
+    ["#", "Categoria", "Nome", "Descrição", "Status"],
+    ...all.map(({ c, band }, i) => [i + 1, band, c.name, c.description ?? "", c.status]),
+  ];
+  downloadXlsx("cadeia-de-valor", "Cadeia de Valor", rows);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
