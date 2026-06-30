@@ -702,7 +702,7 @@ function WorkspaceHome() {
                         active={view === "process-types"}
                         onClick={() => setView("process-types")}
                       >
-                        <ListChecks className="h-4 w-4" /> Tipos
+                        <ListChecks className="h-4 w-4" /> Categorias de Processo
                       </TreeButton>
                     </div>
                   ) : null}

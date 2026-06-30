@@ -1396,9 +1396,9 @@ function registryCopy(view: ProcessRegistrationView) {
     };
   if (view === "process-types")
     return {
-      title: "Tipos de Processo",
-      singular: "Tipo",
-      description: "Mantenha os três níveis estruturais da arquitetura de processos.",
+      title: "Categorias de Processo",
+      singular: "Categoria",
+      description: "Mantenha os níveis estruturais da arquitetura de processos.",
       columns: ["Código", "Nome", "Status"],
       icon: <GitBranch className="h-5 w-5" />,
     };

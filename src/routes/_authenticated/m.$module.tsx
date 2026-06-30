@@ -6156,7 +6156,7 @@ function ModuleWorkspacePage() {
                       <Database className="h-4 w-4 shrink-0" /> Sistemas
                     </ModuleTreeAnchor>
                     <ModuleTreeAnchor href="/?area=registrations&view=process-types">
-                      <ListChecks className="h-4 w-4 shrink-0" /> Tipos
+                      <ListChecks className="h-4 w-4 shrink-0" /> Categorias de Processo
                     </ModuleTreeAnchor>
                   </div>
                 ) : null}
@@ -7416,8 +7416,8 @@ function ProcessTypeRegistryModule({
   const items = values.map((name) => ({ id: name, name }));
   return (
     <CatalogRegistryModule
-      title="Tipos"
-      singular="tipo"
+      title="Categorias de Processo"
+      singular="categoria"
       items={items}
       onCreate={async (name) => {
         if (values.some((item) => normalizeLabel(item) === normalizeLabel(name))) return null;
