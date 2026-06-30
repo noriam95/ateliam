@@ -9,11 +9,106 @@ import {
   Plus,
   Presentation,
   Save,
+  Search,
   Trash2,
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+
+// Busca + ordenação reutilizáveis para as tabelas de Configurações,
+// no mesmo padrão das tabelas de cadastro.
+function useSettingsTable<T>(
+  rows: T[],
+  getSearchText: (row: T) => string[],
+  sortKeys: ((row: T) => string)[],
+) {
+  const [search, setSearch] = useState("");
+  const [sortIdx, setSortIdx] = useState<number | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const displayRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let result = q
+      ? rows.filter((row) => getSearchText(row).join(" ").toLowerCase().includes(q))
+      : rows;
+    if (sortIdx !== null && sortKeys[sortIdx]) {
+      const dir = sortDir === "asc" ? 1 : -1;
+      const key = sortKeys[sortIdx];
+      result = [...result].sort(
+        (a, b) => key(a).localeCompare(key(b), "pt-BR", { numeric: true }) * dir,
+      );
+    }
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, search, sortIdx, sortDir]);
+  const toggleSort = (i: number) => {
+    if (sortIdx === i) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortIdx(i);
+      setSortDir("asc");
+    }
+  };
+  return { search, setSearch, displayRows, sortIdx, sortDir, toggleSort };
+}
+
+function SettingsTableSearch({
+  value,
+  onChange,
+  count,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  count: number;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <span className="text-xs text-muted-foreground">
+        {count} {count === 1 ? "registro" : "registros"}
+      </span>
+      <div className="relative w-full max-w-xs">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Filtrar / pesquisar..."
+          className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+        />
+      </div>
+    </div>
+  );
+}
+
+function SortTh({
+  label,
+  index,
+  sortIdx,
+  sortDir,
+  onSort,
+  className,
+}: {
+  label: string;
+  index: number;
+  sortIdx: number | null;
+  sortDir: "asc" | "desc";
+  onSort: (index: number) => void;
+  className?: string;
+}) {
+  const active = sortIdx === index;
+  return (
+    <th className={`px-4 py-3 font-semibold ${className ?? ""}`}>
+      <button
+        type="button"
+        onClick={() => onSort(index)}
+        className="inline-flex items-center gap-1 hover:text-foreground"
+      >
+        {label}
+        <span className={active ? "opacity-90" : "opacity-30"}>
+          {active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
+      </button>
+    </th>
+  );
+}
 import { toast } from "sonner";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import {
@@ -355,6 +450,10 @@ function OrganizationsSettings({
   });
   const [draft, setDraft] = useState<OrganizationDraft>(emptyDraft);
   const [formOpen, setFormOpen] = useState(false);
+  const table = useSettingsTable(rows, (row) => [row.name, row.slug, row.word_header_color], [
+    (row) => row.name,
+    (row) => row.slug,
+  ]);
   const saveMut = useMutation({
     mutationFn: () => onSave(draft),
     onSuccess: (row) => {
@@ -396,19 +495,38 @@ function OrganizationsSettings({
       }
     >
       <div className="grid gap-4">
+        <SettingsTableSearch
+          value={table.search}
+          onChange={table.setSearch}
+          count={table.displayRows.length}
+        />
         <DataTableFrame loading={loading} error={error} empty={!rows.length}>
-          <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <thead className="bg-muted/75 text-xs text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Organização</th>
-                <th className="px-3 py-3">Identificador</th>
-                <th className="px-3 py-3">Cor institucional</th>
-                <th className="w-20 px-3 py-3">Ação</th>
+                <th className="w-12 px-4 py-3 font-semibold">#</th>
+                <SortTh
+                  label="Organização"
+                  index={0}
+                  sortIdx={table.sortIdx}
+                  sortDir={table.sortDir}
+                  onSort={table.toggleSort}
+                />
+                <SortTh
+                  label="Identificador"
+                  index={1}
+                  sortIdx={table.sortIdx}
+                  sortDir={table.sortDir}
+                  onSort={table.toggleSort}
+                />
+                <th className="px-3 py-3 font-semibold">Cor institucional</th>
+                <th className="w-20 px-3 py-3 font-semibold">Ação</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {table.displayRows.map((row, rowIndex) => (
                 <tr key={row.id} className="border-t border-border hover:bg-muted/45">
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground">{rowIndex + 1}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <OrganizationLogo row={row} />
@@ -677,6 +795,23 @@ function UsersSettings({
   });
   const [draft, setDraft] = useState<UserDraft>(emptyDraft);
   const [formOpen, setFormOpen] = useState(false);
+  const orgNames = (row: UserAccessRow) =>
+    (row.organization_access ?? [])
+      .map((access) => access.organization?.name)
+      .filter(Boolean)
+      .join(", ") ||
+    row.organization?.name ||
+    "";
+  const table = useSettingsTable(
+    rows,
+    (row) => [
+      row.display_name ?? "",
+      row.email,
+      orgNames(row),
+      row.roles.map((r) => roleLabels[r as AppRole] ?? r).join(" "),
+    ],
+    [(row) => row.display_name || row.email, orgNames],
+  );
   const saveMut = useMutation({
     mutationFn: () => onSave(draft),
     onSuccess: () => {
@@ -743,19 +878,38 @@ function UsersSettings({
       }
     >
       <div className="grid gap-4">
+        <SettingsTableSearch
+          value={table.search}
+          onChange={table.setSearch}
+          count={table.displayRows.length}
+        />
         <DataTableFrame loading={loading} error={error} empty={!rows.length}>
-          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[820px] border-collapse text-left text-sm">
             <thead className="bg-muted/75 text-xs text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Usuário</th>
-                <th className="px-3 py-3">Organização</th>
-                <th className="px-3 py-3">Tipo de acesso</th>
-                <th className="w-20 px-3 py-3">Ação</th>
+                <th className="w-12 px-4 py-3 font-semibold">#</th>
+                <SortTh
+                  label="Usuário"
+                  index={0}
+                  sortIdx={table.sortIdx}
+                  sortDir={table.sortDir}
+                  onSort={table.toggleSort}
+                />
+                <SortTh
+                  label="Organização"
+                  index={1}
+                  sortIdx={table.sortIdx}
+                  sortDir={table.sortDir}
+                  onSort={table.toggleSort}
+                />
+                <th className="px-3 py-3 font-semibold">Tipo de acesso</th>
+                <th className="w-20 px-3 py-3 font-semibold">Ação</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {table.displayRows.map((row, rowIndex) => (
                 <tr key={row.id} className="border-t border-border hover:bg-muted/45">
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground">{rowIndex + 1}</td>
                   <td className="px-4 py-3">
                     <div className="font-semibold">{row.display_name || row.email}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">{row.email}</div>
