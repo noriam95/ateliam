@@ -88,6 +88,7 @@ const processSchema = z.object({
   status: z.enum(["Ativo", "Em revisão", "Arquivado"]).default("Ativo"),
 });
 const moduleDocumentSchema = z.object({
+  organizationId: z.string().uuid().optional().nullable(),
   id: z.string().uuid().optional().nullable(),
   moduleId: z.enum(["ddp", "pop", "bpmn"]),
   code: z.string().trim().max(120).optional().nullable(),
@@ -177,8 +178,7 @@ async function permissionContext(context: AuthContext, requestedOrganizationId?:
   const isMaestro = roles.includes("maestro");
   const organizationId = requestedOrganizationId || profile.organization_id;
   if (organizationId !== profile.organization_id && !isMaestro) {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: membership, error } = await supabaseAdmin
+    const { data: membership, error } = await context.supabase
       .from("user_organization_access")
       .select("organization_id")
       .eq("user_id", context.userId)
@@ -305,14 +305,13 @@ export const createOrganization = createServerFn({ method: "POST" })
   .validator((d: z.infer<typeof orgSchema>) => orgSchema.omit({ id: true }).parse(d))
   .handler(async ({ data, context }) => {
     await assertMaestro(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organizations")
       .insert({ ...data, created_by: context.userId })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const { error: typeError } = await supabaseAdmin.from("organization_process_types").insert([
+    const { error: typeError } = await context.supabase.from("organization_process_types").insert([
       {
         organization_id: row.id,
         code: "macroprocess",
@@ -338,8 +337,7 @@ export const updateOrganization = createServerFn({ method: "POST" })
   .validator((d: z.infer<typeof orgUpdateSchema>) => orgUpdateSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertOrganizationAdmin(context, data.id);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organizations")
       .update({
         name: data.name,
@@ -370,8 +368,7 @@ export const reserveCode = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: org, error } = await supabaseAdmin
+    const { data: org, error } = await context.supabase
       .from("organizations")
       .select("slug, code_settings")
       .eq("id", access.organizationId)
@@ -379,7 +376,7 @@ export const reserveCode = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const settings = normalizeCodeSettings(org.code_settings);
     const { code, settings: updated } = applyNextCode(settings, data.kind, { slug: org.slug });
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await context.supabase
       .from("organizations")
       .update({ code_settings: updated, updated_at: new Date().toISOString() })
       .eq("id", access.organizationId);
@@ -392,8 +389,7 @@ export const listOrganizationDocumentModels = createServerFn({ method: "GET" })
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
+    const { data: rows, error } = await context.supabase
       .from("organization_document_models")
       .select("*")
       .eq("organization_id", access.organizationId)
@@ -407,8 +403,7 @@ export const saveOrganizationDocumentModel = createServerFn({ method: "POST" })
   .validator((data: z.infer<typeof documentModelSchema>) => documentModelSchema.parse(data))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationAdmin(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_document_models")
       .upsert(
         {
@@ -429,10 +424,11 @@ export const saveOrganizationDocumentModel = createServerFn({ method: "POST" })
     return row;
   });
 
-export const listOrganizationCatalogs = createServerFn({ method: "GET" })
+export const listOrganizationCatalogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const access = await permissionContext(context);
+  .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const access = await permissionContext(context, data.organizationId);
     const organizationId = access.organizationId;
     const [
       { data: departments, error: departmentsError },
@@ -540,15 +536,14 @@ export const saveProcessArea = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const payload = {
       organization_id: access.organizationId,
       name: data.name,
       updated_at: new Date().toISOString(),
     };
     const query = data.id
-      ? supabaseAdmin.from("organization_departments").update(payload).eq("id", data.id)
-      : supabaseAdmin
+      ? context.supabase.from("organization_departments").update(payload).eq("id", data.id)
+      : context.supabase
           .from("organization_departments")
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
@@ -561,8 +556,7 @@ export const saveProcessOwnerRegistration = createServerFn({ method: "POST" })
   .validator((data: z.infer<typeof ownerRegistrationSchema>) => ownerRegistrationSchema.parse(data))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: area, error: areaError } = await supabaseAdmin
+    const { data: area, error: areaError } = await context.supabase
       .from("organization_departments")
       .select("name")
       .eq("id", data.departmentId)
@@ -577,8 +571,8 @@ export const saveProcessOwnerRegistration = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
     const query = data.id
-      ? supabaseAdmin.from("organization_process_owners").update(payload).eq("id", data.id)
-      : supabaseAdmin
+      ? context.supabase.from("organization_process_owners").update(payload).eq("id", data.id)
+      : context.supabase
           .from("organization_process_owners")
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
@@ -593,8 +587,7 @@ export const saveProcessTypeRegistration = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_process_types")
       .upsert(
         {
@@ -617,7 +610,6 @@ export const saveValueChainRegistration = createServerFn({ method: "POST" })
   .validator((data: z.infer<typeof valueChainSchema>) => valueChainSchema.parse(data))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const payload = {
       organization_id: access.organizationId,
       name: data.name,
@@ -627,8 +619,8 @@ export const saveValueChainRegistration = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
     const query = data.id
-      ? supabaseAdmin.from("organization_value_chains").update(payload).eq("id", data.id)
-      : supabaseAdmin
+      ? context.supabase.from("organization_value_chains").update(payload).eq("id", data.id)
+      : context.supabase
           .from("organization_value_chains")
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
@@ -643,7 +635,6 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const payload = {
       organization_id: access.organizationId,
       code: data.code ?? null,
@@ -658,13 +649,13 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
     if (!data.id) {
-      const { data: row, error } = await supabaseAdmin
+      const { data: row, error } = await context.supabase
         .from("organization_processes")
         .insert({ ...payload, current_version: 1, created_by: context.userId })
         .select("*")
         .single();
       if (error) throw new Error(error.message);
-      const { error: versionError } = await supabaseAdmin
+      const { error: versionError } = await context.supabase
         .from("organization_process_versions")
         .insert({
           organization_id: access.organizationId,
@@ -676,7 +667,7 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
       if (versionError) throw new Error(versionError.message);
       return row;
     }
-    const { data: current, error: currentError } = await supabaseAdmin
+    const { data: current, error: currentError } = await context.supabase
       .from("organization_processes")
       .select("*")
       .eq("id", data.id)
@@ -684,14 +675,14 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
       .single();
     if (currentError) throw new Error(currentError.message);
     const nextVersion = current.current_version + 1;
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_processes")
       .update({ ...payload, current_version: nextVersion })
       .eq("id", data.id)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const { error: versionError } = await supabaseAdmin
+    const { error: versionError } = await context.supabase
       .from("organization_process_versions")
       .insert({
         organization_id: access.organizationId,
@@ -716,7 +707,6 @@ export const deleteProcessRegistration = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const table =
       data.kind === "value-chain"
         ? "organization_value_chains"
@@ -725,7 +715,7 @@ export const deleteProcessRegistration = createServerFn({ method: "POST" })
           : data.kind === "area"
             ? "organization_departments"
             : "organization_process_owners";
-    const { error } = await supabaseAdmin
+    const { error } = await context.supabase
       .from(table)
       .delete()
       .eq("id", data.id)
@@ -739,8 +729,7 @@ export const createOrganizationDepartment = createServerFn({ method: "POST" })
   .validator((d: { name: string }) => catalogNameSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_departments")
       .insert({
         organization_id: access.organizationId,
@@ -758,8 +747,7 @@ export const createOrganizationProcessOwner = createServerFn({ method: "POST" })
   .validator((d: { name: string }) => catalogNameSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_process_owners")
       .insert({
         organization_id: access.organizationId,
@@ -785,9 +773,8 @@ export const updateOrganizationCatalogItem = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.kind === "department") {
-      const { data: row, error } = await supabaseAdmin
+      const { data: row, error } = await context.supabase
         .from("organization_departments")
         .update({ name: data.name })
         .eq("id", data.id)
@@ -797,7 +784,7 @@ export const updateOrganizationCatalogItem = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       return row;
     }
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_process_owners")
       .update({ name: data.name })
       .eq("id", data.id)
@@ -815,15 +802,14 @@ export const deleteOrganizationCatalogItem = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const result =
       data.kind === "department"
-        ? await supabaseAdmin
+        ? await context.supabase
             .from("organization_departments")
             .delete()
             .eq("id", data.id)
             .eq("organization_id", access.organizationId)
-        : await supabaseAdmin
+        : await context.supabase
             .from("organization_process_owners")
             .delete()
             .eq("id", data.id)
@@ -837,8 +823,7 @@ export const createOrganizationCause = createServerFn({ method: "POST" })
   .validator((d: z.infer<typeof catalogCauseSchema>) => catalogCauseSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_causes")
       .insert({
         organization_id: access.organizationId,
@@ -864,8 +849,7 @@ export const updateOrganizationCause = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_causes")
       .update({
         title: data.title,
@@ -889,8 +873,7 @@ export const deleteOrganizationCause = createServerFn({ method: "POST" })
   .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { error } = await context.supabase
       .from("organization_causes")
       .delete()
       .eq("id", data.id)
@@ -904,8 +887,7 @@ export const createOrganizationProcess = createServerFn({ method: "POST" })
   .validator((d: z.infer<typeof processSchema>) => processSchema.omit({ id: true }).parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_processes")
       .insert({
         organization_id: access.organizationId,
@@ -926,7 +908,7 @@ export const createOrganizationProcess = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { error: versionError } = await supabaseAdmin
+    const { error: versionError } = await context.supabase
       .from("organization_process_versions")
       .insert({
         process_id: row.id,
@@ -946,8 +928,7 @@ export const updateOrganizationProcess = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: current, error: currentError } = await supabaseAdmin
+    const { data: current, error: currentError } = await context.supabase
       .from("organization_processes")
       .select("*")
       .eq("id", data.id)
@@ -957,7 +938,7 @@ export const updateOrganizationProcess = createServerFn({ method: "POST" })
       throw new Error("Você só pode alterar processos da sua organização.");
     }
     const nextVersion = (current.current_version ?? 0) + 1;
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await context.supabase
       .from("organization_processes")
       .update({
         code: data.code || null,
@@ -978,7 +959,7 @@ export const updateOrganizationProcess = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { error: versionError } = await supabaseAdmin
+    const { error: versionError } = await context.supabase
       .from("organization_process_versions")
       .insert({
         process_id: row.id,
@@ -996,8 +977,7 @@ export const deleteOrganizationProcess = createServerFn({ method: "POST" })
   .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { error } = await context.supabase
       .from("organization_processes")
       .delete()
       .eq("id", data.id)
@@ -1008,11 +988,11 @@ export const deleteOrganizationProcess = createServerFn({ method: "POST" })
 
 export const listModuleDocuments = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { moduleId: "ddp" | "pop" | "bpmn" }) =>
-    z.object({ moduleId: z.enum(["ddp", "pop", "bpmn"]) }).parse(d),
+  .validator((d: { organizationId?: string | null; moduleId: "ddp" | "pop" | "bpmn" }) =>
+    organizationScopeSchema.extend({ moduleId: z.enum(["ddp", "pop", "bpmn"]) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const access = await permissionContext(context);
+    const access = await permissionContext(context, data.organizationId);
     const { data: rows, error } = await context.supabase
       .from("documents")
       .select(
@@ -1027,11 +1007,12 @@ export const listModuleDocuments = createServerFn({ method: "POST" })
 
 export const deleteModuleDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d: { organizationId?: string | null; id: string }) =>
+    organizationScopeSchema.extend({ id: z.string().uuid() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
-    const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const { error } = await context.supabase
       .from("documents")
       .delete()
       .eq("id", data.id)
@@ -1085,13 +1066,12 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: z.infer<typeof moduleDocumentSchema>) => moduleDocumentSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const access = await assertOrganizationEditor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const name = data.code ? `${data.code} - ${data.title}` : data.title;
     let primaryProcessVersion = data.primaryProcessVersion ?? null;
 
     if (data.primaryProcessId) {
-      const { data: process, error: processError } = await supabaseAdmin
+      const { data: process, error: processError } = await context.supabase
         .from("organization_processes")
         .select("organization_id, current_version")
         .eq("id", data.primaryProcessId)
@@ -1105,7 +1085,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
 
     let doc: Database["public"]["Tables"]["documents"]["Row"] | null = null;
     if (data.id) {
-      const { data: existing, error } = await supabaseAdmin
+      const { data: existing, error } = await context.supabase
         .from("documents")
         .select("*")
         .eq("id", data.id)
@@ -1118,7 +1098,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
     }
 
     if (!doc) {
-      const { data: created, error } = await supabaseAdmin
+      const { data: created, error } = await context.supabase
         .from("documents")
         .insert({
           name,
@@ -1138,7 +1118,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
 
     const nextVersion = (doc.current_version ?? 0) + 1;
     const hash = await sha256Hex(data.content);
-    const { error: versionError } = await supabaseAdmin.from("document_versions").insert({
+    const { error: versionError } = await context.supabase.from("document_versions").insert({
       document_id: doc.id,
       version_number: nextVersion,
       author_id: context.userId,
@@ -1148,7 +1128,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
     });
     if (versionError) throw new Error(versionError.message);
 
-    const { data: updated, error: updateError } = await supabaseAdmin
+    const { data: updated, error: updateError } = await context.supabase
       .from("documents")
       .update({
         name,

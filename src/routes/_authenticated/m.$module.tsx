@@ -73,6 +73,7 @@ import {
   getModuleDocumentContent,
   getModuleDocumentVersionContent,
   getMe,
+  listAccessibleOrganizations,
   listUserAccess,
   listModuleDocumentVersions,
   listModuleDocuments,
@@ -2333,6 +2334,12 @@ type OrganizationBrand = {
   name?: string | null;
   logo_data_url?: string | null;
   word_header_color?: string | null;
+};
+type AccessibleOrganization = OrganizationBrand & {
+  id: string;
+  slug: string;
+  code_settings?: CodeSettings | null;
+  isDefault?: boolean;
 };
 type OrganizationCatalogItem = {
   id: string;
@@ -4641,12 +4648,18 @@ function ModuleWorkspacePage() {
   const [showLibrary, setShowLibrary] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [ddpView, setDdpView] = useState<"editor" | "causes" | "processes">("editor");
+  const [activeOrganizationId, setActiveOrganizationId] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : window.localStorage.getItem("ateliam-active-organization") || "",
+  );
   const moduleDocLabel = moduleDocumentLabel(moduleId);
 
   const ensure = useServerFn(getOrCreateWorkspace);
   const listVersions = useServerFn(listWorkspaceVersions);
   const getVersion = useServerFn(getWorkspaceVersionContent);
   const me = useServerFn(getMe);
+  const listOrganizations = useServerFn(listAccessibleOrganizations);
   const listUsers = useServerFn(listUserAccess);
   const listCatalogs = useServerFn(listOrganizationCatalogs);
   const listDocumentModels = useServerFn(listOrganizationDocumentModels);
@@ -4689,19 +4702,39 @@ function ModuleWorkspacePage() {
     queryFn: () => me(),
     enabled: !isDemo,
   });
+  const accessibleOrganizationsQ = useQuery({
+    queryKey: ["module-accessible-organizations", isDemo ? "demo" : "cloud"],
+    queryFn: () => listOrganizations(),
+    enabled: !isDemo,
+  });
+  const accessibleOrganizations = useMemo(
+    () => ((accessibleOrganizationsQ.data ?? []) as AccessibleOrganization[]),
+    [accessibleOrganizationsQ.data],
+  );
+  const selectedOrganizationId = isDemo
+    ? null
+    : accessibleOrganizations.some((organization) => organization.id === activeOrganizationId)
+      ? activeOrganizationId
+      : (accessibleOrganizations.find((organization) => organization.isDefault)?.id ??
+        accessibleOrganizations[0]?.id ??
+        meQ.data?.organization?.id ??
+        null);
+  const selectedOrganization =
+    accessibleOrganizations.find((organization) => organization.id === selectedOrganizationId) ??
+    null;
 
   const canListUsers =
     !isDemo && !!meQ.data?.roles?.some((role) => role === "maestro" || role === "admin");
   const usersQ = useQuery({
-    queryKey: ["module-users", isDemo ? "demo" : (meQ.data?.organization?.id ?? "cloud")],
-    queryFn: () => listUsers({ data: { organizationId: null } }),
+    queryKey: ["module-users", isDemo ? "demo" : (selectedOrganizationId ?? "cloud")],
+    queryFn: () => listUsers({ data: { organizationId: selectedOrganizationId } }),
     enabled: canListUsers,
     retry: false,
   });
 
   const documentModelsQ = useQuery({
-    queryKey: ["module-document-models", isDemo ? "demo" : "cloud"],
-    queryFn: () => listDocumentModels({ data: { organizationId: null } }),
+    queryKey: ["module-document-models", isDemo ? "demo" : (selectedOrganizationId ?? "cloud")],
+    queryFn: () => listDocumentModels({ data: { organizationId: selectedOrganizationId } }),
     enabled: !isDemo,
   });
 
@@ -4721,13 +4754,19 @@ function ModuleWorkspacePage() {
     enabled: showHistory,
   });
   const catalogsQ = useQuery({
-    queryKey: ["organization-catalogs", isDemo ? "demo" : "cloud"],
-    queryFn: () => listCatalogs(),
+    queryKey: ["organization-catalogs", isDemo ? "demo" : (selectedOrganizationId ?? "cloud")],
+    queryFn: () => listCatalogs({ data: { organizationId: selectedOrganizationId } }),
     enabled: !isDemo && loaded,
   });
   const cloudDocsQ = useQuery({
-    queryKey: ["module-documents", moduleId, isDemo ? "demo" : "cloud"],
-    queryFn: () => listCloudDocuments({ data: { moduleId: moduleId as "ddp" | "pop" | "bpmn" } }),
+    queryKey: ["module-documents", moduleId, isDemo ? "demo" : (selectedOrganizationId ?? "cloud")],
+    queryFn: () =>
+      listCloudDocuments({
+        data: {
+          organizationId: selectedOrganizationId,
+          moduleId: moduleId as "ddp" | "pop" | "bpmn",
+        },
+      }),
     enabled: (showLibrary || moduleSurface === "consult") && !isDemo,
   });
   const draftKey = isDemo ? DRAFT_KEY : `${DRAFT_KEY}_${wsQ.data?.id ?? "cloud"}`;
@@ -4748,7 +4787,7 @@ function ModuleWorkspacePage() {
         word_header_color: "1D1D1F",
         logo_data_url: demoOrganizationLogo,
       }
-    : (meQ.data?.organization ?? { name: "Ateliam", word_header_color: "1D1D1F" });
+    : (selectedOrganization ?? meQ.data?.organization ?? { name: "Ateliam", word_header_color: "1D1D1F" });
   const elaboratorOptions = useMemo(() => {
     const fromUsers =
       (usersQ.data as Array<{ email?: string | null; display_name?: string | null }> | undefined)
@@ -4766,13 +4805,15 @@ function ModuleWorkspacePage() {
   // Contexto de codificação da organização ativa (modo demo via localStorage).
   const codeKind = MODULE_CODE_KIND[moduleId];
   const demoOrgForCode = isDemo ? readActiveDemoOrganization() : null;
-  const codeOrganizationId = isDemo ? demoOrgForCode!.id : (meQ.data?.organization?.id ?? null);
+  const codeOrganizationId = isDemo ? demoOrgForCode!.id : (selectedOrganizationId ?? null);
   const codeOrganizationSlug = isDemo
     ? demoOrgForCode!.slug
-    : (meQ.data?.organization?.slug ?? null);
+    : (selectedOrganization?.slug ?? meQ.data?.organization?.slug ?? null);
   const codeSettings: CodeSettings | null = isDemo
     ? demoOrgForCode!.code_settings
-    : ((meQ.data?.organization?.code_settings as CodeSettings | null | undefined) ?? null);
+    : ((selectedOrganization?.code_settings as CodeSettings | null | undefined) ??
+      (meQ.data?.organization?.code_settings as CodeSettings | null | undefined) ??
+      null);
   const codeRule = normalizeRule(codeKind, codeSettings?.[codeKind]);
   const isAutoCodeModule = codeRule.mode === "auto";
   const autoCodePreview = isAutoCodeModule
@@ -5197,6 +5238,7 @@ function ModuleWorkspacePage() {
       const payload = currentModuleSavePayload(workspaceToSave);
       const row = await saveCloudDocument({
         data: {
+          organizationId: selectedOrganizationId,
           id: activeCloudDocument?.moduleId === moduleId ? activeCloudDocument.id : null,
           moduleId: moduleId as "ddp" | "pop" | "bpmn",
           code: payload.code,
@@ -5691,7 +5733,11 @@ function ModuleWorkspacePage() {
         setDemoVersion(getDemoWorkspaceVersion());
       }
       if (!isDemo) {
-        await Promise.all(ids.map((item) => removeCloudDocument({ data: { id: item } })));
+        await Promise.all(
+          ids.map((item) =>
+            removeCloudDocument({ data: { organizationId: selectedOrganizationId, id: item } }),
+          ),
+        );
         await cloudDocsQ.refetch();
       }
       toast.success(ids.length > 1 ? "Registros excluídos." : "Registro excluído.");
@@ -5977,6 +6023,26 @@ function ModuleWorkspacePage() {
             Teste local v{demoVersion}
           </span>
         )}
+        {!isDemo && accessibleOrganizations.length ? (
+          <select
+            value={selectedOrganizationId ?? ""}
+            onChange={(event) => {
+              const nextId = event.target.value;
+              setActiveOrganizationId(nextId);
+              window.localStorage.setItem("ateliam-active-organization", nextId);
+              setActiveCloudDocument(null);
+            }}
+            className="hidden h-9 max-w-[220px] rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 md:block"
+            title="Organização ativa"
+            aria-label="Organização ativa"
+          >
+            {accessibleOrganizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <UserProfileMenu
           email={isDemo ? "analista.local@ateliam" : (meQ.data?.profile?.email ?? "")}
           organizationName={organizationBrand.name ?? "Ateliam"}
