@@ -1,7 +1,26 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Database, GitBranch, Layers3, Pencil, Plus, Save, Trash2, UserRound, X } from "lucide-react";
-import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import {
+  Database,
+  FileSpreadsheet,
+  GitBranch,
+  Layers3,
+  Pencil,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  UserRound,
+  X,
+} from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { toast } from "sonner";
 import {
   deleteProcessRegistration,
@@ -136,6 +155,8 @@ const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
   { id: "type-macro", code: "macroprocess", label: "Macroprocesso", active: true },
   { id: "type-process", code: "process", label: "Processo", active: true },
   { id: "type-sub", code: "subprocess", label: "Subprocesso", active: true },
+  { id: "type-activity", code: "atividade", label: "Atividade", active: true },
+  { id: "type-task", code: "tarefa", label: "Tarefa", active: true },
 ];
 
 export const DEMO_REGISTRY: RegistryData = {
@@ -644,6 +665,41 @@ export function WorkspaceProcessRegistrations({
   const copy = registryCopy(view);
   const rows = useMemo(() => registryRows(view, data), [data, view]);
 
+  // Busca + ordenação por coluna (mesma lógica do relatório de cadeia de valor).
+  const [search, setSearch] = useState("");
+  const [sortCol, setSortCol] = useState<number | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  useEffect(() => {
+    setSortCol(null);
+    setSortDir("asc");
+    setSearch("");
+  }, [view]);
+  const displayRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let result = q
+      ? rows.filter((row) => row.values.join(" ").toLowerCase().includes(q))
+      : rows;
+    if (sortCol !== null) {
+      const dir = sortDir === "asc" ? 1 : -1;
+      result = [...result].sort(
+        (a, b) =>
+          String(a.values[sortCol] ?? "").localeCompare(
+            String(b.values[sortCol] ?? ""),
+            "pt-BR",
+            { numeric: true },
+          ) * dir,
+      );
+    }
+    return result;
+  }, [rows, search, sortCol, sortDir]);
+  function toggleSort(col: number) {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  }
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       let processCode = draft.code || null;
@@ -771,35 +827,63 @@ export function WorkspaceProcessRegistrations({
             {copy.description}
           </p>
         </div>
-        <button
-          onClick={() => {
-            setDraft(emptyDraft(view, data));
-            setFormOpen(true);
-          }}
-          className={primaryButtonClass}
-        >
-          <Plus className="h-4 w-4" /> Novo
-        </button>
+        {view !== "process-types" ? (
+          <button
+            onClick={() => {
+              setDraft(emptyDraft(view, data));
+              setFormOpen(true);
+            }}
+            className={primaryButtonClass}
+          >
+            <Plus className="h-4 w-4" /> Novo
+          </button>
+        ) : null}
       </header>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">
+          {displayRows.length} {displayRows.length === 1 ? "registro" : "registros"}
+        </span>
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filtrar / pesquisar..."
+            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+          />
+        </div>
+      </div>
 
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         {query.isLoading && !isDemo ? (
           <div className="p-10 text-center text-sm text-muted-foreground">Carregando...</div>
-        ) : rows.length ? (
+        ) : (
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead className="bg-muted/75 text-xs text-muted-foreground">
               <tr>
-                {copy.columns.map((column) => (
-                  <th key={column} className="px-4 py-3">
-                    {column}
+                <th className="w-12 px-4 py-3 font-semibold">#</th>
+                {copy.columns.map((column, colIndex) => (
+                  <th key={column} className="px-4 py-3 font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(colIndex)}
+                      className="inline-flex items-center gap-1 hover:text-foreground"
+                    >
+                      {column}
+                      <span className={sortCol === colIndex ? "opacity-90" : "opacity-30"}>
+                        {sortCol === colIndex ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
                   </th>
                 ))}
-                <th className="w-24 px-3 py-3">Ações</th>
+                <th className="w-24 px-3 py-3 font-semibold">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {displayRows.map((row, rowIndex) => (
                 <tr key={row.id} className="border-t border-border hover:bg-muted/45">
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground">{rowIndex + 1}</td>
                   {row.values.map((value, index) => (
                     <td
                       key={`${row.id}-${index}`}
@@ -830,12 +914,18 @@ export function WorkspaceProcessRegistrations({
                   </td>
                 </tr>
               ))}
+              {!displayRows.length ? (
+                <tr>
+                  <td
+                    colSpan={copy.columns.length + 2}
+                    className="p-10 text-center text-sm text-muted-foreground"
+                  >
+                    Nenhum registro encontrado.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
-        ) : (
-          <div className="p-10 text-center text-sm text-muted-foreground">
-            Nenhum registro cadastrado.
-          </div>
         )}
       </div>
 
@@ -1053,28 +1143,13 @@ function RegistrationFields({
   if (view === "process-types")
     return (
       <>
-        <Field label="Tipo estrutural">
-          <select
+        <Field label="Nível estrutural (fixo)">
+          <input
             value={draft.type}
-            onChange={(e) => {
-              const type = e.target.value as Draft["type"];
-              setDraft((d) => ({
-                ...d,
-                type,
-                label:
-                  type === "macroprocess"
-                    ? "Macroprocesso"
-                    : type === "process"
-                      ? "Processo"
-                      : "Subprocesso",
-              }));
-            }}
-            className={inputClass}
-          >
-            <option value="macroprocess">Macroprocesso</option>
-            <option value="process">Processo</option>
-            <option value="subprocess">Subprocesso</option>
-          </select>
+            readOnly
+            tabIndex={-1}
+            className={`${inputClass} cursor-not-allowed border-dashed bg-muted/70 text-muted-foreground`}
+          />
         </Field>
         <Field label="Nome exibido">
           <input
