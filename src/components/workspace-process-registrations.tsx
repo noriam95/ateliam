@@ -76,7 +76,7 @@ function ownerAreaIds(owner: Owner): string[] {
 }
 type ProcessType = {
   id: string;
-  code: "macroprocess" | "process" | "subprocess";
+  code: "macroprocess" | "process" | "subprocess" | "atividade" | "tarefa";
   label: string;
   active: boolean;
 };
@@ -118,7 +118,7 @@ type Process = {
   id: string;
   code: string | null;
   name: string;
-  type: "macroprocess" | "process" | "subprocess";
+  type: "macroprocess" | "process" | "subprocess" | "atividade" | "tarefa";
   value_chain_id: string | null;
   parent_process_id: string | null;
   department: string | null;
@@ -566,7 +566,7 @@ type Draft = {
   description: string;
   status: string;
   code: string;
-  type: "macroprocess" | "process" | "subprocess";
+  type: "macroprocess" | "process" | "subprocess" | "atividade" | "tarefa";
   valueChainId: string;
   parentProcessId: string;
   department: string;

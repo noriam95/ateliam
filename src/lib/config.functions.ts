@@ -80,7 +80,7 @@ const processSchema = z.object({
   id: z.string().uuid().optional(),
   code: z.string().trim().max(80).optional().nullable(),
   name: z.string().trim().min(2).max(180),
-  type: z.enum(["macroprocess", "process", "subprocess"]).default("process"),
+  type: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]).default("process"),
   parent_process_id: z.string().uuid().optional().nullable(),
   department: z.string().trim().max(160).optional().nullable(),
   owner: z.string().trim().max(160).optional().nullable(),
@@ -116,7 +116,7 @@ const ownerRegistrationSchema = organizationScopeSchema.extend({
 });
 const processTypeRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
-  code: z.enum(["macroprocess", "process", "subprocess"]),
+  code: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]),
   label: z.string().trim().min(2).max(80),
   active: z.boolean().default(true),
 });
@@ -124,7 +124,7 @@ const processRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   code: z.string().trim().max(80).optional().nullable(),
   name: z.string().trim().min(2).max(180),
-  type: z.enum(["macroprocess", "process", "subprocess"]),
+  type: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]),
   valueChainId: z.string().uuid().optional().nullable(),
   parentProcessId: z.string().uuid().optional().nullable(),
   department: z.string().trim().max(160).optional().nullable(),
@@ -326,6 +326,16 @@ export const createOrganization = createServerFn({ method: "POST" })
         organization_id: row.id,
         code: "subprocess",
         label: "Subprocesso",
+      },
+      {
+        organization_id: row.id,
+        code: "atividade",
+        label: "Atividade",
+      },
+      {
+        organization_id: row.id,
+        code: "tarefa",
+        label: "Tarefa",
       },
     ]);
     if (typeError) throw new Error(typeError.message);

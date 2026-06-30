@@ -5493,7 +5493,7 @@ function ModuleWorkspacePage() {
         id: process.id,
         code: process.code,
         name: process.name,
-        type: process.type as "macroprocess" | "process" | "subprocess",
+        type: process.type as "macroprocess" | "process" | "subprocess" | "atividade" | "tarefa",
         parent_process_id: process.parent_process_id,
         department: process.department,
         owner: process.owner,
