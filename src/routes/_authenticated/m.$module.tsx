@@ -85,7 +85,15 @@ import {
   updateOrganizationCause,
   updateOrganizationProcess,
 } from "@/lib/config.functions";
-import { type CodeKind, type CodeSettings, normalizeRule, formatCode } from "@/lib/code-generation";
+import {
+  type CodeSettings,
+  type DocType,
+  normalizeRule,
+  normalizeSigla,
+  previewDocumentCode,
+  previewDemoDocumentCode,
+  reserveDemoDocumentCode,
+} from "@/lib/code-generation";
 import {
   deleteDemoWorkspaceVersions,
   getDemoWorkspaceVersion,
@@ -101,40 +109,23 @@ import { toast } from "sonner";
 
 type ModuleRouteView = "new" | "consult" | "cause-new" | "cause-consult" | "cause-edit";
 
-// Tipo de codificação associado a cada módulo.
-const MODULE_CODE_KIND: Record<AteliamModule, CodeKind> = {
-  ddp: "mapping",
-  pop: "pop_it",
-  bpmn: "flowchart",
+// Tipo de documento (modalidade) associado a cada módulo. O módulo POP é
+// resolvido por subtipo (POP/IT/Norma) em documentDocType().
+const MODULE_BASE_DOC_TYPE: Record<AteliamModule, DocType> = {
+  ddp: "mapeamento",
+  pop: "pop",
+  bpmn: "fluxograma",
 };
 
-// Em modo demo a sequência de código é mantida por (organização, tipo) no
-// localStorage, inicializada a partir da regra configurada.
-function demoCodeNextKey(organizationId: string | null | undefined, kind: CodeKind) {
-  return `ateliam-demo-code-next:${organizationId ?? "default"}:${kind}`;
-}
-function readDemoCodeNext(
-  organizationId: string | null | undefined,
-  kind: CodeKind,
-  fallback: number,
-) {
-  if (typeof window === "undefined") return fallback;
-  const stored = Number(window.localStorage.getItem(demoCodeNextKey(organizationId, kind)));
-  return Number.isFinite(stored) && stored >= 1 ? Math.floor(stored) : fallback;
-}
-function reserveDemoCode(
-  organizationId: string | null | undefined,
-  kind: CodeKind,
-  settings: CodeSettings | null | undefined,
-  slug: string | null | undefined,
-) {
-  const rule = normalizeRule(kind, settings?.[kind]);
-  const next = readDemoCodeNext(organizationId, kind, rule.next);
-  const code = formatCode(rule.mask, next, { slug });
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(demoCodeNextKey(organizationId, kind), String(next + 1));
+// Resolve o tipo de documento considerando o subtipo do POP (POP/IT/Norma).
+function documentDocType(moduleId: AteliamModule, tipo?: string | null): DocType {
+  if (moduleId === "pop") {
+    const normalized = (tipo ?? "").trim().toLowerCase();
+    if (normalized.includes("norma")) return "norma";
+    if (normalized === "it" || normalized.includes("instru")) return "it";
+    return "pop";
   }
-  return code;
+  return MODULE_BASE_DOC_TYPE[moduleId];
 }
 // Lê a organização demo ativa (id, slug, code_settings) do localStorage.
 function readActiveDemoOrganization(): {
@@ -372,6 +363,7 @@ type PopState = {
 type BpmnState = {
   poolName: string;
   codigo?: string;
+  area?: string;
   lanes: [string, string];
   nodes: BpmnNode[];
   flows: BpmnFlow[];
@@ -433,8 +425,8 @@ const CAUSE_STATUS_OPTIONS = ["Pendente", "Em andamento", "Concluída"] as const
 const CAUSE_PRIORITY_OPTIONS = ["Baixa", "Média", "Alta", "Crítica"] as const;
 const DEMO_CATALOGS: OrganizationCatalogs = {
   departments: [
-    { id: "demo-dept-processos", name: "Processos" },
-    { id: "demo-dept-ti", name: "Tecnologia da Informação" },
+    { id: "demo-dept-processos", name: "Processos", sigla: "PRO" },
+    { id: "demo-dept-ti", name: "Tecnologia da Informação", sigla: "TIN" },
   ],
   processOwners: [
     { id: "demo-owner-processo", name: "Dono do processo" },
@@ -729,6 +721,7 @@ function defaultWorkspace(): WorkspaceState {
     },
     bpmn: {
       poolName: "Processo principal",
+      area: "",
       lanes: ["Solicitante", "Executor"],
       nodes: [
         { id: "start_1", type: "start", label: "Início", x: 120, y: 135, lane: 0 },
@@ -2344,6 +2337,7 @@ type AccessibleOrganization = OrganizationBrand & {
 type OrganizationCatalogItem = {
   id: string;
   name: string;
+  sigla?: string | null;
   organization_id?: string;
   created_at?: string;
   updated_at?: string;
@@ -4803,58 +4797,87 @@ function ModuleWorkspacePage() {
   }, [isDemo, meQ.data?.profile?.display_name, meQ.data?.profile?.email, usersQ.data]);
 
   // Contexto de codificação da organização ativa (modo demo via localStorage).
-  const codeKind = MODULE_CODE_KIND[moduleId];
   const demoOrgForCode = isDemo ? readActiveDemoOrganization() : null;
   const codeOrganizationId = isDemo ? demoOrgForCode!.id : (selectedOrganizationId ?? null);
-  const codeOrganizationSlug = isDemo
-    ? demoOrgForCode!.slug
-    : (selectedOrganization?.slug ?? meQ.data?.organization?.slug ?? null);
   const codeSettings: CodeSettings | null = isDemo
     ? demoOrgForCode!.code_settings
     : ((selectedOrganization?.code_settings as CodeSettings | null | undefined) ??
       (meQ.data?.organization?.code_settings as CodeSettings | null | undefined) ??
       null);
-  const codeRule = normalizeRule(codeKind, codeSettings?.[codeKind]);
+
+  // Resolve a sigla (3 letras) a partir do nome da área: usa a sigla cadastrada
+  // quando há correspondência; caso contrário, deriva do próprio nome.
+  function resolveAreaSigla(name: string | null | undefined): string {
+    const match = organizationCatalogs.departments.find((dept) => dept.name === name);
+    return normalizeSigla(match?.sigla ?? name ?? "");
+  }
+
+  // Tipo e área do documento ativo (o código depende de ambos).
+  const currentDocType: DocType = documentDocType(moduleId, workspace.pop.meta.tipo);
+  const currentAreaName =
+    moduleId === "ddp"
+      ? workspace.ddp.meta.area
+      : moduleId === "pop"
+        ? workspace.pop.meta.area
+        : (workspace.bpmn.area ?? "");
+  const currentAreaSigla = resolveAreaSigla(currentAreaName);
+  const codeRule = normalizeRule(codeSettings?.[currentDocType]);
   const isAutoCodeModule = codeRule.mode === "auto";
-  const autoCodePreview = isAutoCodeModule
-    ? formatCode(
-        codeRule.mask,
-        isDemo ? readDemoCodeNext(codeOrganizationId, codeKind, codeRule.next) : codeRule.next,
-        { slug: codeOrganizationSlug },
-      )
-    : "";
+  const autoCodePreview =
+    isAutoCodeModule && currentAreaSigla.length === 3
+      ? isDemo
+        ? previewDemoDocumentCode(
+            codeOrganizationId,
+            currentDocType,
+            currentAreaSigla,
+            codeSettings,
+          )
+        : previewDocumentCode(currentDocType, currentAreaSigla, codeRule)
+      : "";
 
   const reserveCodeFn = useServerFn(reserveCode);
   // Reserva o próximo código (consome a sequência) no momento de salvar.
   async function reserveModuleCode(): Promise<string> {
+    if (currentAreaSigla.length !== 3) {
+      throw new Error("Defina a área responsável (sigla de 3 letras) antes de gerar o código.");
+    }
     if (isDemo) {
-      return reserveDemoCode(codeOrganizationId, codeKind, codeSettings, codeOrganizationSlug);
+      return reserveDemoDocumentCode(
+        codeOrganizationId,
+        currentDocType,
+        currentAreaSigla,
+        codeSettings,
+      );
     }
     const result = await reserveCodeFn({
-      data: { organizationId: codeOrganizationId, kind: codeKind },
+      data: {
+        organizationId: codeOrganizationId,
+        type: currentDocType,
+        areaSigla: currentAreaSigla,
+      },
     });
     return result.code;
   }
 
-  // Código automático do CADASTRO DE PROCESSO (kind "process"), conforme a
-  // máscara/sequência configurada por organização em Configurações.
-  const processCodeRule = normalizeRule("process", codeSettings?.process);
+  // Código automático do CADASTRO DE PROCESSO (tipo "processo" = PR), com a
+  // sequência por área conforme configurado em Configurações.
+  const processCodeRule = normalizeRule(codeSettings?.processo);
   const isAutoProcessCode = processCodeRule.mode === "auto";
-  const processCodePreview = isAutoProcessCode
-    ? formatCode(
-        processCodeRule.mask,
-        isDemo
-          ? readDemoCodeNext(codeOrganizationId, "process", processCodeRule.next)
-          : processCodeRule.next,
-        { slug: codeOrganizationSlug },
-      )
-    : "";
-  async function reserveProcessCode(): Promise<string> {
+  function processCodePreviewFor(areaSigla: string): string {
+    if (!isAutoProcessCode || areaSigla.length !== 3) return "";
+    return isDemo
+      ? previewDemoDocumentCode(codeOrganizationId, "processo", areaSigla, codeSettings)
+      : previewDocumentCode("processo", areaSigla, processCodeRule);
+  }
+  async function reserveProcessCode(areaSigla: string): Promise<string> {
+    if (areaSigla.length !== 3) {
+      throw new Error("Selecione uma área (com sigla de 3 letras) para gerar o código.");
+    }
     if (isDemo) {
-      return reserveDemoCode(codeOrganizationId, "process", codeSettings, codeOrganizationSlug);
+      return reserveDemoDocumentCode(codeOrganizationId, "processo", areaSigla, codeSettings);
     }
     const result = await reserveCodeFn({
-      data: { organizationId: codeOrganizationId, kind: "process" },
+      data: { organizationId: codeOrganizationId, type: "processo", areaSigla },
     });
     return result.code;
   }
@@ -5855,7 +5878,7 @@ function ModuleWorkspacePage() {
 
           autoCode={isAutoProcessCode}
 
-          codePreview={processCodePreview}
+          previewCode={processCodePreviewFor}
 
           onReserveCode={reserveProcessCode}
           onOpenEditor={() => {
@@ -5916,7 +5939,7 @@ function ModuleWorkspacePage() {
 
               autoCode={isAutoProcessCode}
 
-              codePreview={processCodePreview}
+              previewCode={processCodePreviewFor}
 
               onReserveCode={reserveProcessCode}
               onOpenEditor={() => setDdpView("editor")}
@@ -7509,7 +7532,7 @@ function ProcessRegistryModule({
   onDeleteProcess,
   onOpenEditor,
   autoCode = false,
-  codePreview = "",
+  previewCode,
   onReserveCode,
 }: {
   catalogs: OrganizationCatalogs;
@@ -7521,10 +7544,15 @@ function ProcessRegistryModule({
   onDeleteProcess: (processId: string) => Promise<void>;
   onOpenEditor: () => void;
   autoCode?: boolean;
-  codePreview?: string;
-  onReserveCode?: () => Promise<string>;
+  previewCode?: (areaSigla: string) => string;
+  onReserveCode?: (areaSigla: string) => Promise<string>;
 }) {
   const processes = catalogs.processes;
+  // Sigla da área do rascunho atual, usada na pré-visualização e no código.
+  function draftAreaSigla(name: string | null | undefined): string {
+    const match = catalogs.departments.find((dept) => dept.name === name);
+    return normalizeSigla(match?.sigla ?? name ?? "");
+  }
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("Todos");
   const [draft, setDraft] = useState<OrganizationProcess | null>(null);
@@ -7557,7 +7585,7 @@ function ProcessRegistryModule({
   function newDraft() {
     setDraft({
       id: "",
-      code: autoCode ? codePreview : "",
+      code: "",
       name: "",
       type: "process",
       parent_process_id: null,
@@ -7580,7 +7608,9 @@ function ProcessRegistryModule({
       } else {
         // Código automático: reserva (consome) a sequência no momento de salvar.
         const code =
-          autoCode && onReserveCode ? await onReserveCode() : draft.code;
+          autoCode && onReserveCode
+            ? await onReserveCode(draftAreaSigla(draft.department))
+            : draft.code;
         await onCreateProcess({ ...draft, code });
         toast.success("Processo cadastrado.");
       }
@@ -7761,7 +7791,9 @@ function ProcessRegistryModule({
                   Código (automático)
                 </span>
                 <div className="w-full rounded-md border border-input bg-muted px-3 py-2.5 text-sm font-mono text-foreground">
-                  {draft.code || codePreview}
+                  {draft.code ||
+                    previewCode?.(draftAreaSigla(draft.department)) ||
+                    "Selecione a área para gerar o código"}
                 </div>
               </label>
             ) : (
@@ -10390,6 +10422,13 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
               value={data.poolName}
               onChange={(poolName) => update({ ...data, poolName })}
             />
+            <div className="mt-3">
+              <Field
+                label="Área responsável"
+                value={data.area ?? ""}
+                onChange={(area) => update({ ...data, area })}
+              />
+            </div>
             <div className="mt-3">
               {autoCode ? (
                 <ReadOnlyField label="Código (automático)" value={data.codigo || codePreview} />

@@ -32,33 +32,19 @@ import {
   saveProcessTypeRegistration,
   saveValueChainRegistration,
 } from "@/lib/config.functions";
-import { type CodeKind, type CodeSettings, normalizeRule, formatCode } from "@/lib/code-generation";
+import {
+  type CodeSettings,
+  normalizeRule,
+  normalizeSigla,
+  previewDocumentCode,
+  previewDemoDocumentCode,
+  reserveDemoDocumentCode,
+} from "@/lib/code-generation";
 
-function demoCodeNextKey(organizationId: string | null | undefined, kind: CodeKind) {
-  return `ateliam-demo-code-next:${organizationId ?? "default"}:${kind}`;
-}
-function readDemoCodeNext(
-  organizationId: string | null | undefined,
-  kind: CodeKind,
-  fallback: number,
-) {
-  if (typeof window === "undefined") return fallback;
-  const stored = Number(window.localStorage.getItem(demoCodeNextKey(organizationId, kind)));
-  return Number.isFinite(stored) && stored >= 1 ? Math.floor(stored) : fallback;
-}
-function reserveDemoCode(
-  organizationId: string | null | undefined,
-  kind: CodeKind,
-  settings: CodeSettings | null | undefined,
-  slug: string | null | undefined,
-) {
-  const rule = normalizeRule(kind, settings?.[kind]);
-  const next = readDemoCodeNext(organizationId, kind, rule.next);
-  const code = formatCode(rule.mask, next, { slug });
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(demoCodeNextKey(organizationId, kind), String(next + 1));
-  }
-  return code;
+/** Resolve a sigla da área a partir do nome selecionado no formulário. */
+function areaSiglaByName(areas: Area[], name: string | null | undefined): string {
+  const match = areas.find((area) => area.name === name);
+  return normalizeSigla(match?.sigla ?? "");
 }
 
 export type ProcessRegistrationView =
@@ -73,7 +59,7 @@ export type ProcessRegistrationView =
 type OwnerUser = { id: string; owner_id: string; user: string };
 type SystemItem = { id: string; name: string; description: string };
 
-type Area = { id: string; name: string };
+type Area = { id: string; name: string; sigla: string | null };
 type Owner = {
   id: string;
   name: string;
@@ -161,13 +147,13 @@ const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
 
 export const DEMO_REGISTRY: RegistryData = {
   areas: [
-    { id: "area-ti", name: "Tecnologia da Informação" },
-    { id: "area-processos", name: "Processos & Qualidade" },
-    { id: "area-comercial", name: "Comercial & Vendas" },
-    { id: "area-operacoes", name: "Operações" },
-    { id: "area-financeiro", name: "Financeiro & Controladoria" },
-    { id: "area-rh", name: "Recursos Humanos" },
-    { id: "area-logistica", name: "Logística & Supply Chain" },
+    { id: "area-ti", name: "Tecnologia da Informação", sigla: "TIN" },
+    { id: "area-processos", name: "Processos & Qualidade", sigla: "PRQ" },
+    { id: "area-comercial", name: "Comercial & Vendas", sigla: "COM" },
+    { id: "area-operacoes", name: "Operações", sigla: "OPE" },
+    { id: "area-financeiro", name: "Financeiro & Controladoria", sigla: "FIN" },
+    { id: "area-rh", name: "Recursos Humanos", sigla: "RHU" },
+    { id: "area-logistica", name: "Logística & Supply Chain", sigla: "LOG" },
   ],
   owners: [
     {
@@ -576,6 +562,7 @@ export const DEMO_REGISTRY: RegistryData = {
 type Draft = {
   id: string;
   name: string;
+  sigla: string;
   description: string;
   status: string;
   code: string;
@@ -599,6 +586,7 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
   return {
     id: "",
     name: "",
+    sigla: "",
     description: "",
     status: view === "value-chains" ? "Ativa" : "Ativo",
     code: "",
@@ -622,7 +610,6 @@ export function WorkspaceProcessRegistrations({
   view,
   organizationId,
   organizationName,
-  organizationSlug,
   codeSettings,
   isDemo,
 }: {
@@ -641,15 +628,8 @@ export function WorkspaceProcessRegistrations({
   const saveProcess = useServerFn(saveProcessRegistration);
   const reserveCodeFn = useServerFn(reserveCode);
   const removeRegistration = useServerFn(deleteProcessRegistration);
-  const processRule = normalizeRule("process", codeSettings?.process);
+  const processRule = normalizeRule(codeSettings?.processo);
   const isAutoProcessCode = view === "processes" && processRule.mode === "auto";
-  const processCodePreview = isAutoProcessCode
-    ? formatCode(
-        processRule.mask,
-        isDemo ? readDemoCodeNext(organizationId, "process", processRule.next) : processRule.next,
-        { slug: organizationSlug },
-      )
-    : "";
   const [demoData, setDemoData] = useState<RegistryData>(() =>
     organizationId === "demo-bom-futuro" ? DEMO_REGISTRY : emptyRegistryData(),
   );
@@ -661,6 +641,15 @@ export function WorkspaceProcessRegistrations({
   const data = isDemo ? demoData : ((query.data ?? emptyRegistryData()) as RegistryData);
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(view, data));
   const [formOpen, setFormOpen] = useState(false);
+
+  // O código do Processo (PR) depende da sigla da área selecionada no formulário.
+  const processAreaSigla = areaSiglaByName(data.areas, draft.department);
+  const processCodePreview =
+    isAutoProcessCode && processAreaSigla
+      ? isDemo
+        ? previewDemoDocumentCode(organizationId, "processo", processAreaSigla, codeSettings)
+        : previewDocumentCode("processo", processAreaSigla, processRule)
+      : "";
 
   const copy = registryCopy(view);
   const rows = useMemo(() => registryRows(view, data), [data, view]);
@@ -703,10 +692,20 @@ export function WorkspaceProcessRegistrations({
   const saveMutation = useMutation({
     mutationFn: async () => {
       let processCode = draft.code || null;
-      if (view === "processes" && !draft.id && isAutoProcessCode && !processCode) {
+      if (
+        view === "processes" &&
+        !draft.id &&
+        isAutoProcessCode &&
+        !processCode &&
+        processAreaSigla
+      ) {
         processCode = isDemo
-          ? reserveDemoCode(organizationId, "process", codeSettings, organizationSlug)
-          : (await reserveCodeFn({ data: { organizationId, kind: "process" } })).code;
+          ? reserveDemoDocumentCode(organizationId, "processo", processAreaSigla, codeSettings)
+          : (
+              await reserveCodeFn({
+                data: { organizationId, type: "processo", areaSigla: processAreaSigla },
+              })
+            ).code;
       }
       if (isDemo) {
         return saveDemoRegistration(
@@ -718,7 +717,7 @@ export function WorkspaceProcessRegistrations({
       }
       if (view === "areas") {
         return saveArea({
-          data: { id: draft.id || undefined, organizationId, name: draft.name },
+          data: { id: draft.id || undefined, organizationId, name: draft.name, sigla: draft.sigla },
         });
       }
       if (view === "owners") {
@@ -1021,13 +1020,33 @@ function RegistrationFields({
 }) {
   if (view === "areas")
     return (
-      <Field label="Nome da área">
-        <input
-          value={draft.name}
-          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          className={inputClass}
-        />
-      </Field>
+      <>
+        <Field label="Nome da área">
+          <input
+            value={draft.name}
+            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Sigla (3 letras)">
+          <input
+            value={draft.sigla}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                sigla: e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3),
+              }))
+            }
+            maxLength={3}
+            placeholder="Ex.: ADM"
+            className={`${inputClass} font-mono uppercase tracking-[0.3em]`}
+          />
+          <p className="mt-1 text-xs font-normal text-muted-foreground">
+            Usada na codificação dos documentos desta área (ex.:{" "}
+            <span className="font-mono">POP.{draft.sigla || "ADM"}.001</span>).
+          </p>
+        </Field>
+      </>
     );
   if (view === "systems")
     return (
@@ -1366,7 +1385,7 @@ function registryCopy(view: ProcessRegistrationView) {
       title: "Áreas",
       singular: "Área",
       description: "Mantenha as áreas utilizadas nos processos, donos e documentos.",
-      columns: ["Área"],
+      columns: ["Sigla", "Área"],
       icon: <Layers3 className="h-5 w-5" />,
     };
   if (view === "owners")
@@ -1413,7 +1432,8 @@ function registryCopy(view: ProcessRegistrationView) {
 }
 
 function registryRows(view: ProcessRegistrationView, data: RegistryData) {
-  if (view === "areas") return data.areas.map((item) => ({ id: item.id, values: [item.name] }));
+  if (view === "areas")
+    return data.areas.map((item) => ({ id: item.id, values: [item.sigla || "—", item.name] }));
   if (view === "owners")
     return data.owners.map((item) => ({
       id: item.id,
@@ -1470,7 +1490,7 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
   const draft = emptyDraft(view, data);
   if (view === "areas") {
     const item = data.areas.find((row) => row.id === id);
-    return item ? { ...draft, id, name: item.name } : draft;
+    return item ? { ...draft, id, name: item.name, sigla: normalizeSigla(item.sigla) } : draft;
   }
   if (view === "owner-users") {
     const item = data.ownerUsers.find((row) => row.id === id);
@@ -1536,7 +1556,10 @@ function saveDemoRegistration(
   const id = draft.id || `demo-${view}-${Date.now()}`;
   setData((current) => {
     if (view === "areas")
-      return { ...current, areas: upsert(current.areas, { id, name: draft.name }) };
+      return {
+        ...current,
+        areas: upsert(current.areas, { id, name: draft.name, sigla: draft.sigla }),
+      };
     if (view === "owners") {
       const areaIds = draft.departmentIds.length
         ? draft.departmentIds
@@ -1653,6 +1676,7 @@ function emptyRegistryData(): RegistryData {
   };
 }
 function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
+  if (view === "areas") return !!draft.name.trim() && /^[A-Z]{3}$/.test(draft.sigla);
   if (view === "owners") return draft.departmentIds.length > 0 && !!draft.roleTitle.trim();
   if (view === "owner-users") return !!draft.linkOwnerId && !!draft.userName.trim();
   if (view === "systems") return !!draft.name.trim();
