@@ -145,8 +145,6 @@ function ValueChainReport({
   );
 }
 
-// ─── Porter Value Chain Diagram ───────────────────────────────────────────────
-
 function PorterDiagram({
   primary,
   support,
@@ -161,33 +159,30 @@ function PorterDiagram({
   const bands = [
     {
       key: "management",
-      label: "Processos de Gestão",
+      label: "Processos de Gestão (NPG)",
       items: management,
-      bg: "bg-[#FFF7E6]",
-      labelColor: "text-[#92400E]",
-      cardBg: "bg-[#FDE68A]",
-      cardBorder: "border-[#F59E0B]/50",
-      cardText: "text-[#78350F]",
+      tone: "from-[#7be0d4] to-[#1f8f3f]",
+      border: "border-[#1ea672]",
+      header: "bg-[#22c7ad]",
+      text: "text-[#124f3b]",
     },
     {
       key: "primary",
-      label: "Processos de Negócios",
+      label: "Processos Finalísticos (NPF)",
       items: primary,
-      bg: "bg-[#F5B324]",
-      labelColor: "text-[#451a03]",
-      cardBg: "bg-white/35",
-      cardBorder: "border-black/15",
-      cardText: "text-[#451a03]",
+      tone: "from-[#ffe58a] to-[#f0b400]",
+      border: "border-[#f0b400]",
+      header: "bg-[#f0b400]",
+      text: "text-[#5a3b00]",
     },
     {
       key: "support",
-      label: "Processos de Suporte",
+      label: "Processos de Suporte (NPS)",
       items: support,
-      bg: "bg-[#FEF3C7]",
-      labelColor: "text-[#B45309]",
-      cardBg: "bg-[#FDE68A]",
-      cardBorder: "border-[#F59E0B]/50",
-      cardText: "text-[#92400E]",
+      tone: "from-[#42c5ff] to-[#144d8d]",
+      border: "border-[#1f9de4]",
+      header: "bg-[#1f9de4]",
+      text: "text-[#133b63]",
     },
   ];
 
@@ -209,55 +204,54 @@ function PorterDiagram({
           </button>
         ) : null}
       </div>
-      <div className="overflow-x-auto pr-1">
-        <div className="flex min-w-[660px] items-stretch">
-          {/* Left block: organização + bandas (formas arredondadas) */}
-          <div className="flex-1 overflow-hidden rounded-3xl border border-border shadow-sm">
-            <div className="bg-gradient-to-r from-[color-mix(in_oklab,var(--foreground)_10%,var(--card))] to-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-6 py-3.5 text-center">
-              <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-foreground/70">
-                Organização
-              </span>
+      <div className="overflow-x-auto">
+        <div className="flex min-w-[860px] items-stretch">
+          <div className="grid flex-1 grid-cols-[148px_minmax(0,1fr)] gap-1">
+            <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
+              Núcleo
             </div>
-            <div className="divide-y divide-border/60">
-              {bands.map((band) => (
-                <div key={band.key} className={`${band.bg} px-5 py-4`}>
-                  <div
-                    className={`mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] ${band.labelColor}`}
-                  >
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-current/70" />
-                    {band.label}
-                  </div>
-                  <div className="flex flex-wrap gap-2.5">
-                    {band.items.length > 0 ? (
-                      band.items.map((item) => (
+            <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
+              Macroprocesso
+            </div>
+            {bands.map((band) => (
+              <div key={band.key} className="contents">
+                <div
+                  className={`grid min-h-28 place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-sm`}
+                >
+                  {band.label}
+                </div>
+                <div
+                  className={`min-h-28 rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm`}
+                >
+                  {band.items.length ? (
+                    <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
+                      {band.items.map((item) => (
                         <div
                           key={item.id}
                           title={item.description ?? undefined}
-                          className={`cursor-default select-none rounded-full border px-4 py-2 text-xs font-semibold shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-md hover:ring-2 hover:ring-[var(--gold)]/50 ${band.cardBg} ${band.cardBorder} ${band.cardText}`}
+                          className={`grid min-h-16 place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text}`}
                         >
                           {item.name}
                         </div>
-                      ))
-                    ) : (
-                      <span className={`text-xs italic opacity-50 ${band.cardText}`}>
-                        Nenhum processo
-                      </span>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border text-xs italic text-muted-foreground">
+                      Nenhum processo cadastrado
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-
-          {/* Margem — seta apontando para a direita */}
-          <div className="relative ml-[-14px] w-32 shrink-0">
+          <div className="relative ml-2 w-44 shrink-0">
             <div
-              className="absolute inset-0 bg-gradient-to-r from-[color-mix(in_oklab,var(--gold)_88%,white)] to-[var(--gold)] shadow-sm"
-              style={{ clipPath: "polygon(0 6%, 62% 6%, 62% 0, 100% 50%, 62% 100%, 62% 94%, 0 94%)" }}
+              className="absolute inset-y-9 left-0 right-0 bg-gradient-to-r from-[#4dd8cb] to-[#9df1e8] shadow-sm"
+              style={{ clipPath: "polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%)" }}
             />
             <div className="relative flex h-full items-center justify-center pr-7">
-              <span className="text-[12px] font-black uppercase tracking-[0.18em] text-[oklch(0.205_0.01_78)]">
-                Margem
+              <span className="text-3xl font-black text-[#128878]">
+                Missão
               </span>
             </div>
           </div>
@@ -494,62 +488,84 @@ function buildDiagramSVG(
   support: ValueChain[],
   management: ValueChain[],
 ): string {
-  const W = 1080;
-  const MARGINS_W = 56;
-  const CONTENT_W = W - MARGINS_W;
-  const LABEL_W = 220;
-  const HEADER_H = 40;
-  const BAND_PAD_X = 16;
-  const BAND_PAD_Y = 14;
-  const LABEL_H = 18;
-  const CARD_H = 32;
-  const CARD_GAP = 6;
-  const CARD_W = 160;
+  const W = 1180;
+  const NUCLEO_W = 210;
+  const MACRO_W = 710;
+  const GAP = 8;
+  const ARROW_W = 220;
+  const HEADER_H = 44;
+  const PAD = 12;
+  const CARD_H = 58;
+  const CARD_GAP = 8;
+  const CARD_W = 210;
 
   const C = {
-    header: "#e8e8ea",
-    headerText: "#555",
-    mgmtBg: "#FFF7E6",
-    mgmtLabel: "#92400E",
-    mgmtCard: "#FDE68A",
-    mgmtCardBorder: "#F59E0B",
-    mgmtText: "#78350F",
-    primBg: "#F5B324",
-    primLabel: "#451a03",
-    primCard: "rgba(0,0,0,0.10)",
-    primCardBorder: "rgba(0,0,0,0.20)",
-    primText: "#451a03",
-    suppBg: "#FEF3C7",
-    suppLabel: "#B45309",
-    suppCard: "#FDE68A",
-    suppCardBorder: "#F59E0B",
-    suppText: "#92400E",
-    marginsBg: "#F5B324",
-    marginsText: "#7c3800",
-    divider: "#d0d0d5",
+    header: "#777777",
     white: "#ffffff",
+    grayText: "#404040",
+    primaryA: "#FFE58A",
+    primaryB: "#F0B400",
+    primaryBorder: "#F0B400",
+    primaryText: "#5A3B00",
+    supportA: "#42C5FF",
+    supportB: "#144D8D",
+    supportBorder: "#1F9DE4",
+    supportText: "#133B63",
+    managementA: "#7BE0D4",
+    managementB: "#1F8F3F",
+    managementBorder: "#1EA672",
+    managementText: "#124F3B",
+    missionA: "#4DD8CB",
+    missionB: "#9DF1E8",
+    missionText: "#128878",
   };
 
   function bandHeight(items: ValueChain[]) {
-    if (items.length === 0) return BAND_PAD_Y + LABEL_H + 12 + CARD_H + BAND_PAD_Y;
-    const availW = CONTENT_W - LABEL_W - BAND_PAD_X * 2;
+    const availW = MACRO_W - PAD * 2;
     const cols = Math.max(1, Math.floor(availW / (CARD_W + CARD_GAP)));
-    const rows = Math.ceil(items.length / cols);
-    return BAND_PAD_Y + LABEL_H + 12 + rows * (CARD_H + CARD_GAP) - CARD_GAP + BAND_PAD_Y;
+    const rows = Math.max(1, Math.ceil(items.length / cols));
+    return Math.max(116, PAD * 2 + rows * CARD_H + (rows - 1) * CARD_GAP);
   }
 
-  function renderBandCards(
+  function wrapLabel(value: string, max = 24) {
+    const words = value.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let line = "";
+    words.forEach((word) => {
+      const next = line ? `${line} ${word}` : word;
+      if (next.length > max && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    });
+    if (line) lines.push(line);
+    return lines.slice(0, 3);
+  }
+
+  function textLines(lines: string[], x: number, y: number, color: string, size = 15) {
+    const lineH = size + 4;
+    const startY = y - ((lines.length - 1) * lineH) / 2;
+    return lines
+      .map(
+        (line, index) =>
+          `<text x="${x}" y="${startY + index * lineH}" text-anchor="middle" dominant-baseline="middle" font-size="${size}" font-weight="700" fill="${color}">${escapeSvg(line)}</text>`,
+      )
+      .join("");
+  }
+
+  function renderCards(
     items: ValueChain[],
     xBase: number,
     yBase: number,
-    cardFill: string,
     cardStroke: string,
     textColor: string,
   ): string {
-    const availW = CONTENT_W - LABEL_W - BAND_PAD_X * 2;
+    const availW = MACRO_W - PAD * 2;
     const cols = Math.max(1, Math.floor(availW / (CARD_W + CARD_GAP)));
     if (items.length === 0) {
-      return `<text x="${xBase}" y="${yBase + CARD_H / 2}" dominant-baseline="middle" font-size="11" font-style="italic" fill="${textColor}" opacity="0.5">Nenhum processo cadastrado</text>`;
+      return `<rect x="${xBase}" y="${yBase}" width="${availW}" height="${CARD_H}" rx="10" fill="#fff" stroke="#D1D5DB" stroke-dasharray="5 5"/><text x="${xBase + availW / 2}" y="${yBase + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="#6B7280">Nenhum processo cadastrado</text>`;
     }
     return items
       .map((item, i) => {
@@ -557,91 +573,93 @@ function buildDiagramSVG(
         const row = Math.floor(i / cols);
         const x = xBase + col * (CARD_W + CARD_GAP);
         const y = yBase + row * (CARD_H + CARD_GAP);
-        const label = item.name.length > 19 ? item.name.slice(0, 18) + "…" : item.name;
+        const lines = wrapLabel(item.name);
         return [
-          `<rect x="${x}" y="${y}" width="${CARD_W}" height="${CARD_H}" rx="5" fill="${cardFill}" stroke="${cardStroke}" stroke-width="1"/>`,
-          `<text x="${x + CARD_W / 2}" y="${y + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="500" fill="${textColor}">${label}</text>`,
+          `<rect x="${x}" y="${y}" width="${CARD_W}" height="${CARD_H}" rx="10" fill="#fff" stroke="${cardStroke}" stroke-width="3"/>`,
+          textLines(lines, x + CARD_W / 2, y + CARD_H / 2, textColor, 13),
         ].join("");
       })
       .join("\n");
   }
 
-  const mgmtH = bandHeight(management);
-  const primH = bandHeight(primary);
-  const suppH = bandHeight(support);
-
-  const mgmtY = HEADER_H;
-  const primY = mgmtY + mgmtH + 1;
-  const suppY = primY + primH + 1;
-  const totalH = suppY + suppH;
-
   const bands = [
     {
-      y: mgmtY,
-      h: mgmtH,
-      bg: C.mgmtBg,
-      label: "PROCESSOS DE GESTÃO",
-      labelColor: C.mgmtLabel,
-      items: management,
-      cardFill: C.mgmtCard,
-      cardStroke: C.mgmtCardBorder,
-      cardText: C.mgmtText,
-    },
-    {
-      y: primY,
-      h: primH,
-      bg: C.primBg,
-      label: "PROCESSOS DE NEGÓCIOS",
-      labelColor: C.primLabel,
+      label: "Processos Finalísticos (NPF)",
       items: primary,
-      cardFill: C.primCard,
-      cardStroke: C.primCardBorder,
-      cardText: C.primText,
+      a: C.primaryA,
+      b: C.primaryB,
+      stroke: C.primaryBorder,
+      text: C.primaryText,
     },
     {
-      y: suppY,
-      h: suppH,
-      bg: C.suppBg,
-      label: "PROCESSOS DE SUPORTE",
-      labelColor: C.suppLabel,
       items: support,
-      cardFill: C.suppCard,
-      cardStroke: C.suppCardBorder,
-      cardText: C.suppText,
+      label: "Processos de Suporte (NPS)",
+      a: C.supportA,
+      b: C.supportB,
+      stroke: C.supportBorder,
+      text: C.supportText,
     },
-  ];
+    {
+      items: management,
+      label: "Processos de Gestão (NPG)",
+      a: C.managementA,
+      b: C.managementB,
+      stroke: C.managementBorder,
+      text: C.managementText,
+    },
+  ].map((band) => ({ ...band, h: bandHeight(band.items) }));
+
+  const totalH = HEADER_H + GAP + bands.reduce((sum, band) => sum + band.h + GAP, 0);
+  const macroX = NUCLEO_W + GAP;
+  const missionX = macroX + MACRO_W + GAP;
+  const diagramBottom = totalH - GAP;
+  let y = HEADER_H + GAP;
 
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${totalH}" width="${W}" height="${totalH}" font-family="system-ui, sans-serif">`,
     `<rect width="${W}" height="${totalH}" fill="${C.white}"/>`,
-    // Header
-    `<rect x="0" y="0" width="${W}" height="${HEADER_H}" fill="${C.header}"/>`,
-    `<text x="${W / 2}" y="${HEADER_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="700" fill="${C.headerText}" letter-spacing="3">ORGANIZAÇÃO</text>`,
-    // Bands
-    ...bands.flatMap((b) => [
-      `<rect x="0" y="${b.y}" width="${CONTENT_W}" height="${b.h}" fill="${b.bg}"/>`,
-      // Band label (left column)
-      `<text x="${BAND_PAD_X}" y="${b.y + BAND_PAD_Y + LABEL_H / 2}" dominant-baseline="middle" font-size="10" font-weight="700" fill="${b.labelColor}" letter-spacing="1.5">${b.label}</text>`,
-      // Cards
-      renderBandCards(
-        b.items,
-        LABEL_W + BAND_PAD_X,
-        b.y + BAND_PAD_Y + LABEL_H + 10,
-        b.cardFill,
-        b.cardStroke,
-        b.cardText,
-      ),
-    ]),
-    // Band dividers
-    `<line x1="0" y1="${primY}" x2="${CONTENT_W}" y2="${primY}" stroke="${C.divider}" stroke-width="1"/>`,
-    `<line x1="0" y1="${suppY}" x2="${CONTENT_W}" y2="${suppY}" stroke="${C.divider}" stroke-width="1"/>`,
-    // MARGENS column
-    `<rect x="${CONTENT_W}" y="${HEADER_H}" width="${MARGINS_W}" height="${totalH - HEADER_H}" fill="${C.marginsBg}"/>`,
-    `<text x="${CONTENT_W + MARGINS_W / 2}" y="${HEADER_H + (totalH - HEADER_H) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="${C.marginsText}" letter-spacing="2" transform="rotate(-90 ${CONTENT_W + MARGINS_W / 2} ${HEADER_H + (totalH - HEADER_H) / 2})">MARGENS</text>`,
-    `</svg>`,
+    `<defs>${bands
+      .map(
+        (band, index) =>
+          `<linearGradient id="band${index}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${band.a}"/><stop offset="100%" stop-color="${band.b}"/></linearGradient>`,
+      )
+      .join("")}<linearGradient id="mission" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="${C.missionA}"/><stop offset="100%" stop-color="${C.missionB}"/></linearGradient></defs>`,
+    `<rect x="0" y="0" width="${NUCLEO_W}" height="${HEADER_H}" rx="7" fill="${C.header}"/>`,
+    `<rect x="${macroX}" y="0" width="${MACRO_W}" height="${HEADER_H}" rx="7" fill="${C.header}"/>`,
+    `<text x="${NUCLEO_W / 2}" y="${HEADER_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="900" fill="#fff" letter-spacing="3">NÚCLEO</text>`,
+    `<text x="${macroX + MACRO_W / 2}" y="${HEADER_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="900" fill="#fff" letter-spacing="3">MACROPROCESSO</text>`,
   ];
 
+  bands.forEach((band, index) => {
+    parts.push(
+      `<rect x="0" y="${y}" width="${NUCLEO_W}" height="${band.h}" rx="18" fill="url(#band${index})"/>`,
+      textLines(wrapLabel(band.label, 18), NUCLEO_W / 2, y + band.h / 2, "#fff", 19),
+      `<rect x="${macroX}" y="${y}" width="${MACRO_W}" height="${band.h}" rx="18" fill="#fff" stroke="${band.stroke}" stroke-width="4"/>`,
+      renderCards(band.items, macroX + PAD, y + PAD, band.stroke, band.text),
+    );
+    y += band.h + GAP;
+  });
+
+  parts.push(
+    `<polygon points="${missionX},${HEADER_H + GAP} ${missionX + ARROW_W * 0.58},${HEADER_H + GAP} ${missionX + ARROW_W},${(HEADER_H + GAP + diagramBottom) / 2} ${missionX + ARROW_W * 0.58},${diagramBottom} ${missionX},${diagramBottom}" fill="url(#mission)"/>`,
+    `<text x="${missionX + ARROW_W * 0.46}" y="${(HEADER_H + GAP + diagramBottom) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="42" font-weight="900" fill="${C.missionText}">Missão</text>`,
+    `</svg>`,
+  );
+
   return parts.join("\n");
+}
+
+function escapeSvg(value: string) {
+  return value.replace(/[<>&'"]/g, (char) => {
+    const map: Record<string, string> = {
+      "<": "&lt;",
+      ">": "&gt;",
+      "&": "&amp;",
+      "'": "&apos;",
+      '"': "&quot;",
+    };
+    return map[char] ?? char;
+  });
 }
 
 function exportPNG(primary: ValueChain[], support: ValueChain[], management: ValueChain[]) {
