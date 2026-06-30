@@ -259,8 +259,7 @@ export const listOrganizations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const access = await permissionContext(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let query = supabaseAdmin.from("organizations").select("*").order("name", { ascending: true });
+    let query = context.supabase.from("organizations").select("*").order("name", { ascending: true });
     if (!access.isMaestro) query = query.eq("id", access.organizationId);
     const { data, error } = await query;
     if (error) throw new Error(error.message);
@@ -271,9 +270,8 @@ export const listAccessibleOrganizations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const access = await permissionContext(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let organizationIds: string[] | null = null;
-    const { data: memberships, error: membershipError } = await supabaseAdmin
+    const { data: memberships, error: membershipError } = await context.supabase
       .from("user_organization_access")
       .select("organization_id, is_default")
       .eq("user_id", context.userId);
@@ -286,7 +284,7 @@ export const listAccessibleOrganizations = createServerFn({ method: "GET" })
         ]),
       );
     }
-    let organizationQuery = supabaseAdmin
+    let organizationQuery = context.supabase
       .from("organizations")
       .select("*")
       .order("name", { ascending: true });
@@ -436,7 +434,6 @@ export const listOrganizationCatalogs = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const access = await permissionContext(context);
     const organizationId = access.organizationId;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [
       { data: departments, error: departmentsError },
       { data: processOwners, error: ownersError },
@@ -444,31 +441,31 @@ export const listOrganizationCatalogs = createServerFn({ method: "GET" })
       { data: processes, error: processesError },
       { data: valueChains, error: valueChainsError },
     ] = await Promise.all([
-      supabaseAdmin
+      context.supabase
         .from("organization_departments")
         .select("id, name, organization_id, created_at, updated_at")
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }),
-      supabaseAdmin
+      context.supabase
         .from("organization_process_owners")
         .select("id, name, organization_id, created_at, updated_at")
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }),
-      supabaseAdmin
+      context.supabase
         .from("organization_causes")
         .select(
           "id, title, description, impact, action, priority, organization_id, created_at, updated_at",
         )
         .eq("organization_id", organizationId)
         .order("title", { ascending: true }),
-      supabaseAdmin
+      context.supabase
         .from("organization_processes")
         .select(
           "id, code, name, type, value_chain_id, parent_process_id, department, owner, description, status, current_version, organization_id, created_at, updated_at",
         )
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }),
-      supabaseAdmin
+      context.supabase
         .from("organization_value_chains")
         .select("id, name, category, description, status, organization_id, created_at, updated_at")
         .eq("organization_id", organizationId)
@@ -493,30 +490,29 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const organizationId = access.organizationId;
     const [areas, owners, types, valueChains, processes] = await Promise.all([
-      supabaseAdmin
+      context.supabase
         .from("organization_departments")
         .select("*")
         .eq("organization_id", organizationId)
         .order("name"),
-      supabaseAdmin
+      context.supabase
         .from("organization_process_owners")
         .select("*")
         .eq("organization_id", organizationId)
         .order("name"),
-      supabaseAdmin
+      context.supabase
         .from("organization_process_types")
         .select("*")
         .eq("organization_id", organizationId)
         .order("code"),
-      supabaseAdmin
+      context.supabase
         .from("organization_value_chains")
         .select("*")
         .eq("organization_id", organizationId)
         .order("name"),
-      supabaseAdmin
+      context.supabase
         .from("organization_processes")
         .select("*")
         .eq("organization_id", organizationId)
@@ -1176,7 +1172,6 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
     const organizationId = access.organizationId;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [
       { data: organization, error: organizationError },
       { data: processes, error: processesError },
@@ -1185,29 +1180,29 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       { data: owners, error: ownersError },
       { data: valueChains, error: valueChainsError },
     ] = await Promise.all([
-      supabaseAdmin.from("organizations").select("*").eq("id", organizationId).maybeSingle(),
-      supabaseAdmin
+      context.supabase.from("organizations").select("*").eq("id", organizationId).maybeSingle(),
+      context.supabase
         .from("organization_processes")
         .select(
           "id, name, type, department, owner, status, current_version, created_at, updated_at",
         )
         .eq("organization_id", organizationId)
         .order("updated_at", { ascending: false }),
-      supabaseAdmin
+      context.supabase
         .from("documents")
         .select("id, name, module, current_version, primary_process_id, updated_at")
         .eq("organization_id", organizationId)
         .in("module", ["ddp", "pop"])
         .order("updated_at", { ascending: false }),
-      supabaseAdmin
+      context.supabase
         .from("organization_departments")
         .select("id, name")
         .eq("organization_id", organizationId),
-      supabaseAdmin
+      context.supabase
         .from("organization_process_owners")
         .select("id, name")
         .eq("organization_id", organizationId),
-      supabaseAdmin
+      context.supabase
         .from("organization_value_chains")
         .select("id, name")
         .eq("organization_id", organizationId),
