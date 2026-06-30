@@ -1,6 +1,7 @@
 const DEMO_SESSION_KEY = "atelier_demo_session";
 const DEMO_WORKSPACE_STATE_KEY = "atelier_demo_workspace_state";
 const DEMO_WORKSPACE_VERSIONS_KEY = "atelier_demo_workspace_versions";
+const PRODUCTION_HOSTS = new Set(["bf-flow-2026.vercel.app"]);
 
 let storageAvailable: boolean | null = null;
 
@@ -29,9 +30,11 @@ function canUseStorage() {
   return storageAvailable;
 }
 
-function isLocalDemoHost() {
+function isDemoAllowedHost() {
   if (typeof window === "undefined") return false;
-  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  const hostname = window.location.hostname;
+  if (["localhost", "127.0.0.1", "::1"].includes(hostname)) return true;
+  return hostname.endsWith(".vercel.app") && !PRODUCTION_HOSTS.has(hostname);
 }
 
 function isWorkspaceState(value: unknown): value is Record<string, string> {
@@ -60,7 +63,7 @@ function createId() {
 }
 
 export function isDemoModeAvailable() {
-  return isLocalDemoHost() && canUseStorage();
+  return isDemoAllowedHost() && canUseStorage();
 }
 
 export function isDemoSessionActive() {
