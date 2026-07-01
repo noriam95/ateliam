@@ -4791,6 +4791,7 @@ function ModuleWorkspacePage() {
         moduleId: result.moduleId,
         name: row.name,
       });
+      setModuleSurface("editor");
       setModuleEditStarted(true);
       if (result.moduleId === "ddp") setDdpView("editor");
       window.localStorage.setItem(draftKey, JSON.stringify(result.workspace));
