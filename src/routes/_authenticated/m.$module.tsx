@@ -487,6 +487,8 @@ function processDisplayName(process: OrganizationProcess) {
 
 function processTypeLabel(type: string) {
   if (type === "macroprocess") return "macroprocesso";
+  if (type === "atividade") return "atividade";
+  if (type === "task") return "atividade";
   if (type === "subprocess") return "subprocesso";
   return "processo";
 }
@@ -520,7 +522,7 @@ function defaultWorkspace(): WorkspaceState {
         status: "Em andamento",
       },
       overview: {
-        objetivo: "Entender o estado atual, riscos e oportunidades do processo.",
+        objetivo: "",
         escopo: "",
         estadoAtual: "",
         kpis: "",
@@ -530,78 +532,15 @@ function defaultWorkspace(): WorkspaceState {
         dores: "",
         oportunidades: "",
       },
-      systems: [
-        {
-          id: id("sys"),
-          nome: "ERP / sistema principal",
-          tipo: "Sistema transacional",
-          dono: "",
-          criticidade: "Alta",
-          descricao: "",
-        },
-        {
-          id: id("sys"),
-          nome: "Planilhas de apoio",
-          tipo: "Controle manual",
-          dono: "",
-          criticidade: "Média",
-          descricao: "",
-        },
-      ],
+      systems: [],
       macroprocess: {
         processId: "",
         processVersion: 1,
-        titulo: "Diagrama do Macroprocesso",
+        titulo: "",
         legenda: "",
         src: "",
       },
-      steps: [
-        {
-          id: id("step"),
-          processId: "",
-          processVersion: 1,
-          etapa: "Receber solicitação",
-          responsavel: "",
-          entrada: "",
-          atividade: "Registrar demanda e validar dados mínimos.",
-          saida: "",
-          sistema: "",
-          risco: "",
-          observacoes: "",
-          images: [],
-          substeps: [],
-        },
-        {
-          id: id("step"),
-          processId: "",
-          processVersion: 1,
-          etapa: "Analisar informações",
-          responsavel: "",
-          entrada: "",
-          atividade: "Conferir regras, documentos e pendências.",
-          saida: "",
-          sistema: "",
-          risco: "",
-          observacoes: "",
-          images: [],
-          substeps: [],
-        },
-        {
-          id: id("step"),
-          processId: "",
-          processVersion: 1,
-          etapa: "Executar e concluir",
-          responsavel: "",
-          entrada: "",
-          atividade: "Executar atividade, registrar evidência e comunicar conclusão.",
-          saida: "",
-          sistema: "",
-          risco: "",
-          observacoes: "",
-          images: [],
-          substeps: [],
-        },
-      ],
+      steps: [],
       sipoc: {
         fornecedores: "",
         entradas: "",
@@ -619,29 +558,9 @@ function defaultWorkspace(): WorkspaceState {
           clientes: "",
         },
       ],
-      gaps: [
-        {
-          id: id("gap"),
-          sharedCauseId: "",
-          causa: "Informação descentralizada",
-          descricao: "Dados e evidências ficam espalhados em canais diferentes.",
-          impacto: "Retrabalho e baixa rastreabilidade",
-          acao: "Padronizar registro e responsáveis",
-          responsavel: "",
-          prazo: "",
-          prioridade: "Alta",
-          status: "Pendente",
-          comentarios: [],
-        },
-      ],
-      nextSteps: [{ id: id("next"), text: "Validar mapeamento com o dono do processo" }],
-      glossary: [
-        {
-          id: id("gloss"),
-          termo: "AS IS",
-          definicao: "Representação do estado atual do processo analisado.",
-        },
-      ],
+      gaps: [],
+      nextSteps: [],
+      glossary: [],
     },
     pop: {
       meta: {
@@ -8173,8 +8092,21 @@ function DdpModule({
     () => catalogs.processes.find((process) => process.id === data.macroprocess.processId) ?? null,
     [catalogs.processes, data.macroprocess.processId],
   );
+  const primaryProcessOptions = useMemo(
+    () =>
+      catalogs.processes.filter(
+        (process) =>
+          process.status !== "Arquivado" &&
+          (process.type === "macroprocess" || process.type === "process"),
+      ),
+    [catalogs.processes],
+  );
   const flowProcessOptions = useMemo(() => {
-    if (!selectedProcess) return catalogs.processes;
+    const allowedTypes = new Set(["macroprocess", "process", "atividade", "task"]);
+    const base = catalogs.processes.filter(
+      (process) => process.status !== "Arquivado" && allowedTypes.has(process.type),
+    );
+    if (!selectedProcess) return base;
     const branchIds = new Set([selectedProcess.id]);
     let added = true;
     while (added) {
@@ -8186,7 +8118,7 @@ function DdpModule({
         }
       });
     }
-    return catalogs.processes.filter((process) => branchIds.has(process.id));
+    return base.filter((process) => branchIds.has(process.id));
   }, [catalogs.processes, selectedProcess]);
 
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
@@ -8218,8 +8150,8 @@ function DdpModule({
         ...data.macroprocess,
         processId: process?.id ?? "",
         processVersion: process?.current_version ?? 1,
-        titulo: process?.name || data.macroprocess.titulo,
-        legenda: data.macroprocess.legenda || process?.description || "",
+        titulo: process?.name ?? "",
+        legenda: process?.description ?? "",
       },
     });
   }
@@ -8361,7 +8293,23 @@ function DdpModule({
   return (
     <div className="grid gap-5">
       <Hero title="Formulário de Preenchimento" eyebrow="Mapeamento" progress={completion} />
-      {onSave || onPreview ? (
+      <Panel title="Processo do mapeamento" progress={data.macroprocess.processId ? 100 : 0}>
+        <RegisteredProcessSelect
+          required
+          label="Consultar processo cadastrado"
+          value={data.macroprocess.processId ?? ""}
+          processes={primaryProcessOptions}
+          placeholder="Busque por código, nome, macroprocesso ou processo"
+          onSelect={selectPrimaryProcess}
+        />
+        {!selectedProcess ? (
+          <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
+            Selecione um macroprocesso ou processo cadastrado para habilitar o preenchimento do
+            mapeamento.
+          </div>
+        ) : null}
+      </Panel>
+      {selectedProcess && (onSave || onPreview) ? (
         <div className="flex flex-wrap items-center gap-2">
           {onSave ? (
             <button
@@ -8387,17 +8335,10 @@ function DdpModule({
           ) : null}
         </div>
       ) : null}
+      {!selectedProcess ? null : (
+        <>
       <Panel title="Identificação" progress={sectionProgress.identification}>
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="md:col-span-3">
-            <RegisteredProcessSelect
-              required
-              label="Processo cadastrado"
-              value={data.macroprocess.processId ?? ""}
-              processes={catalogs.processes.filter((process) => process.status !== "Arquivado")}
-              onSelect={selectPrimaryProcess}
-            />
-          </div>
           <ReadOnlyField label="Código do processo" value={data.meta.codigo} />
           <ReadOnlyField label="Título do processo" value={data.meta.titulo} />
           <ReadOnlyField label="Área / Departamento" value={data.meta.area} />
@@ -8620,9 +8561,10 @@ function DdpModule({
                 </div>
                 <div className="grid flex-1 gap-3 md:grid-cols-2">
                   <RegisteredProcessSelect
-                    label="Processo da etapa"
+                    label="Processo, macroprocesso ou atividade"
                     value={step.processId ?? ""}
                     processes={flowProcessOptions}
+                    placeholder="Busque processo, macroprocesso ou atividade"
                     onSelect={(process) =>
                       updateStep(step.id, {
                         processId: process?.id ?? "",
@@ -9086,6 +9028,8 @@ function DdpModule({
           </button>
         </div>
       </Panel>
+        </>
+      )}
     </div>
   );
 }
@@ -10169,40 +10113,110 @@ function RegisteredProcessSelect({
   processes,
   onSelect,
   required = false,
+  placeholder = "Buscar processo cadastrado...",
 }: {
   label: string;
   value: string;
   processes: OrganizationProcess[];
   onSelect: (process: OrganizationProcess | null) => void;
   required?: boolean;
+  placeholder?: string;
 }) {
   const selected = processes.find((process) => process.id === value) ?? null;
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const normalizedQuery = normalizeLabel(query);
+  const filtered = useMemo(() => {
+    if (!normalizedQuery) return processes.slice(0, 12);
+    return processes
+      .filter((process) =>
+        normalizeLabel(
+          [
+            process.code ?? "",
+            process.name,
+            processTypeLabel(process.type),
+            process.department ?? "",
+            process.owner ?? "",
+          ].join(" "),
+        ).includes(normalizedQuery),
+      )
+      .slice(0, 12);
+  }, [normalizedQuery, processes]);
+
+  useEffect(() => {
+    if (!open) setQuery(selected ? processDisplayName(selected) : "");
+  }, [open, selected?.id]);
 
   return (
-    <label className="block">
+    <div className="relative">
       <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
-      <select
-        required={required}
-        value={value}
-        onChange={(event) => {
-          const process = processes.find((item) => item.id === event.target.value) ?? null;
-          onSelect(process);
-        }}
-        className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
-      >
-        <option value="">Selecione um processo previamente cadastrado</option>
-        {processes.map((process) => (
-          <option key={process.id} value={process.id}>
-            {processDisplayName(process)}
-          </option>
-        ))}
-      </select>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          required={required}
+          value={open ? query : selected ? processDisplayName(selected) : ""}
+          placeholder={placeholder}
+          onFocus={() => {
+            setQuery("");
+            setOpen(true);
+          }}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          className="w-full rounded-md border border-input bg-background py-2.5 pl-9 pr-9 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+        />
+        {value ? (
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              setQuery("");
+              onSelect(null);
+            }}
+            className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Limpar seleção"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-lg">
+          {filtered.length ? (
+            filtered.map((process) => (
+              <button
+                type="button"
+                key={process.id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onSelect(process);
+                  setOpen(false);
+                }}
+                className="grid w-full gap-0.5 rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+              >
+                <span className="font-semibold text-foreground">{processDisplayName(process)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {processTypeLabel(process.type)}
+                  {process.department ? ` · ${process.department}` : ""}
+                  {process.owner ? ` · ${process.owner}` : ""}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              Nenhum processo encontrado.
+            </div>
+          )}
+        </div>
+      ) : null}
       {selected ? (
         <span className="mt-1.5 block text-[11px] text-muted-foreground">
           Vinculado como {processTypeLabel(selected.type)} na versão {selected.current_version}.
         </span>
       ) : null}
-    </label>
+    </div>
   );
 }
 
