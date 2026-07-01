@@ -5395,8 +5395,79 @@ function ModuleWorkspacePage() {
     statusOverrides[row.id] ? { ...row, status: statusOverrides[row.id] } : row,
   );
 
-  function changeRowStatus(row: ModuleGridRow, status: string) {
-    setStatusOverrides((current) => ({ ...current, [row.id]: status }));
+  async function changeRowStatus(row: ModuleGridRow, status: string) {
+    if (row.status === status) return;
+
+    if (isDemo || row.id.startsWith("demo-")) {
+      setStatusOverrides((current) => ({ ...current, [row.id]: status }));
+      toast.success(`Status atualizado para “${status}”.`);
+      return;
+    }
+
+    if (moduleId !== "ddp") {
+      setStatusOverrides((current) => ({ ...current, [row.id]: status }));
+      toast.success(`Status atualizado para “${status}”.`);
+      return;
+    }
+
+    if (!selectedOrganizationId) {
+      toast.error("Selecione uma organização antes de alterar o status.");
+      return;
+    }
+
+    const cloudDocument = (cloudDocsQ.data as CloudModuleDocument[] | undefined)?.find(
+      (document) => document.id === row.id,
+    );
+    if (!cloudDocument) {
+      toast.error("Registro não encontrado para atualização.");
+      return;
+    }
+
+    const document = await getCloudDocument({ data: { id: row.id } });
+    if (!document.content_inline) {
+      toast.error("Registro sem conteúdo salvo.");
+      return;
+    }
+
+    const snapshot = parseWorkspace(document.content_inline);
+    const updatedWorkspace: WorkspaceState = {
+      ...snapshot,
+      ddp: {
+        ...snapshot.ddp,
+        meta: {
+          ...snapshot.ddp.meta,
+          status,
+        },
+      },
+    };
+    const payload = {
+      code: updatedWorkspace.ddp.meta.codigo,
+      title: updatedWorkspace.ddp.meta.titulo,
+      description: updatedWorkspace.ddp.overview.objetivo || updatedWorkspace.ddp.overview.escopo,
+      primaryProcessId: updatedWorkspace.ddp.macroprocess.processId || null,
+      primaryProcessVersion: null,
+    };
+
+    await saveCloudDocument({
+      data: {
+        organizationId: selectedOrganizationId,
+        id: row.id,
+        moduleId: "ddp",
+        code: payload.code,
+        title: payload.title,
+        description: payload.description,
+        content: buildModuleJson("ddp", updatedWorkspace),
+        comment: `[Mapeamento] Status alterado para ${status}`,
+        primaryProcessId: payload.primaryProcessId,
+        primaryProcessVersion: payload.primaryProcessVersion,
+      },
+    });
+
+    if (activeCloudDocument?.id === row.id) {
+      setWorkspace(updatedWorkspace);
+      window.localStorage.setItem(draftKey, JSON.stringify(updatedWorkspace));
+    }
+    await cloudDocsQ.refetch();
     toast.success(`Status atualizado para “${status}”.`);
   }
 
@@ -6506,10 +6577,15 @@ function ModuleDocumentGrid({
   onDelete: (ids: string[]) => void | Promise<void>;
   onExport: (row: ModuleGridRow, format: ExportFormat) => void | Promise<void>;
   onView: (row: ModuleGridRow) => void;
-  onChangeStatus: (row: ModuleGridRow, status: string) => void;
+  onChangeStatus: (row: ModuleGridRow, status: string) => void | Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [pendingStatus, setPendingStatus] = useState<{
+    row: ModuleGridRow;
+    status: string;
+  } | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
   const filtered = useMemo(() => {
     const normalized = normalizeLabel(query);
     return rows.filter((row) =>
@@ -6583,6 +6659,19 @@ function ModuleDocumentGrid({
     if (!window.confirm(`Excluir o registro ${row.code || row.name}?`)) return;
     await onDelete([row.id]);
     setSelected((current) => current.filter((id) => id !== row.id));
+  }
+
+  async function confirmStatusChange() {
+    if (!pendingStatus) return;
+    setStatusSaving(true);
+    try {
+      await onChangeStatus(pendingStatus.row, pendingStatus.status);
+      setPendingStatus(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível alterar o status.");
+    } finally {
+      setStatusSaving(false);
+    }
   }
 
   return (
@@ -6691,7 +6780,7 @@ function ModuleDocumentGrid({
                     </td>
                     {columns.map(([key]) => {
                       const value = row[key as keyof ModuleGridRow];
-                      if (key === "status" && moduleId === "pop") {
+                      if (key === "status" && (moduleId === "ddp" || moduleId === "pop")) {
                         const options = MODULE_STATUS_OPTIONS.includes(value)
                           ? MODULE_STATUS_OPTIONS
                           : [value, ...MODULE_STATUS_OPTIONS];
@@ -6700,7 +6789,11 @@ function ModuleDocumentGrid({
                             <select
                               value={value}
                               onClick={(event) => event.stopPropagation()}
-                              onChange={(event) => onChangeStatus(row, event.target.value)}
+                              onChange={(event) => {
+                                const nextStatus = event.target.value;
+                                if (nextStatus === row.status) return;
+                                setPendingStatus({ row, status: nextStatus });
+                              }}
                               className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                             >
                               {options.map((opt) => (
@@ -6736,6 +6829,32 @@ function ModuleDocumentGrid({
       <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
         {filtered.length} registro(s) exibido(s) · {selected.length} selecionado(s)
       </footer>
+      {pendingStatus ? (
+        <Modal
+          title="Alterar status do mapeamento"
+          subtitle={`Confirma alterar o status de “${pendingStatus.row.status}” para “${pendingStatus.status}”?`}
+          onClose={() => setPendingStatus(null)}
+        >
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingStatus(null)}
+              disabled={statusSaving}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmStatusChange}
+              disabled={statusSaving}
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Alterar
+            </button>
+          </div>
+        </Modal>
+      ) : null}
     </section>
   );
 }
