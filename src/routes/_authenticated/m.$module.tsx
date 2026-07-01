@@ -482,7 +482,7 @@ function moduleDocumentLabel(moduleId: AteliamModule) {
 }
 
 function processDisplayName(process: OrganizationProcess) {
-  return `${process.code ? `${process.code} · ` : ""}${process.name} · v${process.current_version}`;
+  return `${process.code ? `${process.code} · ` : ""}${process.name}`;
 }
 
 function processTypeLabel(type: string) {
@@ -4487,9 +4487,15 @@ function ModuleWorkspacePage() {
 
   // Tipo e área do documento ativo (o código depende de ambos).
   const currentDocType: DocType = documentDocType(moduleId, workspace.pop.meta.tipo);
+  const selectedMappingProcessForCode =
+    moduleId === "ddp"
+      ? organizationCatalogs.processes.find(
+          (process) => process.id === workspace.ddp.macroprocess.processId,
+        )
+      : null;
   const currentAreaName =
     moduleId === "ddp"
-      ? workspace.ddp.meta.area
+      ? workspace.ddp.meta.area || selectedMappingProcessForCode?.department || ""
       : moduleId === "pop"
         ? workspace.pop.meta.area
         : (workspace.bpmn.area ?? "");
@@ -4830,7 +4836,7 @@ function ModuleWorkspacePage() {
         title: ws.ddp.meta.titulo,
         description: ws.ddp.overview.objetivo || ws.ddp.overview.escopo,
         primaryProcessId: ws.ddp.macroprocess.processId || null,
-        primaryProcessVersion: ws.ddp.macroprocess.processVersion || null,
+        primaryProcessVersion: null,
       };
     }
     if (moduleId === "pop") {
@@ -4929,13 +4935,20 @@ function ModuleWorkspacePage() {
         setWorkspace(workspaceToSave);
         window.localStorage.setItem(draftKey, JSON.stringify(workspaceToSave));
       }
-      const fullComment = `[${moduleInfo.title}] ${comment || "Versão salva"}`;
+      const fullComment = `[${moduleInfo.title}] ${
+        comment || (moduleId === "ddp" ? "Mapeamento salvo" : "Versão salva")
+      }`;
       if (isDemo) return saveDemoWorkspaceVersion(JSON.stringify(workspaceToSave), fullComment);
       const payload = currentModuleSavePayload(workspaceToSave);
       const row = await saveCloudDocument({
         data: {
           organizationId: selectedOrganizationId,
-          id: activeCloudDocument?.moduleId === moduleId ? activeCloudDocument.id : null,
+          id:
+            moduleId === "ddp"
+              ? null
+              : activeCloudDocument?.moduleId === moduleId
+                ? activeCloudDocument.id
+                : null,
           moduleId: moduleId as "ddp" | "pop" | "bpmn",
           code: payload.code,
           title: payload.title,
@@ -4949,21 +4962,14 @@ function ModuleWorkspacePage() {
       return { version: row.current_version, document: row };
     },
     onSuccess: (result) => {
-      // Versão exibida: 0 na criação, +1 a cada revisão (save = nº de salvamentos).
       const revisionVersion = Math.max(0, (result.version ?? 1) - 1);
-      toast.success(`Versão v${revisionVersion} salva.`);
+      toast.success(moduleId === "ddp" ? "Mapeamento salvo." : `Versão v${revisionVersion} salva.`);
       setShowSave(false);
       setComment("");
-      // O campo Versão do Mapeamento puxa automaticamente a versão atual.
       if (moduleId === "ddp") {
-        setWorkspace((current) => {
-          const next = {
-            ...current,
-            ddp: { ...current.ddp, meta: { ...current.ddp.meta, versao: String(revisionVersion) } },
-          };
-          window.localStorage.setItem(draftKey, JSON.stringify(next));
-          return next;
-        });
+        cloudDocsQ.refetch();
+        if (!isDemo) wsQ.refetch();
+        return;
       }
       if (isDemo) setDemoVersion(result.version);
       if (!isDemo && "document" in result) {
@@ -6086,15 +6092,12 @@ function ModuleWorkspacePage() {
                 className="grid gap-3 rounded-lg border border-[#d2d2d7] bg-white p-3 md:grid-cols-[82px_minmax(0,1fr)_auto]"
               >
                 <div className="grid h-12 place-items-center rounded-lg bg-[#f3f4f6] text-xs font-black uppercase tracking-[0.16em] text-[#3f3f46]">
-                  v{document.current_version}
+                  {moduleId === "ddp" ? "MAP" : `v${document.current_version}`}
                 </div>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-black text-[#1d1d1f]">{document.name}</div>
                   <div className="mt-1 truncate text-xs text-[#6e6e73]">
                     Atualizado em {new Date(document.updated_at).toLocaleString("pt-BR")}
-                    {document.primary_process_version
-                      ? ` · Processo v${document.primary_process_version}`
-                      : ""}
                   </div>
                 </div>
                 <button
@@ -8122,56 +8125,31 @@ function DdpModule({
   const toggleStep = (stepId: string) =>
     setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
 
-  function findProcessValueChain(process: OrganizationProcess | null) {
-    let current = process;
-    const visited = new Set<string>();
-    while (current && !visited.has(current.id)) {
-      visited.add(current.id);
-      if (current.value_chain_id) {
-        return catalogs.valueChains.find((chain) => chain.id === current?.value_chain_id) ?? null;
-      }
-      current = current.parent_process_id
-        ? catalogs.processes.find((item) => item.id === current?.parent_process_id) ?? null
-        : null;
-    }
-    return null;
-  }
-
   function selectPrimaryProcess(process: OrganizationProcess | null) {
-    const valueChain = findProcessValueChain(process);
     update({
       ...data,
       meta: {
         ...data.meta,
-        codigo: process?.code ?? "",
-        area: process?.department ?? "",
-        responsavel: process?.owner ?? "",
-        valueChainId: valueChain?.id ?? "",
-        valueChainName: valueChain?.name ?? "",
+        codigo: "",
+        area: "",
+        responsavel: "",
+        valueChainId: "",
+        valueChainName: "",
       },
       overview: {
         ...data.overview,
-        donoProcesso: process?.owner ?? "",
-        escopo: data.overview.escopo || process?.description || "",
+        donoProcesso: "",
+        escopo: "",
       },
       macroprocess: {
         ...data.macroprocess,
         processId: process?.id ?? "",
-        processVersion: process?.current_version ?? 1,
-        titulo: process?.name ?? "",
-        legenda: process?.description ?? "",
+        processVersion: 1,
+        titulo: "",
+        legenda: "",
       },
     });
   }
-
-  const processDataFields = [
-    { label: "Código do processo", value: data.meta.codigo },
-    { label: "Processo", value: selectedProcess?.name ?? "" },
-    { label: "Tipo", value: selectedProcess ? processTypeLabel(selectedProcess.type) : "" },
-    { label: "Cadeia de valor", value: data.meta.valueChainName },
-    { label: "Área / Departamento", value: data.meta.area },
-    { label: "Responsável / Dono", value: data.meta.responsavel },
-  ];
 
   const completion = useMemo(() => {
     const fields = [
@@ -8312,14 +8290,10 @@ function DdpModule({
           label="Processo cadastrado"
           value={data.macroprocess.processId ?? ""}
           processes={primaryProcessOptions}
-          placeholder="Busque por código, nome ou área"
+          placeholder="Selecione o processo que será mapeado"
           onSelect={selectPrimaryProcess}
+          displayName={(process) => process.name}
         />
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {processDataFields.map((field) => (
-            <ReadOnlyField key={field.label} label={field.label} value={field.value} />
-          ))}
-        </div>
         {!selectedProcess ? (
           <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
             Selecione um processo cadastrado para habilitar o preenchimento do mapeamento.
@@ -8352,9 +8326,8 @@ function DdpModule({
           ) : null}
         </div>
       ) : null}
-      {!selectedProcess ? null : (
-        <>
-      <Panel title="Dados do Mapeamento" progress={sectionProgress.identification}>
+      <MappingSectionsGate enabled={!!selectedProcess}>
+        <Panel title="Dados do Mapeamento" progress={sectionProgress.identification}>
         <div className="grid gap-4 md:grid-cols-3">
           <Field
             label="Título do Mapeamento"
@@ -8581,7 +8554,7 @@ function DdpModule({
                     onSelect={(process) =>
                       updateStep(step.id, {
                         processId: process?.id ?? "",
-                        processVersion: process?.current_version ?? 1,
+                        processVersion: 1,
                         etapa: process?.name ?? "",
                         responsavel: process?.owner ?? "",
                         atividade: step.atividade || process?.description || "",
@@ -9040,9 +9013,8 @@ function DdpModule({
             Adicionar termo
           </button>
         </div>
-      </Panel>
-        </>
-      )}
+        </Panel>
+      </MappingSectionsGate>
     </div>
   );
 }
@@ -10131,6 +10103,22 @@ function FixedPanel({ title, children }: { title: string; children: ReactNode })
   );
 }
 
+function MappingSectionsGate({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  return (
+    <fieldset
+      disabled={!enabled}
+      className={[
+        "grid gap-5 transition",
+        enabled
+          ? "opacity-100"
+          : "pointer-events-none opacity-55 [&_section]:border-dashed [&_section]:bg-muted/20",
+      ].join(" ")}
+    >
+      {children}
+    </fieldset>
+  );
+}
+
 function RegisteredProcessSelect({
   label,
   value,
@@ -10138,6 +10126,7 @@ function RegisteredProcessSelect({
   onSelect,
   required = false,
   placeholder = "Buscar processo cadastrado...",
+  displayName = processDisplayName,
 }: {
   label: string;
   value: string;
@@ -10145,6 +10134,7 @@ function RegisteredProcessSelect({
   onSelect: (process: OrganizationProcess | null) => void;
   required?: boolean;
   placeholder?: string;
+  displayName?: (process: OrganizationProcess) => string;
 }) {
   const selected = processes.find((process) => process.id === value) ?? null;
   const [query, setQuery] = useState("");
@@ -10168,8 +10158,8 @@ function RegisteredProcessSelect({
   }, [normalizedQuery, processes]);
 
   useEffect(() => {
-    if (!open) setQuery(selected ? processDisplayName(selected) : "");
-  }, [open, selected?.id]);
+    if (!open) setQuery(selected ? displayName(selected) : "");
+  }, [open, selected?.id, displayName]);
 
   return (
     <div className="relative">
@@ -10178,7 +10168,7 @@ function RegisteredProcessSelect({
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           required={required}
-          value={open ? query : selected ? processDisplayName(selected) : ""}
+          value={open ? query : selected ? displayName(selected) : ""}
           placeholder={placeholder}
           onFocus={() => {
             setQuery("");
@@ -10220,7 +10210,7 @@ function RegisteredProcessSelect({
                 }}
                 className="grid w-full gap-0.5 rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
               >
-                <span className="font-semibold text-foreground">{processDisplayName(process)}</span>
+                <span className="font-semibold text-foreground">{displayName(process)}</span>
                 <span className="text-xs text-muted-foreground">
                   {processTypeLabel(process.type)}
                   {process.department ? ` · ${process.department}` : ""}
@@ -10234,11 +10224,6 @@ function RegisteredProcessSelect({
             </div>
           )}
         </div>
-      ) : null}
-      {selected ? (
-        <span className="mt-1.5 block text-[11px] text-muted-foreground">
-          Vinculado como {processTypeLabel(selected.type)} na versão {selected.current_version}.
-        </span>
       ) : null}
     </div>
   );

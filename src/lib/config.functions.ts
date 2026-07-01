@@ -1136,7 +1136,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
       if (process.organization_id !== access.organizationId) {
         throw new Error("O processo precisa pertencer à organização ativa.");
       }
-      primaryProcessVersion = process.current_version;
+      primaryProcessVersion = data.moduleId === "ddp" ? null : process.current_version;
     }
 
     let doc: Database["public"]["Tables"]["documents"]["Row"] | null = null;
