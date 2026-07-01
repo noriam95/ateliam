@@ -4045,7 +4045,7 @@ function buildReadonlyPreviewHtml(
     moduleId === "pop" ? "Tipo" : moduleId === "bpmn" ? "Processo vinculado" : "Processo";
   const fields: Array<[string, string]> = [
     ["Código", row.code],
-    [moduleId === "ddp" ? "Nome do processo" : "Nome", row.name],
+    [moduleId === "ddp" ? "Título do mapeamento" : "Nome", row.name],
     [processLabel, moduleId === "pop" ? row.type : row.process],
     ["Área", row.area],
     ...(moduleId === "ddp" ? ([["Dono do processo", row.owner]] as Array<[string, string]>) : []),
@@ -6320,7 +6320,10 @@ function moduleGridRowFromWorkspace(
       name: workspace.ddp.meta.titulo || "Mapeamento sem título",
       type: "Mapeamento",
       modalidade: workspace.ddp.meta.modalidade || "AS IS",
-      process: workspace.ddp.macroprocess.titulo || "-",
+      process:
+        workspace.ddp.macroprocess.titulo ||
+        workspace.ddp.legacy?.processName?.toString() ||
+        "-",
       area: workspace.ddp.meta.area || "-",
       owner: workspace.ddp.overview.donoProcesso || "-",
       responsible: workspace.ddp.meta.elaborador || "-",
@@ -6497,7 +6500,8 @@ function ModuleDocumentGrid({
     moduleId === "ddp"
       ? [
           ["code", "Código"],
-          ["name", "Nome do processo"],
+          ["name", "Título do mapeamento"],
+          ["process", "Nome do processo"],
           ["modalidade", "Modalidade"],
           ["area", "Área"],
           ["owner", "Dono do processo"],
@@ -8147,6 +8151,10 @@ function DdpModule({
         processVersion: 1,
         titulo: "",
         legenda: "",
+      },
+      legacy: {
+        ...(data.legacy ?? {}),
+        processName: process?.name ?? "",
       },
     });
   }
