@@ -557,7 +557,6 @@ function ConsultationTable({
     <div className="rounded-lg border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
         <div className="grid gap-2">
-          <h2 className="font-display text-base font-semibold">Cadeia de Valor</h2>
           <div className="inline-flex w-fit rounded-md border border-border bg-muted/40 p-1">
             <button
               type="button"
