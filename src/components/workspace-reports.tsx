@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FileSpreadsheet, ImageDown, Network } from "lucide-react";
+import { FileSpreadsheet, Filter, ImageDown, Network } from "lucide-react";
 import { listProcessRegistrationData } from "@/lib/config.functions";
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
 import { downloadXlsx } from "@/lib/xlsx-export";
@@ -258,11 +258,22 @@ function PorterDiagram({
                         <button
                           type="button"
                           key={item.id}
+                          disabled={!onSelectChain}
                           onClick={() => onSelectChain?.(item)}
                           title={item.description ?? undefined}
-                          className={`grid min-h-16 place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text} transition-colors hover:bg-muted/40`}
+                          className={`group grid min-h-20 place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text} shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
+                            onSelectChain
+                              ? "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0"
+                              : "cursor-default"
+                          }`}
                         >
-                          {item.name}
+                          <span>{item.name}</span>
+                          {onSelectChain ? (
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition group-hover:border-[var(--gold)]/60 group-hover:text-foreground">
+                              <Filter className="h-3 w-3" />
+                              Filtrar
+                            </span>
+                          ) : null}
                         </button>
                       ))}
                     </div>

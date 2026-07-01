@@ -5360,6 +5360,10 @@ function ModuleWorkspacePage() {
   }
 
   function selectRailArea(area: RailArea) {
+    if (area === "home") {
+      navigate({ to: "/" });
+      return;
+    }
     if (area === "reports") {
       navigate({ to: "/", search: { area: "reports", view: "value-chain-report" } });
       return;
@@ -5776,9 +5780,15 @@ function ModuleWorkspacePage() {
         >
           <Menu className="h-4 w-4" />
         </button>
-        <div className="flex h-full items-center">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/" })}
+          className="flex h-full items-center rounded-md transition-opacity hover:opacity-80"
+          title="Ir para a página inicial"
+          aria-label="Ir para a página inicial"
+        >
           <BFFlowMark className="h-9" />
-        </div>
+        </button>
         <div className="flex-1" />
         {moduleId === "pop" &&
         contentMode === "module" &&
@@ -5901,17 +5911,6 @@ function ModuleWorkspacePage() {
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                {railArea === "home" ? (
-                  <ModuleTreeSection
-                    title="Organização Ativa"
-                    open={expandedTree.home}
-                    onToggle={() => toggleTree("home")}
-                  >
-                    <ModuleTreeButton onClick={() => navigate({ to: "/" })}>
-                      Visão geral
-                    </ModuleTreeButton>
-                  </ModuleTreeSection>
-                ) : null}
 
                 {railArea === "modules" ? (
                   <div className="grid gap-1">
