@@ -8094,9 +8094,7 @@ function DdpModule({
   );
   const primaryProcessOptions = useMemo(
     () =>
-      catalogs.processes.filter(
-        (process) => process.status !== "Arquivado" && process.type === "process",
-      ),
+      catalogs.processes.filter((process) => process.status !== "Arquivado"),
     [catalogs.processes],
   );
   const flowProcessOptions = useMemo(() => {
@@ -8146,7 +8144,6 @@ function DdpModule({
       meta: {
         ...data.meta,
         codigo: process?.code ?? "",
-        titulo: process?.name ?? "",
         area: process?.department ?? "",
         responsavel: process?.owner ?? "",
         valueChainId: valueChain?.id ?? "",
@@ -8169,14 +8166,11 @@ function DdpModule({
 
   const processDataFields = [
     { label: "Código do processo", value: data.meta.codigo },
-    { label: "Título do processo", value: data.meta.titulo },
+    { label: "Processo", value: selectedProcess?.name ?? "" },
+    { label: "Tipo", value: selectedProcess ? processTypeLabel(selectedProcess.type) : "" },
     { label: "Cadeia de valor", value: data.meta.valueChainName },
     { label: "Área / Departamento", value: data.meta.area },
     { label: "Responsável / Dono", value: data.meta.responsavel },
-    {
-      label: "Versão do processo",
-      value: selectedProcess ? `v${data.macroprocess.processVersion ?? 1}` : "",
-    },
   ];
 
   const completion = useMemo(() => {
@@ -8195,6 +8189,7 @@ function DdpModule({
   }, [data]);
   const sectionProgress = {
     identification: completionPercent([
+      data.meta.titulo,
       data.meta.data,
       data.meta.modalidade,
       data.meta.elaborador,
@@ -8361,6 +8356,11 @@ function DdpModule({
         <>
       <Panel title="Dados do Mapeamento" progress={sectionProgress.identification}>
         <div className="grid gap-4 md:grid-cols-3">
+          <Field
+            label="Título do Mapeamento"
+            value={data.meta.titulo}
+            onChange={(titulo) => update({ ...data, meta: { ...data.meta, titulo } })}
+          />
           <Field
             label="Data"
             type="date"
