@@ -131,7 +131,6 @@ import {
 } from "@/lib/config.functions";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
 import {
-  DOC_TYPE_LABELS,
   type CodeSettings,
   type DocType,
   normalizeCodeSettings,
@@ -650,15 +649,17 @@ function OrganizationsSettings({
                 event.preventDefault();
                 saveMut.mutate();
               }}
-              className="my-auto max-h-[92vh] w-full max-w-5xl overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+              className="my-auto flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
             >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 border-b border-border px-5 py-4">
               <OrganizationLogo row={draft} large />
               <div className="min-w-0">
                 <div className="font-display text-lg font-bold">
                   {draft.id ? "Editar organização" : "Nova organização"}
                 </div>
-                <div className="text-xs text-muted-foreground">Identidade institucional</div>
+                <div className="text-xs text-muted-foreground">
+                  Identidade, codificação e layout dos documentos
+                </div>
               </div>
               <button
                 type="button"
@@ -670,62 +671,67 @@ function OrganizationsSettings({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="mt-5 grid gap-4">
-              <FormField label="Nome da organização">
-                <input
-                  required
-                  value={draft.name}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, name: event.target.value }))
-                  }
-                  className={inputClass}
-                />
-              </FormField>
-              <FormField label="Identificador">
-                <input
-                  required
-                  value={draft.slug}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, slug: event.target.value }))
-                  }
-                  className={inputClass}
-                  placeholder="ex.: bom-futuro"
-                />
-              </FormField>
-              <div className="rounded-md border border-border bg-muted/30 p-4">
-                <div className="text-sm font-semibold">Logo do sistema</div>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Esta é a logo exibida no sistema para a organização. A cor dos cabeçalhos dos
-                  documentos é configurada abaixo, por tipo de documento.
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  {draft.logo_data_url ? (
-                    <img
-                      src={draft.logo_data_url}
-                      alt="Logo do sistema"
-                      className="h-14 w-32 rounded-md border border-border bg-white object-contain p-2"
+            <div className="grid gap-5 overflow-auto p-5">
+              <SettingsSection
+                title="Organização"
+                description="Dados básicos e logo usada na interface do sistema."
+              >
+                <div className="grid gap-4 lg:grid-cols-[1fr_1fr_260px]">
+                  <FormField label="Nome da organização">
+                    <input
+                      required
+                      value={draft.name}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, name: event.target.value }))
+                      }
+                      className={inputClass}
                     />
-                  ) : (
-                    <span className="flex h-14 w-32 items-center justify-center rounded-md border border-dashed border-border bg-background p-2 text-xs text-muted-foreground">
-                      Sem logo
-                    </span>
-                  )}
-                  <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted">
-                    <ImagePlus className="h-4 w-4" /> Alterar logo
-                    <input type="file" accept="image/*" className="hidden" onChange={selectLogo} />
-                  </label>
-                  {draft.logo_data_url ? (
-                    <button
-                      type="button"
-                      onClick={() => setDraft((current) => ({ ...current, logo_data_url: null }))}
-                      className={iconButtonClass}
-                      title="Remover logo"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  ) : null}
+                  </FormField>
+                  <FormField label="Identificador">
+                    <input
+                      required
+                      value={draft.slug}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, slug: event.target.value }))
+                      }
+                      className={inputClass}
+                      placeholder="ex.: bom-futuro"
+                    />
+                  </FormField>
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground">Logo do sistema</div>
+                    <div className="mt-1 flex h-10 items-center gap-2">
+                      {draft.logo_data_url ? (
+                        <img
+                          src={draft.logo_data_url}
+                          alt="Logo do sistema"
+                          className="h-10 w-24 rounded-md border border-border bg-white object-contain p-1"
+                        />
+                      ) : (
+                        <span className="flex h-10 w-24 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+                          Sem logo
+                        </span>
+                      )}
+                      <label className={iconButtonClass} title="Alterar logo">
+                        <ImagePlus className="h-4 w-4" />
+                        <input type="file" accept="image/*" className="hidden" onChange={selectLogo} />
+                      </label>
+                      {draft.logo_data_url ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDraft((current) => ({ ...current, logo_data_url: null }))
+                          }
+                          className={iconButtonClass}
+                          title="Remover logo"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </SettingsSection>
 
               <CodificationSettings
                 settings={draft.code_settings}
@@ -739,7 +745,15 @@ function OrganizationsSettings({
                 organizationLogo={draft.logo_data_url}
                 onChange={setDraftModels}
               />
-
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-border bg-card px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setFormOpen(false)}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold hover:bg-muted"
+              >
+                Cancelar
+              </button>
               <button
                 type="submit"
                 disabled={
@@ -754,7 +768,7 @@ function OrganizationsSettings({
                 className={primaryButtonClass}
               >
                 <Save className="h-4 w-4" />
-                {saveMut.isPending ? "Salvando..." : "Salvar organização"}
+                {saveMut.isPending ? "Salvando..." : "Salvar"}
               </button>
             </div>
             </form>
@@ -768,40 +782,59 @@ function OrganizationsSettings({
 const CODIFICATION_GROUPS: Array<{
   key: string;
   title: string;
-  description: string;
+  detail: string;
   types: DocType[];
   showPreview: boolean;
 }> = [
   {
     key: "normative",
     title: "POP, Norma e IT",
-    description:
-      "Habilita a geração automática para documentos normativos. Cada tipo mantém sua sigla e sequência própria.",
+    detail: "Uma chave liga os três; siglas e sequências continuam separadas.",
     types: ["pop", "norma", "it"],
     showPreview: true,
   },
   {
     key: "mapping",
     title: "Relatório de Mapeamento e Apresentação de Mapeamento",
-    description: "Os dois documentos usam a mesma codificação de mapeamento.",
+    detail: "Ambos usam a codificação MAP.",
     types: ["mapeamento"],
     showPreview: true,
   },
   {
     key: "flowchart",
     title: "Fluxograma",
-    description: "Reservado para o futuro modelo de desenho de fluxograma.",
+    detail: "Reservado para o modelo de desenho.",
     types: ["fluxograma"],
     showPreview: true,
   },
   {
     key: "process",
     title: "Processo",
-    description: "Habilita ou desabilita a codificação do cadastro de processo.",
+    detail: "Somente habilita o código do cadastro.",
     types: ["processo"],
     showPreview: false,
   },
 ];
+
+function SettingsSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="grid gap-3 rounded-lg border border-border bg-background p-4">
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function CodificationSettings({
   settings,
@@ -825,59 +858,88 @@ function CodificationSettings({
   }
 
   return (
-    <div className="rounded-md border border-border bg-muted/30 p-4">
-      <div className="text-sm font-semibold">Codificação</div>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        Configure a geração automática por grupo de documento. O formato permanece fixo:{" "}
-        <code>SIGLA.ÁREA.000</code>. Mesmo quando POP, Norma e IT são habilitados em conjunto, cada
-        tipo mantém sua própria sigla e sequência.
-      </p>
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+    <SettingsSection
+      title="Codificação"
+      description="Defina quais registros geram código automaticamente. O formato continua SIGLA.AREA.000."
+    >
+      <div className="overflow-hidden rounded-md border border-border">
         {CODIFICATION_GROUPS.map((group) => {
           const enabled = group.types.every((type) => normalized[type].mode === "auto");
           return (
-            <div key={group.key} className="rounded-md border border-border bg-background p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold">{group.title}</div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {group.description}
-                  </p>
-                </div>
-                <label className="inline-flex items-center gap-2 text-xs font-medium">
+            <div
+              key={group.key}
+              className="grid gap-3 border-t border-border p-3 first:border-t-0 md:grid-cols-[1fr_160px]"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">{group.title}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{group.detail}</div>
+                {enabled && group.showPreview ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {group.types.map((type) => {
+                      const rule = normalized[type];
+                      return (
+                        <span
+                          key={type}
+                          className="rounded-md bg-muted px-2 py-1 font-mono text-[11px] font-semibold text-foreground"
+                        >
+                          {previewDocumentCode(type, "ADM", rule)}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-start md:justify-end">
+                <label className="inline-flex items-center gap-2 text-xs font-semibold">
                   <input
                     type="checkbox"
                     checked={enabled}
                     onChange={(event) => setGroupMode(group.types, event.target.checked)}
                   />
-                  Codificação automática
+                  Automática
                 </label>
               </div>
-              {enabled && group.showPreview ? (
-                <div className="mt-3 grid gap-2">
-                  {group.types.map((type) => {
-                    const rule = normalized[type];
-                    return (
-                      <div key={type} className="text-xs text-muted-foreground">
-                        {DOC_TYPE_LABELS[type]}:{" "}
-                        <span className="font-mono font-semibold text-foreground">
-                          {previewDocumentCode(type, "ADM", rule)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {enabled
-                    ? "Codificação automática habilitada."
-                    : "Código preenchido manualmente no formulário."}
-                </p>
-              )}
             </div>
           );
         })}
       </div>
+    </SettingsSection>
+  );
+}
+
+function ModelLogoControl({
+  model,
+  organizationLogo,
+  onSelect,
+  onClear,
+}: {
+  model: DocumentModelRow;
+  organizationLogo: string | null;
+  onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {model.logo_data_url || organizationLogo ? (
+        <img
+          src={model.logo_data_url || organizationLogo || ""}
+          alt=""
+          className="h-10 w-20 rounded-md border border-border bg-white object-contain p-1"
+        />
+      ) : (
+        <span className="flex h-10 w-20 items-center justify-center rounded-md border border-dashed border-border bg-background p-2">
+          <BFFlowMark className="h-6 max-w-full" />
+        </span>
+      )}
+      <label className={iconButtonClass} title="Alterar logo">
+        <ImagePlus className="h-4 w-4" />
+        <input type="file" accept="image/*" className="hidden" onChange={onSelect} />
+      </label>
+      {model.logo_data_url ? (
+        <button type="button" onClick={onClear} className={iconButtonClass} title="Usar logo do sistema">
+          <Trash2 className="h-4 w-4" />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -940,38 +1002,32 @@ function OrganizationDocumentModelSettings({
   }
 
   return (
-    <div className="rounded-md border border-border bg-muted/30 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold">Documentos e layouts</div>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Configure a cor do cabeçalho e a logo usada em cada layout de documento. POP, Norma e
-            IT compartilham o mesmo layout; relatório e apresentação de mapeamento são configurados
-            individualmente.
-          </p>
-        </div>
-        {loading ? <span className="text-xs text-muted-foreground">Carregando modelos...</span> : null}
-      </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+    <SettingsSection
+      title="Documentos e layouts"
+      description="Ajuste somente o que muda na saída dos documentos: cor do cabeçalho e logo."
+    >
+      {loading ? <span className="text-xs text-muted-foreground">Carregando modelos...</span> : null}
+      <div className="overflow-hidden rounded-md border border-border">
         {editableModels.map(({ title, description, model }) => {
           const metadata = modelMetadata(model.model_key);
           const color = normalizeHex(model.primary_color, organizationColor);
           return (
-            <div key={model.model_key} className="grid gap-3 rounded-md border border-border bg-background p-3">
-              <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-[var(--gold)]">
+            <div
+              key={model.model_key}
+              className="grid gap-3 border-t border-border p-3 first:border-t-0 lg:grid-cols-[1fr_190px_170px]"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
                   {metadata.icon}
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{title}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {metadata.module} · {metadata.format}
-                  </div>
+                  <div className="text-sm font-semibold">{title}</div>
+                  <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</div>
                 </div>
               </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
-              <FormField label="Cor do cabeçalho">
-                <div className="flex gap-2">
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">Cor do cabeçalho</div>
+                <div className="mt-1 flex gap-2">
                   <input
                     type="color"
                     value={`#${color}`}
@@ -995,68 +1051,27 @@ function OrganizationDocumentModelSettings({
                     className={inputClass}
                   />
                 </div>
-              </FormField>
-              <div className="rounded-md border border-border bg-card/70 p-3">
-                <div className="text-xs font-semibold text-muted-foreground">Logo</div>
-                <div className="mt-2 flex items-center gap-3">
-                  {model.logo_data_url || organizationLogo ? (
-                    <img
-                      src={model.logo_data_url || organizationLogo || ""}
-                      alt="Logo do documento"
-                      className="h-12 w-24 rounded-md border border-border bg-white object-contain p-1"
-                    />
-                  ) : (
-                    <span className="flex h-12 w-24 items-center justify-center rounded-md border border-dashed border-border bg-background p-2">
-                      <BFFlowMark className="h-7 max-w-full" />
-                    </span>
-                  )}
-                  <div className="flex gap-2">
-                    <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border px-2 text-xs font-semibold hover:bg-muted">
-                      <ImagePlus className="h-3.5 w-3.5" /> Alterar
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(event) => selectModelLogo(model.model_key, event)}
-                      />
-                    </label>
-                    {model.logo_data_url ? (
-                      <button
-                        type="button"
-                        onClick={() => patchModel(model.model_key, { logo_data_url: null })}
-                        className={iconButtonClass}
-                        title="Usar logo da organização"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">Logo</div>
+                <div className="mt-1">
+                  <ModelLogoControl
+                    model={model}
+                    organizationLogo={organizationLogo}
+                    onSelect={(event) => selectModelLogo(model.model_key, event)}
+                    onClear={() => patchModel(model.model_key, { logo_data_url: null })}
+                  />
                 </div>
-                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                  Sem logo específica, será usada a logo do sistema configurada para a organização.
-                </p>
               </div>
             </div>
           );
         })}
       </div>
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-md border border-dashed border-border bg-background p-3">
-          <div className="text-sm font-semibold">Fluxograma</div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Ainda não possui documento próprio. Esta configuração será reaproveitada quando o modelo
-            de desenho de fluxograma for habilitado.
-          </p>
-        </div>
-        <div className="rounded-md border border-dashed border-border bg-background p-3">
-          <div className="text-sm font-semibold">Processo</div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Não possui layout documental nesta tela. Para processo, use somente a opção de
-            codificação automática acima.
-          </p>
-        </div>
+      <div className="rounded-md bg-muted/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+        Fluxograma ainda não possui documento próprio. Processo não possui layout nesta tela; para
+        ele, use apenas a codificação.
       </div>
-    </div>
+    </SettingsSection>
   );
 }
 
