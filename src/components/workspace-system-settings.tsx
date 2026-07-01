@@ -14,7 +14,15 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 
 // Busca + ordenação reutilizáveis para as tabelas de Configurações,
 // no mesmo padrão das tabelas de cadastro.
@@ -178,6 +186,23 @@ function mergeDocumentModels(rows: DocumentModelRow[]) {
   }));
 }
 
+function normalizeHex(value: string | null | undefined, fallback = "1D1F23") {
+  const normalized = (value ?? "").replace(/[^0-9a-f]/gi, "").slice(0, 6).toUpperCase();
+  return normalized.length === 6 ? normalized : fallback;
+}
+
+function isHexCode(value: string | null | undefined) {
+  return /^[0-9A-F]{6}$/i.test(value ?? "");
+}
+
+function defaultModelsForOrganization(color: string) {
+  const primaryColor = normalizeHex(color);
+  return DEFAULT_DOCUMENT_MODELS.map((model) => ({
+    ...model,
+    primary_color: primaryColor,
+  }));
+}
+
 const roleLabels: Record<AppRole, string> = {
   maestro: "Maestro BF Flow",
   admin: "Administrador",
@@ -314,9 +339,12 @@ export function WorkspaceSystemSettings({
   if (view === "organizations") {
     return (
       <OrganizationsSettings
+        isDemo={isDemo}
         rows={organizations}
         loading={organizationsQ.isLoading && !isDemo}
         error={organizationsQ.error}
+        demoDocumentModels={demoDocumentModels}
+        setDemoDocumentModels={setDemoDocumentModels}
         onSave={async (draft) => {
           if (isDemo) {
             const row: OrganizationRow = draft.id
@@ -348,6 +376,7 @@ export function WorkspaceSystemSettings({
                   slug: draft.slug,
                   logo_data_url: draft.logo_data_url,
                   word_header_color: draft.word_header_color,
+                  code_settings: draft.code_settings,
                 },
               });
           await organizationsQ.refetch();
@@ -432,16 +461,25 @@ export function WorkspaceSystemSettings({
 type OrganizationDraft = OrganizationRow;
 
 function OrganizationsSettings({
+  isDemo,
   rows,
   loading,
   error,
+  demoDocumentModels,
+  setDemoDocumentModels,
   onSave,
 }: {
+  isDemo: boolean;
   rows: OrganizationRow[];
   loading: boolean;
   error: unknown;
+  demoDocumentModels: DocumentModelRow[];
+  setDemoDocumentModels: Dispatch<SetStateAction<DocumentModelRow[]>>;
   onSave: (draft: OrganizationDraft) => Promise<OrganizationRow>;
 }) {
+  const queryClient = useQueryClient();
+  const listDocumentModels = useServerFn(listOrganizationDocumentModels);
+  const saveDocumentModel = useServerFn(saveOrganizationDocumentModel);
   const emptyDraft = (): OrganizationDraft => ({
     id: "",
     name: "",
@@ -450,13 +488,48 @@ function OrganizationsSettings({
     word_header_color: "1D1F23",
   });
   const [draft, setDraft] = useState<OrganizationDraft>(emptyDraft);
+  const [draftModels, setDraftModels] = useState<DocumentModelRow[]>(() =>
+    mergeDocumentModels(DEFAULT_DOCUMENT_MODELS),
+  );
   const [formOpen, setFormOpen] = useState(false);
+  const selectedDocumentOrganizationId = draft.id || null;
+  const documentModelsQ = useQuery({
+    queryKey: ["workspace-document-models", selectedDocumentOrganizationId],
+    queryFn: () => listDocumentModels({ data: { organizationId: selectedDocumentOrganizationId } }),
+    enabled: !isDemo && formOpen && !!selectedDocumentOrganizationId,
+  });
   const table = useSettingsTable(rows, (row) => [row.name, row.slug, row.word_header_color], [
     (row) => row.name,
     (row) => row.slug,
   ]);
   const saveMut = useMutation({
-    mutationFn: () => onSave(draft),
+    mutationFn: async () => {
+      const row = await onSave(draft);
+      const models = draftModels.map((model) => ({
+        ...model,
+        primary_color: normalizeHex(model.primary_color || row.word_header_color),
+      }));
+      if (isDemo) {
+        const next = mergeDocumentModels(models);
+        setDemoDocumentModels(next);
+        window.localStorage.setItem(DEMO_DOCUMENT_MODELS_KEY, JSON.stringify(next));
+        window.dispatchEvent(new Event("ateliam-document-models-changed"));
+      } else {
+        await Promise.all(
+          models.map((model) =>
+            saveDocumentModel({
+              data: {
+                ...model,
+                organizationId: row.id,
+              },
+            }),
+          ),
+        );
+        await queryClient.invalidateQueries({ queryKey: ["module-document-models"] });
+        await queryClient.invalidateQueries({ queryKey: ["workspace-document-models", row.id] });
+      }
+      return row;
+    },
     onSuccess: (row) => {
       toast.success(draft.id ? "Organização atualizada." : "Organização cadastrada.");
       setDraft(row);
@@ -464,6 +537,21 @@ function OrganizationsSettings({
     },
     onError: (cause: Error) => toast.error(cause.message),
   });
+  useEffect(() => {
+    if (!formOpen) return;
+    if (isDemo) {
+      setDraftModels(mergeDocumentModels(demoDocumentModels));
+      return;
+    }
+    if (!draft.id) {
+      setDraftModels(defaultModelsForOrganization(draft.word_header_color));
+      return;
+    }
+    if (documentModelsQ.data) {
+      setDraftModels(mergeDocumentModels(documentModelsQ.data as DocumentModelRow[]));
+    }
+  }, [formOpen, isDemo, demoDocumentModels, draft.id, documentModelsQ.data]);
+
   function selectLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -573,7 +661,7 @@ function OrganizationsSettings({
                 event.preventDefault();
                 saveMut.mutate();
               }}
-              className="my-auto max-h-[92vh] w-full max-w-lg overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+              className="my-auto max-h-[92vh] w-full max-w-5xl overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
             >
             <div className="flex items-center gap-3">
               <OrganizationLogo row={draft} large />
@@ -653,9 +741,25 @@ function OrganizationsSettings({
                 onChange={(code_settings) => setDraft((current) => ({ ...current, code_settings }))}
               />
 
+              <OrganizationDocumentModelSettings
+                models={draftModels}
+                loading={documentModelsQ.isLoading && !isDemo && !!draft.id}
+                organizationColor={draft.word_header_color}
+                organizationLogo={draft.logo_data_url}
+                onChange={setDraftModels}
+              />
+
               <button
                 type="submit"
-                disabled={saveMut.isPending || !draft.name.trim() || !draft.slug.trim()}
+                disabled={
+                  saveMut.isPending ||
+                  (documentModelsQ.isLoading && !isDemo && !!draft.id) ||
+                  !draft.name.trim() ||
+                  !draft.slug.trim() ||
+                  draftModels.some(
+                    (model) => !model.name.trim() || !isHexCode(model.primary_color),
+                  )
+                }
                 className={primaryButtonClass}
               >
                 <Save className="h-4 w-4" />
@@ -723,6 +827,160 @@ function CodificationSettings({
                   Código preenchido manualmente no formulário.
                 </p>
               )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function OrganizationDocumentModelSettings({
+  models,
+  loading,
+  organizationColor,
+  organizationLogo,
+  onChange,
+}: {
+  models: DocumentModelRow[];
+  loading: boolean;
+  organizationColor: string;
+  organizationLogo: string | null;
+  onChange: (models: DocumentModelRow[]) => void;
+}) {
+  const rows = mergeDocumentModels(models);
+
+  function patchModel(modelKey: DocumentModelRow["model_key"], patch: Partial<DocumentModelRow>) {
+    onChange(
+      rows.map((model) => (model.model_key === modelKey ? { ...model, ...patch } : model)),
+    );
+  }
+
+  function selectModelLogo(modelKey: DocumentModelRow["model_key"], event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem para a logo do documento.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => patchModel(modelKey, { logo_data_url: String(reader.result) });
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold">Documentos</div>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+            Configure nome, descrição, cor de cabeçalho e logo por tipo de documento. Estas opções
+            substituem o antigo submenu Modelos de Documentos.
+          </p>
+        </div>
+        {loading ? <span className="text-xs text-muted-foreground">Carregando modelos...</span> : null}
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {rows.map((model) => {
+          const metadata = modelMetadata(model.model_key);
+          const color = normalizeHex(model.primary_color, organizationColor);
+          return (
+            <div key={model.model_key} className="grid gap-3 rounded-md border border-border bg-background p-3">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-[var(--gold)]">
+                  {metadata.icon}
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold">{model.name}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {metadata.module} · {metadata.format}
+                  </div>
+                </div>
+              </div>
+              <FormField label="Nome">
+                <input
+                  value={model.name}
+                  onChange={(event) => patchModel(model.model_key, { name: event.target.value })}
+                  className={inputClass}
+                />
+              </FormField>
+              <FormField label="Descrição">
+                <textarea
+                  rows={2}
+                  value={model.description ?? ""}
+                  onChange={(event) =>
+                    patchModel(model.model_key, { description: event.target.value })
+                  }
+                  className={`${inputClass} h-auto py-2`}
+                />
+              </FormField>
+              <FormField label="Cor do cabeçalho">
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={`#${color}`}
+                    onChange={(event) =>
+                      patchModel(model.model_key, {
+                        primary_color: event.target.value.slice(1).toUpperCase(),
+                      })
+                    }
+                    className="h-10 w-12 rounded-md border border-input bg-background p-1"
+                  />
+                  <input
+                    value={model.primary_color ?? ""}
+                    onChange={(event) =>
+                      patchModel(model.model_key, {
+                        primary_color: event.target.value
+                          .replace(/[^0-9a-f]/gi, "")
+                          .slice(0, 6)
+                          .toUpperCase(),
+                      })
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              </FormField>
+              <div className="rounded-md border border-border bg-card/70 p-3">
+                <div className="text-xs font-semibold text-muted-foreground">Logo</div>
+                <div className="mt-2 flex items-center gap-3">
+                  {model.logo_data_url || organizationLogo ? (
+                    <img
+                      src={model.logo_data_url || organizationLogo || ""}
+                      alt="Logo do documento"
+                      className="h-12 w-24 rounded-md border border-border bg-white object-contain p-1"
+                    />
+                  ) : (
+                    <span className="flex h-12 w-24 items-center justify-center rounded-md border border-dashed border-border bg-background p-2">
+                      <BFFlowMark className="h-7 max-w-full" />
+                    </span>
+                  )}
+                  <div className="flex gap-2">
+                    <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border px-2 text-xs font-semibold hover:bg-muted">
+                      <ImagePlus className="h-3.5 w-3.5" /> Alterar
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => selectModelLogo(model.model_key, event)}
+                      />
+                    </label>
+                    {model.logo_data_url ? (
+                      <button
+                        type="button"
+                        onClick={() => patchModel(model.model_key, { logo_data_url: null })}
+                        className={iconButtonClass}
+                        title="Usar logo da organização"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Sem logo específica, será usada a logo da organização.
+                </p>
+              </div>
             </div>
           );
         })}

@@ -6009,9 +6009,6 @@ function ModuleWorkspacePage() {
                     <ModuleTreeAnchor href="/?area=settings&view=organizations">
                       Organizações
                     </ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=settings&view=document-models">
-                      Modelos de Documentos
-                    </ModuleTreeAnchor>
                     <ModuleTreeButton
                       active={settingsView === "theme"}
                       onClick={() => selectSettings("theme")}

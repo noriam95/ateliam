@@ -464,7 +464,6 @@ function WorkspaceHome() {
           "local-environment",
           "users",
           "organizations",
-          "document-models",
         ].includes(view)
       ) {
         setView("users");
@@ -720,12 +719,6 @@ function WorkspaceHome() {
                         onClick={() => setView("organizations")}
                       >
                         <Building2 className="h-4 w-4" /> Organizações
-                      </TreeButton>
-                      <TreeButton
-                        active={view === "document-models"}
-                        onClick={() => setView("document-models")}
-                      >
-                        <FileText className="h-4 w-4" /> Modelos de Documentos
                       </TreeButton>
                     </div>
                   ) : null}
@@ -1000,7 +993,7 @@ function WorkspaceContent({
   if (view === "users" || view === "organizations" || view === "document-models") {
     return (
       <WorkspaceSystemSettings
-        view={view}
+        view={view === "document-models" ? "organizations" : view}
         isDemo={isDemo}
         organizationName={organizationName}
         organizationId={organizationId}

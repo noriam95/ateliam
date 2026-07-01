@@ -43,6 +43,9 @@ const codeRuleSchema = z.object({
   sequences: z.record(z.string(), z.number().int().min(1)).default({}),
 });
 const codeSettingsSchema = z.record(z.enum(DOC_TYPES), codeRuleSchema).nullish();
+const orgCreateSchema = orgSchema.omit({ id: true }).extend({
+  code_settings: codeSettingsSchema,
+});
 const orgUpdateSchema = orgSchema.extend({
   id: z.string().uuid(),
   code_settings: codeSettingsSchema,
@@ -302,12 +305,19 @@ export const listAccessibleOrganizations = createServerFn({ method: "GET" })
 
 export const createOrganization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: z.infer<typeof orgSchema>) => orgSchema.omit({ id: true }).parse(d))
+  .validator((d: z.infer<typeof orgCreateSchema>) => orgCreateSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertMaestro(context);
     const { data: row, error } = await context.supabase
       .from("organizations")
-      .insert({ ...data, created_by: context.userId })
+      .insert({
+        name: data.name,
+        slug: data.slug,
+        logo_data_url: data.logo_data_url ?? null,
+        word_header_color: data.word_header_color,
+        ...(data.code_settings ? { code_settings: normalizeCodeSettings(data.code_settings) } : {}),
+        created_by: context.userId,
+      })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
