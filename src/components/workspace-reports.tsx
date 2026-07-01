@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FileSpreadsheet, Filter, ImageDown, Network } from "lucide-react";
+import { FileSpreadsheet, Filter, ImageDown, Maximize2, Network, X } from "lucide-react";
 import { listProcessRegistrationData } from "@/lib/config.functions";
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
 import { downloadXlsx } from "@/lib/xlsx-export";
@@ -188,6 +188,7 @@ function PorterDiagram({
   onSelectChain?: (chain: ValueChain) => void;
   onExportPng?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const bands = [
     {
       key: "management",
@@ -218,9 +219,87 @@ function PorterDiagram({
     },
   ];
 
+  const renderDiagram = (large = false) => (
+    <div className="overflow-x-auto">
+      <div className={`flex ${large ? "min-w-[1180px]" : "min-w-[860px]"} items-stretch`}>
+        <div className="grid flex-1 grid-cols-[148px_minmax(0,1fr)] gap-1">
+          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
+            Categoria
+          </div>
+          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
+            Macroprocesso
+          </div>
+          {bands.map((band) => (
+            <div key={band.key} className="contents">
+              <div
+                className={`grid ${large ? "min-h-36" : "min-h-28"} place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-sm`}
+              >
+                {band.label}
+              </div>
+              <div
+                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm`}
+              >
+                {band.items.length ? (
+                  <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
+                    {band.items.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        disabled={!onSelectChain}
+                        onClick={() => onSelectChain?.(item)}
+                        title={item.description ?? undefined}
+                        className={`group grid ${large ? "min-h-24" : "min-h-20"} place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text} shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
+                          onSelectChain
+                            ? "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0"
+                            : "cursor-default"
+                        }`}
+                      >
+                        <span>{item.name}</span>
+                        {onSelectChain ? (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition group-hover:border-[var(--gold)]/60 group-hover:text-foreground">
+                            <Filter className="h-3 w-3" />
+                            Filtrar
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border text-xs italic text-muted-foreground">
+                    Nenhum processo cadastrado
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className={`${large ? "w-56" : "w-44"} relative ml-2 shrink-0`}>
+          <div
+            className="absolute inset-y-9 left-0 right-0 bg-gradient-to-r from-[#009b78] via-[#00a8bc] to-[#6fded2] shadow-sm"
+            style={{ clipPath: "polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%)" }}
+          />
+          <div className="relative flex h-full items-center justify-center pr-7">
+            <span className={`${large ? "text-4xl" : "text-3xl"} font-black text-[#005f54]`}>
+              Missão
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="grid gap-2">
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title="Expandir desenho"
+          className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+        >
+          <Maximize2 className="h-4 w-4" />
+          Expandir
+        </button>
         {onExportPng ? (
           <button
             type="button"
@@ -233,72 +312,31 @@ function PorterDiagram({
           </button>
         ) : null}
       </div>
-      <div className="overflow-x-auto">
-        <div className="flex min-w-[860px] items-stretch">
-          <div className="grid flex-1 grid-cols-[148px_minmax(0,1fr)] gap-1">
-            <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
-              Categoria
-            </div>
-            <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
-              Macroprocesso
-            </div>
-            {bands.map((band) => (
-              <div key={band.key} className="contents">
-                <div
-                  className={`grid min-h-28 place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-sm`}
-                >
-                  {band.label}
-                </div>
-                <div
-                  className={`min-h-28 rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm`}
-                >
-                  {band.items.length ? (
-                    <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
-                      {band.items.map((item) => (
-                        <button
-                          type="button"
-                          key={item.id}
-                          disabled={!onSelectChain}
-                          onClick={() => onSelectChain?.(item)}
-                          title={item.description ?? undefined}
-                          className={`group grid min-h-20 place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text} shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
-                            onSelectChain
-                              ? "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0"
-                              : "cursor-default"
-                          }`}
-                        >
-                          <span>{item.name}</span>
-                          {onSelectChain ? (
-                            <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition group-hover:border-[var(--gold)]/60 group-hover:text-foreground">
-                              <Filter className="h-3 w-3" />
-                              Filtrar
-                            </span>
-                          ) : null}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border text-xs italic text-muted-foreground">
-                      Nenhum processo cadastrado
-                    </div>
-                  )}
-                </div>
+      {renderDiagram(false)}
+      {expanded ? (
+        <div className="fixed inset-0 z-[80] grid bg-slate-950/50 p-4 backdrop-blur-[2px]">
+          <div className="grid max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+              <div>
+                <div className="font-display text-lg font-bold">Cadeia de Valor</div>
+                <div className="text-xs text-muted-foreground">Visualização expandida do desenho</div>
               </div>
-            ))}
-          </div>
-          <div className="relative ml-2 w-44 shrink-0">
-            <div
-              className="absolute inset-y-9 left-0 right-0 bg-gradient-to-r from-[#009b78] via-[#00a8bc] to-[#6fded2] shadow-sm"
-              style={{ clipPath: "polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%)" }}
-            />
-            <div className="relative flex h-full items-center justify-center pr-7">
-              <span className="text-3xl font-black text-[#005f54]">
-                Missão
-              </span>
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                className="ml-auto grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Fechar"
+                aria-label="Fechar visualização expandida"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-auto p-4">
+              {renderDiagram(true)}
             </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }
