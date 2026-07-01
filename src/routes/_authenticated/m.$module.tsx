@@ -8145,6 +8145,7 @@ function DdpModule({
 
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const toggleStep = (stepId: string) =>
     setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
 
@@ -8336,6 +8337,17 @@ function DdpModule({
     updateGap(gapId, gapPatchFromOrganizationCause(cause));
   }
 
+  function requestStatusChange(status: string) {
+    if (status === (data.meta.status || "Em andamento")) return;
+    setPendingStatus(status);
+  }
+
+  function confirmStatusChange() {
+    if (!pendingStatus) return;
+    update({ ...data, meta: { ...data.meta, status: pendingStatus } });
+    setPendingStatus(null);
+  }
+
   return (
     <div className="grid gap-5">
       <Hero title="Formulário de Preenchimento" eyebrow="Mapeamento" progress={completion} />
@@ -8387,8 +8399,11 @@ function DdpModule({
         </div>
       ) : null}
       <MappingSectionsGate enabled={!!selectedProcess}>
-        <Panel title="Dados do Mapeamento" progress={sectionProgress.identification}>
+      <Panel title="Dados do Mapeamento" progress={sectionProgress.identification}>
         <div className="grid gap-4 md:grid-cols-3">
+          {data.meta.codigo ? (
+            <ReadOnlyField label="Código do mapeamento" value={data.meta.codigo} />
+          ) : null}
           <Field
             label="Título do Mapeamento"
             value={data.meta.titulo}
@@ -8426,10 +8441,10 @@ function DdpModule({
             label="Status"
             value={data.meta.status || "Em andamento"}
             options={MODULE_STATUS_OPTIONS}
-            onChange={(status) => update({ ...data, meta: { ...data.meta, status } })}
+            onChange={requestStatusChange}
           />
         </div>
-      </Panel>
+        </Panel>
       <Panel title="Visão geral" progress={sectionProgress.overview}>
         <div className="grid gap-4 md:grid-cols-2">
           <TextArea
@@ -9073,8 +9088,32 @@ function DdpModule({
             Adicionar termo
           </button>
         </div>
-        </Panel>
+      </Panel>
       </MappingSectionsGate>
+      {pendingStatus ? (
+        <Modal
+          title="Alterar status do mapeamento"
+          subtitle={`Confirma alterar o status de “${data.meta.status || "Em andamento"}” para “${pendingStatus}”?`}
+          onClose={() => setPendingStatus(null)}
+        >
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingStatus(null)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmStatusChange}
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+            >
+              Alterar
+            </button>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   );
 }
