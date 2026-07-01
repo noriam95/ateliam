@@ -1172,17 +1172,20 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
       doc = created;
     }
 
-    const nextVersion = (doc.current_version ?? 0) + 1;
-    const hash = await sha256Hex(data.content);
-    const { error: versionError } = await context.supabase.from("document_versions").insert({
-      document_id: doc.id,
-      version_number: nextVersion,
-      author_id: context.userId,
-      comment: data.comment ?? null,
-      content_hash: hash,
-      content_snapshot: data.content,
-    });
-    if (versionError) throw new Error(versionError.message);
+    const nextVersion =
+      data.moduleId === "ddp" ? (doc.current_version ?? 0) : (doc.current_version ?? 0) + 1;
+    if (data.moduleId !== "ddp") {
+      const hash = await sha256Hex(data.content);
+      const { error: versionError } = await context.supabase.from("document_versions").insert({
+        document_id: doc.id,
+        version_number: nextVersion,
+        author_id: context.userId,
+        comment: data.comment ?? null,
+        content_hash: hash,
+        content_snapshot: data.content,
+      });
+      if (versionError) throw new Error(versionError.message);
+    }
 
     const { data: updated, error: updateError } = await context.supabase
       .from("documents")

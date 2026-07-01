@@ -513,7 +513,6 @@ function defaultWorkspace(): WorkspaceState {
         responsavel: "",
         valueChainId: "",
         valueChainName: "",
-        // Versão zerada na criação; a contagem começa a partir da 1ª revisão.
         versao: "0",
         data: today(),
         dataRelatorio: "",
@@ -3605,7 +3604,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           { xml: doc.labelValue("Tipo", "Relatório de Mapeamento de Processo") },
           { xml: doc.labelValue("Subtítulo", model.meta.subtitulo) },
           { xml: doc.labelValue("Data", model.meta.dataRelatorio || model.meta.data) },
-          { xml: doc.labelValue("Versão", model.meta.versao) },
+          { xml: doc.labelValue("Modalidade", model.meta.modalidade) },
         ],
         [
           { xml: doc.labelValue("Elaborador", model.meta.elaborador), fill: doc.C.gray50 },
@@ -4193,7 +4192,7 @@ main{margin-left:var(--nav)}section{min-height:100vh;padding:58px 72px;border-bo
     .map(([href, label]) => `<a href="#${href}">${html(label)}</a>`)
     .join("")}</nav>
 <main>
-<section class="hero" id="capa"><div class="kicker">Relatório de Mapeamento de Processo</div><h1>${title}</h1><p>${html(model.scope || model.description)}</p><div class="meta"><div><b>Documento:</b> ${code}</div><div><b>Versão:</b> ${html(model.meta.versao)}</div><div><b>Data:</b> ${html(model.meta.dataRelatorio || model.meta.data)}</div><div><b>Elaborador:</b> ${html(model.meta.elaborador)}</div><div><b>Revisor:</b> ${html(model.meta.revisor)}</div></div></section>
+<section class="hero" id="capa"><div class="kicker">Relatório de Mapeamento de Processo</div><h1>${title}</h1><p>${html(model.scope || model.description)}</p><div class="meta"><div><b>Documento:</b> ${code}</div><div><b>Modalidade:</b> ${html(model.meta.modalidade)}</div><div><b>Data:</b> ${html(model.meta.dataRelatorio || model.meta.data)}</div><div><b>Elaborador:</b> ${html(model.meta.elaborador)}</div><div><b>Revisor:</b> ${html(model.meta.revisor)}</div></div></section>
 <section id="sistemas"><div class="section-head"><span>02</span><div><h2>Sistemas Envolvidos e Escopo</h2><p>${html(model.scope)}</p></div></div>${cardGrid(
     model.systems.map((system) => ({
       title: system.name,
@@ -4418,7 +4417,7 @@ function ModuleWorkspacePage() {
         : activeCloudDocument?.id
           ? listCloudDocumentVersions({ data: { documentId: activeCloudDocument.id } })
           : listVersions(),
-    enabled: showHistory,
+    enabled: showHistory && moduleId !== "ddp",
   });
   const catalogsQ = useQuery({
     queryKey: ["organization-catalogs", isDemo ? "demo" : (selectedOrganizationId ?? "cloud")],
@@ -4944,11 +4943,9 @@ function ModuleWorkspacePage() {
         data: {
           organizationId: selectedOrganizationId,
           id:
-            moduleId === "ddp"
-              ? null
-              : activeCloudDocument?.moduleId === moduleId
-                ? activeCloudDocument.id
-                : null,
+            activeCloudDocument?.moduleId === moduleId
+              ? activeCloudDocument.id
+              : null,
           moduleId: moduleId as "ddp" | "pop" | "bpmn",
           code: payload.code,
           title: payload.title,
@@ -4967,6 +4964,13 @@ function ModuleWorkspacePage() {
       setShowSave(false);
       setComment("");
       if (moduleId === "ddp") {
+        if (!isDemo && "document" in result) {
+          setActiveCloudDocument({
+            id: result.document.id,
+            moduleId,
+            name: result.document.name,
+          });
+        }
         cloudDocsQ.refetch();
         if (!isDemo) wsQ.refetch();
         return;
@@ -5465,7 +5469,7 @@ function ModuleWorkspacePage() {
     return cloudDocument?.content_inline ? parseWorkspace(cloudDocument.content_inline) : null;
   }
 
-  // Abre uma versão somente-leitura amigável do registro em nova aba, com todas
+  // Abre uma visualização somente-leitura amigável do registro em nova aba, com todas
   // as informações preenchidas no formulário e seguindo a identidade visual.
   function viewDocumentRow(row: ModuleGridRow) {
     const snapshot = resolveRowSnapshot(row);
@@ -5546,7 +5550,11 @@ function ModuleWorkspacePage() {
         buildPopDocxModern(snapshot.pop, brandForDocumentModel("pop-word")),
       );
     }
-    toast.success("Documento exportado a partir da versão salva.");
+    toast.success(
+      moduleId === "ddp"
+        ? "Mapeamento exportado."
+        : "Documento exportado a partir da versão salva.",
+    );
   }
 
   const moduleMainContent =
@@ -5992,15 +6000,23 @@ function ModuleWorkspacePage() {
 
       {showSave && (
         <Modal
-          title="Salvar versão"
-          subtitle="Cria um ponto de restauração para este workspace."
+          title={moduleId === "ddp" ? "Salvar mapeamento" : "Salvar versão"}
+          subtitle={
+            moduleId === "ddp"
+              ? "Grava o preenchimento como registro de mapeamento."
+              : "Cria um ponto de restauração para este workspace."
+          }
           onClose={() => setShowSave(false)}
         >
           <textarea
             rows={4}
             value={comment}
             onChange={(event) => setComment(event.target.value)}
-            placeholder="Descreva rapidamente o que foi alterado"
+            placeholder={
+              moduleId === "ddp"
+                ? "Observação opcional sobre o registro"
+                : "Descreva rapidamente o que foi alterado"
+            }
             className="mb-4 w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3f3f46]"
           />
           <div className="flex justify-end gap-2">
@@ -6021,7 +6037,7 @@ function ModuleWorkspacePage() {
         </Modal>
       )}
 
-      {showHistory && (
+      {showHistory && moduleId !== "ddp" && (
         <Modal
           title="Histórico"
           subtitle="Restaure uma versão salva quando precisar."
@@ -6324,8 +6340,11 @@ function moduleGridRowFromWorkspace(
         workspace.ddp.macroprocess.titulo ||
         workspace.ddp.legacy?.processName?.toString() ||
         "-",
-      area: workspace.ddp.meta.area || "-",
-      owner: workspace.ddp.overview.donoProcesso || "-",
+      area: workspace.ddp.legacy?.processArea?.toString() || workspace.ddp.meta.area || "-",
+      owner:
+        workspace.ddp.legacy?.processOwner?.toString() ||
+        workspace.ddp.overview.donoProcesso ||
+        "-",
       responsible: workspace.ddp.meta.elaborador || "-",
     };
   }
@@ -8129,7 +8148,31 @@ function DdpModule({
   const toggleStep = (stepId: string) =>
     setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
 
+  function findProcessValueChain(process: OrganizationProcess | null) {
+    let current = process;
+    const visited = new Set<string>();
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      if (current.value_chain_id) {
+        return catalogs.valueChains.find((chain) => chain.id === current?.value_chain_id) ?? null;
+      }
+      current = current.parent_process_id
+        ? catalogs.processes.find((item) => item.id === current?.parent_process_id) ?? null
+        : null;
+    }
+    return null;
+  }
+
+  const selectedProcessValueChain = findProcessValueChain(selectedProcess);
+  const processDataFields = [
+    { label: "Código do processo", value: selectedProcess?.code ?? "" },
+    { label: "Cadeia de valor", value: selectedProcessValueChain?.name ?? "" },
+    { label: "Área / Departamento", value: selectedProcess?.department ?? "" },
+    { label: "Responsável / Dono", value: selectedProcess?.owner ?? "" },
+  ];
+
   function selectPrimaryProcess(process: OrganizationProcess | null) {
+    const valueChain = findProcessValueChain(process);
     update({
       ...data,
       meta: {
@@ -8155,6 +8198,10 @@ function DdpModule({
       legacy: {
         ...(data.legacy ?? {}),
         processName: process?.name ?? "",
+        processCode: process?.code ?? "",
+        processValueChainName: valueChain?.name ?? "",
+        processArea: process?.department ?? "",
+        processOwner: process?.owner ?? "",
       },
     });
   }
@@ -8302,6 +8349,11 @@ function DdpModule({
           onSelect={selectPrimaryProcess}
           displayName={(process) => process.name}
         />
+        <div className="mt-4 grid gap-4 md:grid-cols-4">
+          {processDataFields.map((field) => (
+            <ReadOnlyField key={field.label} label={field.label} value={field.value} />
+          ))}
+        </div>
         {!selectedProcess ? (
           <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
             Selecione um processo cadastrado para habilitar o preenchimento do mapeamento.
