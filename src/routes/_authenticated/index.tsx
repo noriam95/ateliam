@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -16,24 +16,19 @@ import {
   FileText,
   FlaskConical,
   GitBranch,
-  Home,
   Layers,
   LayoutGrid,
   Link2,
   ListChecks,
-  LogOut,
   Maximize2,
   Menu,
   Network,
   Plus,
   Search,
   Settings,
-  Upload,
-  User,
   Users,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
@@ -129,8 +124,6 @@ type AccessibleOrganization = {
   isDefault?: boolean;
 };
 
-const PROFILE_PHOTO_PREFIX = "ateliam-profile-photo:";
-
 const workspaceGrayVars = {
   "--accent": "color-mix(in oklab, var(--gold) 12%, var(--background))",
   "--accent-foreground": "var(--foreground)",
@@ -139,10 +132,6 @@ const workspaceGrayVars = {
   "--blue": "var(--gold)",
   "--indigo": "var(--muted-foreground)",
 } as CSSProperties;
-
-function moduleWorkspaceView(moduleId: AteliamModule, task: ModuleTask = "home") {
-  return `module:${moduleId}:${task}` as WorkspaceView;
-}
 
 function isModuleView(view: WorkspaceView, moduleId: AteliamModule) {
   return String(view).startsWith(`module:${moduleId}`);
@@ -2097,116 +2086,6 @@ function SimplePanel({
   );
 }
 
-function ProfileMenu({
-  email,
-  organizationName,
-  onSignOut,
-}: {
-  email: string;
-  organizationName: string;
-  onSignOut: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const [photo, setPhoto] = useState<string>("");
-  const storageKey = `${PROFILE_PHOTO_PREFIX}${email || "local"}`;
-  const initials = (email || "BF Flow")
-    .split("@")[0]
-    .split(/[._\-\s]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-
-  useEffect(() => {
-    try {
-      setPhoto(window.localStorage.getItem(storageKey) ?? "");
-    } catch {
-      setPhoto("");
-    }
-  }, [storageKey]);
-
-  function changePhoto(file: File | undefined) {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione uma imagem.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = String(reader.result ?? "");
-      try {
-        window.localStorage.setItem(storageKey, value);
-      } catch {
-        toast.error("Não foi possível salvar a foto localmente.");
-        return;
-      }
-      setPhoto(value);
-      toast.success("Foto de perfil atualizada.");
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function removePhoto() {
-    try {
-      window.localStorage.removeItem(storageKey);
-    } catch {
-      // Ignore local cleanup failures.
-    }
-    setPhoto("");
-    toast.success("Foto removida.");
-  }
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="grid h-9 w-9 overflow-hidden rounded-full border border-border bg-card text-sm font-bold text-foreground"
-        title="Perfil"
-      >
-        {photo ? (
-          <img src={photo} alt="Perfil" className="h-full w-full object-cover" />
-        ) : (
-          <span className="grid h-full w-full place-items-center">{initials || "AT"}</span>
-        )}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(event) => {
-          changePhoto(event.target.files?.[0]);
-          event.currentTarget.value = "";
-        }}
-      />
-      {open ? (
-        <div className="absolute right-0 top-11 z-50 w-72 rounded-lg border border-border bg-popover p-2 shadow-2xl">
-          <div className="border-b border-border px-3 py-2">
-            <div className="text-sm font-bold text-popover-foreground">
-              {email || "Usuário local"}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">{organizationName}</div>
-          </div>
-          <ProfileMenuButton
-            icon={<Upload className="h-4 w-4" />}
-            onClick={() => inputRef.current?.click()}
-          >
-            Alterar foto
-          </ProfileMenuButton>
-          <ProfileMenuButton icon={<User className="h-4 w-4" />} onClick={removePhoto}>
-            Remover foto
-          </ProfileMenuButton>
-          <ProfileMenuButton icon={<LogOut className="h-4 w-4" />} onClick={onSignOut}>
-            Sair
-          </ProfileMenuButton>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function TreeSection({
   title,
   icon,
@@ -2343,109 +2222,6 @@ function TreeLink({
   );
 }
 
-function percentage(value: number, total: number) {
-  if (!total) return "sem processos cadastrados";
-  return `${Math.round((value / total) * 100)}% do catálogo`;
-}
-
-function CoverageOverview({ totals }: { totals: DashboardTotals | undefined }) {
-  const total = totals?.processes ?? 0;
-  const rows = [
-    {
-      label: "Processos ativos",
-      value: totals?.activeProcesses ?? 0,
-      percent: total ? Math.min(100, ((totals?.activeProcesses ?? 0) / total) * 100) : 0,
-    },
-    {
-      label: "Processos com mapeamento",
-      value: totals?.ddps ?? 0,
-      percent: total ? Math.min(100, ((totals?.ddps ?? 0) / total) * 100) : 0,
-    },
-    {
-      label: "Processos com documentação",
-      value: totals?.pops ?? 0,
-      percent: total ? Math.min(100, ((totals?.pops ?? 0) / total) * 100) : 0,
-    },
-  ];
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            cobertura operacional
-          </div>
-          <h2 className="mt-1 font-display text-lg font-bold">Evolução do catálogo</h2>
-        </div>
-        <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-[var(--gold)]">
-          <Network className="h-4 w-4" />
-        </span>
-      </div>
-      <div className="mt-5 grid gap-4">
-        {rows.map((row) => (
-          <div key={row.label}>
-            <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
-              <span className="font-medium text-foreground">{row.label}</span>
-              <span className="font-data text-muted-foreground">
-                {row.value} de {total}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-border">
-              <div
-                className="h-full rounded-full bg-[var(--gold)] transition-[width]"
-                style={{ width: `${row.percent}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function OperationalFocus({ totals }: { totals: DashboardTotals | undefined }) {
-  const processes = totals?.processes ?? 0;
-  const items = [
-    {
-      label: "Processos em revisão",
-      value: totals?.reviewProcesses ?? 0,
-      detail: "pedem validação ou atualização",
-    },
-    {
-      label: "Sem mapeamento vinculado",
-      value: Math.max(processes - (totals?.ddps ?? 0), 0),
-      detail: "oportunidades de mapeamento",
-    },
-    {
-      label: "Sem documentação vinculada",
-      value: Math.max(processes - (totals?.pops ?? 0), 0),
-      detail: "oportunidades de padronização",
-    },
-  ];
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-        pontos de atenção
-      </div>
-      <h2 className="mt-1 font-display text-lg font-bold">Prioridades da operação</h2>
-      <div className="mt-4 divide-y divide-border">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent font-data text-sm font-bold text-[var(--gold)]">
-              {item.value}
-            </span>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-foreground">{item.label}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{item.detail}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function DashboardMetric({
   icon,
   label,
@@ -2467,66 +2243,6 @@ function DashboardMetric({
       </div>
       <div className="font-data text-2xl font-bold text-foreground">{value}</div>
       <div className="mt-1 text-[11px] text-muted-foreground">{detail}</div>
-    </div>
-  );
-}
-
-function RecentDocuments({
-  documents,
-}: {
-  documents: Array<{
-    id: string;
-    name: string;
-    module: string;
-    current_version: number;
-    updated_at: string;
-  }>;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-        últimas versões
-      </div>
-      <DocumentTable documents={documents.slice(0, 5)} />
-    </div>
-  );
-}
-
-function RecentProcesses({ processes }: { processes: DashboardProcess[] }) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-        processos atualizados recentemente
-      </div>
-      {processes.length ? (
-        <div className="divide-y divide-border">
-          {processes.slice(0, 5).map((process) => (
-            <div
-              key={process.id}
-              className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]"
-            >
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-foreground">{process.name}</div>
-                <div className="mt-1 truncate text-xs text-muted-foreground">
-                  {process.department || "Área não informada"} · {process.owner || "Sem dono"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 sm:justify-end">
-                <span className="rounded-md bg-accent px-2 py-1 text-[10px] font-semibold text-[var(--gold)]">
-                  {process.status}
-                </span>
-                <span className="font-data text-[10px] text-muted-foreground">
-                  v{process.current_version}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
-          Nenhum processo cadastrado ainda.
-        </div>
-      )}
     </div>
   );
 }
@@ -2604,23 +2320,3 @@ function RankingCard({ title, rows }: { title: string; rows: { label: string; va
   );
 }
 
-function ProfileMenuButton({
-  icon,
-  children,
-  onClick,
-}: {
-  icon: ReactNode;
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-popover-foreground hover:bg-muted"
-    >
-      <span className="text-muted-foreground">{icon}</span>
-      {children}
-    </button>
-  );
-}

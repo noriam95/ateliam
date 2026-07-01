@@ -40,7 +40,7 @@ const LOGIN_MESSAGES = [
   {
     eyebrow: "exportação padronizada",
     title: "Documentos prontos\nno modelo certo.",
-    text: "Exporte DDPs, POPs e fluxos nos formatos corretos, preservando estrutura, identidade visual e padrão corporativo.",
+    text: "Exporte Relatórios de Mapeamento, POPs e fluxos nos formatos corretos, preservando estrutura, identidade visual e padrão corporativo.",
   },
 ];
 

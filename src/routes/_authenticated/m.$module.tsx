@@ -2,7 +2,6 @@ import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  Building2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -18,7 +17,6 @@ import {
   FlaskConical,
   FolderOpen,
   GitBranch,
-  History,
   Home,
   ImagePlus,
   Layers,
@@ -85,7 +83,15 @@ import {
   updateOrganizationCause,
   updateOrganizationProcess,
 } from "@/lib/config.functions";
-import { type CodeKind, type CodeSettings, normalizeRule, formatCode } from "@/lib/code-generation";
+import {
+  type CodeSettings,
+  type DocType,
+  normalizeRule,
+  normalizeSigla,
+  previewDocumentCode,
+  previewDemoDocumentCode,
+  reserveDemoDocumentCode,
+} from "@/lib/code-generation";
 import {
   deleteDemoWorkspaceVersions,
   getDemoWorkspaceVersion,
@@ -101,40 +107,23 @@ import { toast } from "sonner";
 
 type ModuleRouteView = "new" | "consult" | "cause-new" | "cause-consult" | "cause-edit";
 
-// Tipo de codificação associado a cada módulo.
-const MODULE_CODE_KIND: Record<AteliamModule, CodeKind> = {
-  ddp: "mapping",
-  pop: "pop_it",
-  bpmn: "flowchart",
+// Tipo de documento (modalidade) associado a cada módulo. O módulo POP é
+// resolvido por subtipo (POP/IT/Norma) em documentDocType().
+const MODULE_BASE_DOC_TYPE: Record<AteliamModule, DocType> = {
+  ddp: "mapeamento",
+  pop: "pop",
+  bpmn: "fluxograma",
 };
 
-// Em modo demo a sequência de código é mantida por (organização, tipo) no
-// localStorage, inicializada a partir da regra configurada.
-function demoCodeNextKey(organizationId: string | null | undefined, kind: CodeKind) {
-  return `ateliam-demo-code-next:${organizationId ?? "default"}:${kind}`;
-}
-function readDemoCodeNext(
-  organizationId: string | null | undefined,
-  kind: CodeKind,
-  fallback: number,
-) {
-  if (typeof window === "undefined") return fallback;
-  const stored = Number(window.localStorage.getItem(demoCodeNextKey(organizationId, kind)));
-  return Number.isFinite(stored) && stored >= 1 ? Math.floor(stored) : fallback;
-}
-function reserveDemoCode(
-  organizationId: string | null | undefined,
-  kind: CodeKind,
-  settings: CodeSettings | null | undefined,
-  slug: string | null | undefined,
-) {
-  const rule = normalizeRule(kind, settings?.[kind]);
-  const next = readDemoCodeNext(organizationId, kind, rule.next);
-  const code = formatCode(rule.mask, next, { slug });
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(demoCodeNextKey(organizationId, kind), String(next + 1));
+// Resolve o tipo de documento considerando o subtipo do POP (POP/IT/Norma).
+function documentDocType(moduleId: AteliamModule, tipo?: string | null): DocType {
+  if (moduleId === "pop") {
+    const normalized = (tipo ?? "").trim().toLowerCase();
+    if (normalized.includes("norma")) return "norma";
+    if (normalized === "it" || normalized.includes("instru")) return "it";
+    return "pop";
   }
-  return code;
+  return MODULE_BASE_DOC_TYPE[moduleId];
 }
 // Lê a organização demo ativa (id, slug, code_settings) do localStorage.
 function readActiveDemoOrganization(): {
@@ -294,6 +283,7 @@ type DdpState = {
   meta: {
     codigo: string;
     subtitulo: string;
+    modalidade: "AS IS" | "TO BE";
     titulo: string;
     area: string;
     responsavel: string;
@@ -372,6 +362,7 @@ type PopState = {
 type BpmnState = {
   poolName: string;
   codigo?: string;
+  area?: string;
   lanes: [string, string];
   nodes: BpmnNode[];
   flows: BpmnFlow[];
@@ -433,8 +424,8 @@ const CAUSE_STATUS_OPTIONS = ["Pendente", "Em andamento", "Concluída"] as const
 const CAUSE_PRIORITY_OPTIONS = ["Baixa", "Média", "Alta", "Crítica"] as const;
 const DEMO_CATALOGS: OrganizationCatalogs = {
   departments: [
-    { id: "demo-dept-processos", name: "Processos" },
-    { id: "demo-dept-ti", name: "Tecnologia da Informação" },
+    { id: "demo-dept-processos", name: "Processos", sigla: "PRO" },
+    { id: "demo-dept-ti", name: "Tecnologia da Informação", sigla: "TIN" },
   ],
   processOwners: [
     { id: "demo-owner-processo", name: "Dono do processo" },
@@ -514,6 +505,7 @@ function defaultWorkspace(): WorkspaceState {
       meta: {
         codigo: "",
         subtitulo: "AS IS",
+        modalidade: "AS IS",
         titulo: "",
         area: "",
         responsavel: "",
@@ -729,6 +721,7 @@ function defaultWorkspace(): WorkspaceState {
     },
     bpmn: {
       poolName: "Processo principal",
+      area: "",
       lanes: ["Solicitante", "Executor"],
       nodes: [
         { id: "start_1", type: "start", label: "Início", x: 120, y: 135, lane: 0 },
@@ -768,6 +761,7 @@ type DemoDdpSpec = {
   valueChainName: string;
   versao: string;
   status: string;
+  modalidade?: "AS IS" | "TO BE";
   updatedAt: string;
   objetivo: string;
   escopo: string;
@@ -794,6 +788,7 @@ function makeDemoDdpWorkspace(spec: DemoDdpSpec): WorkspaceState {
       meta: {
         ...base.ddp.meta,
         codigo: spec.codigo,
+        modalidade: spec.modalidade ?? "AS IS",
         titulo: spec.titulo,
         area: spec.area,
         responsavel: spec.responsavel,
@@ -868,6 +863,7 @@ const DEMO_DDP_SPECS: DemoDdpSpec[] = [
   {
     id: "demo-doc:ddp:MAP.TI.002",
     codigo: "MAP.TI.002",
+    modalidade: "TO BE",
     titulo: "Gestão de Demandas de BI & Analytics",
     area: "Tecnologia da Informação",
     donoProcesso: "Carlos Menezes · TI",
@@ -1244,14 +1240,6 @@ const DEMO_DOCUMENTS: Record<AteliamModule, DemoDoc[]> = {
   })),
   bpmn: [],
 };
-
-function asTextItem(value: unknown, prefix: string): TextItem {
-  if (value && typeof value === "object" && "text" in value) {
-    const row = value as Partial<TextItem>;
-    return { id: row.id || id(prefix), text: String(row.text ?? "") };
-  }
-  return { id: id(prefix), text: String(value ?? "") };
-}
 
 function asNextStepItem(value: unknown): NextStepItem {
   if (value && typeof value === "object") {
@@ -2028,247 +2016,6 @@ function html(value: unknown) {
     .replace(/\n/g, "<br/>");
 }
 
-function td(value: unknown) {
-  return `<td>${html(value)}</td>`;
-}
-
-function th(value: unknown) {
-  return `<th>${html(value)}</th>`;
-}
-
-function table(headers: string[], rows: unknown[][]) {
-  return `<table><thead><tr>${headers.map(th).join("")}</tr></thead><tbody>${
-    rows.length
-      ? rows.map((row) => `<tr>${row.map(td).join("")}</tr>`).join("")
-      : `<tr><td colspan="${headers.length}">Sem registros.</td></tr>`
-  }</tbody></table>`;
-}
-
-function list(items: TextItem[]) {
-  if (!items.length) return "<p>Sem registros.</p>";
-  return `<ol>${items
-    .map((item) => {
-      const next = item as NextStepItem;
-      const meta = [next.responsavel ? `Responsável: ${next.responsavel}` : "", next.prazo ? `Prazo: ${next.prazo}` : ""]
-        .filter(Boolean)
-        .join(" · ");
-      return `<li>${html(item.text)}${meta ? `<br><small>${html(meta)}</small>` : ""}</li>`;
-    })
-    .join("")}</ol>`;
-}
-
-function docShell(title: string, body: string) {
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${html(title)}</title>
-  <style>
-    body{font-family:Arial,sans-serif;color:#1f2933;line-height:1.45;margin:34px;}
-    h1{font-size:28px;color:#173e2a;margin:0 0 8px;}
-    h2{font-size:18px;color:#173e2a;border-bottom:2px solid #e5b653;padding-bottom:6px;margin-top:26px;}
-    h3{font-size:14px;color:#173e2a;margin:16px 0 8px;}
-    p{font-size:11pt;margin:6px 0 10px;}
-    .cover{border-left:8px solid #e5b653;background:#f7f2e9;padding:18px 22px;margin-bottom:22px;}
-    .muted{color:#667085;font-size:10pt;}
-    table{border-collapse:collapse;width:100%;margin:10px 0 18px;table-layout:fixed;}
-    th,td{border:1px solid #d0d5dd;padding:7px 8px;vertical-align:top;font-size:10pt;}
-    th{background:#173e2a;color:white;text-align:left;}
-    ol,ul{font-size:10.5pt;}
-  </style>
-</head>
-<body>${body}</body>
-</html>`;
-}
-
-function buildDdpWord(data: DdpState) {
-  const body = `
-    <div class="cover">
-      <h1>${html(data.meta.titulo)}</h1>
-      <p class="muted">${html(data.meta.codigo)} · ${html(data.meta.subtitulo)} · versão ${html(data.meta.versao)}</p>
-      <p>${html(data.overview.objetivo)}</p>
-    </div>
-    <h2>01 Metadados</h2>
-    ${table(
-      ["Campo", "Informação"],
-      [
-        ["Código", data.meta.codigo],
-        ["Subtítulo", data.meta.subtitulo],
-        ["Título", data.meta.titulo],
-        ["Área", data.meta.area],
-        ["Responsável", data.meta.responsavel],
-        ["Data", data.meta.data],
-        ["Elaborador", data.meta.elaborador],
-        ["Revisor", data.meta.revisor],
-      ],
-    )}
-    <h2>02 Visão geral</h2>
-    ${table(
-      ["Campo", "Descrição"],
-      [
-        ["Objetivo", data.overview.objetivo],
-        ["Abrangência / escopo", data.overview.escopo],
-        ["Dono do processo", data.overview.donoProcesso],
-        ["Estado atual", data.overview.estadoAtual],
-        ["Indicadores / evidências", data.overview.kpis],
-        ["Volume", data.overview.volume],
-        ["Frequência", data.overview.frequencia],
-        ["Dores", data.overview.dores],
-        ["Oportunidades", data.overview.oportunidades],
-      ],
-    )}
-    <h2>03 Sistemas envolvidos</h2>
-    ${table(
-      ["Sistema", "Tipo", "Dono", "Criticidade", "Descrição"],
-      data.systems.map((item) => [
-        item.nome,
-        item.tipo,
-        item.dono,
-        item.criticidade,
-        item.descricao,
-      ]),
-    )}
-    <h2>04 Fluxo AS IS</h2>
-    ${table(
-      ["Etapa", "Responsável", "Entrada", "Atividade", "Saída", "Sistema", "Risco"],
-      data.steps.map((item) => [
-        item.etapa,
-        item.responsavel,
-        item.entrada,
-        item.atividade,
-        item.saida,
-        item.sistema,
-        item.risco,
-      ]),
-    )}
-    <h2>05 Análise SIPOC</h2>
-    ${table(
-      ["Fornecedores", "Entradas", "Processo", "Saídas", "Clientes"],
-      data.sipocRows.map((item) => [
-        item.fornecedores,
-        item.entradas,
-        item.processo,
-        item.saidas,
-        item.clientes,
-      ]),
-    )}
-    <h2>06 Causas-raiz e planos de ação</h2>
-    ${table(
-      ["Causa", "Impacto", "Ação", "Responsável", "Prazo", "Prioridade", "Status"],
-      data.gaps.map((item) => [
-        item.causa,
-        item.impacto,
-        item.acao,
-        item.responsavel,
-        item.prazo,
-        item.prioridade,
-        item.status,
-      ]),
-    )}
-    <h2>07 Próximos passos</h2>
-    ${list(data.nextSteps)}
-    <h2>08 Glossário</h2>
-    ${table(
-      ["Termo", "Definição"],
-      data.glossary.map((item) => [item.termo, item.definicao]),
-    )}
-  `;
-  return docShell(`Mapeamento - ${data.meta.titulo}`, body);
-}
-
-function buildPopWord(data: PopState) {
-  const contentTitle =
-    data.meta.tipo === "Norma"
-      ? "Diretrizes"
-      : data.meta.tipo === "IT"
-        ? "Instruções de trabalho"
-        : "Procedimento";
-  const body = `
-    <div class="cover">
-      <h1>${html(data.meta.titulo)}</h1>
-      <p class="muted">${html(data.meta.tipo)} · ${html(data.meta.codigo)} · versão ${html(data.meta.versao)}</p>
-      <p>${html(data.purpose.objetivo)}</p>
-    </div>
-    <h2>01 Identificação</h2>
-    ${table(
-      ["Campo", "Informação"],
-      [
-        ["Tipo", data.meta.tipo],
-        ["Código", data.meta.codigo],
-        ["Título", data.meta.titulo],
-        ["Público / classificação", data.meta.publico],
-        ["Área responsável", data.meta.area],
-        ["Processo relacionado", data.meta.processo],
-        ["Vigência", data.meta.vigencia],
-        ["Elaborador", data.meta.elaboracao],
-        ["Revisor", data.meta.revisor],
-        ["Aprovador", data.meta.aprovacao],
-        ["Publicação", data.meta.publicacao],
-      ],
-    )}
-    <h2>02 Objetivo e abrangência</h2>
-    ${table(
-      ["Campo", "Descrição"],
-      [
-        ["Objetivo", data.purpose.objetivo],
-        ["Abrangência", data.purpose.abrangencia],
-        ["Premissas e regras gerais", data.purpose.premissas],
-        ["Observações críticas", data.purpose.importante],
-      ],
-    )}
-    <h2>03 ${html(contentTitle)}</h2>
-    ${data.sections
-      .map(
-        (section) => `
-        <h3>${html(section.title)}</h3>
-        ${table(
-          ["Campo", "Conteúdo"],
-          [
-            ["Contexto / descrição", section.description],
-            ["Procedimento", section.body],
-            ["Registros / evidências", section.records],
-            ["Riscos / cuidados", section.risks],
-          ],
-        )}
-      `,
-      )
-      .join("")}
-    <h2>04 Responsabilidades</h2>
-    ${table(
-      ["Área / cargo", "Responsabilidades"],
-      data.responsibilities.map((item) => [item.area, item.responsabilidade]),
-    )}
-    <h2>05 Referências normativas</h2>
-    ${table(
-      ["Código", "Título", "Aplicabilidade"],
-      data.references.map((item) => [item.codigo, item.titulo, item.aplicabilidade]),
-    )}
-    <h2>06 Histórico e controle de alterações</h2>
-    <h3>Histórico</h3>
-    ${table(
-      ["Código", "Versão", "Data", "Elaborador", "Revisor", "Aprovador"],
-      data.history.map((item) => [
-        item.codigo,
-        item.version,
-        item.date,
-        item.elaborador,
-        item.revisor,
-        item.aprovador,
-      ]),
-    )}
-    <h3>Alterações</h3>
-    ${table(
-      ["Versão", "Local da revisão", "Descrição"],
-      data.changes.map((item) => [item.versao, item.local, item.descricao]),
-    )}
-  `;
-  return docShell(`${data.meta.tipo} - ${data.meta.titulo}`, body);
-}
-
-function downloadWord(filename: string, htmlContent: string) {
-  downloadText(filename, htmlContent, "application/msword;charset=utf-8");
-}
-
 type ExportImage = { title: string; caption: string; src: string };
 type ExportCard = { title: string; text: string };
 type ExportSystem = { name: string; type: string; description: string; items: string[] };
@@ -2344,6 +2091,7 @@ type AccessibleOrganization = OrganizationBrand & {
 type OrganizationCatalogItem = {
   id: string;
   name: string;
+  sigla?: string | null;
   organization_id?: string;
   created_at?: string;
   updated_at?: string;
@@ -4803,58 +4551,87 @@ function ModuleWorkspacePage() {
   }, [isDemo, meQ.data?.profile?.display_name, meQ.data?.profile?.email, usersQ.data]);
 
   // Contexto de codificação da organização ativa (modo demo via localStorage).
-  const codeKind = MODULE_CODE_KIND[moduleId];
   const demoOrgForCode = isDemo ? readActiveDemoOrganization() : null;
   const codeOrganizationId = isDemo ? demoOrgForCode!.id : (selectedOrganizationId ?? null);
-  const codeOrganizationSlug = isDemo
-    ? demoOrgForCode!.slug
-    : (selectedOrganization?.slug ?? meQ.data?.organization?.slug ?? null);
   const codeSettings: CodeSettings | null = isDemo
     ? demoOrgForCode!.code_settings
     : ((selectedOrganization?.code_settings as CodeSettings | null | undefined) ??
       (meQ.data?.organization?.code_settings as CodeSettings | null | undefined) ??
       null);
-  const codeRule = normalizeRule(codeKind, codeSettings?.[codeKind]);
+
+  // Resolve a sigla (3 letras) a partir do nome da área: usa a sigla cadastrada
+  // quando há correspondência; caso contrário, deriva do próprio nome.
+  function resolveAreaSigla(name: string | null | undefined): string {
+    const match = organizationCatalogs.departments.find((dept) => dept.name === name);
+    return normalizeSigla(match?.sigla ?? name ?? "");
+  }
+
+  // Tipo e área do documento ativo (o código depende de ambos).
+  const currentDocType: DocType = documentDocType(moduleId, workspace.pop.meta.tipo);
+  const currentAreaName =
+    moduleId === "ddp"
+      ? workspace.ddp.meta.area
+      : moduleId === "pop"
+        ? workspace.pop.meta.area
+        : (workspace.bpmn.area ?? "");
+  const currentAreaSigla = resolveAreaSigla(currentAreaName);
+  const codeRule = normalizeRule(codeSettings?.[currentDocType]);
   const isAutoCodeModule = codeRule.mode === "auto";
-  const autoCodePreview = isAutoCodeModule
-    ? formatCode(
-        codeRule.mask,
-        isDemo ? readDemoCodeNext(codeOrganizationId, codeKind, codeRule.next) : codeRule.next,
-        { slug: codeOrganizationSlug },
-      )
-    : "";
+  const autoCodePreview =
+    isAutoCodeModule && currentAreaSigla.length === 3
+      ? isDemo
+        ? previewDemoDocumentCode(
+            codeOrganizationId,
+            currentDocType,
+            currentAreaSigla,
+            codeSettings,
+          )
+        : previewDocumentCode(currentDocType, currentAreaSigla, codeRule)
+      : "";
 
   const reserveCodeFn = useServerFn(reserveCode);
   // Reserva o próximo código (consome a sequência) no momento de salvar.
   async function reserveModuleCode(): Promise<string> {
+    if (currentAreaSigla.length !== 3) {
+      throw new Error("Defina a área responsável (sigla de 3 letras) antes de gerar o código.");
+    }
     if (isDemo) {
-      return reserveDemoCode(codeOrganizationId, codeKind, codeSettings, codeOrganizationSlug);
+      return reserveDemoDocumentCode(
+        codeOrganizationId,
+        currentDocType,
+        currentAreaSigla,
+        codeSettings,
+      );
     }
     const result = await reserveCodeFn({
-      data: { organizationId: codeOrganizationId, kind: codeKind },
+      data: {
+        organizationId: codeOrganizationId,
+        type: currentDocType,
+        areaSigla: currentAreaSigla,
+      },
     });
     return result.code;
   }
 
-  // Código automático do CADASTRO DE PROCESSO (kind "process"), conforme a
-  // máscara/sequência configurada por organização em Configurações.
-  const processCodeRule = normalizeRule("process", codeSettings?.process);
+  // Código automático do CADASTRO DE PROCESSO (tipo "processo" = PR), com a
+  // sequência por área conforme configurado em Configurações.
+  const processCodeRule = normalizeRule(codeSettings?.processo);
   const isAutoProcessCode = processCodeRule.mode === "auto";
-  const processCodePreview = isAutoProcessCode
-    ? formatCode(
-        processCodeRule.mask,
-        isDemo
-          ? readDemoCodeNext(codeOrganizationId, "process", processCodeRule.next)
-          : processCodeRule.next,
-        { slug: codeOrganizationSlug },
-      )
-    : "";
-  async function reserveProcessCode(): Promise<string> {
+  function processCodePreviewFor(areaSigla: string): string {
+    if (!isAutoProcessCode || areaSigla.length !== 3) return "";
+    return isDemo
+      ? previewDemoDocumentCode(codeOrganizationId, "processo", areaSigla, codeSettings)
+      : previewDocumentCode("processo", areaSigla, processCodeRule);
+  }
+  async function reserveProcessCode(areaSigla: string): Promise<string> {
+    if (areaSigla.length !== 3) {
+      throw new Error("Selecione uma área (com sigla de 3 letras) para gerar o código.");
+    }
     if (isDemo) {
-      return reserveDemoCode(codeOrganizationId, "process", codeSettings, codeOrganizationSlug);
+      return reserveDemoDocumentCode(codeOrganizationId, "processo", areaSigla, codeSettings);
     }
     const result = await reserveCodeFn({
-      data: { organizationId: codeOrganizationId, kind: "process" },
+      data: { organizationId: codeOrganizationId, type: "processo", areaSigla },
     });
     return result.code;
   }
@@ -5470,7 +5247,7 @@ function ModuleWorkspacePage() {
         id: process.id,
         code: process.code,
         name: process.name,
-        type: process.type as "macroprocess" | "process" | "subprocess",
+        type: process.type as "macroprocess" | "process" | "subprocess" | "atividade" | "tarefa",
         parent_process_id: process.parent_process_id,
         department: process.department,
         owner: process.owner,
@@ -5855,7 +5632,7 @@ function ModuleWorkspacePage() {
 
           autoCode={isAutoProcessCode}
 
-          codePreview={processCodePreview}
+          previewCode={processCodePreviewFor}
 
           onReserveCode={reserveProcessCode}
           onOpenEditor={() => {
@@ -5916,7 +5693,7 @@ function ModuleWorkspacePage() {
 
               autoCode={isAutoProcessCode}
 
-              codePreview={processCodePreview}
+              previewCode={processCodePreviewFor}
 
               onReserveCode={reserveProcessCode}
               onOpenEditor={() => setDdpView("editor")}
@@ -6537,203 +6314,6 @@ function ModuleTreeAnchor({ href, children }: { href: string; children: ReactNod
   );
 }
 
-function ModuleRegistrationsPanel({
-  view,
-  organizationName,
-}: {
-  view:
-    | ModuleRegistrationView
-    | "organizations"
-    | "users"
-    | "document-models"
-    | "roles"
-    | "access-profiles"
-    | "document-types"
-    | "systems"
-    | "causes";
-  organizationName: string;
-}) {
-  const [selectedId, setSelectedId] = useState("");
-  const copy: Record<string, { eyebrow: string; title: string; text: string }> = {
-    organizations: {
-      eyebrow: "cadastros",
-      title: "Organizações",
-      text: `Mantenha os dados das organizações atendidas pelo Ateliam. Organização atual: ${organizationName}.`,
-    },
-    users: {
-      eyebrow: "cadastros",
-      title: "Usuários",
-      text: "Cadastre usuários, senhas e vínculo com a organização antes de liberar acesso aos módulos.",
-    },
-    areas: {
-      eyebrow: "cadastros",
-      title: "Áreas",
-      text: "Mantenha áreas e departamentos selecionáveis nos mapeamentos, documentos e processos.",
-    },
-    roles: {
-      eyebrow: "cadastros",
-      title: "Cargos e funções",
-      text: "Cadastre cargos, funções e papéis organizacionais para compor responsabilidades.",
-    },
-    "access-profiles": {
-      eyebrow: "cadastros",
-      title: "Perfis de acesso",
-      text: "Defina perfis de acesso por organização, separando consulta, edição, aprovação e administração.",
-    },
-    "document-types": {
-      eyebrow: "cadastros",
-      title: "Tipos de documento",
-      text: "Organize os tipos usados pela documentação, como Norma, POP, IT, relatório e apresentação.",
-    },
-    "document-models": {
-      eyebrow: "cadastros",
-      title: "Modelos de documento",
-      text: "Cadastre modelos oficiais para orientar preenchimento, versionamento e exportação.",
-    },
-    systems: {
-      eyebrow: "cadastros",
-      title: "Sistemas",
-      text: "Centralize sistemas corporativos usados nos processos, mapeamentos e fluxogramas.",
-    },
-    owners: {
-      eyebrow: "cadastros",
-      title: "Responsáveis",
-      text: "Mantenha responsáveis e donos de processo reutilizáveis em todos os documentos da organização.",
-    },
-    processes: {
-      eyebrow: "cadastros",
-      title: "Processos",
-      text: "Cadastre e versione processos para manter vínculo entre mapeamentos, documentos e fluxogramas.",
-    },
-    causes: {
-      eyebrow: "cadastros",
-      title: "Causas",
-      text: "Consulte causas reutilizáveis e acompanhe status, responsáveis e comentários.",
-    },
-  };
-  const item = copy[view];
-  const rows =
-    view === "organizations"
-      ? [
-          {
-            id: "organization",
-            name: organizationName,
-            detail: "Organização ativa",
-            status: "Ativa",
-          },
-        ]
-      : view === "users"
-        ? [{ id: "current-user", name: "Usuário atual", detail: organizationName, status: "Ativo" }]
-        : [
-            {
-              id: "ddp-model",
-              name: "Modelo de Mapeamento",
-              detail: "HTML e Word",
-              status: "Ativo",
-            },
-            { id: "pop-model", name: "Modelo de Documentação", detail: "Word", status: "Ativo" },
-          ];
-
-  function exportRows() {
-    downloadBlob(
-      `${cleanFileName(item.title)}-${today()}.xlsx`,
-      buildXlsxWorkbook([
-        {
-          name: item.title,
-          rows: [
-            ["Nome", "Detalhe", "Status"],
-            ...rows.map((row) => [row.name, row.detail, row.status]),
-          ],
-        },
-      ]),
-    );
-  }
-
-  return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <header className="border-b border-border px-5 py-4">
-        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          {item.eyebrow}
-        </div>
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">{item.title}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{item.text}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href="/settings"
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
-            >
-              <Plus className="h-4 w-4" /> Novo
-            </a>
-            <a
-              href="/settings"
-              aria-disabled={!selectedId}
-              className={`inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted ${!selectedId ? "pointer-events-none opacity-40" : ""}`}
-            >
-              <Pencil className="h-4 w-4" /> Editar
-            </a>
-            <button
-              type="button"
-              disabled={!selectedId}
-              onClick={() =>
-                toast.info("A exclusão deste cadastro exige validação administrativa.")
-              }
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-40"
-            >
-              <Trash2 className="h-4 w-4" /> Excluir
-            </button>
-            <button
-              type="button"
-              onClick={exportRows}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted"
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Exportar para Excel
-            </button>
-          </div>
-        </div>
-      </header>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-          <thead className="bg-muted/80 text-xs text-muted-foreground">
-            <tr>
-              <th className="w-12 px-4 py-3" />
-              <th className="px-3 py-3">Nome</th>
-              <th className="px-3 py-3">Detalhe</th>
-              <th className="px-3 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                onClick={() => setSelectedId(row.id)}
-                className={`cursor-pointer border-t border-border ${selectedId === row.id ? "bg-accent/70" : "hover:bg-muted/45"}`}
-              >
-                <td className="px-4 py-3">
-                  <input
-                    type="radio"
-                    checked={selectedId === row.id}
-                    onChange={() => setSelectedId(row.id)}
-                  />
-                </td>
-                <td className="px-3 py-3 font-semibold">{row.name}</td>
-                <td className="px-3 py-3 text-muted-foreground">{row.detail}</td>
-                <td className="px-3 py-3">
-                  <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold">
-                    {row.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 function ModuleSettingsPanel({
   view,
   organizationName,
@@ -6800,6 +6380,7 @@ type ModuleGridRow = {
   code: string;
   name: string;
   type: string;
+  modalidade: string;
   process: string;
   area: string;
   owner: string;
@@ -6820,6 +6401,7 @@ function moduleGridRowFromWorkspace(
       code: workspace.ddp.meta.codigo || "-",
       name: workspace.ddp.meta.titulo || "Mapeamento sem título",
       type: "Mapeamento",
+      modalidade: workspace.ddp.meta.modalidade || "AS IS",
       process: workspace.ddp.macroprocess.titulo || "-",
       area: workspace.ddp.meta.area || "-",
       owner: workspace.ddp.overview.donoProcesso || "-",
@@ -6832,6 +6414,7 @@ function moduleGridRowFromWorkspace(
       code: workspace.pop.meta.codigo || "-",
       name: workspace.pop.meta.titulo || "Documento sem título",
       type: workspace.pop.meta.tipo || "Documento",
+      modalidade: "-",
       process: workspace.pop.meta.processo || "-",
       area: workspace.pop.meta.area || "-",
       owner: "-",
@@ -6843,6 +6426,7 @@ function moduleGridRowFromWorkspace(
     code: "FLX",
     name: workspace.bpmn.poolName || "Fluxograma sem título",
     type: "Fluxo de atividades",
+    modalidade: "-",
     process: workspace.bpmn.poolName || "-",
     area: "-",
     owner: "-",
@@ -6893,6 +6477,7 @@ function buildDemoModuleRows(moduleId: AteliamModule): ModuleGridRow[] {
     code,
     name,
     type: typeLabel,
+    modalidade: moduleId === "ddp" ? "AS IS" : "-",
     process,
     area,
     owner,
@@ -6995,6 +6580,7 @@ function ModuleDocumentGrid({
       ? [
           ["code", "Código"],
           ["name", "Nome do processo"],
+          ["modalidade", "Modalidade"],
           ["area", "Área"],
           ["owner", "Dono do processo"],
           ["responsible", "Elaborador"],
@@ -7509,7 +7095,7 @@ function ProcessRegistryModule({
   onDeleteProcess,
   onOpenEditor,
   autoCode = false,
-  codePreview = "",
+  previewCode,
   onReserveCode,
 }: {
   catalogs: OrganizationCatalogs;
@@ -7521,10 +7107,15 @@ function ProcessRegistryModule({
   onDeleteProcess: (processId: string) => Promise<void>;
   onOpenEditor: () => void;
   autoCode?: boolean;
-  codePreview?: string;
-  onReserveCode?: () => Promise<string>;
+  previewCode?: (areaSigla: string) => string;
+  onReserveCode?: (areaSigla: string) => Promise<string>;
 }) {
   const processes = catalogs.processes;
+  // Sigla da área do rascunho atual, usada na pré-visualização e no código.
+  function draftAreaSigla(name: string | null | undefined): string {
+    const match = catalogs.departments.find((dept) => dept.name === name);
+    return normalizeSigla(match?.sigla ?? name ?? "");
+  }
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("Todos");
   const [draft, setDraft] = useState<OrganizationProcess | null>(null);
@@ -7557,7 +7148,7 @@ function ProcessRegistryModule({
   function newDraft() {
     setDraft({
       id: "",
-      code: autoCode ? codePreview : "",
+      code: "",
       name: "",
       type: "process",
       parent_process_id: null,
@@ -7580,7 +7171,9 @@ function ProcessRegistryModule({
       } else {
         // Código automático: reserva (consome) a sequência no momento de salvar.
         const code =
-          autoCode && onReserveCode ? await onReserveCode() : draft.code;
+          autoCode && onReserveCode
+            ? await onReserveCode(draftAreaSigla(draft.department))
+            : draft.code;
         await onCreateProcess({ ...draft, code });
         toast.success("Processo cadastrado.");
       }
@@ -7627,8 +7220,8 @@ function ProcessRegistryModule({
   return (
     <div className="grid gap-5">
       <Hero title="Processos da organização" eyebrow="Catálogo · versões · vínculos" progress={100}>
-        Consulte, cadastre e versione processos para que DDPs, macroprocessos e subprocessos tenham
-        um vínculo corporativo claro.
+        Consulte, cadastre e versione processos para que Relatórios de Mapeamento, macroprocessos e
+        subprocessos tenham um vínculo corporativo claro.
       </Hero>
       <Panel title="Consulta de processos" progress={processes.length ? 100 : 0}>
         <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_180px]">
@@ -7761,7 +7354,9 @@ function ProcessRegistryModule({
                   Código (automático)
                 </span>
                 <div className="w-full rounded-md border border-input bg-muted px-3 py-2.5 text-sm font-mono text-foreground">
-                  {draft.code || codePreview}
+                  {draft.code ||
+                    previewCode?.(draftAreaSigla(draft.department)) ||
+                    "Selecione a área para gerar o código"}
                 </div>
               </label>
             ) : (
@@ -8426,35 +8021,6 @@ function DdpCausesModuleV2({
   );
 }
 
-function CauseMetric({ label, value, detail }: { label: string; value: number; detail?: string }) {
-  return (
-    <div className="rounded-lg border border-[#d2d2d7] bg-white/90 p-4 shadow-[0_18px_44px_rgba(0,0,0,.05)]">
-      <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[#6e6e73]">
-        {label}
-      </div>
-      <div className="mt-2 text-3xl font-black text-[#1d1d1f]">{value}</div>
-      {detail ? <div className="mt-1 text-xs text-[#6e6e73]">{detail}</div> : null}
-    </div>
-  );
-}
-
-function CausePill({ value, tone }: { value: string; tone: "priority" | "status" }) {
-  const normalized = normalizeLabel(value);
-  const color =
-    tone === "status" && normalized.includes("conclu")
-      ? "bg-[#e8f7ee] text-[#1f7a3a] border-[#b9e6c6]"
-      : tone === "status" && normalized.includes("andamento")
-        ? "bg-[#fff7e6] text-[#a05a00] border-[#f3d39b]"
-        : normalized.includes("alta") || normalized.includes("critic")
-          ? "bg-[#fff1f0] text-[#b42318] border-[#ffc9c4]"
-          : "bg-[#f3f4f6] text-[#3f3f46] border-[#d4d4d8]";
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${color}`}>
-      {value}
-    </span>
-  );
-}
-
 function gapPatchFromOrganizationCause(cause: OrganizationCause): Partial<GapItem> {
   return {
     sharedCauseId: cause.id,
@@ -8850,6 +8416,17 @@ function DdpModule({
             type="date"
             value={data.meta.data}
             onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
+          />
+          <SelectField
+            label="Modalidade"
+            value={data.meta.modalidade || "AS IS"}
+            options={["AS IS", "TO BE"]}
+            onChange={(modalidade) =>
+              update({
+                ...data,
+                meta: { ...data.meta, modalidade: modalidade as "AS IS" | "TO BE" },
+              })
+            }
           />
           <UserSearchField
             label="Elaborador"
@@ -10391,6 +9968,13 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
               onChange={(poolName) => update({ ...data, poolName })}
             />
             <div className="mt-3">
+              <Field
+                label="Área responsável"
+                value={data.area ?? ""}
+                onChange={(area) => update({ ...data, area })}
+              />
+            </div>
+            <div className="mt-3">
               {autoCode ? (
                 <ReadOnlyField label="Código (automático)" value={data.codigo || codePreview} />
               ) : (
@@ -10580,131 +10164,6 @@ function Panel({
       ) : null}
       {open ? <div className={title ? "p-4 md:p-5" : "p-5"}>{children}</div> : null}
     </section>
-  );
-}
-
-function ModuleMenuGroup({
-  title,
-  detail,
-  children,
-}: {
-  title: string;
-  detail: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-background/72 p-2">
-      <div className="mb-1.5 px-1">
-        <div className="text-[9px] font-black uppercase tracking-[0.17em] text-muted-foreground">
-          {title}
-        </div>
-        <div className="mt-0.5 text-[10px] text-muted-foreground">{detail}</div>
-      </div>
-      <div className="grid gap-1">{children}</div>
-    </div>
-  );
-}
-
-function ModuleMenuButton({
-  active,
-  variant = "default",
-  icon,
-  children,
-  onClick,
-  disabled,
-}: {
-  active?: boolean;
-  variant?: "default" | "primary" | "dark";
-  icon: ReactNode;
-  children: ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-}) {
-  const className =
-    variant === "dark"
-      ? "bg-primary text-primary-foreground border-primary hover:opacity-90"
-      : variant === "primary"
-        ? "bg-foreground text-background border-foreground hover:opacity-90"
-        : active
-          ? "bg-accent text-foreground border-border"
-          : "bg-card text-foreground border-border hover:bg-muted";
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`inline-flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-[13px] font-bold transition disabled:cursor-not-allowed disabled:opacity-45 ${className}`}
-    >
-      <span className={variant === "default" && !active ? "text-foreground" : ""}>{icon}</span>
-      <span className="min-w-0 flex-1">{children}</span>
-    </button>
-  );
-}
-
-function CatalogSelectWithCreate({
-  label,
-  value,
-  options,
-  onChange,
-  onCreate,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-  onCreate: (value: string) => Promise<OrganizationCatalogItem | null>;
-}) {
-  const [creating, setCreating] = useState(false);
-  const normalizedOptions = new Set(options.map((option) => normalizeLabel(option)));
-  const visibleOptions = [
-    ...options,
-    value && !normalizedOptions.has(normalizeLabel(value)) ? value : "",
-  ].filter(Boolean);
-
-  async function createOption() {
-    const next = window.prompt(`Cadastrar ${label.toLowerCase()}`, value || "");
-    const clean = next?.trim();
-    if (!clean) return;
-    setCreating(true);
-    try {
-      const row = await onCreate(clean);
-      onChange(row?.name || clean);
-      toast.success(`${label} cadastrado.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível cadastrar.");
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
-      <div className="flex gap-2">
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
-        >
-          <option value="">Selecione</option>
-          {visibleOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={createOption}
-          disabled={creating}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-45"
-          title={`Cadastrar ${label}`}
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
-    </label>
   );
 }
 

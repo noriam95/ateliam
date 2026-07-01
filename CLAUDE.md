@@ -54,7 +54,9 @@ When `isDemo` is true, components render static data from `DEMO_REGISTRY` (expor
 
 ### Code Generation (`src/lib/code-generation.ts`)
 
-Configurable auto/manual code numbering per type (`process`, `mapping`, `pop_it`, `flowchart`). Rules stored per-organization in `organizations.code_settings` (JSONB). Key functions: `formatCode`, `previewCode`, `applyNextCode`, `isAutoCode`.
+Document codes follow the fixed format `SIGLA.ÁREA.NNN` (document-type sigla · area sigla · 3-digit sequence), e.g. `POP.ADM.001`. The six document types (`DOC_TYPES`) and their fixed siglas (`DOC_TYPE_SIGLA`) are: Procedimento=`POP`, Instrução de Trabalho=`IT`, Norma=`NOR`, Fluxograma=`FLU`, Mapeamento=`MAP`, Processo=`PR`. Each area carries a mandatory 3-letter `sigla` (column on `organization_departments`), required in the área registration form.
+
+The sequence restarts per **type + area** and is stored per-organization in `organizations.code_settings` (JSONB) as `{ [type]: { mode: "auto"|"manual", sequences: { [areaSigla]: nextNumber } } }`. Default mode for every type is `auto`. Key functions: `buildDocumentCode`, `previewDocumentCode`, `applyNextDocumentCode`, `isAutoCode`, plus the demo-mode helpers `previewDemoDocumentCode`/`reserveDemoDocumentCode`. `normalizeCodeSettings` migrates the legacy mask-based format. The `reserveCode` server function takes `{ type, areaSigla }` and consumes the sequence.
 
 ### Styling
 

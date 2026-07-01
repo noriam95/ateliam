@@ -123,11 +123,12 @@ import {
 } from "@/lib/config.functions";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
 import {
-  CODE_KINDS,
-  CODE_KIND_LABELS,
+  DOC_TYPES,
+  DOC_TYPE_LABELS,
+  DOC_TYPE_SIGLA,
   type CodeSettings,
   normalizeCodeSettings,
-  previewCode,
+  previewDocumentCode,
 } from "@/lib/code-generation";
 
 export type WorkspaceSystemSettingsView = "users" | "organizations" | "document-models";
@@ -648,7 +649,6 @@ function OrganizationsSettings({
               </label>
 
               <CodificationSettings
-                slug={draft.slug}
                 settings={draft.code_settings}
                 onChange={(code_settings) => setDraft((current) => ({ ...current, code_settings }))}
               />
@@ -671,11 +671,9 @@ function OrganizationsSettings({
 }
 
 function CodificationSettings({
-  slug,
   settings,
   onChange,
 }: {
-  slug: string;
   settings?: CodeSettings | null;
   onChange: (settings: CodeSettings) => void;
 }) {
@@ -685,17 +683,17 @@ function CodificationSettings({
     <div className="rounded-md border border-border bg-muted/30 p-4">
       <div className="text-sm font-semibold">Codificação</div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Defina, por tipo de cadastro, se o código é gerado automaticamente (máscara + sequência) ou
-        preenchido manualmente. Tokens: <code>{"{seq:4}"}</code>, <code>{"{ano}"}</code>,{" "}
-        <code>{"{org}"}</code>.
+        Defina, por tipo de documento, se o código é gerado automaticamente. O formato é fixo:{" "}
+        <code>SIGLA.ÁREA.000</code> (sigla do tipo · sigla da área · sequência de 3 dígitos). A
+        sequência é contada por área e por tipo.
       </p>
       <div className="mt-3 grid gap-3">
-        {CODE_KINDS.map((kind) => {
-          const rule = normalized[kind];
+        {DOC_TYPES.map((type) => {
+          const rule = normalized[type];
           return (
-            <div key={kind} className="rounded-md border border-border bg-background p-3">
+            <div key={type} className="rounded-md border border-border bg-background p-3">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">{CODE_KIND_LABELS[kind]}</span>
+                <span className="text-sm font-semibold">{DOC_TYPE_LABELS[type]}</span>
                 <label className="inline-flex items-center gap-2 text-xs font-medium">
                   <input
                     type="checkbox"
@@ -703,7 +701,7 @@ function CodificationSettings({
                     onChange={(event) =>
                       onChange({
                         ...normalized,
-                        [kind]: { ...rule, mode: event.target.checked ? "auto" : "manual" },
+                        [type]: { ...rule, mode: event.target.checked ? "auto" : "manual" },
                       })
                     }
                   />
@@ -711,42 +709,14 @@ function CodificationSettings({
                 </label>
               </div>
               {rule.mode === "auto" ? (
-                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px]">
-                  <label className="grid gap-1 text-xs text-muted-foreground">
-                    Máscara
-                    <input
-                      value={rule.mask}
-                      onChange={(event) =>
-                        onChange({
-                          ...normalized,
-                          [kind]: { ...rule, mask: event.target.value },
-                        })
-                      }
-                      className={inputClass}
-                      placeholder="PRC-{seq:4}"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-xs text-muted-foreground">
-                    Próxima sequência
-                    <input
-                      type="number"
-                      min={1}
-                      value={rule.next}
-                      onChange={(event) =>
-                        onChange({
-                          ...normalized,
-                          [kind]: { ...rule, next: Math.max(1, Number(event.target.value) || 1) },
-                        })
-                      }
-                      className={inputClass}
-                    />
-                  </label>
-                  <div className="text-xs text-muted-foreground sm:col-span-2">
-                    Próximo código:{" "}
-                    <span className="font-mono font-semibold text-foreground">
-                      {previewCode(rule, { slug })}
-                    </span>
-                  </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Formato:{" "}
+                  <span className="font-mono font-semibold text-foreground">
+                    {previewDocumentCode(type, "ADM", rule)}
+                  </span>{" "}
+                  <span className="text-muted-foreground">
+                    (prefixo fixo <code>{DOC_TYPE_SIGLA[type]}</code> + sigla da área + sequência)
+                  </span>
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">

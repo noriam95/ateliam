@@ -4,10 +4,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import {
-  CODE_KINDS,
-  type CodeKind,
-  applyNextCode,
+  DOC_TYPES,
+  type DocType,
+  applyNextDocumentCode,
   normalizeCodeSettings,
+  normalizeSigla,
 } from "@/lib/code-generation";
 
 type AppRole = "maestro" | "admin" | "editor" | "viewer";
@@ -38,11 +39,10 @@ const orgSchema = z.object({
     .transform((value) => value.replace("#", "").toUpperCase()),
 });
 const codeRuleSchema = z.object({
-  mode: z.enum(["auto", "manual"]).default("manual"),
-  mask: z.string().trim().max(120).default(""),
-  next: z.number().int().min(1).default(1),
+  mode: z.enum(["auto", "manual"]).default("auto"),
+  sequences: z.record(z.string(), z.number().int().min(1)).default({}),
 });
-const codeSettingsSchema = z.record(z.enum(CODE_KINDS), codeRuleSchema).nullish();
+const codeSettingsSchema = z.record(z.enum(DOC_TYPES), codeRuleSchema).nullish();
 const orgUpdateSchema = orgSchema.extend({
   id: z.string().uuid(),
   code_settings: codeSettingsSchema,
@@ -80,7 +80,7 @@ const processSchema = z.object({
   id: z.string().uuid().optional(),
   code: z.string().trim().max(80).optional().nullable(),
   name: z.string().trim().min(2).max(180),
-  type: z.enum(["macroprocess", "process", "subprocess"]).default("process"),
+  type: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]).default("process"),
   parent_process_id: z.string().uuid().optional().nullable(),
   department: z.string().trim().max(160).optional().nullable(),
   owner: z.string().trim().max(160).optional().nullable(),
@@ -116,7 +116,7 @@ const ownerRegistrationSchema = organizationScopeSchema.extend({
 });
 const processTypeRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
-  code: z.enum(["macroprocess", "process", "subprocess"]),
+  code: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]),
   label: z.string().trim().min(2).max(80),
   active: z.boolean().default(true),
 });
@@ -124,7 +124,7 @@ const processRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   code: z.string().trim().max(80).optional().nullable(),
   name: z.string().trim().min(2).max(180),
-  type: z.enum(["macroprocess", "process", "subprocess"]),
+  type: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]),
   valueChainId: z.string().uuid().optional().nullable(),
   parentProcessId: z.string().uuid().optional().nullable(),
   department: z.string().trim().max(160).optional().nullable(),
@@ -327,6 +327,16 @@ export const createOrganization = createServerFn({ method: "POST" })
         code: "subprocess",
         label: "Subprocesso",
       },
+      {
+        organization_id: row.id,
+        code: "atividade",
+        label: "Atividade",
+      },
+      {
+        organization_id: row.id,
+        code: "tarefa",
+        label: "Tarefa",
+      },
     ]);
     if (typeError) throw new Error(typeError.message);
     return row;
@@ -358,24 +368,27 @@ export const updateOrganization = createServerFn({ method: "POST" })
 // organização de forma atômica (servidor é a fonte da verdade no modo real).
 export const reserveCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { organizationId?: string | null; kind: CodeKind }) =>
+  .validator((d: { organizationId?: string | null; type: DocType; areaSigla: string }) =>
     z
       .object({
         organizationId: z.string().uuid().optional().nullable(),
-        kind: z.enum(CODE_KINDS),
+        type: z.enum(DOC_TYPES),
+        areaSigla: z.string().trim().min(1),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const sigla = normalizeSigla(data.areaSigla);
+    if (sigla.length !== 3) throw new Error("Sigla da área inválida (esperado 3 letras).");
     const { data: org, error } = await context.supabase
       .from("organizations")
-      .select("slug, code_settings")
+      .select("code_settings")
       .eq("id", access.organizationId)
       .single();
     if (error) throw new Error(error.message);
     const settings = normalizeCodeSettings(org.code_settings);
-    const { code, settings: updated } = applyNextCode(settings, data.kind, { slug: org.slug });
+    const { code, settings: updated } = applyNextDocumentCode(settings, data.type, sigla);
     const { error: updateError } = await context.supabase
       .from("organizations")
       .update({ code_settings: updated, updated_at: new Date().toISOString() })
@@ -439,7 +452,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
     ] = await Promise.all([
       context.supabase
         .from("organization_departments")
-        .select("id, name, organization_id, created_at, updated_at")
+        .select("id, name, sigla, organization_id, created_at, updated_at")
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }),
       context.supabase
@@ -529,16 +542,35 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
 
 export const saveProcessArea = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { id?: string; organizationId?: string | null; name: string }) =>
+  .validator((data: { id?: string; organizationId?: string | null; name: string; sigla: string }) =>
     organizationScopeSchema
-      .extend({ id: z.string().uuid().optional(), name: z.string().trim().min(2).max(120) })
+      .extend({
+        id: z.string().uuid().optional(),
+        name: z.string().trim().min(2).max(120),
+        sigla: z
+          .string()
+          .trim()
+          .regex(/^[A-Za-z]{3}$/, "A sigla deve ter exatamente 3 letras.")
+          .transform((value) => value.toUpperCase()),
+      })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    // Sigla única por organização garante códigos de documento sem ambiguidade.
+    const { data: clash, error: clashError } = await context.supabase
+      .from("organization_departments")
+      .select("id")
+      .eq("organization_id", access.organizationId)
+      .eq("sigla", data.sigla)
+      .neq("id", data.id ?? "00000000-0000-0000-0000-000000000000")
+      .maybeSingle();
+    if (clashError) throw new Error(clashError.message);
+    if (clash) throw new Error(`Já existe uma área com a sigla ${data.sigla}.`);
     const payload = {
       organization_id: access.organizationId,
       name: data.name,
+      sigla: data.sigla,
       updated_at: new Date().toISOString(),
     };
     const query = data.id
@@ -729,14 +761,28 @@ export const createOrganizationDepartment = createServerFn({ method: "POST" })
   .validator((d: { name: string }) => catalogNameSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context);
+    // Sigla provisória derivada do nome (3 letras); fica nula em caso de colisão
+    // e pode ser ajustada depois no cadastro completo de Área.
+    const candidate = normalizeSigla(data.name);
+    let sigla: string | null = candidate.length === 3 ? candidate : null;
+    if (sigla) {
+      const { data: clash } = await context.supabase
+        .from("organization_departments")
+        .select("id")
+        .eq("organization_id", access.organizationId)
+        .eq("sigla", sigla)
+        .maybeSingle();
+      if (clash) sigla = null;
+    }
     const { data: row, error } = await context.supabase
       .from("organization_departments")
       .insert({
         organization_id: access.organizationId,
         name: data.name,
+        sigla,
         created_by: context.userId,
       })
-      .select("id, name, organization_id, created_at, updated_at")
+      .select("id, name, sigla, organization_id, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
     return row;

@@ -108,7 +108,6 @@ function Settings() {
   const activeOrganizationId = isDemo
     ? demoOrganizations[0]?.id
     : meQ.data?.profile?.organization_id;
-  const activeOrganization = organizationRows.find((org) => org.id === activeOrganizationId);
 
   useEffect(() => {
     if (!newUser.organizationId && activeOrganizationId) {
