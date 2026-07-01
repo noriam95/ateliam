@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FileSpreadsheet, Filter, ImageDown, Maximize2, Network, X } from "lucide-react";
+import { FileSpreadsheet, ImageDown, Maximize2, Network, X } from "lucide-react";
 import { listProcessRegistrationData } from "@/lib/config.functions";
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
 import { downloadXlsx } from "@/lib/xlsx-export";
@@ -144,6 +144,7 @@ function ValueChainReport({
             primary={primary}
             support={support}
             management={management}
+            selectedChainId={selectedChainId}
             onSelectChain={(chain) => {
               setSelectedChainId(chain.id);
               setActiveTab("processes");
@@ -179,12 +180,14 @@ function PorterDiagram({
   primary,
   support,
   management,
+  selectedChainId,
   onSelectChain,
   onExportPng,
 }: {
   primary: ValueChain[];
   support: ValueChain[];
   management: ValueChain[];
+  selectedChainId?: string | null;
   onSelectChain?: (chain: ValueChain) => void;
   onExportPng?: () => void;
 }) {
@@ -241,28 +244,32 @@ function PorterDiagram({
               >
                 {band.items.length ? (
                   <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
-                    {band.items.map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        disabled={!onSelectChain}
-                        onClick={() => onSelectChain?.(item)}
-                        title={item.description ?? undefined}
-                        className={`group grid ${large ? "min-h-24" : "min-h-20"} place-items-center rounded-lg border-2 ${band.border} bg-white px-3 py-2 text-center text-sm font-bold leading-tight ${band.text} shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
-                          onSelectChain
-                            ? "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0"
-                            : "cursor-default"
-                        }`}
-                      >
-                        <span>{item.name}</span>
-                        {onSelectChain ? (
-                          <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition group-hover:border-[var(--gold)]/60 group-hover:text-foreground">
-                            <Filter className="h-3 w-3" />
-                            Filtrar
-                          </span>
-                        ) : null}
-                      </button>
-                    ))}
+                    {band.items.map((item) => {
+                      const selected = selectedChainId === item.id;
+                      return (
+                        <button
+                          type="button"
+                          key={item.id}
+                          disabled={!onSelectChain}
+                          onClick={() => onSelectChain?.(item)}
+                          title={item.description ?? undefined}
+                          aria-pressed={selected}
+                          className={`grid ${large ? "min-h-24" : "min-h-20"} place-items-center rounded-lg border-2 px-3 py-2 text-center text-sm font-bold leading-tight shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
+                            selected
+                              ? "border-[var(--gold)] bg-[var(--gold)] text-slate-950 shadow-md ring-2 ring-[var(--gold)]/25"
+                              : `${band.border} bg-white ${band.text}`
+                          } ${
+                            onSelectChain
+                              ? selected
+                                ? "cursor-pointer hover:-translate-y-0.5 hover:bg-[var(--gold)] hover:shadow-md active:translate-y-0"
+                                : "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0"
+                              : "cursor-default"
+                          }`}
+                        >
+                          <span>{item.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border text-xs italic text-muted-foreground">
