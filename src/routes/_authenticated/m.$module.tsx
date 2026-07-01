@@ -8095,9 +8095,7 @@ function DdpModule({
   const primaryProcessOptions = useMemo(
     () =>
       catalogs.processes.filter(
-        (process) =>
-          process.status !== "Arquivado" &&
-          (process.type === "macroprocess" || process.type === "process"),
+        (process) => process.status !== "Arquivado" && process.type === "process",
       ),
     [catalogs.processes],
   );
@@ -8126,10 +8124,23 @@ function DdpModule({
   const toggleStep = (stepId: string) =>
     setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
 
+  function findProcessValueChain(process: OrganizationProcess | null) {
+    let current = process;
+    const visited = new Set<string>();
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      if (current.value_chain_id) {
+        return catalogs.valueChains.find((chain) => chain.id === current?.value_chain_id) ?? null;
+      }
+      current = current.parent_process_id
+        ? catalogs.processes.find((item) => item.id === current?.parent_process_id) ?? null
+        : null;
+    }
+    return null;
+  }
+
   function selectPrimaryProcess(process: OrganizationProcess | null) {
-    const valueChain = process?.value_chain_id
-      ? catalogs.valueChains.find((chain) => chain.id === process.value_chain_id)
-      : null;
+    const valueChain = findProcessValueChain(process);
     update({
       ...data,
       meta: {
@@ -8156,6 +8167,18 @@ function DdpModule({
     });
   }
 
+  const processDataFields = [
+    { label: "Código do processo", value: data.meta.codigo },
+    { label: "Título do processo", value: data.meta.titulo },
+    { label: "Cadeia de valor", value: data.meta.valueChainName },
+    { label: "Área / Departamento", value: data.meta.area },
+    { label: "Responsável / Dono", value: data.meta.responsavel },
+    {
+      label: "Versão do processo",
+      value: selectedProcess ? `v${data.macroprocess.processVersion ?? 1}` : "",
+    },
+  ];
+
   const completion = useMemo(() => {
     const fields = [
       data.macroprocess.processId,
@@ -8172,16 +8195,11 @@ function DdpModule({
   }, [data]);
   const sectionProgress = {
     identification: completionPercent([
-      data.macroprocess.processId,
-      data.meta.codigo,
-      data.meta.titulo,
-      data.meta.area,
-      data.meta.responsavel,
-      data.meta.valueChainName,
+      data.meta.data,
+      data.meta.modalidade,
       data.meta.elaborador,
       data.meta.revisor,
-      data.meta.versao,
-      data.meta.data,
+      data.meta.status,
     ]),
     overview: completionPercent([
       data.overview.objetivo,
@@ -8293,22 +8311,26 @@ function DdpModule({
   return (
     <div className="grid gap-5">
       <Hero title="Formulário de Preenchimento" eyebrow="Mapeamento" progress={completion} />
-      <Panel title="Processo do mapeamento" progress={data.macroprocess.processId ? 100 : 0}>
+      <FixedPanel title="Dados do processo">
         <RegisteredProcessSelect
           required
-          label="Consultar processo cadastrado"
+          label="Processo cadastrado"
           value={data.macroprocess.processId ?? ""}
           processes={primaryProcessOptions}
-          placeholder="Busque por código, nome, macroprocesso ou processo"
+          placeholder="Busque por código, nome ou área"
           onSelect={selectPrimaryProcess}
         />
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {processDataFields.map((field) => (
+            <ReadOnlyField key={field.label} label={field.label} value={field.value} />
+          ))}
+        </div>
         {!selectedProcess ? (
           <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
-            Selecione um macroprocesso ou processo cadastrado para habilitar o preenchimento do
-            mapeamento.
+            Selecione um processo cadastrado para habilitar o preenchimento do mapeamento.
           </div>
         ) : null}
-      </Panel>
+      </FixedPanel>
       {selectedProcess && (onSave || onPreview) ? (
         <div className="flex flex-wrap items-center gap-2">
           {onSave ? (
@@ -8337,17 +8359,8 @@ function DdpModule({
       ) : null}
       {!selectedProcess ? null : (
         <>
-      <Panel title="Identificação" progress={sectionProgress.identification}>
+      <Panel title="Dados do Mapeamento" progress={sectionProgress.identification}>
         <div className="grid gap-4 md:grid-cols-3">
-          <ReadOnlyField label="Código do processo" value={data.meta.codigo} />
-          <ReadOnlyField label="Título do processo" value={data.meta.titulo} />
-          <ReadOnlyField label="Área / Departamento" value={data.meta.area} />
-          <ReadOnlyField label="Responsável / Dono" value={data.meta.responsavel} />
-          <ReadOnlyField label="Cadeia de valor" value={data.meta.valueChainName} />
-          <ReadOnlyField
-            label="Versão do processo"
-            value={selectedProcess ? `v${data.macroprocess.processVersion ?? 1}` : ""}
-          />
           <Field
             label="Data"
             type="date"
@@ -10103,6 +10116,17 @@ function Panel({
         </div>
       ) : null}
       {open ? <div className={title ? "p-4 md:p-5" : "p-5"}>{children}</div> : null}
+    </section>
+  );
+}
+
+function FixedPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="overflow-visible rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex min-h-14 items-center border-b border-border px-4 py-3">
+        <h2 className="min-w-0 flex-1 text-[15px] font-semibold text-foreground">{title}</h2>
+      </div>
+      <div className="p-4 md:p-5">{children}</div>
     </section>
   );
 }
