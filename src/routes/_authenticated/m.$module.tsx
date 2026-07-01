@@ -283,6 +283,7 @@ type DdpState = {
   meta: {
     codigo: string;
     subtitulo: string;
+    modalidade: "AS IS" | "TO BE";
     titulo: string;
     area: string;
     responsavel: string;
@@ -504,6 +505,7 @@ function defaultWorkspace(): WorkspaceState {
       meta: {
         codigo: "",
         subtitulo: "AS IS",
+        modalidade: "AS IS",
         titulo: "",
         area: "",
         responsavel: "",
@@ -759,6 +761,7 @@ type DemoDdpSpec = {
   valueChainName: string;
   versao: string;
   status: string;
+  modalidade?: "AS IS" | "TO BE";
   updatedAt: string;
   objetivo: string;
   escopo: string;
@@ -785,6 +788,7 @@ function makeDemoDdpWorkspace(spec: DemoDdpSpec): WorkspaceState {
       meta: {
         ...base.ddp.meta,
         codigo: spec.codigo,
+        modalidade: spec.modalidade ?? "AS IS",
         titulo: spec.titulo,
         area: spec.area,
         responsavel: spec.responsavel,
@@ -859,6 +863,7 @@ const DEMO_DDP_SPECS: DemoDdpSpec[] = [
   {
     id: "demo-doc:ddp:MAP.TI.002",
     codigo: "MAP.TI.002",
+    modalidade: "TO BE",
     titulo: "Gestão de Demandas de BI & Analytics",
     area: "Tecnologia da Informação",
     donoProcesso: "Carlos Menezes · TI",
@@ -6375,6 +6380,7 @@ type ModuleGridRow = {
   code: string;
   name: string;
   type: string;
+  modalidade: string;
   process: string;
   area: string;
   owner: string;
@@ -6395,6 +6401,7 @@ function moduleGridRowFromWorkspace(
       code: workspace.ddp.meta.codigo || "-",
       name: workspace.ddp.meta.titulo || "Mapeamento sem título",
       type: "Mapeamento",
+      modalidade: workspace.ddp.meta.modalidade || "AS IS",
       process: workspace.ddp.macroprocess.titulo || "-",
       area: workspace.ddp.meta.area || "-",
       owner: workspace.ddp.overview.donoProcesso || "-",
@@ -6407,6 +6414,7 @@ function moduleGridRowFromWorkspace(
       code: workspace.pop.meta.codigo || "-",
       name: workspace.pop.meta.titulo || "Documento sem título",
       type: workspace.pop.meta.tipo || "Documento",
+      modalidade: "-",
       process: workspace.pop.meta.processo || "-",
       area: workspace.pop.meta.area || "-",
       owner: "-",
@@ -6418,6 +6426,7 @@ function moduleGridRowFromWorkspace(
     code: "FLX",
     name: workspace.bpmn.poolName || "Fluxograma sem título",
     type: "Fluxo de atividades",
+    modalidade: "-",
     process: workspace.bpmn.poolName || "-",
     area: "-",
     owner: "-",
@@ -6468,6 +6477,7 @@ function buildDemoModuleRows(moduleId: AteliamModule): ModuleGridRow[] {
     code,
     name,
     type: typeLabel,
+    modalidade: moduleId === "ddp" ? "AS IS" : "-",
     process,
     area,
     owner,
@@ -6570,6 +6580,7 @@ function ModuleDocumentGrid({
       ? [
           ["code", "Código"],
           ["name", "Nome do processo"],
+          ["modalidade", "Modalidade"],
           ["area", "Área"],
           ["owner", "Dono do processo"],
           ["responsible", "Elaborador"],
@@ -8405,6 +8416,17 @@ function DdpModule({
             type="date"
             value={data.meta.data}
             onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
+          />
+          <SelectField
+            label="Modalidade"
+            value={data.meta.modalidade || "AS IS"}
+            options={["AS IS", "TO BE"]}
+            onChange={(modalidade) =>
+              update({
+                ...data,
+                meta: { ...data.meta, modalidade: modalidade as "AS IS" | "TO BE" },
+              })
+            }
           />
           <UserSearchField
             label="Elaborador"
