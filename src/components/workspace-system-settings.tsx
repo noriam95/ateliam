@@ -131,10 +131,9 @@ import {
 } from "@/lib/config.functions";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
 import {
-  DOC_TYPES,
   DOC_TYPE_LABELS,
-  DOC_TYPE_SIGLA,
   type CodeSettings,
+  type DocType,
   normalizeCodeSettings,
   previewDocumentCode,
 } from "@/lib/code-generation";
@@ -498,7 +497,7 @@ function OrganizationsSettings({
     queryFn: () => listDocumentModels({ data: { organizationId: selectedDocumentOrganizationId } }),
     enabled: !isDemo && formOpen && !!selectedDocumentOrganizationId,
   });
-  const table = useSettingsTable(rows, (row) => [row.name, row.slug, row.word_header_color], [
+  const table = useSettingsTable(rows, (row) => [row.name, row.slug], [
     (row) => row.name,
     (row) => row.slug,
   ]);
@@ -608,7 +607,6 @@ function OrganizationsSettings({
                   sortDir={table.sortDir}
                   onSort={table.toggleSort}
                 />
-                <th className="px-3 py-3 font-semibold">Cor institucional</th>
                 <th className="w-20 px-3 py-3 font-semibold">Ação</th>
               </tr>
             </thead>
@@ -623,15 +621,6 @@ function OrganizationsSettings({
                     </div>
                   </td>
                   <td className="px-3 py-3 text-muted-foreground">{row.slug}</td>
-                  <td className="px-3 py-3">
-                    <span className="inline-flex items-center gap-2 text-muted-foreground">
-                      <span
-                        className="h-4 w-4 rounded-sm border border-border"
-                        style={{ backgroundColor: `#${row.word_header_color}` }}
-                      />
-                      #{row.word_header_color}
-                    </span>
-                  </td>
                   <td className="px-3 py-3">
                     <button
                       type="button"
@@ -703,38 +692,40 @@ function OrganizationsSettings({
                   placeholder="ex.: bom-futuro"
                 />
               </FormField>
-              <FormField label="Cor institucional da organização">
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={`#${draft.word_header_color}`}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        word_header_color: event.target.value.slice(1).toUpperCase(),
-                      }))
-                    }
-                    className="h-10 w-12 rounded-md border border-input bg-background p-1"
-                  />
-                  <input
-                    value={draft.word_header_color}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        word_header_color: event.target.value
-                          .replace(/[^0-9a-f]/gi, "")
-                          .slice(0, 6)
-                          .toUpperCase(),
-                      }))
-                    }
-                    className={inputClass}
-                  />
+              <div className="rounded-md border border-border bg-muted/30 p-4">
+                <div className="text-sm font-semibold">Logo do sistema</div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Esta é a logo exibida no sistema para a organização. A cor dos cabeçalhos dos
+                  documentos é configurada abaixo, por tipo de documento.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {draft.logo_data_url ? (
+                    <img
+                      src={draft.logo_data_url}
+                      alt="Logo do sistema"
+                      className="h-14 w-32 rounded-md border border-border bg-white object-contain p-2"
+                    />
+                  ) : (
+                    <span className="flex h-14 w-32 items-center justify-center rounded-md border border-dashed border-border bg-background p-2 text-xs text-muted-foreground">
+                      Sem logo
+                    </span>
+                  )}
+                  <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted">
+                    <ImagePlus className="h-4 w-4" /> Alterar logo
+                    <input type="file" accept="image/*" className="hidden" onChange={selectLogo} />
+                  </label>
+                  {draft.logo_data_url ? (
+                    <button
+                      type="button"
+                      onClick={() => setDraft((current) => ({ ...current, logo_data_url: null }))}
+                      className={iconButtonClass}
+                      title="Remover logo"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
                 </div>
-              </FormField>
-              <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">
-                <ImagePlus className="h-4 w-4" /> Adicionar logo
-                <input type="file" accept="image/*" className="hidden" onChange={selectLogo} />
-              </label>
+              </div>
 
               <CodificationSettings
                 settings={draft.code_settings}
@@ -774,6 +765,44 @@ function OrganizationsSettings({
   );
 }
 
+const CODIFICATION_GROUPS: Array<{
+  key: string;
+  title: string;
+  description: string;
+  types: DocType[];
+  showPreview: boolean;
+}> = [
+  {
+    key: "normative",
+    title: "POP, Norma e IT",
+    description:
+      "Habilita a geração automática para documentos normativos. Cada tipo mantém sua sigla e sequência própria.",
+    types: ["pop", "norma", "it"],
+    showPreview: true,
+  },
+  {
+    key: "mapping",
+    title: "Relatório de Mapeamento e Apresentação de Mapeamento",
+    description: "Os dois documentos usam a mesma codificação de mapeamento.",
+    types: ["mapeamento"],
+    showPreview: true,
+  },
+  {
+    key: "flowchart",
+    title: "Fluxograma",
+    description: "Reservado para o futuro modelo de desenho de fluxograma.",
+    types: ["fluxograma"],
+    showPreview: true,
+  },
+  {
+    key: "process",
+    title: "Processo",
+    description: "Habilita ou desabilita a codificação do cadastro de processo.",
+    types: ["processo"],
+    showPreview: false,
+  },
+];
+
 function CodificationSettings({
   settings,
   onChange,
@@ -783,48 +812,66 @@ function CodificationSettings({
 }) {
   const normalized = normalizeCodeSettings(settings);
 
+  function setGroupMode(types: DocType[], enabled: boolean) {
+    onChange(
+      types.reduce(
+        (acc, type) => ({
+          ...acc,
+          [type]: { ...acc[type], mode: enabled ? "auto" : "manual" },
+        }),
+        normalized,
+      ),
+    );
+  }
+
   return (
     <div className="rounded-md border border-border bg-muted/30 p-4">
       <div className="text-sm font-semibold">Codificação</div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Defina, por tipo de documento, se o código é gerado automaticamente. O formato é fixo:{" "}
-        <code>SIGLA.ÁREA.000</code> (sigla do tipo · sigla da área · sequência de 3 dígitos). A
-        sequência é contada por área e por tipo.
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        Configure a geração automática por grupo de documento. O formato permanece fixo:{" "}
+        <code>SIGLA.ÁREA.000</code>. Mesmo quando POP, Norma e IT são habilitados em conjunto, cada
+        tipo mantém sua própria sigla e sequência.
       </p>
-      <div className="mt-3 grid gap-3">
-        {DOC_TYPES.map((type) => {
-          const rule = normalized[type];
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {CODIFICATION_GROUPS.map((group) => {
+          const enabled = group.types.every((type) => normalized[type].mode === "auto");
           return (
-            <div key={type} className="rounded-md border border-border bg-background p-3">
+            <div key={group.key} className="rounded-md border border-border bg-background p-3">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">{DOC_TYPE_LABELS[type]}</span>
+                <div>
+                  <div className="text-sm font-semibold">{group.title}</div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {group.description}
+                  </p>
+                </div>
                 <label className="inline-flex items-center gap-2 text-xs font-medium">
                   <input
                     type="checkbox"
-                    checked={rule.mode === "auto"}
-                    onChange={(event) =>
-                      onChange({
-                        ...normalized,
-                        [type]: { ...rule, mode: event.target.checked ? "auto" : "manual" },
-                      })
-                    }
+                    checked={enabled}
+                    onChange={(event) => setGroupMode(group.types, event.target.checked)}
                   />
-                  Geração automática
+                  Codificação automática
                 </label>
               </div>
-              {rule.mode === "auto" ? (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Formato:{" "}
-                  <span className="font-mono font-semibold text-foreground">
-                    {previewDocumentCode(type, "ADM", rule)}
-                  </span>{" "}
-                  <span className="text-muted-foreground">
-                    (prefixo fixo <code>{DOC_TYPE_SIGLA[type]}</code> + sigla da área + sequência)
-                  </span>
+              {enabled && group.showPreview ? (
+                <div className="mt-3 grid gap-2">
+                  {group.types.map((type) => {
+                    const rule = normalized[type];
+                    return (
+                      <div key={type} className="text-xs text-muted-foreground">
+                        {DOC_TYPE_LABELS[type]}:{" "}
+                        <span className="font-mono font-semibold text-foreground">
+                          {previewDocumentCode(type, "ADM", rule)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Código preenchido manualmente no formulário.
+                  {enabled
+                    ? "Codificação automática habilitada."
+                    : "Código preenchido manualmente no formulário."}
                 </p>
               )}
             </div>
@@ -849,6 +896,29 @@ function OrganizationDocumentModelSettings({
   onChange: (models: DocumentModelRow[]) => void;
 }) {
   const rows = mergeDocumentModels(models);
+  const normativeModel = rows.find((model) => model.model_key === "pop-word") ?? rows[0];
+  const mappingReportModel = rows.find((model) => model.model_key === "ddp-word") ?? rows[0];
+  const mappingPresentationModel = rows.find((model) => model.model_key === "ddp-html") ?? rows[0];
+  const editableModels = [
+    {
+      title: "POP, Norma e IT",
+      description:
+        "Layout compartilhado para documentos normativos. O nome exibido muda conforme o tipo do documento.",
+      model: normativeModel,
+    },
+    {
+      title: "Relatório de Mapeamento",
+      description: "Modelo documental do relatório completo de mapeamento.",
+      model: mappingReportModel,
+    },
+    {
+      title: "Apresentação de Mapeamento",
+      description: "Modelo da apresentação gerada a partir do mapeamento.",
+      model: mappingPresentationModel,
+    },
+  ].filter((item): item is { title: string; description: string; model: DocumentModelRow } =>
+    Boolean(item.model),
+  );
 
   function patchModel(modelKey: DocumentModelRow["model_key"], patch: Partial<DocumentModelRow>) {
     onChange(
@@ -873,16 +943,17 @@ function OrganizationDocumentModelSettings({
     <div className="rounded-md border border-border bg-muted/30 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold">Documentos</div>
+          <div className="text-sm font-semibold">Documentos e layouts</div>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Configure nome, descrição, cor de cabeçalho e logo por tipo de documento. Estas opções
-            substituem o antigo submenu Modelos de Documentos.
+            Configure a cor do cabeçalho e a logo usada em cada layout de documento. POP, Norma e
+            IT compartilham o mesmo layout; relatório e apresentação de mapeamento são configurados
+            individualmente.
           </p>
         </div>
         {loading ? <span className="text-xs text-muted-foreground">Carregando modelos...</span> : null}
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        {rows.map((model) => {
+        {editableModels.map(({ title, description, model }) => {
           const metadata = modelMetadata(model.model_key);
           const color = normalizeHex(model.primary_color, organizationColor);
           return (
@@ -892,29 +963,13 @@ function OrganizationDocumentModelSettings({
                   {metadata.icon}
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{model.name}</div>
+                  <div className="truncate text-sm font-semibold">{title}</div>
                   <div className="text-[11px] text-muted-foreground">
                     {metadata.module} · {metadata.format}
                   </div>
                 </div>
               </div>
-              <FormField label="Nome">
-                <input
-                  value={model.name}
-                  onChange={(event) => patchModel(model.model_key, { name: event.target.value })}
-                  className={inputClass}
-                />
-              </FormField>
-              <FormField label="Descrição">
-                <textarea
-                  rows={2}
-                  value={model.description ?? ""}
-                  onChange={(event) =>
-                    patchModel(model.model_key, { description: event.target.value })
-                  }
-                  className={`${inputClass} h-auto py-2`}
-                />
-              </FormField>
+              <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
               <FormField label="Cor do cabeçalho">
                 <div className="flex gap-2">
                   <input
@@ -978,12 +1033,28 @@ function OrganizationDocumentModelSettings({
                   </div>
                 </div>
                 <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                  Sem logo específica, será usada a logo da organização.
+                  Sem logo específica, será usada a logo do sistema configurada para a organização.
                 </p>
               </div>
             </div>
           );
         })}
+      </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-md border border-dashed border-border bg-background p-3">
+          <div className="text-sm font-semibold">Fluxograma</div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Ainda não possui documento próprio. Esta configuração será reaproveitada quando o modelo
+            de desenho de fluxograma for habilitado.
+          </p>
+        </div>
+        <div className="rounded-md border border-dashed border-border bg-background p-3">
+          <div className="text-sm font-semibold">Processo</div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Não possui layout documental nesta tela. Para processo, use somente a opção de
+            codificação automática acima.
+          </p>
+        </div>
       </div>
     </div>
   );
