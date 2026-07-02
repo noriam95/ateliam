@@ -3,7 +3,16 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Evita refetch redundante ao navegar entre telas num curto intervalo.
+        // As mutações continuam refazendo o fetch explicitamente (refetch/
+        // invalidate), então dados recém-salvos não ficam obsoletos.
+        staleTime: 30_000,
+      },
+    },
+  });
 
   const router = createRouter({
     routeTree,
