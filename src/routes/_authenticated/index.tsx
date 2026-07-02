@@ -206,7 +206,7 @@ function WorkspaceHome() {
     bpmn: false,
     causes: false,
     valueChain: true,
-    registrations: true,
+    registrations: false,
     processRegistrations: true,
     systemRegistrations: true,
     governance: true,
@@ -443,7 +443,7 @@ function WorkspaceHome() {
     if (area === "modules") {
       setExpanded((current) => ({ ...current, modules: true }));
       if (
-        ![
+        [
           "areas",
           "roles",
           "access-profiles",
@@ -453,10 +453,10 @@ function WorkspaceHome() {
           "owner-users",
           "processes",
           "causes",
-        ].includes(view) &&
+        ].includes(view) ||
         !String(view).startsWith("module:")
       ) {
-        setView("processes");
+        setView("overview");
       }
     }
     if (area === "value-chain") {

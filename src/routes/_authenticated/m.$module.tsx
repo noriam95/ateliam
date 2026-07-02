@@ -4287,7 +4287,7 @@ function ModuleWorkspacePage() {
   const [expandedTree, setExpandedTree] = useState<Record<string, boolean>>({
     home: true,
     modules: true,
-    registrations: true,
+    registrations: false,
     ddp: false,
     pop: false,
     bpmn: false,
@@ -5306,7 +5306,8 @@ function ModuleWorkspacePage() {
       setExpandedTree((current) => ({ ...current, modules: true }));
     }
     if (area === "registrations") {
-      setContentMode("registrations");
+      setRailArea("modules");
+      setContentMode("module");
       setExpandedTree((current) => ({ ...current, registrations: true }));
     }
     if (area === "settings") {
@@ -5316,7 +5317,7 @@ function ModuleWorkspacePage() {
   }
 
   function selectRegistration(view: ModuleRegistrationView) {
-    setRailArea("registrations");
+    setRailArea("modules");
     setContentMode("registrations");
     setRegistrationView(view);
   }
@@ -5979,6 +5980,36 @@ function ModuleWorkspacePage() {
                       <ModuleTreeButton onClick={() => openSearchForModule("bpmn")}>
                         <Search className="h-4 w-4 shrink-0" /> Consultar
                       </ModuleTreeButton>
+                    </ModuleTreeBranch>
+
+                    <ModuleTreeBranch
+                      title="Cadastros"
+                      icon={<Database className="h-4 w-4" />}
+                      active={contentMode === "registrations"}
+                      open={expandedTree.registrations}
+                      onSelect={() =>
+                        navigate({ to: "/", search: { area: "modules", view: "processes" } })
+                      }
+                      onToggle={() => toggleTree("registrations")}
+                    >
+                      <ModuleTreeAnchor href="/?area=modules&view=processes">
+                        <GitBranch className="h-4 w-4 shrink-0" /> Processos
+                      </ModuleTreeAnchor>
+                      <ModuleTreeAnchor href="/?area=modules&view=areas">
+                        <Layers className="h-4 w-4 shrink-0" /> Ãreas
+                      </ModuleTreeAnchor>
+                      <ModuleTreeAnchor href="/?area=modules&view=owners">
+                        <Users className="h-4 w-4 shrink-0" /> Donos de Processo
+                      </ModuleTreeAnchor>
+                      <ModuleTreeAnchor href="/?area=modules&view=owner-users">
+                        <Link2 className="h-4 w-4 shrink-0" /> VÃ­nculo Dono Ã— UsuÃ¡rio
+                      </ModuleTreeAnchor>
+                      <ModuleTreeAnchor href="/?area=modules&view=systems">
+                        <Database className="h-4 w-4 shrink-0" /> Sistemas
+                      </ModuleTreeAnchor>
+                      <ModuleTreeAnchor href="/?area=modules&view=process-types">
+                        <ListChecks className="h-4 w-4 shrink-0" /> Categorias de Processo
+                      </ModuleTreeAnchor>
                     </ModuleTreeBranch>
                   </div>
                 ) : null}
