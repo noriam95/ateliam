@@ -26,6 +26,7 @@ import {
   Search,
   Settings,
   Users,
+  Workflow,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -683,7 +684,7 @@ function WorkspaceHome() {
 
                       <ModuleTreeGroup
                         title="Fluxograma"
-                        icon={<GitBranch className="h-4 w-4" />}
+                        icon={<Workflow className="h-4 w-4" />}
                         active={isModuleView(view, "bpmn")}
                         open={expanded.bpmn}
                         onSelect={() => navigate({ to: "/m/$module", params: { module: "bpmn" }, search: { view: "consult" } })}

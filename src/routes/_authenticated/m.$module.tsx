@@ -37,6 +37,7 @@ import {
   Square,
   Trash2,
   Upload,
+  Workflow,
   X,
 } from "lucide-react";
 import {
@@ -5966,7 +5967,7 @@ function ModuleWorkspacePage() {
 
                     <ModuleTreeBranch
                       title="Fluxograma"
-                      icon={<GitBranch className="h-4 w-4" />}
+                      icon={<Workflow className="h-4 w-4" />}
                       active={moduleId === "bpmn"}
                       open={expandedTree.bpmn}
                       onSelect={() => openModuleBranch("bpmn")}
