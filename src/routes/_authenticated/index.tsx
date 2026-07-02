@@ -33,7 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
-import { WorkspaceRail } from "@/components/workspace-navigation";
+import { TreeButton, TreeSection, WorkspaceRail } from "@/components/workspace-navigation";
 import { WorkspaceSystemSettings } from "@/components/workspace-system-settings";
 import {
   WorkspaceProcessRegistrations,
@@ -2135,65 +2135,6 @@ function SimplePanel({
         ))}
       </div>
     </section>
-  );
-}
-
-function TreeSection({
-  title,
-  icon,
-  open,
-  children,
-  onToggle,
-}: {
-  title: string;
-  icon?: ReactNode;
-  open: boolean;
-  children: ReactNode;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="mb-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-      >
-        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
-        {title}
-      </button>
-      <div
-        className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-      >
-        <div className="overflow-hidden">
-          <div className="ml-3 border-l border-border pl-2">{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TreeButton({
-  active,
-  children,
-  onClick,
-}: {
-  active?: boolean;
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold)] ${
-        active
-          ? "bg-accent text-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
