@@ -4288,14 +4288,17 @@ function ModuleWorkspacePage() {
     home: true,
     modules: true,
     registrations: false,
-    ddp: false,
-    pop: false,
-    bpmn: false,
+    // Expande já o branch do módulo atual, para a barra lateral refletir onde o
+    // usuário está em vez de aparecer recolhida ("menu voltou para versão antiga").
+    ddp: moduleId === "ddp",
+    pop: moduleId === "pop",
+    bpmn: moduleId === "bpmn",
     causes: false,
     settings: true,
     processRegistrations: true,
     systemRegistrations: true,
   });
+
   const [showSave, setShowSave] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [comment, setComment] = useState("");
@@ -4640,12 +4643,14 @@ function ModuleWorkspacePage() {
     setRailArea("modules");
     setContentMode("module");
     setModuleSurface("editor");
+    // Expande o branch do módulo atual (recolhendo os demais), para a barra
+    // lateral refletir onde o usuário está em vez de aparecer toda recolhida.
     setExpandedTree((current) => ({
       ...current,
       modules: true,
-      ddp: false,
-      pop: false,
-      bpmn: false,
+      ddp: moduleId === "ddp",
+      pop: moduleId === "pop",
+      bpmn: moduleId === "bpmn",
       causes: false,
     }));
   }, [moduleId]);
@@ -5932,7 +5937,14 @@ function ModuleWorkspacePage() {
                       <ModuleTreeButton onClick={() => openNewForModule("ddp")}>
                         <Plus className="h-4 w-4 shrink-0" /> Novo
                       </ModuleTreeButton>
-                      <ModuleTreeButton onClick={() => openSearchForModule("ddp")}>
+                      <ModuleTreeButton
+                        active={
+                          moduleId === "ddp" &&
+                          contentMode === "module" &&
+                          moduleSurface === "consult"
+                        }
+                        onClick={() => openSearchForModule("ddp")}
+                      >
                         <Search className="h-4 w-4 shrink-0" /> Consultar
                       </ModuleTreeButton>
                       <ModuleTreeSection
@@ -5961,7 +5973,14 @@ function ModuleWorkspacePage() {
                       <ModuleTreeButton onClick={() => openNewForModule("pop")}>
                         <Plus className="h-4 w-4 shrink-0" /> Novo
                       </ModuleTreeButton>
-                      <ModuleTreeButton onClick={() => openSearchForModule("pop")}>
+                      <ModuleTreeButton
+                        active={
+                          moduleId === "pop" &&
+                          contentMode === "module" &&
+                          moduleSurface === "consult"
+                        }
+                        onClick={() => openSearchForModule("pop")}
+                      >
                         <Search className="h-4 w-4 shrink-0" /> Consultar
                       </ModuleTreeButton>
                     </ModuleTreeBranch>
@@ -5977,7 +5996,14 @@ function ModuleWorkspacePage() {
                       <ModuleTreeButton onClick={() => openNewForModule("bpmn")}>
                         <Plus className="h-4 w-4 shrink-0" /> Novo
                       </ModuleTreeButton>
-                      <ModuleTreeButton onClick={() => openSearchForModule("bpmn")}>
+                      <ModuleTreeButton
+                        active={
+                          moduleId === "bpmn" &&
+                          contentMode === "module" &&
+                          moduleSurface === "consult"
+                        }
+                        onClick={() => openSearchForModule("bpmn")}
+                      >
                         <Search className="h-4 w-4 shrink-0" /> Consultar
                       </ModuleTreeButton>
                     </ModuleTreeBranch>
