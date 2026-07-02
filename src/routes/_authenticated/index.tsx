@@ -51,9 +51,10 @@ export const Route = createFileRoute("/_authenticated/")({
     area:
       search.area === "reports"
         ? "value-chain"
+        : search.area === "registrations"
+          ? "modules"
         : search.area === "modules" ||
           search.area === "value-chain" ||
-          search.area === "registrations" ||
           search.area === "settings"
           ? search.area
           : undefined,
@@ -429,6 +430,22 @@ function WorkspaceHome() {
     setTreeOpen(true);
     if (area === "modules") {
       setExpanded((current) => ({ ...current, modules: true }));
+      if (
+        ![
+          "areas",
+          "roles",
+          "access-profiles",
+          "process-types",
+          "systems",
+          "owners",
+          "owner-users",
+          "processes",
+          "causes",
+        ].includes(view) &&
+        !String(view).startsWith("module:")
+      ) {
+        setView("processes");
+      }
     }
     if (area === "value-chain") {
       setExpanded((current) => ({ ...current, valueChain: true }));
@@ -668,6 +685,41 @@ function WorkspaceHome() {
                           <Search className="h-4 w-4" /> Consultar
                         </TreeLink>
                       </ModuleTreeGroup>
+
+                      <TreeSection
+                        title="Cadastros"
+                        icon={<Database className="h-4 w-4" />}
+                        open={expanded.registrations}
+                        onToggle={() => toggle("registrations")}
+                      >
+                        <TreeButton
+                          active={view === "processes"}
+                          onClick={() => setView("processes")}
+                        >
+                          <GitBranch className="h-4 w-4" /> Processos
+                        </TreeButton>
+                        <TreeButton active={view === "areas"} onClick={() => setView("areas")}>
+                          <Layers className="h-4 w-4" /> Áreas
+                        </TreeButton>
+                        <TreeButton active={view === "owners"} onClick={() => setView("owners")}>
+                          <Users className="h-4 w-4" /> Donos de Processo
+                        </TreeButton>
+                        <TreeButton
+                          active={view === "owner-users"}
+                          onClick={() => setView("owner-users")}
+                        >
+                          <Link2 className="h-4 w-4" /> Vínculo Dono × Usuário
+                        </TreeButton>
+                        <TreeButton active={view === "systems"} onClick={() => setView("systems")}>
+                          <Database className="h-4 w-4" /> Sistemas
+                        </TreeButton>
+                        <TreeButton
+                          active={view === "process-types"}
+                          onClick={() => setView("process-types")}
+                        >
+                          <ListChecks className="h-4 w-4" /> Categorias de Processo
+                        </TreeButton>
+                      </TreeSection>
                     </div>
                   ) : null}
 

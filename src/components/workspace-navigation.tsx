@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Database, GitBranch, Home, Network, Settings } from "lucide-react";
+import { GitBranch, Home, Network, Settings } from "lucide-react";
 
 export type WorkspaceRailArea =
   | "home"
@@ -38,13 +38,6 @@ export function WorkspaceRail({
         onClick={() => onSelect("value-chain")}
       >
         <Network className="h-4 w-4" />
-      </WorkspaceRailButton>
-      <WorkspaceRailButton
-        active={activeArea === "registrations"}
-        label="Cadastros"
-        onClick={() => onSelect("registrations")}
-      >
-        <Database className="h-4 w-4" />
       </WorkspaceRailButton>
       <div className="flex-1" />
       <WorkspaceRailButton
