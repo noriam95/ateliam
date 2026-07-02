@@ -17,7 +17,6 @@ import {
   FlaskConical,
   GitBranch,
   Layers,
-  LayoutGrid,
   Link2,
   ListChecks,
   Maximize2,
@@ -580,7 +579,7 @@ function WorkspaceHome() {
                     {activeArea === "home" ? (
                       <Building2 className="h-4 w-4 text-foreground" />
                     ) : activeArea === "modules" ? (
-                      <LayoutGrid className="h-4 w-4 text-foreground" />
+                      <GitBranch className="h-4 w-4 text-foreground" />
                     ) : activeArea === "value-chain" ? (
                       <Network className="h-4 w-4 text-foreground" />
                     ) : activeArea === "registrations" ? (
@@ -594,7 +593,7 @@ function WorkspaceHome() {
                       {activeArea === "home"
                         ? organizationName
                         : activeArea === "modules"
-                          ? "Módulos"
+                          ? "Processos"
                           : activeArea === "value-chain"
                             ? "Cadeia de Valor"
                             : activeArea === "registrations"
@@ -1664,7 +1663,7 @@ function getCatalogCopy(
       metrics: [
         ...baseMetrics.slice(0, 2),
         {
-          icon: <LayoutGrid className="h-4 w-4" />,
+          icon: <Database className="h-4 w-4" />,
           label: "Sistemas",
           value: 0,
           detail: "base local",
