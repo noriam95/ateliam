@@ -2261,16 +2261,21 @@ function TreeLink({
   children,
 }: {
   moduleId: AteliamModule;
-  targetView: string;
+  targetView: "new" | "consult" | "cause-new" | "cause-consult";
   children: ReactNode;
 }) {
+  // Navegação client-side (Link do router) em vez de <a href>: um <a> força
+  // reload completo da página, descartando o estado em memória e recarregando
+  // a última versão salva ("voltar para versão antiga"). O Link preserva o estado.
   return (
-    <a
-      href={`/m/${moduleId}?view=${encodeURIComponent(targetView)}`}
+    <Link
+      to="/m/$module"
+      params={{ module: moduleId }}
+      search={{ view: targetView }}
       className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold)]"
     >
       {children}
-    </a>
+    </Link>
   );
 }
 
