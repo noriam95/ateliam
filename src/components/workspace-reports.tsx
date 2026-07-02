@@ -1099,7 +1099,7 @@ function EmptyState() {
         <Network className="h-10 w-10 text-muted-foreground/40" />
         <p className="text-sm font-semibold text-foreground">Nenhuma cadeia cadastrada</p>
         <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-          Acesse Cadastros → Cadeia de Valor para adicionar processos de gestão, negócios e suporte.
+          Acesse Cadeia de Valor → Cadastro para adicionar processos de gestão, negócios e suporte.
         </p>
       </div>
     </div>

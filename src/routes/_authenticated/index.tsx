@@ -40,7 +40,7 @@ import {
   type ProcessRegistrationView,
   DEMO_REGISTRY,
 } from "@/components/workspace-process-registrations";
-import { WorkspaceReports, ValueChainMacro } from "@/components/workspace-reports";
+import { WorkspaceReports } from "@/components/workspace-reports";
 import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
 import { getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
@@ -50,12 +50,14 @@ export const Route = createFileRoute("/_authenticated/")({
   component: WorkspaceHome,
   validateSearch: (search: Record<string, unknown>) => ({
     area:
-      search.area === "modules" ||
-      search.area === "registrations" ||
-      search.area === "reports" ||
-      search.area === "settings"
-        ? search.area
-        : undefined,
+      search.area === "reports"
+        ? "value-chain"
+        : search.area === "modules" ||
+          search.area === "value-chain" ||
+          search.area === "registrations" ||
+          search.area === "settings"
+          ? search.area
+          : undefined,
     view: typeof search.view === "string" ? search.view : undefined,
   }),
 });
@@ -93,7 +95,7 @@ type WorkspaceView =
   | `module:${AteliamModule}`;
 
 type ModuleTask = "home" | "consult" | "cause-new" | "cause-consult" | "cause-edit" | "library";
-type WorkspaceArea = "home" | "modules" | "registrations" | "reports" | "settings";
+type WorkspaceArea = "home" | "modules" | "value-chain" | "registrations" | "reports" | "settings";
 type DashboardTotals = {
   processes: number;
   activeProcesses: number;
@@ -191,6 +193,7 @@ function WorkspaceHome() {
     pop: false,
     bpmn: false,
     causes: false,
+    valueChain: true,
     registrations: true,
     processRegistrations: true,
     systemRegistrations: true,
@@ -428,6 +431,12 @@ function WorkspaceHome() {
     if (area === "modules") {
       setExpanded((current) => ({ ...current, modules: true }));
     }
+    if (area === "value-chain") {
+      setExpanded((current) => ({ ...current, valueChain: true }));
+      if (!["value-chain-report", "value-chains"].includes(view)) {
+        setView("value-chain-report");
+      }
+    }
     if (area === "registrations") {
       setExpanded((current) => ({ ...current, registrations: true }));
       if (
@@ -441,7 +450,6 @@ function WorkspaceHome() {
           "owner-users",
           "processes",
           "causes",
-          "value-chains",
         ].includes(view)
       ) {
         setView("processes");
@@ -573,6 +581,8 @@ function WorkspaceHome() {
                       <Building2 className="h-4 w-4 text-foreground" />
                     ) : activeArea === "modules" ? (
                       <LayoutGrid className="h-4 w-4 text-foreground" />
+                    ) : activeArea === "value-chain" ? (
+                      <Network className="h-4 w-4 text-foreground" />
                     ) : activeArea === "registrations" ? (
                       <Database className="h-4 w-4 text-foreground" />
                     ) : activeArea === "reports" ? (
@@ -585,7 +595,9 @@ function WorkspaceHome() {
                         ? organizationName
                         : activeArea === "modules"
                           ? "Módulos"
-                          : activeArea === "registrations"
+                          : activeArea === "value-chain"
+                            ? "Cadeia de Valor"
+                            : activeArea === "registrations"
                             ? "Cadastros"
                             : activeArea === "reports"
                               ? "Relatórios"
@@ -660,14 +672,25 @@ function WorkspaceHome() {
                     </div>
                   ) : null}
 
-                  {activeArea === "registrations" ? (
-                    <div key="registrations" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+                  {activeArea === "value-chain" ? (
+                    <div key="value-chain" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+                      <TreeButton
+                        active={view === "value-chain-report"}
+                        onClick={() => setView("value-chain-report")}
+                      >
+                        <Network className="h-4 w-4" /> Relatório
+                      </TreeButton>
                       <TreeButton
                         active={view === "value-chains"}
                         onClick={() => setView("value-chains")}
                       >
-                        <Network className="h-4 w-4" /> Cadeia de valor
+                        <Database className="h-4 w-4" /> Cadastro
                       </TreeButton>
+                    </div>
+                  ) : null}
+
+                  {activeArea === "registrations" ? (
+                    <div key="registrations" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
                       <TreeButton
                         active={view === "processes"}
                         onClick={() => setView("processes")}
@@ -694,17 +717,6 @@ function WorkspaceHome() {
                         onClick={() => setView("process-types")}
                       >
                         <ListChecks className="h-4 w-4" /> Categorias de Processo
-                      </TreeButton>
-                    </div>
-                  ) : null}
-
-                  {activeArea === "reports" ? (
-                    <div key="reports" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                      <TreeButton
-                        active={view === "value-chain-report"}
-                        onClick={() => setView("value-chain-report")}
-                      >
-                        <Network className="h-4 w-4" /> Cadeia de Valor
                       </TreeButton>
                     </div>
                   ) : null}
@@ -1172,24 +1184,6 @@ function WorkspaceContent({
           ) : null}
         </div>
       </div>
-
-      {/* Visão Macro da Cadeia de Valor — diagrama do relatório de cadeia de valor */}
-      <ExpandableCard
-        title="Visão Macro da Cadeia de Valor"
-        icon={<GitBranch className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-        className="rounded-lg border border-border bg-card p-4 shadow-sm"
-        expanded={
-          <WorkspaceReports
-            view="value-chain-report"
-            organizationId={organizationId}
-            isDemo={isDemo}
-          />
-        }
-      >
-        <div className="mt-3">
-          <ValueChainMacro organizationId={organizationId} isDemo={isDemo} />
-        </div>
-      </ExpandableCard>
 
       {/* Top Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

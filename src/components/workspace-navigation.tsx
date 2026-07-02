@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
-import { BarChart2, Database, Home, LayoutGrid, Settings } from "lucide-react";
+import { Database, Home, LayoutGrid, Network, Settings } from "lucide-react";
 
-export type WorkspaceRailArea = "home" | "modules" | "reports" | "registrations" | "settings";
+export type WorkspaceRailArea =
+  | "home"
+  | "modules"
+  | "value-chain"
+  | "reports"
+  | "registrations"
+  | "settings";
 
 export function WorkspaceRail({
   activeArea,
@@ -27,11 +33,11 @@ export function WorkspaceRail({
         <LayoutGrid className="h-4 w-4" />
       </WorkspaceRailButton>
       <WorkspaceRailButton
-        active={activeArea === "reports"}
-        label="Relatórios"
-        onClick={() => onSelect("reports")}
+        active={activeArea === "value-chain"}
+        label="Cadeia de Valor"
+        onClick={() => onSelect("value-chain")}
       >
-        <BarChart2 className="h-4 w-4" />
+        <Network className="h-4 w-4" />
       </WorkspaceRailButton>
       <WorkspaceRailButton
         active={activeArea === "registrations"}

@@ -5984,7 +5984,7 @@ function ModuleWorkspacePage() {
 
                 {railArea === "registrations" ? (
                   <div className="grid gap-1">
-                    <ModuleTreeAnchor href="/?area=registrations&view=value-chains">
+                    <ModuleTreeAnchor href="/?area=value-chain&view=value-chains">
                       <Network className="h-4 w-4 shrink-0" /> Cadeia de valor
                     </ModuleTreeAnchor>
                     <ModuleTreeAnchor href="/?area=registrations&view=processes">
