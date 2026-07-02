@@ -52,6 +52,7 @@ import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import {
+  ModuleBranch as ModuleTreeBranch,
   TreeButton as ModuleTreeButton,
   TreeSection as ModuleTreeSection,
   WorkspaceRail,
@@ -6272,58 +6273,6 @@ function ModuleWorkspacePage() {
           </div>
         </Modal>
       )}
-    </div>
-  );
-}
-
-function ModuleTreeBranch({
-  title,
-  icon,
-  active,
-  open,
-  children,
-  onSelect,
-  onToggle,
-}: {
-  title: string;
-  icon?: ReactNode;
-  active?: boolean;
-  open: boolean;
-  children: ReactNode;
-  onSelect: () => void;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="mb-1 animate-in slide-in-from-left-2 fade-in duration-150">
-      <div
-        className={`flex items-stretch rounded-md ${
-          active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-muted"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={onSelect}
-          className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left"
-        >
-          {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
-          <span className="block min-w-0 truncate text-sm font-normal text-foreground">
-            {title}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="grid w-8 place-items-center rounded-r-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          title={open ? "Recolher módulo" : "Expandir módulo"}
-        >
-          {open ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </div>
-      {open ? <div className="ml-5 border-l border-border py-1 pl-2">{children}</div> : null}
     </div>
   );
 }
