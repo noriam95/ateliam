@@ -139,6 +139,17 @@ function isModuleView(view: WorkspaceView, moduleId: AteliamModule) {
   return String(view).startsWith(`module:${moduleId}`);
 }
 
+function isRegistrationView(view: WorkspaceView) {
+  return [
+    "processes",
+    "areas",
+    "owners",
+    "owner-users",
+    "systems",
+    "process-types",
+  ].includes(view);
+}
+
 function WorkspaceHome() {
   const search = Route.useSearch();
   const navigate = useNavigate();
@@ -686,10 +697,12 @@ function WorkspaceHome() {
                         </TreeLink>
                       </ModuleTreeGroup>
 
-                      <TreeSection
+                      <ModuleTreeGroup
                         title="Cadastros"
                         icon={<Database className="h-4 w-4" />}
+                        active={isRegistrationView(view)}
                         open={expanded.registrations}
+                        onSelect={() => setView("processes")}
                         onToggle={() => toggle("registrations")}
                       >
                         <TreeButton
@@ -719,7 +732,7 @@ function WorkspaceHome() {
                         >
                           <ListChecks className="h-4 w-4" /> Categorias de Processo
                         </TreeButton>
-                      </TreeSection>
+                      </ModuleTreeGroup>
                     </div>
                   ) : null}
 
