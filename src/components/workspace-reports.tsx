@@ -54,8 +54,8 @@ export function ValueChainMacro({
 }) {
   const fn = useServerFn(listProcessRegistrationData);
   const catalogsQ = useQuery({
-    queryKey: ["process-registrations", organizationId],
-    queryFn: () => fn({ data: { organizationId: organizationId ?? "" } }),
+    queryKey: ["process-registration-data", organizationId],
+    queryFn: () => fn({ data: { organizationId: organizationId ?? null } }),
     enabled: !isDemo && !!organizationId,
   });
   const chains: ValueChain[] = useMemo(() => {
@@ -80,8 +80,8 @@ function ValueChainReport({
 }) {
   const fn = useServerFn(listProcessRegistrationData);
   const catalogsQ = useQuery({
-    queryKey: ["process-registrations", organizationId],
-    queryFn: () => fn({ data: { organizationId: organizationId ?? "" } }),
+    queryKey: ["process-registration-data", organizationId],
+    queryFn: () => fn({ data: { organizationId: organizationId ?? null } }),
     enabled: !isDemo && !!organizationId,
   });
 

@@ -7630,12 +7630,18 @@ function DdpCausesModuleV2({
       initializedNew.current = true;
       openNewCause();
     }
+    // Inicializa o formulário de causa uma única vez ao entrar no modo "new"
+    // (guardado por initializedNew.current); depende apenas de `mode`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   useEffect(() => {
     if (mode === "edit" && selectedForEdit && !draft) {
       openEditCause(selectedForEdit);
     }
+    // Reage à mudança de modo/seleção; usa selectedForEdit?.id de propósito
+    // (identidade estável) e a guarda !draft evita reabrir sobre a edição em curso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, selectedForEdit?.id]);
 
   function causeCode(index: number) {
@@ -10462,6 +10468,8 @@ function RegisteredProcessSelect({
 
   useEffect(() => {
     if (!open) setQuery(selected ? displayName(selected) : "");
+    // Sincroniza o texto ao fechar; usa selected?.id de propósito (identidade estável).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selected?.id, displayName]);
 
   return (

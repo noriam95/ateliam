@@ -548,7 +548,7 @@ function OrganizationsSettings({
     if (documentModelsQ.data) {
       setDraftModels(mergeDocumentModels(documentModelsQ.data as DocumentModelRow[]));
     }
-  }, [formOpen, isDemo, demoDocumentModels, draft.id, documentModelsQ.data]);
+  }, [formOpen, isDemo, demoDocumentModels, draft.id, draft.word_header_color, documentModelsQ.data]);
 
   function selectLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
