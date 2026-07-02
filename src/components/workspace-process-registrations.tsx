@@ -136,6 +136,25 @@ type RegistryData = {
   systems: SystemItem[];
 };
 
+const PROCESS_PARENT_BY_TYPE: Partial<Record<Process["type"], Process["type"]>> = {
+  process: "macroprocess",
+  subprocess: "process",
+  atividade: "subprocess",
+  tarefa: "atividade",
+};
+
+const PROCESS_PARENT_LABEL: Record<Process["type"], string> = {
+  macroprocess: "",
+  process: "Macroprocesso",
+  subprocess: "Processo",
+  atividade: "Subprocesso",
+  tarefa: "Atividade",
+};
+
+function ownerDisplayName(owner: Pick<Owner, "name" | "role_title">) {
+  return (owner.role_title || owner.name).split(" Â· ")[0].split(" · ")[0].trim();
+}
+
 const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
   { id: "type-macro", code: "macroprocess", label: "Macroprocesso", active: true },
   { id: "type-process", code: "process", label: "Processo", active: true },
@@ -595,7 +614,7 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
     department: data.areas[0]?.name ?? "",
     departmentId: data.areas[0]?.id ?? "",
     departmentIds: [],
-    owner: data.owners[0]?.name ?? "",
+    owner: data.owners[0] ? ownerDisplayName(data.owners[0]) : "",
     roleTitle: "",
     linkOwnerId: data.owners[0]?.id ?? "",
     userName: "",
@@ -640,6 +659,10 @@ export function WorkspaceProcessRegistrations({
   const data = isDemo ? demoData : ((query.data ?? emptyRegistryData()) as RegistryData);
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(view, data));
   const [formOpen, setFormOpen] = useState(false);
+  const [pendingProcessStatus, setPendingProcessStatus] = useState<{
+    process: Process;
+    status: "Ativo" | "Arquivado";
+  } | null>(null);
 
   // O código do Processo (PR) depende da sigla da área selecionada no formulário.
   const processAreaSigla = areaSiglaByName(data.areas, draft.department);
@@ -709,7 +732,11 @@ export function WorkspaceProcessRegistrations({
       if (isDemo) {
         return saveDemoRegistration(
           view,
-          { ...draft, code: processCode ?? draft.code },
+          {
+            ...draft,
+            code: processCode ?? draft.code,
+            status: view === "processes" && !draft.id ? "Ativo" : draft.status,
+          },
           demoData,
           setDemoData,
         );
@@ -759,6 +786,7 @@ export function WorkspaceProcessRegistrations({
           },
         });
       }
+      const processStatus = draft.id ? draft.status : "Ativo";
       return saveProcess({
         data: {
           id: draft.id || undefined,
@@ -771,7 +799,7 @@ export function WorkspaceProcessRegistrations({
           department: draft.department || null,
           owner: draft.owner || null,
           description: draft.description || null,
-          status: draft.status as "Ativo" | "Em revisão" | "Arquivado",
+          status: processStatus,
         },
       });
     },
@@ -803,6 +831,41 @@ export function WorkspaceProcessRegistrations({
     },
     onSuccess: async () => {
       toast.success("Registro excluído.");
+      if (!isDemo) await query.refetch();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const processStatusMutation = useMutation({
+    mutationFn: async ({ process, status }: { process: Process; status: "Ativo" | "Arquivado" }) => {
+      if (isDemo) {
+        setDemoData((current) => ({
+          ...current,
+          processes: current.processes.map((item) =>
+            item.id === process.id ? { ...item, status } : item,
+          ),
+        }));
+        return;
+      }
+      await saveProcess({
+        data: {
+          id: process.id,
+          organizationId,
+          code: process.code,
+          name: process.name,
+          type: process.type,
+          valueChainId: process.value_chain_id,
+          parentProcessId: process.parent_process_id,
+          department: process.department,
+          owner: process.owner,
+          description: process.description,
+          status,
+        },
+      });
+    },
+    onSuccess: async () => {
+      toast.success("Status do processo atualizado.");
+      setPendingProcessStatus(null);
       if (!isDemo) await query.refetch();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -894,6 +957,15 @@ export function WorkspaceProcessRegistrations({
                   ))}
                   <td className="px-3 py-3">
                     <div className="flex gap-1">
+                      {view === "processes" ? (
+                        <ProcessStatusSwitch
+                          process={data.processes.find((item) => item.id === row.id)}
+                          disabled={processStatusMutation.isPending}
+                          onRequest={(process, status) =>
+                            setPendingProcessStatus({ process, status })
+                          }
+                        />
+                      ) : null}
                       <IconButton label="Editar" onClick={() => editRow(row.id)}>
                         <Pencil className="h-4 w-4" />
                       </IconButton>
@@ -996,6 +1068,52 @@ export function WorkspaceProcessRegistrations({
               </button>
             </footer>
           </form>
+        </div>
+      ) : null}
+
+      {pendingProcessStatus ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-xl rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0">
+                <h2 className="font-display text-lg font-bold">
+                  {pendingProcessStatus.status === "Ativo"
+                    ? "Ativar processo"
+                    : "Desativar processo"}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Confirma {pendingProcessStatus.status === "Ativo" ? "ativar" : "desativar"} o
+                  processo "{pendingProcessStatus.process.name}"?
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingProcessStatus(null)}
+                className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Fechar"
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingProcessStatus(null)}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={processStatusMutation.isPending}
+                onClick={() => processStatusMutation.mutate(pendingProcessStatus)}
+                className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-45"
+              >
+                {pendingProcessStatus.status === "Ativo" ? "Ativar" : "Desativar"}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </section>
@@ -1241,13 +1359,10 @@ function RegistrationFields({
         </Field>
       </>
     );
-  const parentOptions = data.processes.filter((process) =>
-    draft.type === "subprocess"
-      ? process.type === "process"
-      : draft.type === "process"
-        ? process.type === "macroprocess"
-        : false,
-  );
+  const parentType = PROCESS_PARENT_BY_TYPE[draft.type];
+  const parentOptions = parentType
+    ? data.processes.filter((process) => process.type === parentType && process.status === "Ativo")
+    : [];
   return (
     <>
       <div className="grid grid-cols-[120px_1fr] gap-3">
@@ -1277,11 +1392,12 @@ function RegistrationFields({
       </div>
       <Field label="Cadeia de valor">
         <select
+          required
           value={draft.valueChainId}
           onChange={(e) => setDraft((d) => ({ ...d, valueChainId: e.target.value }))}
           className={inputClass}
         >
-          <option value="">Sem vínculo</option>
+          <option value="">Selecione</option>
           {data.valueChains.map((chain) => (
             <option key={chain.id} value={chain.id}>
               {chain.name}
@@ -1293,7 +1409,11 @@ function RegistrationFields({
         <select
           value={draft.type}
           onChange={(e) =>
-            setDraft((d) => ({ ...d, type: e.target.value as Draft["type"], parentProcessId: "" }))
+            setDraft((d) => ({
+              ...d,
+              type: e.target.value as Draft["type"],
+              parentProcessId: "",
+            }))
           }
           className={inputClass}
         >
@@ -1307,8 +1427,9 @@ function RegistrationFields({
         </select>
       </Field>
       {draft.type !== "macroprocess" ? (
-        <Field label={draft.type === "process" ? "Macroprocesso pai" : "Processo pai"}>
+        <Field label={`${PROCESS_PARENT_LABEL[draft.type]} pai`}>
           <select
+            required
             value={draft.parentProcessId}
             onChange={(e) => setDraft((d) => ({ ...d, parentProcessId: e.target.value }))}
             className={inputClass}
@@ -1342,7 +1463,9 @@ function RegistrationFields({
         >
           <option value="">Selecione</option>
           {data.owners.map((owner) => (
-            <option key={owner.id}>{owner.name}</option>
+            <option key={owner.id} value={ownerDisplayName(owner)}>
+              {ownerDisplayName(owner)}
+            </option>
           ))}
         </select>
       </Field>
@@ -1353,17 +1476,6 @@ function RegistrationFields({
           onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
           className={`${inputClass} h-auto py-2`}
         />
-      </Field>
-      <Field label="Status">
-        <select
-          value={draft.status}
-          onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value }))}
-          className={inputClass}
-        >
-          <option>Ativo</option>
-          <option>Em revisão</option>
-          <option>Arquivado</option>
-        </select>
       </Field>
     </>
   );
@@ -1480,7 +1592,7 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
       data.types.find((type) => type.code === item.type)?.label || item.type,
       data.valueChains.find((chain) => chain.id === item.value_chain_id)?.name || "-",
       item.department || "-",
-      item.owner || "-",
+      item.owner ? ownerDisplayName({ name: item.owner, role_title: null }) : "-",
     ],
   }));
 }
@@ -1539,7 +1651,7 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
         valueChainId: item.value_chain_id || "",
         parentProcessId: item.parent_process_id || "",
         department: item.department || "",
-        owner: item.owner || "",
+        owner: item.owner ? ownerDisplayName({ name: item.owner, role_title: null }) : "",
         description: item.description || "",
         status: item.status,
       }
@@ -1680,6 +1792,17 @@ function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
   if (view === "owner-users") return !!draft.linkOwnerId && !!draft.userName.trim();
   if (view === "systems") return !!draft.name.trim();
   if (view === "process-types") return !!draft.label.trim();
+  if (view === "processes") {
+    const needsParent = draft.type !== "macroprocess";
+    return (
+      !!draft.name.trim() &&
+      !!draft.valueChainId &&
+      (!needsParent || !!draft.parentProcessId) &&
+      !!draft.department &&
+      !!draft.owner &&
+      !!draft.description.trim()
+    );
+  }
   return !!draft.name.trim();
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -1711,6 +1834,41 @@ function IconButton({
     </button>
   );
 }
+
+function ProcessStatusSwitch({
+  process,
+  disabled,
+  onRequest,
+}: {
+  process?: Process;
+  disabled?: boolean;
+  onRequest: (process: Process, status: "Ativo" | "Arquivado") => void;
+}) {
+  if (!process) return null;
+  const active = process.status === "Ativo";
+  return (
+    <button
+      type="button"
+      title={active ? "Desativar processo" : "Ativar processo"}
+      aria-label={active ? "Desativar processo" : "Ativar processo"}
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={() => onRequest(process, active ? "Arquivado" : "Ativo")}
+      className={`relative h-8 w-14 rounded-full border px-1 transition disabled:opacity-45 ${
+        active
+          ? "border-emerald-500/40 bg-emerald-500/15"
+          : "border-border bg-muted"
+      }`}
+    >
+      <span
+        className={`block h-5 w-5 rounded-full transition ${
+          active ? "translate-x-6 bg-emerald-600" : "translate-x-0 bg-muted-foreground"
+        }`}
+      />
+    </button>
+  );
+}
+
 const inputClass =
   "h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10";
 const primaryButtonClass =
