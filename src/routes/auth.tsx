@@ -123,13 +123,13 @@ function AuthPage() {
           key={message.eyebrow}
           className="relative z-10 animate-in fade-in slide-in-from-bottom-2 duration-700"
         >
-          <div className="mb-3 text-[10px] uppercase tracking-[0.25em] text-brand">
+          <div className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">
             {message.eyebrow}
           </div>
-          <h1 className="whitespace-pre-line font-display text-4xl font-bold leading-[1.08]">
+          <h1 className="whitespace-pre-line font-display text-5xl font-bold leading-[1.08] lg:text-6xl">
             {message.title}
           </h1>
-          <p className="mt-4 max-w-md text-[14px] leading-relaxed text-background/72">
+          <p className="mt-5 max-w-lg text-lg leading-relaxed text-background/72">
             {message.text}
           </p>
           <div className="mt-7 flex gap-1.5">
