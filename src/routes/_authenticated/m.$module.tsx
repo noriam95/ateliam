@@ -6342,9 +6342,26 @@ function ModuleTreeButton({
 }
 
 function ModuleTreeAnchor({ href, children }: { href: string; children: ReactNode }) {
+  const navigate = useNavigate();
+  // Navegação client-side: um <a href> puro recarrega a página inteira e descarta
+  // o estado em memória (o menu "volta para uma versão antiga"). Interceptamos o
+  // clique esquerdo e navegamos pelo router, preservando o estado; o href é mantido
+  // para semântica de link (abrir em nova aba, ctrl/cmd+clique, etc.).
   return (
     <a
       href={href}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+        event.preventDefault();
+        const params = new URLSearchParams(href.split("?")[1] ?? "");
+        const area = (params.get("area") ?? undefined) as
+          | "modules"
+          | "registrations"
+          | "reports"
+          | "settings"
+          | undefined;
+        navigate({ to: "/", search: { area, view: params.get("view") ?? undefined } });
+      }}
       className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150"
     >
       {children}
