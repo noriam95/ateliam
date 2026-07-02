@@ -20,7 +20,6 @@ import {
   Home,
   ImagePlus,
   Layers,
-  LayoutGrid,
   Link2,
   ListChecks,
   Lock,
@@ -5904,7 +5903,15 @@ function ModuleWorkspacePage() {
                   {railArea === "home" ? (
                     <Home className="h-4 w-4 text-foreground" />
                   ) : railArea === "modules" ? (
-                    <LayoutGrid className="h-4 w-4 text-foreground" />
+                    contentMode === "registrations" ? (
+                      <Database className="h-4 w-4 text-foreground" />
+                    ) : moduleId === "ddp" ? (
+                      <FileText className="h-4 w-4 text-foreground" />
+                    ) : moduleId === "pop" ? (
+                      <CheckCircle2 className="h-4 w-4 text-foreground" />
+                    ) : (
+                      <Workflow className="h-4 w-4 text-foreground" />
+                    )
                   ) : railArea === "registrations" ? (
                     <Database className="h-4 w-4 text-foreground" />
                   ) : (
@@ -5914,7 +5921,9 @@ function ModuleWorkspacePage() {
                     {railArea === "home"
                       ? "Home"
                       : railArea === "modules"
-                        ? "Módulos"
+                        ? contentMode === "registrations"
+                          ? "Cadastros"
+                          : moduleInfo.title
                         : railArea === "registrations"
                           ? "Cadastros"
                           : "Configurações"}
