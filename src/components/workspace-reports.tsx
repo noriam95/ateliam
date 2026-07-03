@@ -141,6 +141,11 @@ function ValueChainReport({
   const [activeTab, setActiveTab] = useState<"value-chain" | "processes">("value-chain");
   const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
   const [editingChain, setEditingChain] = useState<ChainDraft | null>(null);
+  // Ações que exigem confirmação (mesma lógica do cadastro de processos).
+  const [pendingAction, setPendingAction] = useState<{
+    type: "toggle" | "delete";
+    chain: ValueChain;
+  } | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: async (draft: ChainDraft) => {
@@ -322,10 +327,8 @@ function ValueChainReport({
                 status: chain.status,
               })
             }
-            onDeleteChain={(id) => {
-              if (window.confirm("Excluir esta cadeia de valor?")) deleteMutation.mutate(id);
-            }}
-            onToggleChain={(chain) => toggleMutation.mutate(chain)}
+            onDeleteChain={(chain) => setPendingAction({ type: "delete", chain })}
+            onToggleChain={(chain) => setPendingAction({ type: "toggle", chain })}
           />
         </>
       )}
@@ -338,7 +341,87 @@ function ValueChainReport({
           onSubmit={() => saveMutation.mutate(editingChain)}
         />
       ) : null}
+      {pendingAction ? (
+        <ChainActionConfirm
+          action={pendingAction}
+          busy={chainBusy}
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            if (pendingAction.type === "delete") deleteMutation.mutate(pendingAction.chain.id);
+            else toggleMutation.mutate(pendingAction.chain);
+            setPendingAction(null);
+          }}
+        />
+      ) : null}
     </section>
+  );
+}
+
+// Modal de confirmação para desativar/ativar ou excluir uma cadeia de valor,
+// no mesmo padrão do cadastro de processos (a ação só ocorre após confirmar).
+function ChainActionConfirm({
+  action,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  action: { type: "toggle" | "delete"; chain: ValueChain };
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const isDelete = action.type === "delete";
+  const willActivate = action.type === "toggle" && !isActiveChain(action.chain);
+  const title = isDelete
+    ? "Excluir cadeia de valor"
+    : willActivate
+      ? "Ativar cadeia de valor"
+      : "Desativar cadeia de valor";
+  const message = isDelete
+    ? `Confirma excluir a cadeia de valor "${action.chain.name}"? Esta ação não pode ser desfeita.`
+    : `Confirma ${willActivate ? "ativar" : "desativar"} a cadeia de valor "${action.chain.name}"?`;
+  const confirmLabel = isDelete ? "Excluir" : willActivate ? "Ativar" : "Desativar";
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]">
+      <div className="w-full max-w-xl rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-bold">{title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Fechar"
+            title="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className={`rounded-md border px-4 py-2 text-sm font-semibold disabled:opacity-45 ${
+              isDelete
+                ? "border-red-500/40 bg-red-500/10 text-red-600 hover:bg-red-500/20"
+                : "border-border bg-card hover:bg-muted"
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -572,7 +655,7 @@ function ConsultationTable({
   busy: boolean;
   onNewChain: () => void;
   onEditChain: (chain: ValueChain) => void;
-  onDeleteChain: (id: string) => void;
+  onDeleteChain: (chain: ValueChain) => void;
   onToggleChain: (chain: ValueChain) => void;
 }) {
   // Ordem base: gestão → negócios → suporte (mesma do diagrama),
@@ -965,7 +1048,7 @@ function ConsultationTable({
                           type="button"
                           title="Excluir"
                           aria-label="Excluir cadeia de valor"
-                          onClick={() => onDeleteChain(chain.id)}
+                          onClick={() => onDeleteChain(chain)}
                           className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <Trash2 className="h-4 w-4" />

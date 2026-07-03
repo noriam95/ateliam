@@ -951,13 +951,13 @@ function WorkspaceHome() {
 
                   {activeArea === "value-chain" ? (
                     <div key="value-chain" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                      {/* O cadastro foi incorporado ao relatório (tabela editável);
-                          a antiga entrada "Cadastro" deixou de existir. */}
+                      {/* O cadastro foi incorporado ao relatório (tabela editável),
+                          por isso a única entrada é o "Cadastro". */}
                       <TreeButton
                         active={view === "value-chain-report"}
                         onClick={() => setView("value-chain-report")}
                       >
-                        <Network className="h-4 w-4" /> Cadeia de Valor
+                        <Database className="h-4 w-4" /> Cadastro
                       </TreeButton>
                     </div>
                   ) : null}
@@ -2134,7 +2134,7 @@ function WorkspaceContent({
             {/* Quadrantes por tipo de documento */}
             <div>
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Áreas por Tipo de Documento
+                Documentos por Área
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {DOCUMENT_CATALOG_TYPES.map((type, index) => (
