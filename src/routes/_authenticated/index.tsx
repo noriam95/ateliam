@@ -590,11 +590,11 @@ function WorkspaceHome() {
         >
           {activeArea !== "home" ? (
             <aside
-              className={`min-h-0 overflow-hidden border-r border-border bg-card/58 ${
+              className={`sticky top-14 h-[calc(100vh-3.5rem)] self-start min-h-0 overflow-hidden border-r border-border bg-card/58 ${
                 treeOpen ? "block" : "hidden lg:block"
               }`}
             >
-              <div className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col">
+              <div className="flex h-full flex-col">
                 <div className="border-b border-border p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
