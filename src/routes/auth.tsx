@@ -51,9 +51,10 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
-  const demoModeAvailable = isDemoModeAvailable();
+  const [demoModeAvailable, setDemoModeAvailable] = useState(false);
 
   useEffect(() => {
+    setDemoModeAvailable(isDemoModeAvailable());
     const timer = window.setInterval(() => {
       setMessageIndex((current) => (current + 1) % LOGIN_MESSAGES.length);
     }, 7200);
