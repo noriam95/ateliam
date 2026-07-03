@@ -196,6 +196,20 @@ type DashboardMappingStatusCounts = {
   aprovado: number;
   concluido: number;
 };
+
+// Uma cor por etapa do acompanhamento de mapeamentos. As tonalidades seguem a
+// paleta do sistema (âmbar/gold da marca + o verde e o teal já usados no
+// diagrama de Cadeia de Valor), com fundo suave e número na própria cor.
+const MAPPING_STATUS_TILES: Array<{
+  key: keyof DashboardMappingStatusCounts;
+  label: string;
+  color: string;
+}> = [
+  { key: "emAndamento", label: "Em andamento", color: "var(--gold)" },
+  { key: "emRevisao", label: "Em revisão", color: "#3b74c4" },
+  { key: "aprovado", label: "Aprovado", color: "#1f9d6b" },
+  { key: "concluido", label: "Concluído", color: "#0e8fa6" },
+];
 type DashboardDocumentType = "Norma" | "POP" | "Instrução" | "Fluxograma" | "Mapeamento";
 type DashboardDocumentCatalogRow = {
   id: string;
@@ -2067,22 +2081,22 @@ function WorkspaceContent({
           expanded={<MappingRecordsTable rows={mappingRows} />}
         >
           <div className="mt-auto grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div className="rounded-md bg-accent p-3 text-center">
-              <div className="font-data text-3xl font-bold text-[var(--gold)]">{mappingStatusCounts.emAndamento}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Em andamento</div>
-            </div>
-            <div className="rounded-md bg-muted/40 p-3 text-center">
-              <div className="font-data text-3xl font-bold text-foreground">{mappingStatusCounts.emRevisao}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Em revisão</div>
-            </div>
-            <div className="rounded-md bg-muted/40 p-3 text-center">
-              <div className="font-data text-3xl font-bold text-foreground">{mappingStatusCounts.aprovado}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Aprovado</div>
-            </div>
-            <div className="rounded-md bg-muted/40 p-3 text-center">
-              <div className="font-data text-3xl font-bold text-foreground">{mappingStatusCounts.concluido}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Concluído</div>
-            </div>
+            {MAPPING_STATUS_TILES.map((tile) => (
+              <div
+                key={tile.key}
+                className="rounded-md p-3 text-center"
+                style={{
+                  backgroundColor: `color-mix(in oklab, ${tile.color} 14%, var(--card))`,
+                }}
+              >
+                <div className="font-data text-3xl font-bold" style={{ color: tile.color }}>
+                  {mappingStatusCounts[tile.key]}
+                </div>
+                <div className="mt-1 text-[11px] leading-tight text-muted-foreground">
+                  {tile.label}
+                </div>
+              </div>
+            ))}
           </div>
         </ExpandableCard>
 
