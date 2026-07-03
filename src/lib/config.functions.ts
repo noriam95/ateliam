@@ -1271,6 +1271,31 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     const activeProcesses = (processes ?? []).filter((process) => process.status === "Ativo");
     const staleProcesses = (processes ?? []).filter((process) => process.status !== "Ativo");
 
+    // Cobertura de mapeamento: um processo é "coberto" se tiver pelo menos um
+    // mapeamento (documento do módulo ddp) vinculado a ele. A quantidade de
+    // mapeamentos não importa — é sim/não por processo.
+    const mappingsByProcess = new Map<
+      string,
+      Array<{ name: string; version: number; updatedAt: string }>
+    >();
+    for (const doc of ddps) {
+      const pid = doc.primary_process_id;
+      if (!pid) continue;
+      const list = mappingsByProcess.get(pid) ?? [];
+      list.push({ name: doc.name, version: doc.current_version, updatedAt: doc.updated_at });
+      mappingsByProcess.set(pid, list);
+    }
+    const mappingRows = (processes ?? []).map((process) => ({
+      id: process.id,
+      name: process.name,
+      type: process.type,
+      department: process.department,
+      owner: process.owner,
+      status: process.status,
+      updatedAt: process.updated_at,
+      mappings: mappingsByProcess.get(process.id) ?? [],
+    }));
+
     return {
       organization,
       totals: {
@@ -1287,6 +1312,11 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       topOwners: rank((processes ?? []).map((process) => process.owner)),
       recentDocuments: (documents ?? []).slice(0, 5),
       recentProcesses: (processes ?? []).slice(0, 5),
+      mappingCoverage: {
+        covered: mappingRows.filter((row) => row.mappings.length > 0).length,
+        total: processes?.length ?? 0,
+        rows: mappingRows,
+      },
     };
   });
 
