@@ -5319,11 +5319,6 @@ function ModuleWorkspacePage() {
       setContentMode("module");
       setExpandedTree((current) => ({ ...current, modules: true }));
     }
-    if (area === "registrations") {
-      setRailArea("modules");
-      setContentMode("module");
-      setExpandedTree((current) => ({ ...current, registrations: true }));
-    }
     if (area === "settings") {
       setContentMode("settings");
       setExpandedTree((current) => ({ ...current, settings: true }));
@@ -5913,17 +5908,7 @@ function ModuleWorkspacePage() {
                   {railArea === "home" ? (
                     <Home className="h-4 w-4 text-foreground" />
                   ) : railArea === "modules" ? (
-                    contentMode === "registrations" ? (
-                      <Database className="h-4 w-4 text-foreground" />
-                    ) : moduleId === "ddp" ? (
-                      <FileText className="h-4 w-4 text-foreground" />
-                    ) : moduleId === "pop" ? (
-                      <CheckCircle2 className="h-4 w-4 text-foreground" />
-                    ) : (
-                      <Workflow className="h-4 w-4 text-foreground" />
-                    )
-                  ) : railArea === "registrations" ? (
-                    <Database className="h-4 w-4 text-foreground" />
+                    <GitBranch className="h-4 w-4 text-foreground" />
                   ) : (
                     <Settings className="h-4 w-4 text-foreground" />
                   )}
@@ -5931,12 +5916,8 @@ function ModuleWorkspacePage() {
                     {railArea === "home"
                       ? "Home"
                       : railArea === "modules"
-                        ? contentMode === "registrations"
-                          ? "Cadastros"
-                          : moduleInfo.title
-                        : railArea === "registrations"
-                          ? "Cadastros"
-                          : "Configurações"}
+                        ? "Processos"
+                        : "Configurações"}
                   </div>
                 </div>
               </div>
@@ -6056,32 +6037,6 @@ function ModuleWorkspacePage() {
                         <ListChecks className="h-4 w-4 shrink-0" /> Categorias de Processo
                       </ModuleTreeAnchor>
                     </ModuleTreeBranch>
-                  </div>
-                ) : null}
-
-                {railArea === "registrations" ? (
-                  <div className="grid gap-1">
-                    <ModuleTreeAnchor href="/?area=value-chain&view=value-chains">
-                      <Network className="h-4 w-4 shrink-0" /> Cadeia de valor
-                    </ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=registrations&view=processes">
-                      <GitBranch className="h-4 w-4 shrink-0" /> Processos
-                    </ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=registrations&view=areas">
-                      <Layers className="h-4 w-4 shrink-0" /> Áreas
-                    </ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=registrations&view=owners">
-                      <Users className="h-4 w-4 shrink-0" /> Donos de Processo
-                    </ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=registrations&view=owner-users">
-                      <Link2 className="h-4 w-4 shrink-0" /> Vínculo Dono × Usuário
-                    </ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=registrations&view=systems">
-                      <Database className="h-4 w-4 shrink-0" /> Sistemas
-                    </ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=registrations&view=process-types">
-                      <ListChecks className="h-4 w-4 shrink-0" /> Categorias de Processo
-                    </ModuleTreeAnchor>
                   </div>
                 ) : null}
 
@@ -6548,6 +6503,27 @@ type ExportFormat =
   | "pop-presentation-doc";
 
 const MODULE_STATUS_OPTIONS = ["Em andamento", "Em revisão", "Aprovado", "Concluído"];
+type ModuleGridSortDir = "asc" | "desc";
+type ModuleGridColumn = keyof Pick<
+  ModuleGridRow,
+  "code" | "name" | "type" | "modalidade" | "process" | "area" | "owner" | "responsible" | "status" | "updatedAt"
+>;
+
+function compareModuleGridRows(
+  a: ModuleGridRow,
+  b: ModuleGridRow,
+  field: ModuleGridColumn,
+  dir: ModuleGridSortDir,
+) {
+  const sign = dir === "asc" ? 1 : -1;
+  if (field === "updatedAt") {
+    return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * sign;
+  }
+  return String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
+    numeric: true,
+    sensitivity: "base",
+  }) * sign;
+}
 
 function ModuleDocumentGrid({
   moduleId,
@@ -6570,6 +6546,8 @@ function ModuleDocumentGrid({
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<ModuleGridColumn>("updatedAt");
+  const [sortDir, setSortDir] = useState<ModuleGridSortDir>("desc");
   const [pendingStatus, setPendingStatus] = useState<{
     row: ModuleGridRow;
     status: string;
@@ -6613,6 +6591,19 @@ function ModuleDocumentGrid({
             ["status", "Status"],
             ["updatedAt", "Última atualização"],
           ];
+  const sortedRows = useMemo(
+    () => [...filtered].sort((a, b) => compareModuleGridRows(a, b, sortField, sortDir)),
+    [filtered, sortDir, sortField],
+  );
+
+  function toggleSort(field: ModuleGridColumn) {
+    if (field === sortField) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortField(field);
+    setSortDir(field === "updatedAt" ? "desc" : "asc");
+  }
 
   function toggleRow(id: string) {
     setSelected((current) =>
@@ -6623,7 +6614,7 @@ function ModuleDocumentGrid({
   function exportVisibleRows() {
     const workbookRows = [
       columns.map(([, label]) => label),
-      ...filtered.map((row) =>
+      ...sortedRows.map((row) =>
         columns.map(([key]) => {
           const value = row[key as keyof ModuleGridRow];
           return key === "updatedAt" ? new Date(value).toLocaleString("pt-BR") : value;
@@ -6713,15 +6704,24 @@ function ModuleDocumentGrid({
                 <input
                   type="checkbox"
                   aria-label="Selecionar registros exibidos"
-                  checked={!!filtered.length && filtered.every((row) => selected.includes(row.id))}
+                  checked={!!sortedRows.length && sortedRows.every((row) => selected.includes(row.id))}
                   onChange={(event) =>
-                    setSelected(event.target.checked ? filtered.map((row) => row.id) : [])
+                    setSelected(event.target.checked ? sortedRows.map((row) => row.id) : [])
                   }
                 />
               </th>
-              {columns.map(([, label]) => (
+              {columns.map(([key, label]) => (
                 <th key={label} className="px-3 py-3 font-semibold">
-                  {label}
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(key as ModuleGridColumn)}
+                    className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
+                  >
+                    {label}
+                    <span className="text-[10px]">
+                      {sortField === key ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                    </span>
+                  </button>
                 </th>
               ))}
               <th className="w-[160px] whitespace-nowrap px-4 py-3 text-right font-semibold">
@@ -6740,7 +6740,7 @@ function ModuleDocumentGrid({
                 </td>
               </tr>
             ) : null}
-            {!loading && !filtered.length ? (
+            {!loading && !sortedRows.length ? (
               <tr>
                 <td
                   colSpan={columns.length + 2}
@@ -6751,7 +6751,7 @@ function ModuleDocumentGrid({
               </tr>
             ) : null}
             {!loading
-              ? filtered.map((row) => (
+              ? sortedRows.map((row) => (
                   <tr
                     key={row.id}
                     onDoubleClick={() => onEdit(row)}
@@ -6816,7 +6816,7 @@ function ModuleDocumentGrid({
         </table>
       </div>
       <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
-        {filtered.length} registro(s) exibido(s) · {selected.length} selecionado(s)
+        {sortedRows.length} registro(s) exibido(s) · {selected.length} selecionado(s)
       </footer>
       {pendingStatus ? (
         <Modal

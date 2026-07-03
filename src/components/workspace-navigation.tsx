@@ -6,7 +6,6 @@ export type WorkspaceRailArea =
   | "modules"
   | "value-chain"
   | "reports"
-  | "registrations"
   | "settings";
 
 export function WorkspaceRail({

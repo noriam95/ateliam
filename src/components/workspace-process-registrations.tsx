@@ -152,7 +152,12 @@ const PROCESS_PARENT_LABEL: Record<Process["type"], string> = {
 };
 
 function ownerDisplayName(owner: Pick<Owner, "name" | "role_title">) {
-  return (owner.role_title || owner.name).split(" Â· ")[0].split(" · ")[0].trim();
+  const value = owner.role_title || owner.name || "";
+  return value
+    .split(" Â· ")[0]
+    .split(" · ")[0]
+    .split(" - ")[0]
+    .trim();
 }
 
 const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [

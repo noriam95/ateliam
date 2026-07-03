@@ -1205,6 +1205,76 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
     return updated;
   });
 
+type DashboardMappingRow = {
+  id: string;
+  code: string;
+  name: string;
+  process: string;
+  modalidade: string;
+  area: string;
+  owner: string;
+  responsible: string;
+  status: string;
+  updatedAt: string;
+};
+
+function readString(value: unknown, fallback = "-") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
+function objectAt(value: unknown, key: string): Record<string, unknown> {
+  if (!value || typeof value !== "object") return {};
+  const nested = (value as Record<string, unknown>)[key];
+  return nested && typeof nested === "object" ? (nested as Record<string, unknown>) : {};
+}
+
+function dashboardMappingRowFromDocument(document: {
+  id: string;
+  name: string;
+  updated_at: string;
+  content_inline: string | null;
+}): DashboardMappingRow {
+  try {
+    const parsed = JSON.parse(document.content_inline ?? "{}") as Record<string, unknown>;
+    const source =
+      parsed.modules && typeof parsed.modules === "object"
+        ? (parsed.modules as Record<string, unknown>)
+        : parsed;
+    const ddp = objectAt(source, "ddp");
+    const meta = objectAt(ddp, "meta");
+    const macroprocess = objectAt(ddp, "macroprocess");
+    const legacy = objectAt(ddp, "legacy");
+    const overview = objectAt(ddp, "overview");
+
+    return {
+      id: document.id,
+      code: readString(meta.codigo),
+      name: readString(meta.titulo, document.name || "Mapeamento sem título"),
+      process: readString(macroprocess.titulo, readString(legacy.processName)),
+      modalidade: readString(meta.modalidade, "AS IS"),
+      area: readString(legacy.processArea, readString(meta.area)),
+      owner: readString(legacy.processOwner, readString(overview.donoProcesso)),
+      responsible: readString(meta.elaborador),
+      status: readString(meta.status, "Em andamento"),
+      updatedAt: document.updated_at,
+    };
+  } catch {
+    return {
+      id: document.id,
+      code: "-",
+      name: document.name || "Mapeamento sem título",
+      process: "-",
+      modalidade: "AS IS",
+      area: "-",
+      owner: "-",
+      responsible: "-",
+      status: "Em andamento",
+      updatedAt: document.updated_at,
+    };
+  }
+}
+
 export const getOrganizationDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
@@ -1229,7 +1299,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         .order("updated_at", { ascending: false }),
       context.supabase
         .from("documents")
-        .select("id, name, module, current_version, primary_process_id, updated_at")
+        .select("id, name, module, current_version, primary_process_id, updated_at, content_inline")
         .eq("organization_id", organizationId)
         .in("module", ["ddp", "pop"])
         .order("updated_at", { ascending: false }),
@@ -1270,6 +1340,13 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     const pops = (documents ?? []).filter((document) => document.module === "pop");
     const activeProcesses = (processes ?? []).filter((process) => process.status === "Ativo");
     const staleProcesses = (processes ?? []).filter((process) => process.status !== "Ativo");
+    const dashboardMappingRows = ddps.map(dashboardMappingRowFromDocument);
+    const mappingStatusCounts = {
+      emAndamento: dashboardMappingRows.filter((row) => row.status === "Em andamento").length,
+      emRevisao: dashboardMappingRows.filter((row) => row.status === "Em revisão").length,
+      aprovado: dashboardMappingRows.filter((row) => row.status === "Aprovado").length,
+      concluido: dashboardMappingRows.filter((row) => row.status === "Concluído").length,
+    };
 
     // Cobertura de mapeamento: um processo é "coberto" se tiver pelo menos um
     // mapeamento (documento do módulo ddp) vinculado a ele. A quantidade de
@@ -1285,7 +1362,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       list.push({ name: doc.name, version: doc.current_version, updatedAt: doc.updated_at });
       mappingsByProcess.set(pid, list);
     }
-    const mappingRows = (processes ?? []).map((process) => ({
+    const coverageRows = (processes ?? []).map((process) => ({
       id: process.id,
       name: process.name,
       type: process.type,
@@ -1310,12 +1387,14 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       },
       topDepartments: rank((processes ?? []).map((process) => process.department)),
       topOwners: rank((processes ?? []).map((process) => process.owner)),
-      recentDocuments: (documents ?? []).slice(0, 5),
+      mappingRows: dashboardMappingRows,
+      mappingStatusCounts,
+      recentDocuments: (documents ?? []).map(({ content_inline: _content, ...document }) => document).slice(0, 5),
       recentProcesses: (processes ?? []).slice(0, 5),
       mappingCoverage: {
-        covered: mappingRows.filter((row) => row.mappings.length > 0).length,
+        covered: coverageRows.filter((row) => row.mappings.length > 0).length,
         total: processes?.length ?? 0,
-        rows: mappingRows,
+        rows: coverageRows,
       },
     };
   });

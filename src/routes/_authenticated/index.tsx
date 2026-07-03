@@ -5,7 +5,6 @@ import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from
 import { createPortal } from "react-dom";
 import {
   Activity,
-  AlertCircle,
   BarChart2,
   Building2,
   CheckCircle2,
@@ -101,7 +100,7 @@ type WorkspaceView =
   | `module:${AteliamModule}`;
 
 type ModuleTask = "home" | "consult" | "cause-new" | "cause-consult" | "cause-edit" | "library";
-type WorkspaceArea = "home" | "modules" | "value-chain" | "registrations" | "reports" | "settings";
+type WorkspaceArea = "home" | "modules" | "value-chain" | "reports" | "settings";
 type DashboardTotals = {
   processes: number;
   activeProcesses: number;
@@ -179,6 +178,24 @@ function buildDemoMappingCoverage(): MappingCoverage {
   };
 }
 
+type DashboardMappingRow = {
+  id: string;
+  code: string;
+  name: string;
+  process: string;
+  modalidade: string;
+  area: string;
+  owner: string;
+  responsible: string;
+  status: string;
+  updatedAt: string;
+};
+type DashboardMappingStatusCounts = {
+  emAndamento: number;
+  emRevisao: number;
+  aprovado: number;
+  concluido: number;
+};
 type AccessibleOrganization = {
   id: string;
   name: string;
@@ -340,6 +357,63 @@ function WorkspaceHome() {
                     owners: 0,
                     valueChains: 0,
                   },
+            mappingRows:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? [
+                    {
+                      id: "demo-map-1",
+                      code: "MAP.PMO.007",
+                      name: "Gestão de Demandas de BI Analytics",
+                      process: "Gestão de Demandas de BI Analytics",
+                      modalidade: "AS IS",
+                      area: "Tecnologia da Informação",
+                      owner: "Gerente de TI",
+                      responsible: "Marina Costa",
+                      status: "Em andamento",
+                      updatedAt: new Date().toISOString(),
+                    },
+                    {
+                      id: "demo-map-2",
+                      code: "MAP.RH.001",
+                      name: "Recrutamento e Seleção",
+                      process: "Recrutamento e Seleção",
+                      modalidade: "AS IS",
+                      area: "Recursos Humanos",
+                      owner: "BP de RH",
+                      responsible: "Juliana Castro",
+                      status: "Em revisão",
+                      updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+                    },
+                    {
+                      id: "demo-map-3",
+                      code: "MAP.FIN.001",
+                      name: "Contas a Receber",
+                      process: "Contas a Receber",
+                      modalidade: "AS IS",
+                      area: "Financeiro & Controladoria",
+                      owner: "Gerente Financeiro",
+                      responsible: "Bruno Cardoso",
+                      status: "Aprovado",
+                      updatedAt: new Date(Date.now() - 86400000 * 12).toISOString(),
+                    },
+                    {
+                      id: "demo-map-4",
+                      code: "MAP.COM.001",
+                      name: "Prospecção e Geração de Leads",
+                      process: "Prospecção e Geração de Leads",
+                      modalidade: "AS IS",
+                      area: "Comercial & Vendas",
+                      owner: "Diretor Comercial",
+                      responsible: "Rafael Souza",
+                      status: "Concluído",
+                      updatedAt: new Date(Date.now() - 86400000 * 18).toISOString(),
+                    },
+                  ]
+                : [],
+            mappingStatusCounts:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? { emAndamento: 1, emRevisao: 1, aprovado: 1, concluido: 1 }
+                : { emAndamento: 0, emRevisao: 0, aprovado: 0, concluido: 0 },
             topDepartments:
               selectedDemoOrganization.id === "demo-bom-futuro"
                 ? [
@@ -530,24 +604,6 @@ function WorkspaceHome() {
         setView("value-chain-report");
       }
     }
-    if (area === "registrations") {
-      setExpanded((current) => ({ ...current, registrations: true }));
-      if (
-        ![
-          "areas",
-          "roles",
-          "access-profiles",
-          "process-types",
-          "systems",
-          "owners",
-          "owner-users",
-          "processes",
-          "causes",
-        ].includes(view)
-      ) {
-        setView("processes");
-      }
-    }
     if (area === "reports") {
       setExpanded((current) => ({ ...current, reports: true }));
       if (!["value-chain-report"].includes(view)) {
@@ -676,8 +732,6 @@ function WorkspaceHome() {
                       <GitBranch className="h-4 w-4 text-foreground" />
                     ) : activeArea === "value-chain" ? (
                       <Network className="h-4 w-4 text-foreground" />
-                    ) : activeArea === "registrations" ? (
-                      <Database className="h-4 w-4 text-foreground" />
                     ) : activeArea === "reports" ? (
                       <BarChart2 className="h-4 w-4 text-foreground" />
                     ) : (
@@ -690,8 +744,6 @@ function WorkspaceHome() {
                           ? "Processos"
                           : activeArea === "value-chain"
                             ? "Cadeia de Valor"
-                            : activeArea === "registrations"
-                            ? "Cadastros"
                             : activeArea === "reports"
                               ? "Relatórios"
                               : "Configurações"}
@@ -819,38 +871,6 @@ function WorkspaceHome() {
                     </div>
                   ) : null}
 
-                  {activeArea === "registrations" ? (
-                    <div key="registrations" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                      <TreeButton
-                        active={view === "processes"}
-                        onClick={() => setView("processes")}
-                      >
-                        <GitBranch className="h-4 w-4" /> Processos
-                      </TreeButton>
-                      <TreeButton active={view === "areas"} onClick={() => setView("areas")}>
-                        <Layers className="h-4 w-4" /> Áreas
-                      </TreeButton>
-                      <TreeButton active={view === "owners"} onClick={() => setView("owners")}>
-                        <Users className="h-4 w-4" /> Donos de Processo
-                      </TreeButton>
-                      <TreeButton
-                        active={view === "owner-users"}
-                        onClick={() => setView("owner-users")}
-                      >
-                        <Link2 className="h-4 w-4" /> Vínculo Dono × Usuário
-                      </TreeButton>
-                      <TreeButton active={view === "systems"} onClick={() => setView("systems")}>
-                        <Database className="h-4 w-4" /> Sistemas
-                      </TreeButton>
-                      <TreeButton
-                        active={view === "process-types"}
-                        onClick={() => setView("process-types")}
-                      >
-                        <ListChecks className="h-4 w-4" /> Categorias de Processo
-                      </TreeButton>
-                    </div>
-                  ) : null}
-
                   {activeArea === "settings" ? (
                     <div key="settings" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
                       <TreeButton active={view === "users"} onClick={() => setView("users")}>
@@ -877,6 +897,15 @@ function WorkspaceHome() {
               organizationSlug={activeOrganization?.slug ?? null}
               codeSettings={activeOrganization?.code_settings ?? null}
               totals={totals}
+              mappingRows={(dashboard?.mappingRows ?? []) as DashboardMappingRow[]}
+              mappingStatusCounts={
+                (dashboard?.mappingStatusCounts ?? {
+                  emAndamento: 0,
+                  emRevisao: 0,
+                  aprovado: 0,
+                  concluido: 0,
+                }) as DashboardMappingStatusCounts
+              }
               topDepartments={dashboard?.topDepartments ?? []}
               topOwners={dashboard?.topOwners ?? []}
               recentDocuments={dashboard?.recentDocuments ?? []}
@@ -1253,6 +1282,128 @@ function ProcessRecordsTable({
   );
 }
 
+type DashboardSortDir = "asc" | "desc";
+type DashboardMappingColumn = keyof Pick<
+  DashboardMappingRow,
+  "code" | "name" | "process" | "modalidade" | "area" | "owner" | "responsible" | "status" | "updatedAt"
+>;
+
+const DASHBOARD_MAPPING_COLUMNS: Array<[DashboardMappingColumn, string]> = [
+  ["code", "Código"],
+  ["name", "Título do mapeamento"],
+  ["process", "Nome do processo"],
+  ["modalidade", "Modalidade"],
+  ["area", "Área"],
+  ["owner", "Dono do processo"],
+  ["responsible", "Elaborador"],
+  ["status", "Status"],
+  ["updatedAt", "Última atualização"],
+];
+
+function compareMappingValues(
+  a: DashboardMappingRow,
+  b: DashboardMappingRow,
+  field: DashboardMappingColumn,
+  dir: DashboardSortDir,
+) {
+  const sign = dir === "asc" ? 1 : -1;
+  if (field === "updatedAt") {
+    return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * sign;
+  }
+  return String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
+    numeric: true,
+    sensitivity: "base",
+  }) * sign;
+}
+
+function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
+  const [query, setQuery] = useState("");
+  const [sortField, setSortField] = useState<DashboardMappingColumn>("updatedAt");
+  const [sortDir, setSortDir] = useState<DashboardSortDir>("desc");
+
+  function toggleSort(field: DashboardMappingColumn) {
+    if (field === sortField) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortField(field);
+    setSortDir(field === "updatedAt" ? "desc" : "asc");
+  }
+
+  const visibleRows = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const filtered = normalized
+      ? rows.filter((row) =>
+          DASHBOARD_MAPPING_COLUMNS.some(([field]) =>
+            String(row[field] ?? "").toLowerCase().includes(normalized),
+          ),
+        )
+      : rows;
+    return [...filtered].sort((a, b) => compareMappingValues(a, b, sortField, sortDir));
+  }, [query, rows, sortDir, sortField]);
+
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">
+          {visibleRows.length} {visibleRows.length === 1 ? "registro" : "registros"}
+        </span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Filtrar..."
+          className="h-8 w-56 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+        />
+      </div>
+      <div className="overflow-auto rounded-lg border border-border">
+        <table className="w-full min-w-[980px] text-left text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr>
+              {DASHBOARD_MAPPING_COLUMNS.map(([field, label]) => (
+                <th key={field} className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(field)}
+                    className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
+                  >
+                    {label}
+                    <span className="text-[10px]">
+                      {sortField === field ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                    </span>
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {visibleRows.map((row) => (
+              <tr key={row.id} className="hover:bg-muted/30">
+                {DASHBOARD_MAPPING_COLUMNS.map(([field]) => (
+                  <td key={field} className="break-words px-3 py-3 text-foreground">
+                    {field === "updatedAt"
+                      ? new Date(row.updatedAt).toLocaleString("pt-BR")
+                      : row[field] || "-"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {visibleRows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={DASHBOARD_MAPPING_COLUMNS.length}
+                  className="px-3 py-8 text-center text-muted-foreground"
+                >
+                  Nenhum mapeamento encontrado.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function WorkspaceContent({
   view,
   organizationName,
@@ -1260,6 +1411,8 @@ function WorkspaceContent({
   organizationSlug,
   codeSettings,
   totals,
+  mappingRows,
+  mappingStatusCounts,
   topDepartments,
   topOwners,
   recentDocuments,
@@ -1274,6 +1427,8 @@ function WorkspaceContent({
   organizationSlug: string | null;
   codeSettings: CodeSettings | null;
   totals: DashboardTotals | undefined;
+  mappingRows: DashboardMappingRow[];
+  mappingStatusCounts: DashboardMappingStatusCounts;
   topDepartments: { label: string; value: number }[];
   topOwners: { label: string; value: number }[];
   recentDocuments: Array<{
@@ -1480,7 +1635,6 @@ function WorkspaceContent({
 
   const totalProcesses = totals?.processes ?? 0;
   const activeProcesses = totals?.activeProcesses ?? 0;
-  const reviewProcesses = totals?.reviewProcesses ?? 0;
   const ddpCount = totals?.ddps ?? 0;
   const popCount = totals?.pops ?? 0;
   const coveragePct = totalProcesses > 0 ? Math.round(((activeProcesses) / totalProcesses) * 100) : 0;
@@ -1543,43 +1697,33 @@ function WorkspaceContent({
           </div>
         </ExpandableCard>
 
-        {/* Card 3: Mapeamentos Pendentes */}
+        {/* Card 3: Acompanhamento de Mapeamentos */}
         <ExpandableCard
-          title="Mapeamentos Pendentes"
+          title="Acompanhamento de Mapeamentos"
           icon={<FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
-          expanded={<ProcessRecordsTable isDemo={isDemo} />}
+          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm xl:col-span-2"
+          expanded={<MappingRecordsTable rows={mappingRows} />}
         >
-          <div className="mt-auto grid grid-cols-2 gap-3">
+          <div className="mt-auto grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div className="rounded-md bg-accent p-3 text-center">
-              <div className="font-data text-3xl font-bold text-[var(--gold)]">{Math.max(0, totalProcesses - ddpCount)}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Mapeamentos em Atraso</div>
+              <div className="font-data text-3xl font-bold text-[var(--gold)]">{mappingStatusCounts.emAndamento}</div>
+              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Em andamento</div>
             </div>
             <div className="rounded-md bg-muted/40 p-3 text-center">
-              <div className="font-data text-3xl font-bold text-foreground">{ddpCount}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Mapeamentos Salvos</div>
+              <div className="font-data text-3xl font-bold text-foreground">{mappingStatusCounts.emRevisao}</div>
+              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Em revisão</div>
+            </div>
+            <div className="rounded-md bg-muted/40 p-3 text-center">
+              <div className="font-data text-3xl font-bold text-foreground">{mappingStatusCounts.aprovado}</div>
+              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Aprovado</div>
+            </div>
+            <div className="rounded-md bg-muted/40 p-3 text-center">
+              <div className="font-data text-3xl font-bold text-foreground">{mappingStatusCounts.concluido}</div>
+              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Concluído</div>
             </div>
           </div>
         </ExpandableCard>
 
-        {/* Card 4: Processos & Documentos em Revisão */}
-        <ExpandableCard
-          title="Processos & Documentos em Revisão"
-          icon={<AlertCircle className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
-          expanded={<ProcessRecordsTable isDemo={isDemo} filter={(p) => p.status === "Em revisão"} />}
-        >
-          <div className="mt-auto grid grid-cols-2 gap-3">
-            <div className="rounded-md bg-accent p-3 text-center">
-              <div className="font-data text-3xl font-bold text-[var(--gold)]">{reviewProcesses}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Processos em Revisão</div>
-            </div>
-            <div className="rounded-md bg-muted/40 p-3 text-center">
-              <div className="font-data text-3xl font-bold text-foreground">{Math.max(0, popCount - activeProcesses < 0 ? 0 : popCount)}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-tight">Documentos em Revisão</div>
-            </div>
-          </div>
-        </ExpandableCard>
       </section>
 
       {/* Bottom: Catálogo e Conformidade + Painel de Atividade Recente */}
