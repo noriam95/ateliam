@@ -1841,6 +1841,207 @@ function IconButton({
   );
 }
 
+// Processo devolvido pelo diálogo ao concluir o cadastro. Estrutura compatível
+// com `organization_processes` para poder ser selecionado em qualquer contexto.
+export type CreatedProcess = {
+  id: string;
+  organization_id: string;
+  current_version: number;
+  code: string | null;
+  name: string;
+  type: "macroprocess" | "process" | "subprocess" | "atividade" | "tarefa";
+  value_chain_id: string | null;
+  parent_process_id: string | null;
+  department: string | null;
+  owner: string | null;
+  description: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+// Janela de cadastro de Processo reaproveitável. Usa exatamente os mesmos campos
+// (RegistrationFields), validação (isValidDraft) e persistência
+// (saveProcessRegistration / reserva de código) do cadastro em Cadastros, para
+// que qualquer alteração no cadastro de processos reflita também aqui.
+export function ProcessRegistrationDialog({
+  organizationId,
+  isDemo,
+  codeSettings,
+  initialName = "",
+  onClose,
+  onCreated,
+}: {
+  organizationId: string | null;
+  isDemo: boolean;
+  codeSettings: CodeSettings | null;
+  initialName?: string;
+  onClose: () => void;
+  onCreated: (process: CreatedProcess) => void;
+}) {
+  const listRegistry = useServerFn(listProcessRegistrationData);
+  const saveProcess = useServerFn(saveProcessRegistration);
+  const reserveCodeFn = useServerFn(reserveCode);
+  const query = useQuery({
+    queryKey: ["process-registration-data", organizationId],
+    queryFn: () => listRegistry({ data: { organizationId: organizationId ?? null } }),
+    enabled: !isDemo,
+  });
+  const data: RegistryData = isDemo
+    ? organizationId === "demo-bom-futuro"
+      ? DEMO_REGISTRY
+      : emptyRegistryData()
+    : ((query.data ?? emptyRegistryData()) as RegistryData);
+
+  const [draft, setDraft] = useState<Draft>(() => ({
+    ...emptyDraft("processes", data),
+    name: initialName,
+  }));
+
+  // Quando os catálogos chegam (nuvem), completa os defaults que ainda não
+  // tinham opção disponível no primeiro render.
+  useEffect(() => {
+    setDraft((current) => ({
+      ...current,
+      valueChainId: current.valueChainId || data.valueChains[0]?.id || "",
+      department: current.department || data.areas[0]?.name || "",
+      departmentId: current.departmentId || data.areas[0]?.id || "",
+      owner: current.owner || (data.owners[0] ? ownerDisplayName(data.owners[0]) : ""),
+      linkOwnerId: current.linkOwnerId || data.owners[0]?.id || "",
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.valueChains.length, data.areas.length, data.owners.length]);
+
+  const processRule = normalizeRule(codeSettings?.processo);
+  const isAutoProcessCode = processRule.mode === "auto";
+  const processAreaSigla = areaSiglaByName(data.areas, draft.department);
+  const processCodePreview =
+    isAutoProcessCode && processAreaSigla
+      ? isDemo
+        ? previewDemoDocumentCode(organizationId, "processo", processAreaSigla, codeSettings)
+        : previewDocumentCode("processo", processAreaSigla, processRule)
+      : "";
+  const copy = registryCopy("processes");
+
+  const saveMutation = useMutation({
+    mutationFn: async (): Promise<CreatedProcess> => {
+      let processCode = draft.code || null;
+      if (isAutoProcessCode && !processCode && processAreaSigla) {
+        processCode = isDemo
+          ? reserveDemoDocumentCode(organizationId, "processo", processAreaSigla, codeSettings)
+          : (
+              await reserveCodeFn({
+                data: { organizationId, type: "processo", areaSigla: processAreaSigla },
+              })
+            ).code;
+      }
+      const nowIso = new Date().toISOString();
+      if (isDemo) {
+        return {
+          id: `demo-process-${Date.now()}`,
+          organization_id: "demo",
+          current_version: 1,
+          code: processCode,
+          name: draft.name,
+          type: draft.type,
+          value_chain_id: draft.valueChainId || null,
+          parent_process_id: draft.parentProcessId || null,
+          department: draft.department || null,
+          owner: draft.owner || null,
+          description: draft.description || null,
+          status: "Ativo",
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+      }
+      const row = (await saveProcess({
+        data: {
+          id: undefined,
+          organizationId,
+          code: processCode,
+          name: draft.name,
+          type: draft.type,
+          valueChainId: draft.valueChainId || null,
+          parentProcessId: draft.parentProcessId || null,
+          department: draft.department || null,
+          owner: draft.owner || null,
+          description: draft.description || null,
+          status: "Ativo",
+        },
+      })) as unknown as CreatedProcess;
+      return row;
+    },
+    onSuccess: (process) => {
+      toast.success("Processo cadastrado.");
+      onCreated(process);
+      onClose();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-[85] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]"
+      onClick={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          saveMutation.mutate();
+        }}
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+      >
+        <header className="flex items-center gap-3 border-b border-border px-5 py-4">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+            {copy.icon}
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-bold">Novo processo</h2>
+            <p className="truncate text-xs text-muted-foreground">
+              Cadastro de processo (mesmos campos do menu Cadastros)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Fechar"
+            aria-label="Fechar formulário"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        <div className="grid gap-4 p-5">
+          <RegistrationFields
+            view="processes"
+            draft={draft}
+            setDraft={setDraft}
+            data={data}
+            autoCode={isAutoProcessCode}
+            codePreview={processCodePreview}
+          />
+        </div>
+        <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={saveMutation.isPending || !isValidDraft("processes", draft)}
+            className={primaryButtonClass}
+          >
+            <Save className="h-4 w-4" /> {saveMutation.isPending ? "Salvando..." : "Salvar"}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
 function ProcessStatusSwitch({
   process,
   disabled,

@@ -59,6 +59,10 @@ import {
   type WorkspaceRailArea,
 } from "@/components/workspace-navigation";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
+import {
+  ProcessRegistrationDialog,
+  type CreatedProcess,
+} from "@/components/workspace-process-registrations";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getOrCreateWorkspace,
@@ -5750,6 +5754,22 @@ function ModuleWorkspacePage() {
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
               onSave={() => setShowSave(true)}
               onPreview={previewCurrentDdp}
+              organizationId={codeOrganizationId}
+              isDemo={isDemo}
+              codeSettings={codeSettings}
+              onProcessCreated={async (process) => {
+                if (isDemo) {
+                  setDemoCatalogs((current) => ({
+                    ...current,
+                    processes: [
+                      ...current.processes,
+                      process as unknown as OrganizationProcess,
+                    ],
+                  }));
+                } else {
+                  await catalogsQ.refetch();
+                }
+              }}
             />
           )
         ) : null}
@@ -8221,6 +8241,10 @@ function DdpModule({
   update,
   onSave,
   onPreview,
+  organizationId,
+  isDemo,
+  codeSettings,
+  onProcessCreated,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
@@ -8228,7 +8252,13 @@ function DdpModule({
   update: (value: DdpState) => void;
   onSave?: () => void;
   onPreview?: () => void;
+  organizationId: string | null;
+  isDemo: boolean;
+  codeSettings: CodeSettings | null;
+  // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
+  onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
 }) {
+  const [createProcessName, setCreateProcessName] = useState<string | null>(null);
   const selectedProcess = useMemo(
     () => catalogs.processes.find((process) => process.id === data.macroprocess.processId) ?? null,
     [catalogs.processes, data.macroprocess.processId],
@@ -8337,13 +8367,13 @@ function DdpModule({
     return Math.round((fields.filter(Boolean).length / fields.length) * 100);
   }, [data]);
   const sectionProgress = {
+    // Não contabilizamos campos preenchidos automaticamente (código, data de
+    // hoje, modalidade e status já vêm com valor padrão) — só os campos que
+    // dependem do usuário entram no cálculo de preenchimento.
     identification: completionPercent([
       data.meta.titulo,
-      data.meta.data,
-      data.meta.modalidade,
       data.meta.elaborador,
       data.meta.revisor,
-      data.meta.status,
     ]),
     overview: completionPercent([
       data.overview.objetivo,
@@ -8465,6 +8495,19 @@ function DdpModule({
 
   return (
     <div className="grid gap-5">
+      {createProcessName !== null ? (
+        <ProcessRegistrationDialog
+          organizationId={organizationId}
+          isDemo={isDemo}
+          codeSettings={codeSettings}
+          initialName={createProcessName}
+          onClose={() => setCreateProcessName(null)}
+          onCreated={async (process) => {
+            await onProcessCreated(process);
+            selectPrimaryProcess(process as unknown as OrganizationProcess);
+          }}
+        />
+      ) : null}
       <Hero title="Formulário de Preenchimento" eyebrow="Mapeamento" progress={completion} />
       <FixedPanel title="Dados do processo">
         <RegisteredProcessSelect
@@ -8475,6 +8518,7 @@ function DdpModule({
           placeholder="Selecione o processo que será mapeado"
           onSelect={selectPrimaryProcess}
           displayName={(process) => process.name}
+          onRequestCreate={(name) => setCreateProcessName(name)}
         />
         <div className="mt-4 grid gap-4 md:grid-cols-4">
           {processDataFields.map((field) => (
@@ -10341,6 +10385,7 @@ function RegisteredProcessSelect({
   required = false,
   placeholder = "Buscar processo cadastrado...",
   displayName = processDisplayName,
+  onRequestCreate,
 }: {
   label: string;
   value: string;
@@ -10349,6 +10394,8 @@ function RegisteredProcessSelect({
   required?: boolean;
   placeholder?: string;
   displayName?: (process: OrganizationProcess) => string;
+  // Abre o cadastro de um novo processo (pré-preenchendo o nome pesquisado).
+  onRequestCreate?: (query: string) => void;
 }) {
   const selected = processes.find((process) => process.id === value) ?? null;
   const [query, setQuery] = useState("");
@@ -10439,6 +10486,20 @@ function RegisteredProcessSelect({
               Nenhum processo encontrado.
             </div>
           )}
+          {onRequestCreate ? (
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                setOpen(false);
+                onRequestCreate(query);
+              }}
+              className="mt-1 flex w-full items-center gap-2 rounded-md border-t border-border px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-muted"
+            >
+              <Plus className="h-4 w-4" />
+              Cadastrar novo processo{query.trim() ? ` "${query.trim()}"` : ""}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
