@@ -132,7 +132,7 @@ export function TreeSection({
         className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
-          <div className="ml-3 border-l border-border pl-2">{children}</div>
+          <div className="ml-3 pl-2">{children}</div>
         </div>
       </div>
     </div>
@@ -192,7 +192,7 @@ export function ModuleBranch({
         className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
-          <div className="ml-5 border-l border-border py-1 pl-2">{children}</div>
+          <div className="ml-5 py-1 pl-2">{children}</div>
         </div>
       </div>
     </div>
