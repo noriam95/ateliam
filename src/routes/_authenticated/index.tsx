@@ -123,6 +123,62 @@ type DashboardProcess = {
   created_at: string;
   updated_at: string;
 };
+type MappingRow = {
+  id: string;
+  name: string;
+  type: string;
+  department: string | null;
+  owner: string | null;
+  status: string;
+  updatedAt: string;
+  mappings: Array<{ name: string; version: number; updatedAt: string }>;
+};
+type MappingCoverage = { covered: number; total: number; rows: MappingRow[] };
+
+const PROCESS_TYPE_LABELS: Record<string, string> = {
+  macroprocess: "Macroprocesso",
+  process: "Processo",
+  subprocess: "Subprocesso",
+  atividade: "Atividade",
+  tarefa: "Tarefa",
+};
+
+// Mapeamentos por processo no modo demonstração (espelham os documentos demo do
+// módulo de Mapeamento). Um processo aqui listado conta como "coberto".
+const DEMO_PROCESS_MAPPINGS: Record<string, { name: string; version: number }> = {
+  "Planejamento Estratégico": { name: "MAP.PMO.001 — Planejamento Estratégico", version: 3 },
+  "Gestão de Indicadores e Desempenho": { name: "MAP.PMO.002 — Gestão de Indicadores", version: 2 },
+  "Recrutamento e Seleção": { name: "MAP.RH.001 — Recrutamento e Seleção", version: 1 },
+  "Integração e Onboarding": { name: "MAP.RH.002 — Integração e Onboarding", version: 1 },
+  "Gestão de Demandas de TI": { name: "MAP.TI.001 — Gestão de Demandas de TI", version: 4 },
+  "Gestão de Segurança da Informação": { name: "MAP.TI.002 — Segurança da Informação", version: 1 },
+  "Prospecção e Geração de Leads": { name: "MAP.COM.001 — Prospecção e Leads", version: 2 },
+  "Planejamento da Produção": { name: "MAP.OPE.001 — Planejamento da Produção", version: 1 },
+  "Contas a Receber": { name: "MAP.FIN.001 — Contas a Receber", version: 1 },
+};
+
+function buildDemoMappingCoverage(): MappingCoverage {
+  const now = new Date().toISOString();
+  const rows: MappingRow[] = DEMO_REGISTRY.processes.map((process) => {
+    const mapping = DEMO_PROCESS_MAPPINGS[process.name];
+    return {
+      id: process.id,
+      name: process.name,
+      type: process.type,
+      department: process.department,
+      owner: process.owner,
+      status: process.status,
+      updatedAt: now,
+      mappings: mapping ? [{ name: mapping.name, version: mapping.version, updatedAt: now }] : [],
+    };
+  });
+  return {
+    covered: rows.filter((row) => row.mappings.length > 0).length,
+    total: rows.length,
+    rows,
+  };
+}
+
 type AccessibleOrganization = {
   id: string;
   name: string;
@@ -355,6 +411,10 @@ function WorkspaceHome() {
                     },
                   ]
                 : [],
+            mappingCoverage:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? buildDemoMappingCoverage()
+                : { covered: 0, total: 0, rows: [] },
           }
         : dashboardQ.data,
     [dashboardQ.data, demoOrganizationLogo, isDemo, selectedDemoOrganization],
@@ -821,6 +881,7 @@ function WorkspaceHome() {
               topOwners={dashboard?.topOwners ?? []}
               recentDocuments={dashboard?.recentDocuments ?? []}
               recentProcesses={dashboard?.recentProcesses ?? []}
+              mappingCoverage={dashboard?.mappingCoverage ?? { covered: 0, total: 0, rows: [] }}
               isLoading={dashboardQ.isLoading && !isDemo}
               isDemo={isDemo}
             />
@@ -911,6 +972,198 @@ function ExpandableCard({
           )
         : null}
     </>
+  );
+}
+
+// Gráfico de rosca (anel de progresso) da cobertura de mapeamento: a fatia gold
+// é a parte coberta; o restante (trilha neutra) é o que não tem mapeamento.
+function CoverageDonut({
+  covered,
+  total,
+  size = 112,
+  stroke = 14,
+}: {
+  covered: number;
+  total: number;
+  size?: number;
+  stroke?: number;
+}) {
+  const pct = total > 0 ? covered / total : 0;
+  const radius = (size - stroke) / 2;
+  const circ = 2 * Math.PI * radius;
+  const filled = circ * pct;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      role="img"
+      aria-label={`Cobertura de mapeamento: ${Math.round(pct * 100)}% — ${covered} de ${total} processos`}
+      className="shrink-0"
+    >
+      <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--muted)"
+          strokeWidth={stroke}
+        />
+        {pct > 0 ? (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="var(--gold)"
+            strokeWidth={stroke}
+            strokeDasharray={`${filled} ${circ - filled}`}
+            strokeLinecap="round"
+          />
+        ) : null}
+      </g>
+      <text
+        x="50%"
+        y="47%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{ fill: "var(--foreground)", fontSize: size * 0.24, fontWeight: 700 }}
+      >
+        {Math.round(pct * 100)}%
+      </text>
+      <text
+        x="50%"
+        y="64%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fill: "var(--muted-foreground)",
+          fontSize: size * 0.1,
+          letterSpacing: "0.12em",
+        }}
+      >
+        COBERTURA
+      </text>
+    </svg>
+  );
+}
+
+// Tabela da cobertura de mapeamento por processo, no mesmo padrão do relatório
+// de cadeia de valor (contagem + filtro + colunas com cabeçalho).
+function MappingCoverageTable({ rows }: { rows: MappingRow[] }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? rows.filter((row) =>
+        [
+          row.name,
+          row.department ?? "",
+          row.owner ?? "",
+          row.status,
+          row.mappings.map((mapping) => mapping.name).join(" "),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      )
+    : rows;
+  const coveredCount = rows.filter((row) => row.mappings.length > 0).length;
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">
+          {filtered.length} {filtered.length === 1 ? "processo" : "processos"} · {coveredCount} com
+          mapeamento
+        </span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Filtrar..."
+          className="h-8 w-48 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+        />
+      </div>
+      <div className="overflow-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-left">#</th>
+              <th className="px-3 py-2 text-left">Processo</th>
+              <th className="px-3 py-2 text-left">Mapeamento cadastrado</th>
+              <th className="px-3 py-2 text-left">Tipo</th>
+              <th className="px-3 py-2 text-left">Área</th>
+              <th className="px-3 py-2 text-left">Dono</th>
+              <th className="px-3 py-2 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {filtered.map((row, index) => (
+              <tr key={row.id} className="hover:bg-muted/30">
+                <td className="px-3 py-2 tabular-nums text-muted-foreground">{index + 1}</td>
+                <td className="px-3 py-2 font-medium">{row.name}</td>
+                <td className="px-3 py-2">
+                  {row.mappings.length > 0 ? (
+                    <span className="text-foreground">
+                      {row.mappings.map((mapping) => mapping.name).join(", ")}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
+                      Sem mapeamento
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {PROCESS_TYPE_LABELS[row.type] ?? row.type}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">{row.department || "-"}</td>
+                <td className="px-3 py-2 text-muted-foreground">{row.owner || "-"}</td>
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] px-2.5 py-0.5 text-xs font-medium text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
+                    {row.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                  Nenhum registro encontrado.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Conteúdo do card "Índice de Mapeamento" quando expandido: rosca + tabela.
+function MappingCoverageExpanded({ coverage }: { coverage: MappingCoverage }) {
+  const uncovered = Math.max(0, coverage.total - coverage.covered);
+  return (
+    <div className="grid gap-6">
+      <div className="flex flex-wrap items-center gap-6">
+        <CoverageDonut covered={coverage.covered} total={coverage.total} size={168} stroke={20} />
+        <div className="grid gap-2">
+          <div className="text-sm text-muted-foreground">
+            {coverage.covered} de {coverage.total} processos com pelo menos um mapeamento cadastrado.
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--gold)]" />
+            <span className="text-foreground">Com mapeamento</span>
+            <span className="ml-2 font-semibold text-foreground">{coverage.covered}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="h-2.5 w-2.5 rounded-full bg-muted" />
+            <span className="text-foreground">Sem mapeamento</span>
+            <span className="ml-2 font-semibold text-foreground">{uncovered}</span>
+          </div>
+        </div>
+      </div>
+      <MappingCoverageTable rows={coverage.rows} />
+    </div>
   );
 }
 
@@ -1011,6 +1264,7 @@ function WorkspaceContent({
   topOwners,
   recentDocuments,
   recentProcesses,
+  mappingCoverage,
   isLoading,
   isDemo,
 }: {
@@ -1030,6 +1284,7 @@ function WorkspaceContent({
     updated_at: string;
   }>;
   recentProcesses: DashboardProcess[];
+  mappingCoverage: MappingCoverage;
   isLoading: boolean;
   isDemo: boolean;
 }) {
@@ -1257,43 +1512,34 @@ function WorkspaceContent({
 
       {/* Top Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {/* Card 2: Índice de Mapeamento Operacional */}
+        {/* Card 2: Índice de Mapeamento (cobertura de processos com mapeamento) */}
         <ExpandableCard
-          title="Índice de Mapeamento Operacional"
+          title="Índice de Mapeamento"
           icon={<Activity className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
           className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
-          expanded={<ProcessRecordsTable isDemo={isDemo} />}
+          expanded={<MappingCoverageExpanded coverage={mappingCoverage} />}
         >
-          <div className="grid gap-2">
-            <div className="grid gap-1">
-              <div className="flex justify-between text-[11px]">
-                <span className="text-muted-foreground">Processos com Mapeamento</span>
-                <span className="font-semibold text-foreground">{ddpCount}</span>
+          <div className="flex items-center gap-4">
+            <CoverageDonut covered={mappingCoverage.covered} total={mappingCoverage.total} />
+            <div className="grid flex-1 gap-2 text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--gold)]" />
+                <span className="text-muted-foreground">Com mapeamento</span>
+                <span className="ml-auto font-semibold text-foreground">
+                  {mappingCoverage.covered}
+                </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-[var(--gold)] transition-all"
-                  style={{ width: `${ddpCoverage}%` }}
-                />
-              </div>
-            </div>
-            <div className="grid gap-1">
-              <div className="flex justify-between text-[11px]">
-                <span className="text-muted-foreground">Processos com Documentação</span>
-                <span className="font-semibold text-foreground">{popCount}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-[var(--gold)]/60 transition-all"
-                  style={{ width: `${totalProcesses > 0 ? Math.round((popCount / totalProcesses) * 100) : 0}%` }}
-                />
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-muted" />
+                <span className="text-muted-foreground">Sem mapeamento</span>
+                <span className="ml-auto font-semibold text-foreground">
+                  {Math.max(0, mappingCoverage.total - mappingCoverage.covered)}
+                </span>
               </div>
             </div>
           </div>
-          <div className="mt-auto border-t border-border pt-2">
-            <span className="font-data text-xl font-bold text-[var(--gold)]">{coveragePct}%</span>
-            <span className="ml-2 text-xs text-muted-foreground">Cobertura de Processos</span>
-            <div className="text-[11px] text-muted-foreground">{activeProcesses} de {totalProcesses} Processos</div>
+          <div className="mt-auto border-t border-border pt-2 text-[11px] text-muted-foreground">
+            {mappingCoverage.covered} de {mappingCoverage.total} processos com mapeamento
           </div>
         </ExpandableCard>
 
