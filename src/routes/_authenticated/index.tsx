@@ -284,6 +284,10 @@ function WorkspaceHome() {
       : window.localStorage.getItem("ateliam-demo-organization-logo"),
   );
   const [treeOpen, setTreeOpen] = useState(!!search.area);
+  // Em telas pequenas o painel de navegação começa recolhido (vira gaveta).
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 1023px)").matches) setTreeOpen(false);
+  }, []);
   const [activeArea, setActiveArea] = useState<WorkspaceArea>(search.area ?? "home");
   const [view, setView] = useState<WorkspaceView>(
     (search.view as WorkspaceView | undefined) ?? "overview",
@@ -787,9 +791,17 @@ function WorkspaceHome() {
                 : "lg:grid-cols-[0_minmax(0,1fr)]"
           }`}
         >
+          {activeArea !== "home" && treeOpen ? (
+            <button
+              type="button"
+              aria-label="Fechar navegação"
+              onClick={() => setTreeOpen(false)}
+              className="fixed bottom-0 left-[372px] right-0 top-14 z-30 bg-foreground/10 backdrop-blur-[1px] lg:hidden"
+            />
+          ) : null}
           {activeArea !== "home" ? (
             <aside
-              className={`sticky top-14 h-[calc(100vh-3.5rem)] self-start min-h-0 overflow-hidden border-r border-border bg-card/58 ${
+              className={`fixed bottom-0 left-[52px] top-14 z-30 min-h-0 w-[min(320px,calc(100vw-52px))] overflow-hidden border-r border-border bg-card shadow-xl lg:sticky lg:top-14 lg:bottom-auto lg:z-auto lg:h-[calc(100vh-3.5rem)] lg:w-auto lg:self-start lg:bg-card/58 lg:shadow-none ${
                 treeOpen ? "block" : "hidden lg:block"
               }`}
             >
@@ -1707,7 +1719,8 @@ type RecentActivityItem = {
   title: string;
   subtitle: string;
   tag: string;
-  version: string;
+  // Processos e mapeamentos não têm versionamento; version fica null nesses casos.
+  version: string | null;
   updatedAt: string;
 };
 
@@ -1976,7 +1989,8 @@ function WorkspaceContent({
       title: proc.name,
       subtitle: proc.owner ?? "-",
       tag: "Processo",
-      version: `v${proc.current_version}`,
+      // Processos não são versionados.
+      version: null,
       updatedAt: proc.updated_at,
     })),
     ...recentDocuments.map((doc) => ({
@@ -1984,7 +1998,8 @@ function WorkspaceContent({
       title: doc.name,
       subtitle: "Documento emitido",
       tag: documentActivityTag(doc.module, doc.name),
-      version: `v${doc.current_version}`,
+      // Mapeamentos (ddp) não são versionados; demais documentos mantêm versão.
+      version: doc.module === "ddp" ? null : `v${doc.current_version}`,
       updatedAt: doc.updated_at,
     })),
   ]
@@ -2174,7 +2189,11 @@ function WorkspaceContent({
                         <div className="mt-1 text-[10px] text-muted-foreground">{item.subtitle}</div>
                       </div>
                       <div className="shrink-0 text-right">
-                        <div className="text-[10px] font-data text-muted-foreground">{item.version}</div>
+                        {item.version ? (
+                          <div className="text-[10px] font-data text-muted-foreground">
+                            {item.version}
+                          </div>
+                        ) : null}
                         <div className="text-[10px] text-muted-foreground">
                           {formatShortDate(item.updatedAt)}
                         </div>
@@ -2450,7 +2469,11 @@ function ModuleWorkspacePanel({
   const activeAction = actions.find((action) => action.key === task) ?? actions[0];
   const moduleDocs = getModuleDocuments(module.id, recentDocuments);
   const exportLabel = getModuleExportLabel(module.id);
-  const latestVersion = Math.max(...moduleDocs.map((document) => document.current_version));
+  // Mapeamentos (ddp) não são versionados; demais módulos mantêm versão.
+  const isVersioned = module.id !== "ddp";
+  const latestVersion = moduleDocs.length
+    ? Math.max(...moduleDocs.map((document) => document.current_version))
+    : 0;
 
   return (
     <div className="grid gap-4">
@@ -2473,9 +2496,11 @@ function ModuleWorkspacePanel({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className={`mt-5 grid gap-3 ${isVersioned ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
           <ModuleStat label="Documentos" value={moduleDocs.length} detail="na organização" />
-          <ModuleStat label="Última versão" value={`v${latestVersion}`} detail="disponível" />
+          {isVersioned ? (
+            <ModuleStat label="Última versão" value={`v${latestVersion}`} detail="disponível" />
+          ) : null}
           <ModuleStat label="Exportação" value={exportLabel} detail="modelo preservado" />
         </div>
       </section>
@@ -2496,7 +2521,7 @@ function ModuleWorkspacePanel({
                   <th className="px-3 py-3 font-semibold">Documento</th>
                   <th className="px-3 py-3 font-semibold">Status</th>
                   <th className="px-3 py-3 font-semibold">Responsável</th>
-                  <th className="px-3 py-3 font-semibold">Versão</th>
+                  {isVersioned ? <th className="px-3 py-3 font-semibold">Versão</th> : null}
                   <th className="px-3 py-3 font-semibold">Atualização</th>
                   <th className="px-3 py-3 font-semibold">Saída</th>
                 </tr>
@@ -2517,9 +2542,11 @@ function ModuleWorkspacePanel({
                       </span>
                     </td>
                     <td className="px-3 py-3 text-muted-foreground">{document.owner}</td>
-                    <td className="px-3 py-3 font-data text-muted-foreground">
-                      v{document.current_version}
-                    </td>
+                    {isVersioned ? (
+                      <td className="px-3 py-3 font-data text-muted-foreground">
+                        v{document.current_version}
+                      </td>
+                    ) : null}
                     <td className="px-3 py-3 text-muted-foreground">
                       {new Date(document.updated_at).toLocaleDateString("pt-BR")}
                     </td>
@@ -2593,15 +2620,7 @@ function getModuleActions(moduleId: AteliamModule): Array<{
         description: "Localize mapeamentos por processo, área ou status.",
         eyebrow: "consulta",
         title: "Mapeamentos cadastrados",
-        body: "Acompanhe documentos salvos, responsáveis e versões atuais antes de abrir o editor completo.",
-      },
-      {
-        key: "versions",
-        label: "Versões",
-        description: "Veja o histórico de versões dos mapeamentos.",
-        eyebrow: "versionamento",
-        title: "Histórico de versões do mapeamento",
-        body: "Cada versão deve preservar o vínculo com processo, macroprocesso, subprocesso, causas e exportações geradas.",
+        body: "Acompanhe documentos salvos e responsáveis antes de abrir o editor completo.",
       },
       {
         key: "exports",
@@ -2901,7 +2920,9 @@ function DocumentTable({
             {document.module}
           </span>
           <span className="truncate text-sm font-semibold">{document.name}</span>
-          <span className="text-xs text-muted-foreground">v{document.current_version}</span>
+          <span className="text-xs text-muted-foreground">
+            {document.module === "ddp" ? "" : `v${document.current_version}`}
+          </span>
           <span className="text-xs text-muted-foreground">
             {new Date(document.updated_at).toLocaleDateString("pt-BR")}
           </span>

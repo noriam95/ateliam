@@ -690,6 +690,8 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
       status: data.status,
       updated_at: new Date().toISOString(),
     };
+    // Processos não são versionados: não incrementamos current_version nem
+    // gravamos histórico em organization_process_versions.
     if (!data.id) {
       const { data: row, error } = await context.supabase
         .from("organization_processes")
@@ -697,43 +699,16 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
         .select("*")
         .single();
       if (error) throw new Error(error.message);
-      const { error: versionError } = await context.supabase
-        .from("organization_process_versions")
-        .insert({
-          organization_id: access.organizationId,
-          process_id: row.id,
-          version_number: 1,
-          snapshot: row,
-          created_by: context.userId,
-        });
-      if (versionError) throw new Error(versionError.message);
       return row;
     }
-    const { data: current, error: currentError } = await context.supabase
-      .from("organization_processes")
-      .select("*")
-      .eq("id", data.id)
-      .eq("organization_id", access.organizationId)
-      .single();
-    if (currentError) throw new Error(currentError.message);
-    const nextVersion = current.current_version + 1;
     const { data: row, error } = await context.supabase
       .from("organization_processes")
-      .update({ ...payload, current_version: nextVersion })
+      .update(payload)
       .eq("id", data.id)
+      .eq("organization_id", access.organizationId)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const { error: versionError } = await context.supabase
-      .from("organization_process_versions")
-      .insert({
-        organization_id: access.organizationId,
-        process_id: row.id,
-        version_number: nextVersion,
-        snapshot: row,
-        created_by: context.userId,
-      });
-    if (versionError) throw new Error(versionError.message);
     return row;
   });
 
