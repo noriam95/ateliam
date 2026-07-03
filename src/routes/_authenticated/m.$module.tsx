@@ -783,7 +783,7 @@ function makeDemoDdpWorkspace(spec: DemoDdpSpec): WorkspaceState {
   };
 }
 
-const DEMO_DDP_SPECS: DemoDdpSpec[] = [
+const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
   {
     id: "demo-doc:ddp:MAP.TI.002",
     codigo: "MAP.TI.002",
@@ -1150,7 +1150,7 @@ const DEMO_POP_SPECS: DemoPopSpec[] = [
 ];
 
 const DEMO_DOCUMENTS: Record<AteliamModule, DemoDoc[]> = {
-  ddp: DEMO_DDP_SPECS.map((spec) => ({
+  ddp: DEMO_MAPPING_SPECS.map((spec) => ({
     id: spec.id,
     status: spec.status,
     updatedAt: spec.updatedAt,

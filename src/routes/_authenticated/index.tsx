@@ -1702,6 +1702,37 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
   );
 }
 
+type RecentActivityItem = {
+  id: string;
+  title: string;
+  subtitle: string;
+  tag: string;
+  version: string;
+  updatedAt: string;
+};
+
+function documentActivityTag(module: string, name = "") {
+  const normalizedName = name.toLowerCase();
+  if (module === "ddp") return "Mapeamento";
+  if (module === "bpmn") return "Fluxograma";
+  if (normalizedName.includes("norma") || normalizedName.startsWith("nor.")) return "Norma";
+  if (
+    normalizedName.includes("instru") ||
+    normalizedName.includes("trabalho") ||
+    normalizedName.startsWith("it.")
+  ) {
+    return "Instrução";
+  }
+  if (module === "pop") return "POP";
+  return "Documento";
+}
+
+function formatShortDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
 function WorkspaceContent({
   view,
   organizationName,
@@ -1939,6 +1970,26 @@ function WorkspaceContent({
   const popCount = totals?.pops ?? 0;
   const coveragePct = totalProcesses > 0 ? Math.round(((activeProcesses) / totalProcesses) * 100) : 0;
   const ddpCoverage = totalProcesses > 0 ? Math.round((ddpCount / totalProcesses) * 100) : 0;
+  const recentActivityItems: RecentActivityItem[] = [
+    ...recentProcesses.map((proc) => ({
+      id: `process-${proc.id}`,
+      title: proc.name,
+      subtitle: proc.owner ?? "-",
+      tag: "Processo",
+      version: `v${proc.current_version}`,
+      updatedAt: proc.updated_at,
+    })),
+    ...recentDocuments.map((doc) => ({
+      id: `document-${doc.id}`,
+      title: doc.name,
+      subtitle: "Documento emitido",
+      tag: documentActivityTag(doc.module, doc.name),
+      version: `v${doc.current_version}`,
+      updatedAt: doc.updated_at,
+    })),
+  ]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 6);
 
   return (
     <div className="mx-auto grid w-full max-w-[1600px] gap-5">
@@ -2100,68 +2151,39 @@ function WorkspaceContent({
           titleClassName="text-sm font-semibold text-foreground"
           className="rounded-lg border border-border bg-card p-5 shadow-sm"
         >
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            {/* Últimas atualizações de processos */}
-            <div>
-              <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Últimas 3 Atualizações de Processos
-              </div>
-              {recentProcesses.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground">Sem atividade recente.</div>
-              ) : (
-                <div className="grid gap-2">
-                  {recentProcesses.slice(0, 3).map((proc) => (
-                    <div key={proc.id} className="rounded-md border border-border bg-background/50 p-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-xs font-semibold text-foreground">{proc.name}</div>
-                          <div className="mt-0.5 text-[10px] text-muted-foreground">{proc.owner ?? "—"}</div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-[10px] font-data text-muted-foreground">v{proc.current_version}</div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {new Date(proc.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+          <div className="mt-4">
+            <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Últimas atividades
+            </div>
+            {recentActivityItems.length === 0 ? (
+              <div className="py-4 text-center text-xs text-muted-foreground">Sem atividade recente.</div>
+            ) : (
+              <div className="grid gap-2">
+                {recentActivityItems.map((item) => (
+                  <div key={item.id} className="rounded-md border border-border bg-background/50 p-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
+                            {item.tag}
+                          </span>
+                          <div className="min-w-0 truncate text-xs font-semibold text-foreground">
+                            {item.title}
                           </div>
+                        </div>
+                        <div className="mt-1 text-[10px] text-muted-foreground">{item.subtitle}</div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-[10px] font-data text-muted-foreground">{item.version}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {formatShortDate(item.updatedAt)}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Últimos documentos emitidos */}
-            <div>
-              <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Últimos 3 Documentos Emitidos
+                  </div>
+                ))}
               </div>
-              {recentDocuments.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground">Sem documentos recentes.</div>
-              ) : (
-                <div className="grid gap-2">
-                  {recentDocuments.slice(0, 3).map((doc) => (
-                    <div key={doc.id} className="rounded-md border border-border bg-background/50 p-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-xs font-semibold text-foreground">{doc.name}</div>
-                          <div className="mt-0.5 flex items-center gap-1.5">
-                            <span className="inline-flex rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase text-[var(--gold)]">
-                              {doc.module?.toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-[10px] font-data text-muted-foreground">v{doc.current_version}</div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {new Date(doc.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </ExpandableCard>
       </section>
