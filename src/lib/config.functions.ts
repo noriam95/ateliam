@@ -83,7 +83,7 @@ const processSchema = z.object({
   id: z.string().uuid().optional(),
   code: z.string().trim().max(80).optional().nullable(),
   name: z.string().trim().min(2).max(180),
-  type: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]).default("process"),
+  type: z.enum(["process", "subprocess", "atividade", "tarefa"]).default("process"),
   parent_process_id: z.string().uuid().optional().nullable(),
   department: z.string().trim().max(160).optional().nullable(),
   owner: z.string().trim().max(160).optional().nullable(),
@@ -119,7 +119,7 @@ const ownerRegistrationSchema = organizationScopeSchema.extend({
 });
 const processTypeRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
-  code: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]),
+  code: z.enum(["process", "subprocess", "atividade", "tarefa"]),
   label: z.string().trim().min(2).max(80),
   active: z.boolean().default(true),
 });
@@ -127,7 +127,7 @@ const processRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   code: z.string().trim().max(80).optional().nullable(),
   name: z.string().trim().min(2).max(180),
-  type: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]),
+  type: z.enum(["process", "subprocess", "atividade", "tarefa"]),
   valueChainId: z.string().uuid().optional().nullable(),
   parentProcessId: z.string().uuid().optional().nullable(),
   department: z.string().trim().max(160).optional().nullable(),
@@ -324,11 +324,6 @@ export const createOrganization = createServerFn({ method: "POST" })
     const { error: typeError } = await context.supabase.from("organization_process_types").insert([
       {
         organization_id: row.id,
-        code: "macroprocess",
-        label: "Macroprocesso",
-      },
-      {
-        organization_id: row.id,
         code: "process",
         label: "Processo",
       },
@@ -499,7 +494,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       departments: departments ?? [],
       processOwners: processOwners ?? [],
       causes: causes ?? [],
-      processes: processes ?? [],
+      processes: (processes ?? []).filter((process) => process.type !== "macroprocess"),
       valueChains: valueChains ?? [],
     };
   });
@@ -544,9 +539,9 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
       organizationId,
       areas: areas.data ?? [],
       owners: owners.data ?? [],
-      types: types.data ?? [],
+      types: (types.data ?? []).filter((type) => type.code !== "macroprocess"),
       valueChains: valueChains.data ?? [],
-      processes: processes.data ?? [],
+      processes: (processes.data ?? []).filter((process) => process.type !== "macroprocess"),
     };
   });
 

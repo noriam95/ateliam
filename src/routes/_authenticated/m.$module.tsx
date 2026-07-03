@@ -4360,7 +4360,6 @@ function ModuleWorkspacePage() {
   const removeProcess = useServerFn(deleteOrganizationProcess);
   const [demoCatalogs, setDemoCatalogs] = useState<OrganizationCatalogs>(DEMO_CATALOGS);
   const [processTypes, setProcessTypes] = useState([
-    "macroprocess",
     "process",
     "subprocess",
     "atividade",
@@ -7447,14 +7446,16 @@ function ProcessRegistryModule({
               options={processTypes}
               onChange={(type) => setDraft({ ...draft, type })}
             />
-            <SelectField
-              label="Processo pai"
-              value={draft.parent_process_id ?? ""}
-              options={["", ...processOptions.map((option) => option.id)]}
-              onChange={(parent_process_id) =>
-                setDraft({ ...draft, parent_process_id: parent_process_id || null })
-              }
-            />
+            {draft.type !== "process" ? (
+              <SelectField
+                label="Processo pai"
+                value={draft.parent_process_id ?? ""}
+                options={["", ...processOptions.map((option) => option.id)]}
+                onChange={(parent_process_id) =>
+                  setDraft({ ...draft, parent_process_id: parent_process_id || null })
+                }
+              />
+            ) : null}
             <SelectField
               label="Área / Departamento"
               value={draft.department ?? ""}

@@ -137,7 +137,6 @@ type RegistryData = {
 };
 
 const PROCESS_PARENT_BY_TYPE: Partial<Record<Process["type"], Process["type"]>> = {
-  process: "macroprocess",
   subprocess: "process",
   atividade: "subprocess",
   tarefa: "atividade",
@@ -145,7 +144,7 @@ const PROCESS_PARENT_BY_TYPE: Partial<Record<Process["type"], Process["type"]>> 
 
 const PROCESS_PARENT_LABEL: Record<Process["type"], string> = {
   macroprocess: "",
-  process: "Macroprocesso",
+  process: "",
   subprocess: "Processo",
   atividade: "Subprocesso",
   tarefa: "Atividade",
@@ -161,7 +160,6 @@ function ownerDisplayName(owner: Pick<Owner, "name" | "role_title">) {
 }
 
 const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
-  { id: "type-macro", code: "macroprocess", label: "Macroprocesso", active: true },
   { id: "type-process", code: "process", label: "Processo", active: true },
   { id: "type-sub", code: "subprocess", label: "Subprocesso", active: true },
   { id: "type-activity", code: "atividade", label: "Atividade", active: true },
@@ -316,7 +314,7 @@ export const DEMO_REGISTRY: RegistryData = {
       id: "proc-planejamento",
       code: "GOV.001",
       name: "Planejamento Estratégico",
-      type: "macroprocess",
+      type: "process",
       value_chain_id: "chain-gestao-corp",
       parent_process_id: null,
       department: "Processos & Qualidade",
@@ -331,7 +329,7 @@ export const DEMO_REGISTRY: RegistryData = {
       name: "Gestão de Indicadores e Desempenho",
       type: "process",
       value_chain_id: "chain-gestao-corp",
-      parent_process_id: "proc-planejamento",
+      parent_process_id: null,
       department: "Processos & Qualidade",
       owner: "Coordenadora de Processos · Processos & Qualidade",
       description: "Apuração mensal de KPIs, reuniões de análise crítica e planos de ação.",
@@ -396,7 +394,7 @@ export const DEMO_REGISTRY: RegistryData = {
       id: "proc-demandas-ti",
       code: "TI.001",
       name: "Gestão de Demandas de TI",
-      type: "macroprocess",
+      type: "process",
       value_chain_id: "chain-gestao-ti",
       parent_process_id: null,
       department: "Tecnologia da Informação",
@@ -411,7 +409,7 @@ export const DEMO_REGISTRY: RegistryData = {
       name: "Gestão de Demandas de BI Analytics",
       type: "process",
       value_chain_id: "chain-gestao-ti",
-      parent_process_id: "proc-demandas-ti",
+      parent_process_id: null,
       department: "Tecnologia da Informação",
       owner: "Gerente de TI · Tecnologia da Informação",
       description: "Ciclo de desenvolvimento de dashboards e relatórios analíticos.",
@@ -463,7 +461,7 @@ export const DEMO_REGISTRY: RegistryData = {
       id: "proc-planejamento-producao",
       code: "OPE.001",
       name: "Planejamento da Produção",
-      type: "macroprocess",
+      type: "process",
       value_chain_id: "chain-producao",
       parent_process_id: null,
       department: "Operações",
@@ -478,7 +476,7 @@ export const DEMO_REGISTRY: RegistryData = {
       name: "Controle de Qualidade na Produção",
       type: "process",
       value_chain_id: "chain-producao",
-      parent_process_id: "proc-planejamento-producao",
+      parent_process_id: null,
       department: "Operações",
       owner: "Gerente de Operações · Operações",
       description: "Inspeção, testes e liberação de lotes conforme padrões de qualidade.",
@@ -605,7 +603,7 @@ type Draft = {
 };
 
 function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
-  const type = view === "process-types" ? "macroprocess" : "process";
+  const type = "process";
   return {
     id: "",
     name: "",
@@ -623,7 +621,7 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
     roleTitle: "",
     linkOwnerId: data.owners[0]?.id ?? "",
     userName: "",
-    label: "Macroprocesso",
+    label: "Processo",
     active: true,
     valueChainCategory: "primary",
   };
@@ -1423,7 +1421,7 @@ function RegistrationFields({
           className={inputClass}
         >
           {data.types
-            .filter((type) => type.active)
+            .filter((type) => type.active && type.code !== "macroprocess")
             .map((type) => (
               <option key={type.code} value={type.code}>
                 {type.label}
@@ -1431,7 +1429,7 @@ function RegistrationFields({
             ))}
         </select>
       </Field>
-      {draft.type !== "macroprocess" ? (
+      {draft.type !== "process" && draft.type !== "macroprocess" ? (
         <Field label={`${PROCESS_PARENT_LABEL[draft.type]} pai`}>
           <select
             required
@@ -1541,7 +1539,7 @@ function registryCopy(view: ProcessRegistrationView) {
     title: "Processos",
     singular: "Processo",
     description:
-      "Cadastre Macroprocessos, Processos e Subprocessos vinculados à Cadeia de Valor.",
+      "Cadastre Processos, Subprocessos, Atividades e Tarefas vinculados à Cadeia de Valor.",
     columns: ["Código", "Processo", "Tipo", "Cadeia de Valor", "Área", "Dono"],
     icon: <GitBranch className="h-5 w-5" />,
   };
@@ -1799,7 +1797,7 @@ function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
   if (view === "systems") return !!draft.name.trim();
   if (view === "process-types") return !!draft.label.trim();
   if (view === "processes") {
-    const needsParent = draft.type !== "macroprocess";
+    const needsParent = draft.type !== "process" && draft.type !== "macroprocess";
     return (
       !!draft.name.trim() &&
       !!draft.valueChainId &&
