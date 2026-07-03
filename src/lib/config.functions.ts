@@ -1217,6 +1217,17 @@ type DashboardMappingRow = {
   status: string;
   updatedAt: string;
 };
+type DashboardDocumentCatalogRow = {
+  id: string;
+  code: string;
+  title: string;
+  documentType: "Norma" | "POP" | "Fluxograma" | "Mapeamento";
+  area: string;
+  process: string;
+  responsible: string;
+  status: string;
+  updatedAt: string;
+};
 
 function readString(value: unknown, fallback = "-") {
   const text = String(value ?? "").trim();
@@ -1275,6 +1286,84 @@ function dashboardMappingRowFromDocument(document: {
   }
 }
 
+function dashboardDocumentCatalogRowFromDocument(document: {
+  id: string;
+  name: string;
+  module: string;
+  updated_at: string;
+  content_inline: string | null;
+}): DashboardDocumentCatalogRow {
+  try {
+    const parsed = JSON.parse(document.content_inline ?? "{}") as Record<string, unknown>;
+    const source =
+      parsed.modules && typeof parsed.modules === "object"
+        ? (parsed.modules as Record<string, unknown>)
+        : parsed;
+    const ddp = objectAt(source, "ddp");
+    const pop = objectAt(source, "pop");
+    const bpmn = objectAt(source, "bpmn");
+    const ddpMeta = objectAt(ddp, "meta");
+    const popMeta = objectAt(pop, "meta");
+    const ddpMacro = objectAt(ddp, "macroprocess");
+    const ddpLegacy = objectAt(ddp, "legacy");
+
+    if (document.module === "ddp") {
+      return {
+        id: document.id,
+        code: readString(ddpMeta.codigo),
+        title: readString(ddpMeta.titulo, document.name || "Mapeamento sem título"),
+        documentType: "Mapeamento",
+        area: readString(ddpLegacy.processArea, readString(ddpMeta.area)),
+        process: readString(ddpMacro.titulo, readString(ddpLegacy.processName)),
+        responsible: readString(ddpMeta.elaborador),
+        status: readString(ddpMeta.status, "Em andamento"),
+        updatedAt: document.updated_at,
+      };
+    }
+
+    if (document.module === "bpmn") {
+      return {
+        id: document.id,
+        code: "FLX",
+        title: readString(bpmn.poolName, document.name || "Fluxograma sem título"),
+        documentType: "Fluxograma",
+        area: "-",
+        process: readString(bpmn.poolName),
+        responsible: "-",
+        status: "Em andamento",
+        updatedAt: document.updated_at,
+      };
+    }
+
+    const popType = readString(popMeta.tipo, document.name).toLowerCase();
+    const documentType = popType.includes("norma") ? "Norma" : "POP";
+    return {
+      id: document.id,
+      code: readString(popMeta.codigo),
+      title: readString(popMeta.titulo, document.name || "Documento sem título"),
+      documentType,
+      area: readString(popMeta.area),
+      process: readString(popMeta.processo),
+      responsible: readString(popMeta.elaboracao, readString(popMeta.aprovacao)),
+      status: readString(popMeta.status, "Em andamento"),
+      updatedAt: document.updated_at,
+    };
+  } catch {
+    return {
+      id: document.id,
+      code: "-",
+      title: document.name || "Documento sem título",
+      documentType:
+        document.module === "ddp" ? "Mapeamento" : document.module === "bpmn" ? "Fluxograma" : "POP",
+      area: "-",
+      process: "-",
+      responsible: "-",
+      status: "Em andamento",
+      updatedAt: document.updated_at,
+    };
+  }
+}
+
 export const getOrganizationDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
@@ -1301,7 +1390,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         .from("documents")
         .select("id, name, module, current_version, primary_process_id, updated_at, content_inline")
         .eq("organization_id", organizationId)
-        .in("module", ["ddp", "pop"])
+        .in("module", ["ddp", "pop", "bpmn"])
         .order("updated_at", { ascending: false }),
       context.supabase
         .from("organization_departments")
@@ -1338,6 +1427,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
 
     const ddps = (documents ?? []).filter((document) => document.module === "ddp");
     const pops = (documents ?? []).filter((document) => document.module === "pop");
+    const documentCatalogRows = (documents ?? []).map(dashboardDocumentCatalogRowFromDocument);
     const activeProcesses = (processes ?? []).filter((process) => process.status === "Ativo");
     const staleProcesses = (processes ?? []).filter((process) => process.status !== "Ativo");
     const dashboardMappingRows = ddps.map(dashboardMappingRowFromDocument);
@@ -1389,6 +1479,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       topOwners: rank((processes ?? []).map((process) => process.owner)),
       mappingRows: dashboardMappingRows,
       mappingStatusCounts,
+      documentCatalogRows,
       recentDocuments: (documents ?? []).map(({ content_inline: _content, ...document }) => document).slice(0, 5),
       recentProcesses: (processes ?? []).slice(0, 5),
       mappingCoverage: {

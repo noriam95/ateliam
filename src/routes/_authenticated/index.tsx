@@ -196,6 +196,18 @@ type DashboardMappingStatusCounts = {
   aprovado: number;
   concluido: number;
 };
+type DashboardDocumentType = "Norma" | "POP" | "Fluxograma" | "Mapeamento";
+type DashboardDocumentCatalogRow = {
+  id: string;
+  code: string;
+  title: string;
+  documentType: DashboardDocumentType;
+  area: string;
+  process: string;
+  responsible: string;
+  status: string;
+  updatedAt: string;
+};
 type AccessibleOrganization = {
   id: string;
   name: string;
@@ -414,6 +426,77 @@ function WorkspaceHome() {
               selectedDemoOrganization.id === "demo-bom-futuro"
                 ? { emAndamento: 1, emRevisao: 1, aprovado: 1, concluido: 1 }
                 : { emAndamento: 0, emRevisao: 0, aprovado: 0, concluido: 0 },
+            documentCatalogRows:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? [
+                    {
+                      id: "demo-cat-map-1",
+                      code: "MAP.PMO.007",
+                      title: "Gestão de Demandas de BI Analytics",
+                      documentType: "Mapeamento" as const,
+                      area: "Tecnologia da Informação",
+                      process: "Gestão de Demandas de BI Analytics",
+                      responsible: "Marina Costa",
+                      status: "Em andamento",
+                      updatedAt: new Date().toISOString(),
+                    },
+                    {
+                      id: "demo-cat-map-2",
+                      code: "MAP.RH.001",
+                      title: "Recrutamento e Seleção",
+                      documentType: "Mapeamento" as const,
+                      area: "Recursos Humanos",
+                      process: "Recrutamento e Seleção",
+                      responsible: "Juliana Castro",
+                      status: "Em revisão",
+                      updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+                    },
+                    {
+                      id: "demo-cat-pop-1",
+                      code: "POP.ADM.001",
+                      title: "Controle de Acesso às Unidades",
+                      documentType: "POP" as const,
+                      area: "Administrativo",
+                      process: "Controle de Acesso às Unidades",
+                      responsible: "Gestor da área",
+                      status: "Aprovado",
+                      updatedAt: new Date(Date.now() - 86400000 * 7).toISOString(),
+                    },
+                    {
+                      id: "demo-cat-pop-2",
+                      code: "POP.FIN.001",
+                      title: "Conciliação Bancária",
+                      documentType: "POP" as const,
+                      area: "Financeiro & Controladoria",
+                      process: "Contas a Receber",
+                      responsible: "Bruno Cardoso",
+                      status: "Concluído",
+                      updatedAt: new Date(Date.now() - 86400000 * 11).toISOString(),
+                    },
+                    {
+                      id: "demo-cat-nor-1",
+                      code: "NOR.PMO.001",
+                      title: "Governança de Processos",
+                      documentType: "Norma" as const,
+                      area: "Processos",
+                      process: "Gestão do Portfólio de Processos",
+                      responsible: "Coordenadora de Processos",
+                      status: "Aprovado",
+                      updatedAt: new Date(Date.now() - 86400000 * 14).toISOString(),
+                    },
+                    {
+                      id: "demo-cat-flx-1",
+                      code: "FLX.COM.001",
+                      title: "Ciclo de Vendas",
+                      documentType: "Fluxograma" as const,
+                      area: "Comercial & Vendas",
+                      process: "Comercialização & Vendas",
+                      responsible: "Rafael Souza",
+                      status: "Em andamento",
+                      updatedAt: new Date(Date.now() - 86400000 * 18).toISOString(),
+                    },
+                  ]
+                : [],
             topDepartments:
               selectedDemoOrganization.id === "demo-bom-futuro"
                 ? [
@@ -905,6 +988,9 @@ function WorkspaceHome() {
                   aprovado: 0,
                   concluido: 0,
                 }) as DashboardMappingStatusCounts
+              }
+              documentCatalogRows={
+                (dashboard?.documentCatalogRows ?? []) as DashboardDocumentCatalogRow[]
               }
               topDepartments={dashboard?.topDepartments ?? []}
               topOwners={dashboard?.topOwners ?? []}
@@ -1404,6 +1490,214 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
   );
 }
 
+const DOCUMENT_CATALOG_TYPES: DashboardDocumentType[] = [
+  "Norma",
+  "POP",
+  "Fluxograma",
+  "Mapeamento",
+];
+
+type DocumentCatalogColumn = keyof Pick<
+  DashboardDocumentCatalogRow,
+  "code" | "title" | "area" | "process" | "responsible" | "status" | "updatedAt"
+>;
+
+const DOCUMENT_CATALOG_COLUMNS: Array<[DocumentCatalogColumn, string]> = [
+  ["code", "Código"],
+  ["title", "Documento"],
+  ["area", "Área"],
+  ["process", "Processo"],
+  ["responsible", "Responsável"],
+  ["status", "Status"],
+  ["updatedAt", "Última atualização"],
+];
+
+function documentTypeCount(rows: DashboardDocumentCatalogRow[], type: DashboardDocumentType) {
+  return rows.filter((row) => row.documentType === type).length;
+}
+
+function topAreasForDocumentType(rows: DashboardDocumentCatalogRow[], type: DashboardDocumentType) {
+  const counts = new Map<string, number>();
+  rows
+    .filter((row) => row.documentType === type)
+    .forEach((row) => {
+      const area = row.area?.trim() && row.area !== "-" ? row.area : "Sem área";
+      counts.set(area, (counts.get(area) ?? 0) + 1);
+    });
+  return Array.from(counts.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "pt-BR"))
+    .slice(0, 4);
+}
+
+function DocumentTypeQuadrant({
+  type,
+  rows,
+}: {
+  type: DashboardDocumentType;
+  rows: DashboardDocumentCatalogRow[];
+}) {
+  const areas = topAreasForDocumentType(rows, type);
+  const maxValue = Math.max(1, areas[0]?.value ?? 1);
+  return (
+    <div className="rounded-md border border-border bg-background/45 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {type}
+        </div>
+        <span className="font-data text-xs font-semibold text-[var(--gold)]">
+          {documentTypeCount(rows, type)}
+        </span>
+      </div>
+      <div className="grid gap-1.5">
+        {areas.length ? (
+          areas.map((area, index) => (
+            <div key={area.label} className="flex items-center gap-2">
+              <span className="w-4 text-[10px] font-data font-bold text-[var(--gold)]">
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-xs text-foreground">{area.label}</span>
+              <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-[var(--gold)]/80"
+                  style={{ width: `${(area.value / maxValue) * 100}%` }}
+                />
+              </div>
+              <span className="w-5 text-right text-[10px] font-data text-muted-foreground">
+                {area.value}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="py-3 text-center text-xs text-muted-foreground">Sem registros.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function compareDocumentCatalogRows(
+  a: DashboardDocumentCatalogRow,
+  b: DashboardDocumentCatalogRow,
+  field: DocumentCatalogColumn,
+  dir: DashboardSortDir,
+) {
+  const sign = dir === "asc" ? 1 : -1;
+  if (field === "updatedAt") {
+    return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * sign;
+  }
+  return String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
+    numeric: true,
+    sensitivity: "base",
+  }) * sign;
+}
+
+function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[] }) {
+  const [activeType, setActiveType] = useState<DashboardDocumentType>("Norma");
+  const [query, setQuery] = useState("");
+  const [sortField, setSortField] = useState<DocumentCatalogColumn>("updatedAt");
+  const [sortDir, setSortDir] = useState<DashboardSortDir>("desc");
+
+  function toggleSort(field: DocumentCatalogColumn) {
+    if (field === sortField) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortField(field);
+    setSortDir(field === "updatedAt" ? "desc" : "asc");
+  }
+
+  const visibleRows = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const filtered = rows.filter((row) => {
+      if (row.documentType !== activeType) return false;
+      if (!normalized) return true;
+      return DOCUMENT_CATALOG_COLUMNS.some(([field]) =>
+        String(row[field] ?? "").toLowerCase().includes(normalized),
+      );
+    });
+    return [...filtered].sort((a, b) => compareDocumentCatalogRows(a, b, sortField, sortDir));
+  }, [activeType, query, rows, sortDir, sortField]);
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+          {DOCUMENT_CATALOG_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setActiveType(type)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                activeType === type
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {type}
+              <span className="ml-2 font-data text-[var(--gold)]">
+                {documentTypeCount(rows, type)}
+              </span>
+            </button>
+          ))}
+        </div>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Filtrar..."
+          className="h-8 w-56 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+        />
+      </div>
+
+      <div className="overflow-auto rounded-lg border border-border">
+        <table className="w-full min-w-[920px] text-left text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr>
+              {DOCUMENT_CATALOG_COLUMNS.map(([field, label]) => (
+                <th key={field} className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(field)}
+                    className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
+                  >
+                    {label}
+                    <span className="text-[10px]">
+                      {sortField === field ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                    </span>
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {visibleRows.map((row) => (
+              <tr key={row.id} className="hover:bg-muted/30">
+                {DOCUMENT_CATALOG_COLUMNS.map(([field]) => (
+                  <td key={field} className="break-words px-3 py-3 text-foreground">
+                    {field === "updatedAt"
+                      ? new Date(row.updatedAt).toLocaleString("pt-BR")
+                      : row[field] || "-"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {!visibleRows.length ? (
+              <tr>
+                <td
+                  colSpan={DOCUMENT_CATALOG_COLUMNS.length}
+                  className="px-3 py-8 text-center text-muted-foreground"
+                >
+                  Nenhum documento encontrado.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function WorkspaceContent({
   view,
   organizationName,
@@ -1413,6 +1707,7 @@ function WorkspaceContent({
   totals,
   mappingRows,
   mappingStatusCounts,
+  documentCatalogRows,
   topDepartments,
   topOwners,
   recentDocuments,
@@ -1429,6 +1724,7 @@ function WorkspaceContent({
   totals: DashboardTotals | undefined;
   mappingRows: DashboardMappingRow[];
   mappingStatusCounts: DashboardMappingStatusCounts;
+  documentCatalogRows: DashboardDocumentCatalogRow[];
   topDepartments: { label: string; value: number }[];
   topOwners: { label: string; value: number }[];
   recentDocuments: Array<{
@@ -1734,8 +2030,9 @@ function WorkspaceContent({
           icon={<CheckCircle2 className="h-4 w-4 text-[var(--gold)]" />}
           titleClassName="text-sm font-semibold text-foreground"
           className="rounded-lg border border-border bg-card p-5 shadow-sm"
+          expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
         >
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
+          <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
             {/* Controle de Documentos */}
             <div>
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -1745,83 +2042,39 @@ function WorkspaceContent({
                 <thead>
                   <tr className="border-b border-border text-[10px] text-muted-foreground">
                     <th className="pb-1.5 text-left font-semibold">Tipo</th>
+                    <th className="pb-1.5 text-right font-semibold">Qtd.</th>
                     <th className="pb-1.5 text-right font-semibold">Status</th>
-                    <th className="pb-1.5 text-right font-semibold">Conformidade</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {[
-                    { tipo: "Normas", count: totals?.departments ?? 0 },
-                    { tipo: "POPs", count: popCount },
-                    { tipo: "Mapeamentos", count: ddpCount },
-                  ].map((row) => (
-                    <tr key={row.tipo}>
-                      <td className="py-1.5 font-medium text-foreground">{row.tipo}</td>
-                      <td className="py-1.5 text-right font-data text-foreground">{row.count}</td>
+                  {DOCUMENT_CATALOG_TYPES.map((type) => {
+                    const count = documentTypeCount(documentCatalogRows, type);
+                    return (
+                    <tr key={type}>
+                      <td className="py-1.5 font-medium text-foreground">{type}</td>
+                      <td className="py-1.5 text-right font-data text-foreground">{count}</td>
                       <td className="py-1.5 text-right">
                         <span className="inline-flex rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
-                          {row.count > 0 ? "Ativo" : "—"}
+                          {count > 0 ? "Ativo" : "—"}
                         </span>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
-            {/* Aderência de Donos */}
+            {/* Quadrantes por tipo de documento */}
             <div>
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Aderência de Donos de Processo
+                Áreas por Tipo de Documento
               </div>
-              {topOwners.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground">Sem donos cadastrados.</div>
-              ) : (
-                <div className="grid gap-1.5">
-                  {topOwners.slice(0, 5).map((owner) => (
-                    <div key={owner.label} className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs text-foreground">{owner.label}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-[var(--gold)]"
-                            style={{ width: `${Math.min(100, (owner.value / Math.max(1, topOwners[0].value)) * 100)}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-right text-[10px] font-data font-semibold text-[var(--gold)]">{owner.value}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Cobertura por área */}
-          <div className="mt-4 border-t border-border pt-4">
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Cobertura por Área
-            </div>
-            <div className="grid gap-1.5">
-              {topDepartments.slice(0, 4).map((dept, i) => {
-                const maxVal = Math.max(1, topDepartments[0]?.value ?? 1);
-                return (
-                  <div key={dept.label} className="flex items-center gap-2">
-                    <span className="w-4 text-[10px] font-data font-bold text-[var(--gold)]">{i + 1}</span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-foreground">{dept.label}</span>
-                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted shrink-0">
-                      <div
-                        className="h-full rounded-full bg-[var(--gold)]/70"
-                        style={{ width: `${(dept.value / maxVal) * 100}%` }}
-                      />
-                    </div>
-                    <span className="w-5 text-right text-[10px] font-data text-muted-foreground">{dept.value}</span>
-                  </div>
-                );
-              })}
-              {topDepartments.length === 0 && (
-                <div className="py-3 text-center text-xs text-muted-foreground">Sem áreas cadastradas.</div>
-              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {DOCUMENT_CATALOG_TYPES.map((type) => (
+                  <DocumentTypeQuadrant key={type} type={type} rows={documentCatalogRows} />
+                ))}
+              </div>
             </div>
           </div>
         </ExpandableCard>
