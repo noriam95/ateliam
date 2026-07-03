@@ -5949,8 +5949,8 @@ function ModuleWorkspacePage() {
                     <ModuleTreeBranch
                       title="Mapeamento"
                       icon={<FileText className="h-4 w-4" />}
-                      active={moduleId === "ddp"}
-                      open={expandedTree.ddp}
+                      active={contentMode === "module" && moduleId === "ddp"}
+                      open={contentMode === "module" && expandedTree.ddp}
                       onSelect={() => openModuleBranch("ddp")}
                       onToggle={() => toggleTree("ddp")}
                     >
@@ -5985,8 +5985,8 @@ function ModuleWorkspacePage() {
                     <ModuleTreeBranch
                       title="Documentação"
                       icon={<CheckCircle2 className="h-4 w-4" />}
-                      active={moduleId === "pop"}
-                      open={expandedTree.pop}
+                      active={contentMode === "module" && moduleId === "pop"}
+                      open={contentMode === "module" && expandedTree.pop}
                       onSelect={() => openModuleBranch("pop")}
                       onToggle={() => toggleTree("pop")}
                     >
@@ -6008,8 +6008,8 @@ function ModuleWorkspacePage() {
                     <ModuleTreeBranch
                       title="Fluxograma"
                       icon={<Workflow className="h-4 w-4" />}
-                      active={moduleId === "bpmn"}
-                      open={expandedTree.bpmn}
+                      active={contentMode === "module" && moduleId === "bpmn"}
+                      open={contentMode === "module" && expandedTree.bpmn}
                       onSelect={() => openModuleBranch("bpmn")}
                       onToggle={() => toggleTree("bpmn")}
                     >
