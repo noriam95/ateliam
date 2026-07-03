@@ -602,6 +602,14 @@ type Draft = {
   valueChainCategory: ValueChainCategory;
 };
 
+type RelatedCreateTarget = "valueChain" | "area" | "owner";
+type RelatedCreateView = "value-chains" | "areas" | "owners";
+type RelatedCreateState = {
+  target: RelatedCreateTarget;
+  view: RelatedCreateView;
+  draft: Draft;
+};
+
 function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
   const type = "process";
   return {
@@ -662,6 +670,7 @@ export function WorkspaceProcessRegistrations({
   const data = isDemo ? demoData : ((query.data ?? emptyRegistryData()) as RegistryData);
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(view, data));
   const [formOpen, setFormOpen] = useState(false);
+  const [relatedCreate, setRelatedCreate] = useState<RelatedCreateState | null>(null);
   const [pendingProcessStatus, setPendingProcessStatus] = useState<{
     process: Process;
     status: "Ativo" | "Arquivado";
@@ -874,6 +883,101 @@ export function WorkspaceProcessRegistrations({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  function openRelatedCreate(target: RelatedCreateTarget, name: string) {
+    const targetView: RelatedCreateView =
+      target === "valueChain" ? "value-chains" : target === "area" ? "areas" : "owners";
+    const next = emptyDraft(targetView, data);
+    if (target === "valueChain") {
+      next.name = name;
+      next.valueChainCategory = "primary";
+      next.status = "Ativa";
+    }
+    if (target === "area") {
+      next.name = name;
+      next.sigla = `${normalizeSigla(name)}XXX`.slice(0, 3);
+    }
+    if (target === "owner") {
+      const departmentId =
+        draft.departmentId || data.areas.find((area) => area.name === draft.department)?.id || "";
+      next.roleTitle = name;
+      next.departmentId = departmentId;
+      next.departmentIds = departmentId ? [departmentId] : [];
+    }
+    setRelatedCreate({ target, view: targetView, draft: next });
+  }
+
+  const relatedCreateMutation = useMutation({
+    mutationFn: async () => {
+      if (!relatedCreate) throw new Error("Cadastro relacionado não identificado.");
+      const { view: relatedView, draft: relatedDraft } = relatedCreate;
+      if (isDemo) {
+        const id = relatedDraft.id || `demo-${relatedView}-${Date.now()}`;
+        await saveDemoRegistration(relatedView, { ...relatedDraft, id }, demoData, setDemoData);
+        return { id };
+      }
+      if (relatedView === "value-chains") {
+        return saveValueChain({
+          data: {
+            organizationId,
+            name: relatedDraft.name,
+            category: relatedDraft.valueChainCategory,
+            description: relatedDraft.description || null,
+            status: relatedDraft.status as "Ativa" | "Inativa",
+          },
+        });
+      }
+      if (relatedView === "areas") {
+        return saveArea({
+          data: { organizationId, name: relatedDraft.name, sigla: relatedDraft.sigla },
+        });
+      }
+      return saveOwner({
+        data: {
+          organizationId,
+          departmentId: relatedDraft.departmentId,
+          roleTitle: relatedDraft.roleTitle,
+        },
+      });
+    },
+    onSuccess: async (row: unknown) => {
+      if (!relatedCreate) return;
+      const saved = row as { id?: string; name?: string; role_title?: string | null };
+      const savedId = saved.id || relatedCreate.draft.id;
+      const savedName = saved.name || relatedCreate.draft.name;
+      if (!savedId) throw new Error("Cadastro salvo sem identificador.");
+      if (relatedCreate.target === "valueChain") {
+        setDraft((current) => ({ ...current, valueChainId: savedId }));
+        toast.success("Macroprocesso cadastrado.");
+      }
+      if (relatedCreate.target === "area") {
+        setDraft((current) => ({ ...current, departmentId: savedId, department: savedName }));
+        toast.success("Área cadastrada.");
+      }
+      if (relatedCreate.target === "owner") {
+        const ownerName = ownerDisplayName({
+          name: saved.name || relatedCreate.draft.roleTitle,
+          role_title: saved.role_title ?? relatedCreate.draft.roleTitle,
+        });
+        setDraft((current) => ({ ...current, linkOwnerId: savedId, owner: ownerName }));
+        toast.success("Dono cadastrado.");
+      }
+      if (!isDemo) await query.refetch();
+      setRelatedCreate(null);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  function setRelatedDraft(update: SetStateAction<Draft>) {
+    setRelatedCreate((current) => {
+      if (!current) return current;
+      const nextDraft =
+        typeof update === "function"
+          ? (update as (draft: Draft) => Draft)(current.draft)
+          : update;
+      return { ...current, draft: nextDraft };
+    });
+  }
+
   function editRow(id: string) {
     setDraft(draftFromRow(view, id, data));
     setFormOpen(true);
@@ -1050,6 +1154,15 @@ export function WorkspaceProcessRegistrations({
                 data={data}
                 autoCode={isAutoProcessCode}
                 codePreview={processCodePreview}
+                quickCreate={
+                  view === "processes"
+                      ? {
+                          onCreateValueChain: (name) => openRelatedCreate("valueChain", name),
+                          onCreateArea: (name) => openRelatedCreate("area", name),
+                          onCreateOwner: (name) => openRelatedCreate("owner", name),
+                        }
+                    : undefined
+                }
               />
             </div>
 
@@ -1068,6 +1181,72 @@ export function WorkspaceProcessRegistrations({
               >
                 <Save className="h-4 w-4" />{" "}
                 {saveMutation.isPending ? "Salvando..." : "Salvar"}
+              </button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
+
+      {relatedCreate ? (
+        <div
+          className="fixed inset-0 z-[85] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]"
+          onClick={(event) => event.target === event.currentTarget && setRelatedCreate(null)}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              relatedCreateMutation.mutate();
+            }}
+            className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+          >
+            <header className="flex items-center gap-3 border-b border-border px-5 py-4">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+                {registryCopy(relatedCreate.view).icon}
+              </span>
+              <div className="min-w-0">
+                <h2 className="font-display text-base font-bold">
+                  Novo {registryCopy(relatedCreate.view).singular.toLowerCase()}
+                </h2>
+                <p className="truncate text-xs text-muted-foreground">
+                  Cadastro oficial usado em Cadastros
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRelatedCreate(null)}
+                className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Fechar"
+                aria-label="Fechar formulário"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="grid gap-4 p-5">
+              <RegistrationFields
+                view={relatedCreate.view}
+                draft={relatedCreate.draft}
+                setDraft={setRelatedDraft}
+                data={data}
+              />
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setRelatedCreate(null)}
+                className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  relatedCreateMutation.isPending ||
+                  !isValidDraft(relatedCreate.view, relatedCreate.draft)
+                }
+                className={primaryButtonClass}
+              >
+                <Save className="h-4 w-4" />{" "}
+                {relatedCreateMutation.isPending ? "Salvando..." : "Salvar"}
               </button>
             </footer>
           </form>
@@ -1130,6 +1309,7 @@ function RegistrationFields({
   data,
   autoCode = false,
   codePreview = "",
+  quickCreate,
 }: {
   view: ProcessRegistrationView;
   draft: Draft;
@@ -1137,6 +1317,7 @@ function RegistrationFields({
   data: RegistryData;
   autoCode?: boolean;
   codePreview?: string;
+  quickCreate?: QuickCreateHandlers;
 }) {
   if (view === "areas")
     return (
@@ -1393,21 +1574,18 @@ function RegistrationFields({
           />
         </Field>
       </div>
-      <Field label="Cadeia de valor">
-        <select
-          required
-          value={draft.valueChainId}
-          onChange={(e) => setDraft((d) => ({ ...d, valueChainId: e.target.value }))}
-          className={inputClass}
-        >
-          <option value="">Selecione</option>
-          {data.valueChains.map((chain) => (
-            <option key={chain.id} value={chain.id}>
-              {chain.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <SearchableCreateSelect
+        label="Macroprocesso pai"
+        value={draft.valueChainId}
+        options={data.valueChains.map((chain) => ({ value: chain.id, label: chain.name }))}
+        createLabel="Cadastrar macroprocesso"
+        onChange={(valueChainId) => setDraft((d) => ({ ...d, valueChainId }))}
+        onCreate={
+          quickCreate?.onCreateValueChain
+            ? (name) => quickCreate.onCreateValueChain?.(name)
+            : undefined
+        }
+      />
       <Field label="Tipo">
         <select
           value={draft.type}
@@ -1446,32 +1624,36 @@ function RegistrationFields({
           </select>
         </Field>
       ) : null}
-      <Field label="Área">
-        <select
+        <SearchableCreateSelect
+          label="Área"
           value={draft.department}
-          onChange={(e) => setDraft((d) => ({ ...d, department: e.target.value }))}
-          className={inputClass}
-        >
-          <option value="">Selecione</option>
-          {data.areas.map((area) => (
-            <option key={area.id}>{area.name}</option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Dono do processo">
-        <select
+          options={data.areas.map((area) => ({ value: area.name, label: area.name }))}
+          createLabel="Cadastrar área"
+          onChange={(department) => {
+            const area = data.areas.find((item) => item.name === department);
+            setDraft((d) => ({ ...d, department, departmentId: area?.id ?? d.departmentId }));
+          }}
+          onCreate={
+            quickCreate?.onCreateArea
+              ? (name) => quickCreate.onCreateArea?.(name)
+              : undefined
+          }
+        />
+        <SearchableCreateSelect
+          label="Dono do processo"
           value={draft.owner}
-          onChange={(e) => setDraft((d) => ({ ...d, owner: e.target.value }))}
-          className={inputClass}
-        >
-          <option value="">Selecione</option>
-          {data.owners.map((owner) => (
-            <option key={owner.id} value={ownerDisplayName(owner)}>
-              {ownerDisplayName(owner)}
-            </option>
-          ))}
-        </select>
-      </Field>
+          options={data.owners.map((owner) => {
+            const label = ownerDisplayName(owner);
+            return { value: label, label };
+          })}
+          createLabel="Cadastrar dono"
+          onChange={(owner) => setDraft((d) => ({ ...d, owner }))}
+          onCreate={
+            quickCreate?.onCreateOwner
+              ? (name) => quickCreate.onCreateOwner?.(name)
+              : undefined
+          }
+        />
       <Field label="Descrição">
         <textarea
           rows={4}
@@ -1841,6 +2023,105 @@ function IconButton({
 
 // Processo devolvido pelo diálogo ao concluir o cadastro. Estrutura compatível
 // com `organization_processes` para poder ser selecionado em qualquer contexto.
+type QuickCreateHandlers = {
+  onCreateValueChain?: (name: string) => void;
+  onCreateArea?: (name: string) => void;
+  onCreateOwner?: (name: string) => void;
+};
+
+function SearchableCreateSelect({
+  label,
+  value,
+  options,
+  placeholder = "Selecione",
+  createLabel = "Cadastrar",
+  disabled,
+  onChange,
+  onCreate,
+}: {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  placeholder?: string;
+  createLabel?: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+  onCreate?: (label: string) => void;
+}) {
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const normalized = normalizeLabel(query);
+  const visible = normalized
+    ? options.filter((option) => normalizeLabel(option.label).includes(normalized))
+    : options;
+  const canCreate =
+    !!onCreate &&
+    !!query.trim() &&
+    !options.some((option) => normalizeLabel(option.label) === normalized);
+
+  function createItem() {
+    if (!onCreate || !query.trim()) return;
+    onCreate(query.trim());
+    setQuery("");
+    setOpen(false);
+  }
+
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <input
+          value={open ? query : selectedLabel}
+          disabled={disabled}
+          onFocus={() => {
+            setOpen(true);
+            setQuery("");
+          }}
+          onChange={(event) => {
+            setOpen(true);
+            setQuery(event.target.value);
+          }}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          placeholder={placeholder}
+          className={inputClass}
+        />
+        {open ? (
+          <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-card p-1 shadow-lg">
+            {visible.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option.value);
+                  setQuery("");
+                  setOpen(false);
+                }}
+                className="flex w-full items-center rounded px-2 py-2 text-left text-sm hover:bg-muted"
+              >
+                {option.label}
+              </button>
+            ))}
+            {!visible.length ? (
+              <div className="px-2 py-2 text-sm text-muted-foreground">Nenhum item encontrado.</div>
+            ) : null}
+            {canCreate ? (
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={createItem}
+                className="mt-1 flex w-full items-center gap-2 rounded border border-dashed border-[var(--gold)] px-2 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-accent disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" /> {createLabel} "{query.trim()}"
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </Field>
+  );
+}
+
 export type CreatedProcess = {
   id: string;
   organization_id: string;
@@ -1878,6 +2159,9 @@ export function ProcessRegistrationDialog({
   onCreated: (process: CreatedProcess) => void;
 }) {
   const listRegistry = useServerFn(listProcessRegistrationData);
+  const saveArea = useServerFn(saveProcessArea);
+  const saveOwner = useServerFn(saveProcessOwnerRegistration);
+  const saveValueChain = useServerFn(saveValueChainRegistration);
   const saveProcess = useServerFn(saveProcessRegistration);
   const reserveCodeFn = useServerFn(reserveCode);
   const query = useQuery({
@@ -1885,16 +2169,18 @@ export function ProcessRegistrationDialog({
     queryFn: () => listRegistry({ data: { organizationId: organizationId ?? null } }),
     enabled: !isDemo,
   });
+  const [demoData, setDemoData] = useState<RegistryData>(() =>
+    organizationId === "demo-bom-futuro" ? DEMO_REGISTRY : emptyRegistryData(),
+  );
   const data: RegistryData = isDemo
-    ? organizationId === "demo-bom-futuro"
-      ? DEMO_REGISTRY
-      : emptyRegistryData()
+    ? demoData
     : ((query.data ?? emptyRegistryData()) as RegistryData);
 
   const [draft, setDraft] = useState<Draft>(() => ({
     ...emptyDraft("processes", data),
     name: initialName,
   }));
+  const [relatedCreate, setRelatedCreate] = useState<RelatedCreateState | null>(null);
 
   // Quando os catálogos chegam (nuvem), completa os defaults que ainda não
   // tinham opção disponível no primeiro render.
@@ -1920,6 +2206,101 @@ export function ProcessRegistrationDialog({
         : previewDocumentCode("processo", processAreaSigla, processRule)
       : "";
   const copy = registryCopy("processes");
+
+  function openRelatedCreate(target: RelatedCreateTarget, name: string) {
+    const targetView: RelatedCreateView =
+      target === "valueChain" ? "value-chains" : target === "area" ? "areas" : "owners";
+    const next = emptyDraft(targetView, data);
+    if (target === "valueChain") {
+      next.name = name;
+      next.valueChainCategory = "primary";
+      next.status = "Ativa";
+    }
+    if (target === "area") {
+      next.name = name;
+      next.sigla = `${normalizeSigla(name)}XXX`.slice(0, 3);
+    }
+    if (target === "owner") {
+      const departmentId =
+        draft.departmentId || data.areas.find((area) => area.name === draft.department)?.id || "";
+      next.roleTitle = name;
+      next.departmentId = departmentId;
+      next.departmentIds = departmentId ? [departmentId] : [];
+    }
+    setRelatedCreate({ target, view: targetView, draft: next });
+  }
+
+  const relatedCreateMutation = useMutation({
+    mutationFn: async () => {
+      if (!relatedCreate) throw new Error("Cadastro relacionado não identificado.");
+      const { view: relatedView, draft: relatedDraft } = relatedCreate;
+      if (isDemo) {
+        const id = relatedDraft.id || `demo-${relatedView}-${Date.now()}`;
+        await saveDemoRegistration(relatedView, { ...relatedDraft, id }, demoData, setDemoData);
+        return { id };
+      }
+      if (relatedView === "value-chains") {
+        return saveValueChain({
+          data: {
+            organizationId,
+            name: relatedDraft.name,
+            category: relatedDraft.valueChainCategory,
+            description: relatedDraft.description || null,
+            status: relatedDraft.status as "Ativa" | "Inativa",
+          },
+        });
+      }
+      if (relatedView === "areas") {
+        return saveArea({
+          data: { organizationId, name: relatedDraft.name, sigla: relatedDraft.sigla },
+        });
+      }
+      return saveOwner({
+        data: {
+          organizationId,
+          departmentId: relatedDraft.departmentId,
+          roleTitle: relatedDraft.roleTitle,
+        },
+      });
+    },
+    onSuccess: async (row: unknown) => {
+      if (!relatedCreate) return;
+      const saved = row as { id?: string; name?: string; role_title?: string | null };
+      const savedId = saved.id || relatedCreate.draft.id;
+      const savedName = saved.name || relatedCreate.draft.name;
+      if (!savedId) throw new Error("Cadastro salvo sem identificador.");
+      if (relatedCreate.target === "valueChain") {
+        setDraft((current) => ({ ...current, valueChainId: savedId }));
+        toast.success("Macroprocesso cadastrado.");
+      }
+      if (relatedCreate.target === "area") {
+        setDraft((current) => ({ ...current, departmentId: savedId, department: savedName }));
+        toast.success("Área cadastrada.");
+      }
+      if (relatedCreate.target === "owner") {
+        const ownerName = ownerDisplayName({
+          name: saved.name || relatedCreate.draft.roleTitle,
+          role_title: saved.role_title ?? relatedCreate.draft.roleTitle,
+        });
+        setDraft((current) => ({ ...current, linkOwnerId: savedId, owner: ownerName }));
+        toast.success("Dono cadastrado.");
+      }
+      if (!isDemo) await query.refetch();
+      setRelatedCreate(null);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  function setRelatedDraft(update: SetStateAction<Draft>) {
+    setRelatedCreate((current) => {
+      if (!current) return current;
+      const nextDraft =
+        typeof update === "function"
+          ? (update as (draft: Draft) => Draft)(current.draft)
+          : update;
+      return { ...current, draft: nextDraft };
+    });
+  }
 
   const saveMutation = useMutation({
     mutationFn: async (): Promise<CreatedProcess> => {
@@ -2017,6 +2398,11 @@ export function ProcessRegistrationDialog({
             data={data}
             autoCode={isAutoProcessCode}
             codePreview={processCodePreview}
+            quickCreate={{
+              onCreateValueChain: (name) => openRelatedCreate("valueChain", name),
+              onCreateArea: (name) => openRelatedCreate("area", name),
+              onCreateOwner: (name) => openRelatedCreate("owner", name),
+            }}
           />
         </div>
         <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
@@ -2036,6 +2422,71 @@ export function ProcessRegistrationDialog({
           </button>
         </footer>
       </form>
+      {relatedCreate ? (
+        <div
+          className="fixed inset-0 z-[95] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]"
+          onClick={(event) => event.target === event.currentTarget && setRelatedCreate(null)}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              relatedCreateMutation.mutate();
+            }}
+            className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+          >
+            <header className="flex items-center gap-3 border-b border-border px-5 py-4">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+                {registryCopy(relatedCreate.view).icon}
+              </span>
+              <div className="min-w-0">
+                <h2 className="font-display text-base font-bold">
+                  Novo {registryCopy(relatedCreate.view).singular.toLowerCase()}
+                </h2>
+                <p className="truncate text-xs text-muted-foreground">
+                  Cadastro oficial usado em Cadastros
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRelatedCreate(null)}
+                className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Fechar"
+                aria-label="Fechar formulário"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="grid gap-4 p-5">
+              <RegistrationFields
+                view={relatedCreate.view}
+                draft={relatedCreate.draft}
+                setDraft={setRelatedDraft}
+                data={data}
+              />
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setRelatedCreate(null)}
+                className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  relatedCreateMutation.isPending ||
+                  !isValidDraft(relatedCreate.view, relatedCreate.draft)
+                }
+                className={primaryButtonClass}
+              >
+                <Save className="h-4 w-4" />{" "}
+                {relatedCreateMutation.isPending ? "Salvando..." : "Salvar"}
+              </button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }
