@@ -1541,7 +1541,7 @@ function registryCopy(view: ProcessRegistrationView) {
     title: "Processos",
     singular: "Processo",
     description:
-      "Cadastre e versione Macroprocessos, Processos e Subprocessos vinculados à Cadeia de Valor.",
+      "Cadastre Macroprocessos, Processos e Subprocessos vinculados à Cadeia de Valor.",
     columns: ["Código", "Processo", "Tipo", "Cadeia de Valor", "Área", "Dono"],
     icon: <GitBranch className="h-5 w-5" />,
   };
@@ -1749,7 +1749,8 @@ function saveDemoRegistration(
         owner: draft.owner || null,
         description: draft.description || null,
         status: draft.status,
-        current_version: (previous?.current_version ?? 0) + 1,
+        // Processos não são versionados: mantém o valor existente sem incrementar.
+        current_version: previous?.current_version ?? 1,
       }),
     };
   });

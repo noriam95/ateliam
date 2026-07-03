@@ -5172,9 +5172,9 @@ function ModuleWorkspacePage() {
 
   async function updateProcessCatalog(process: OrganizationProcess) {
     if (isDemo) {
+      // Processos não são versionados: não incrementamos current_version.
       const row = {
         ...process,
-        current_version: process.current_version + 1,
         updated_at: new Date().toISOString(),
       };
       setDemoCatalogs((current) => ({
