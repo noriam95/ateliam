@@ -5309,6 +5309,10 @@ function ModuleWorkspacePage() {
       navigate({ to: "/", search: { area: "reports", view: "value-chain-report" } });
       return;
     }
+    if (area === "value-chain") {
+      navigate({ to: "/", search: { area: "value-chain", view: "value-chain-report" } });
+      return;
+    }
     setRailArea(area);
     setTreeOpen(true);
     if (area === "modules") {
