@@ -1993,10 +1993,10 @@ function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="grid gap-1.5 text-xs font-semibold text-muted-foreground">
+    <div className="grid gap-1.5 text-xs font-semibold text-muted-foreground">
       <span>{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 function IconButton({
