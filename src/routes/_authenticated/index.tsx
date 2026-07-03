@@ -196,7 +196,7 @@ type DashboardMappingStatusCounts = {
   aprovado: number;
   concluido: number;
 };
-type DashboardDocumentType = "Norma" | "POP" | "Fluxograma" | "Mapeamento";
+type DashboardDocumentType = "Norma" | "POP" | "Instrução" | "Fluxograma" | "Mapeamento";
 type DashboardDocumentCatalogRow = {
   id: string;
   code: string;
@@ -1493,6 +1493,7 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
 const DOCUMENT_CATALOG_TYPES: DashboardDocumentType[] = [
   "Norma",
   "POP",
+  "Instrução",
   "Fluxograma",
   "Mapeamento",
 ];
@@ -1552,18 +1553,21 @@ function DocumentTypeQuadrant({
       <div className="grid gap-1.5">
         {areas.length ? (
           areas.map((area, index) => (
-            <div key={area.label} className="flex items-center gap-2">
-              <span className="w-4 text-[10px] font-data font-bold text-[var(--gold)]">
+            <div
+              key={area.label}
+              className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)_minmax(2.25rem,3.75rem)_1.25rem] items-center gap-2"
+            >
+              <span className="text-[10px] font-data font-bold text-[var(--gold)]">
                 {index + 1}
               </span>
               <span className="min-w-0 flex-1 truncate text-xs text-foreground">{area.label}</span>
-              <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
+              <div className="h-1.5 min-w-0 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-[var(--gold)]/80"
                   style={{ width: `${(area.value / maxValue) * 100}%` }}
                 />
               </div>
-              <span className="w-5 text-right text-[10px] font-data text-muted-foreground">
+              <span className="text-right text-[10px] font-data text-muted-foreground">
                 {area.value}
               </span>
             </div>
@@ -1622,7 +1626,7 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+        <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1">
           {DOCUMENT_CATALOG_TYPES.map((type) => (
             <button
               key={type}
@@ -2071,8 +2075,18 @@ function WorkspaceContent({
                 Áreas por Tipo de Documento
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                {DOCUMENT_CATALOG_TYPES.map((type) => (
-                  <DocumentTypeQuadrant key={type} type={type} rows={documentCatalogRows} />
+                {DOCUMENT_CATALOG_TYPES.map((type, index) => (
+                  <div
+                    key={type}
+                    className={
+                      DOCUMENT_CATALOG_TYPES.length % 2 === 1 &&
+                      index === DOCUMENT_CATALOG_TYPES.length - 1
+                        ? "sm:col-span-2"
+                        : undefined
+                    }
+                  >
+                    <DocumentTypeQuadrant type={type} rows={documentCatalogRows} />
+                  </div>
                 ))}
               </div>
             </div>

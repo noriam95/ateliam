@@ -1221,7 +1221,7 @@ type DashboardDocumentCatalogRow = {
   id: string;
   code: string;
   title: string;
-  documentType: "Norma" | "POP" | "Fluxograma" | "Mapeamento";
+  documentType: "Norma" | "POP" | "Instrução" | "Fluxograma" | "Mapeamento";
   area: string;
   process: string;
   responsible: string;
@@ -1335,8 +1335,12 @@ function dashboardDocumentCatalogRowFromDocument(document: {
       };
     }
 
-    const popType = readString(popMeta.tipo, document.name).toLowerCase();
-    const documentType = popType.includes("norma") ? "Norma" : "POP";
+    const popType = `${readString(popMeta.tipo, "")} ${document.name ?? ""}`.toLowerCase();
+    const documentType = popType.includes("norma")
+      ? "Norma"
+      : popType.includes("instru") || popType.includes("trabalho") || /\bit\b/.test(popType)
+        ? "Instrução"
+        : "POP";
     return {
       id: document.id,
       code: readString(popMeta.codigo),
