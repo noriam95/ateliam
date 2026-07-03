@@ -1,10 +1,43 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FileSpreadsheet, ImageDown, Maximize2, Network, X } from "lucide-react";
-import { listProcessRegistrationData } from "@/lib/config.functions";
+import {
+  FileSpreadsheet,
+  ImageDown,
+  Maximize2,
+  Network,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  deleteProcessRegistration,
+  listProcessRegistrationData,
+  saveValueChainRegistration,
+} from "@/lib/config.functions";
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
 import { downloadXlsx } from "@/lib/xlsx-export";
+
+type ChainCategory = "primary" | "support" | "management";
+
+// Opções completas para o formulário de cadastro (o mesmo texto do cadastro de
+// processos). A tabela continua exibindo o rótulo curto de CATEGORY_LABELS.
+const VALUE_CHAIN_CATEGORY_OPTIONS: Array<{ value: ChainCategory; label: string }> = [
+  { value: "primary", label: "Processos Primários / Finalísticos" },
+  { value: "support", label: "Processos de Apoio / Suporte" },
+  { value: "management", label: "Processos de Gestão / Estratégicos" },
+];
+
+type ChainDraft = {
+  id: string | null;
+  name: string;
+  category: ChainCategory;
+  description: string;
+  status: string;
+};
 
 type ValueChain = {
   id: string;
@@ -79,16 +112,23 @@ function ValueChainReport({
   isDemo: boolean;
 }) {
   const fn = useServerFn(listProcessRegistrationData);
+  const saveChainFn = useServerFn(saveValueChainRegistration);
+  const deleteChainFn = useServerFn(deleteProcessRegistration);
   const catalogsQ = useQuery({
     queryKey: ["process-registration-data", organizationId],
     queryFn: () => fn({ data: { organizationId: organizationId ?? null } }),
     enabled: !isDemo && !!organizationId,
   });
 
+  // Em demonstração a cadeia de valor é editável localmente; em nuvem os dados
+  // vêm do servidor e são recarregados após cada mutação.
+  const [demoChains, setDemoChains] = useState<ValueChain[]>(() =>
+    (DEMO_REGISTRY.valueChains as unknown as ValueChain[]).map((c) => ({ ...c })),
+  );
   const chains: ValueChain[] = useMemo(() => {
-    if (isDemo) return DEMO_REGISTRY.valueChains as unknown as ValueChain[];
+    if (isDemo) return demoChains;
     return (catalogsQ.data?.valueChains ?? []) as unknown as ValueChain[];
-  }, [isDemo, catalogsQ.data]);
+  }, [isDemo, demoChains, catalogsQ.data]);
 
   // Filtro compartilhado entre a tabela e o diagrama. Por padrão exibe os ativos.
   const processes: ProcessRecord[] = useMemo(() => {
@@ -100,6 +140,100 @@ function ValueChainReport({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
   const [activeTab, setActiveTab] = useState<"value-chain" | "processes">("value-chain");
   const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
+  const [editingChain, setEditingChain] = useState<ChainDraft | null>(null);
+
+  const saveMutation = useMutation({
+    mutationFn: async (draft: ChainDraft) => {
+      if (isDemo) {
+        setDemoChains((current) =>
+          draft.id
+            ? current.map((c) =>
+                c.id === draft.id
+                  ? {
+                      ...c,
+                      name: draft.name,
+                      category: draft.category,
+                      description: draft.description || null,
+                      status: draft.status,
+                    }
+                  : c,
+              )
+            : [
+                ...current,
+                {
+                  id: `demo-chain-${Date.now()}`,
+                  name: draft.name,
+                  category: draft.category,
+                  description: draft.description || null,
+                  status: draft.status,
+                },
+              ],
+        );
+        return;
+      }
+      await saveChainFn({
+        data: {
+          id: draft.id || undefined,
+          organizationId,
+          name: draft.name,
+          category: draft.category,
+          description: draft.description || null,
+          status: (draft.status.toLowerCase().startsWith("ativ") ? "Ativa" : "Inativa") as
+            | "Ativa"
+            | "Inativa",
+        },
+      });
+    },
+    onSuccess: async () => {
+      toast.success("Cadeia de valor salva.");
+      setEditingChain(null);
+      if (!isDemo) await catalogsQ.refetch();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (isDemo) {
+        setDemoChains((current) => current.filter((c) => c.id !== id));
+        return;
+      }
+      await deleteChainFn({ data: { organizationId, kind: "value-chain", id } });
+    },
+    onSuccess: async () => {
+      toast.success("Cadeia de valor excluída.");
+      if (!isDemo) await catalogsQ.refetch();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async (chain: ValueChain) => {
+      const status = isActiveChain(chain) ? "Inativa" : "Ativa";
+      if (isDemo) {
+        setDemoChains((current) =>
+          current.map((c) => (c.id === chain.id ? { ...c, status } : c)),
+        );
+        return;
+      }
+      await saveChainFn({
+        data: {
+          id: chain.id,
+          organizationId,
+          name: chain.name,
+          category: chain.category,
+          description: chain.description,
+          status,
+        },
+      });
+    },
+    onSuccess: async () => {
+      if (!isDemo) await catalogsQ.refetch();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const chainBusy = saveMutation.isPending || deleteMutation.isPending || toggleMutation.isPending;
 
   const filteredChains = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -169,9 +303,41 @@ function ValueChainReport({
                 chains.filter((c) => c.category === "management"),
               )
             }
+            busy={chainBusy}
+            onNewChain={() =>
+              setEditingChain({
+                id: null,
+                name: "",
+                category: "primary",
+                description: "",
+                status: "Ativa",
+              })
+            }
+            onEditChain={(chain) =>
+              setEditingChain({
+                id: chain.id,
+                name: chain.name,
+                category: chain.category,
+                description: chain.description ?? "",
+                status: chain.status,
+              })
+            }
+            onDeleteChain={(id) => {
+              if (window.confirm("Excluir esta cadeia de valor?")) deleteMutation.mutate(id);
+            }}
+            onToggleChain={(chain) => toggleMutation.mutate(chain)}
           />
         </>
       )}
+      {editingChain ? (
+        <ValueChainForm
+          draft={editingChain}
+          saving={saveMutation.isPending}
+          onChange={setEditingChain}
+          onCancel={() => setEditingChain(null)}
+          onSubmit={() => saveMutation.mutate(editingChain)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -386,6 +552,11 @@ function ConsultationTable({
   selectedChainId,
   setSelectedChainId,
   onExportExcel,
+  busy,
+  onNewChain,
+  onEditChain,
+  onDeleteChain,
+  onToggleChain,
 }: {
   chains: ValueChain[];
   processes: ProcessRecord[];
@@ -398,6 +569,11 @@ function ConsultationTable({
   selectedChainId: string | null;
   setSelectedChainId: (value: string | null) => void;
   onExportExcel: () => void;
+  busy: boolean;
+  onNewChain: () => void;
+  onEditChain: (chain: ValueChain) => void;
+  onDeleteChain: (id: string) => void;
+  onToggleChain: (chain: ValueChain) => void;
 }) {
   // Ordem base: gestão → negócios → suporte (mesma do diagrama),
   // preservando uma numeração estável independente de filtros/ordenação.
@@ -591,7 +767,7 @@ function ConsultationTable({
         >
           {children}
           <span className={active ? "opacity-90" : "opacity-30"}>
-            {active ? (processSortDir === "asc" ? "â–²" : "â–¼") : "â†•"}
+            {active ? (processSortDir === "asc" ? "▲" : "▼") : "↕"}
           </span>
         </button>
       </th>
@@ -718,6 +894,16 @@ function ConsultationTable({
           >
             <FileSpreadsheet className="h-4 w-4" />
           </button>
+          {activeTab === "value-chain" ? (
+            <button
+              type="button"
+              onClick={onNewChain}
+              disabled={busy}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-45"
+            >
+              <Plus className="h-4 w-4" /> Novo
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -732,6 +918,9 @@ function ConsultationTable({
                   Descrição
                 </th>
                 <SortHeader field="status">Status</SortHeader>
+                <th className="w-24 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -754,23 +943,41 @@ function ConsultationTable({
                     <td className="px-5 py-3 text-muted-foreground">
                       {chain.description ?? <span className="italic opacity-50">-</span>}
                     </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          active
-                            ? "bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {chain.status}
-                      </span>
+                    <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                      <ChainStatusSwitch
+                        chain={chain}
+                        disabled={busy}
+                        onToggle={onToggleChain}
+                      />
+                    </td>
+                    <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          title="Editar"
+                          aria-label="Editar cadeia de valor"
+                          onClick={() => onEditChain(chain)}
+                          className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Excluir"
+                          aria-label="Excluir cadeia de valor"
+                          onClick={() => onDeleteChain(chain.id)}
+                          className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-muted-foreground">
                     Nenhuma cadeia de valor encontrada com os filtros atuais.
                   </td>
                 </tr>
@@ -1088,6 +1295,167 @@ function exportProcessesCSV(
     }),
   ];
   downloadXlsx("processos-cadeia-de-valor", "Processos", rows);
+}
+
+// Chave de ativar/desativar a cadeia de valor (mesmo padrão do cadastro de
+// processos): o clique alterna entre "Ativa" e "Inativa".
+function ChainStatusSwitch({
+  chain,
+  disabled,
+  onToggle,
+}: {
+  chain: ValueChain;
+  disabled?: boolean;
+  onToggle: (chain: ValueChain) => void;
+}) {
+  const active = isActiveChain(chain);
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        title={active ? "Desativar cadeia de valor" : "Ativar cadeia de valor"}
+        aria-label={active ? "Desativar cadeia de valor" : "Ativar cadeia de valor"}
+        aria-pressed={active}
+        disabled={disabled}
+        onClick={() => onToggle(chain)}
+        className={`relative h-8 w-14 shrink-0 rounded-full border px-1 transition disabled:opacity-45 ${
+          active ? "border-emerald-500/40 bg-emerald-500/15" : "border-border bg-muted"
+        }`}
+      >
+        <span
+          className={`block h-5 w-5 rounded-full transition ${
+            active ? "translate-x-6 bg-emerald-600" : "translate-x-0 bg-muted-foreground"
+          }`}
+        />
+      </button>
+      <span className="text-xs text-muted-foreground">{chain.status}</span>
+    </div>
+  );
+}
+
+// Formulário de cadastro/edição de cadeia de valor exibido em modal.
+function ValueChainForm({
+  draft,
+  saving,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  draft: ChainDraft;
+  saving: boolean;
+  onChange: (draft: ChainDraft) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const valid = draft.name.trim().length >= 2;
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-xl">
+        <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+          <h2 className="font-display text-lg font-bold">
+            {draft.id ? "Editar cadeia de valor" : "Nova cadeia de valor"}
+          </h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form
+          className="grid gap-4 pt-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (valid && !saving) onSubmit();
+          }}
+        >
+          <label className="grid gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground">Nome</span>
+            <input
+              autoFocus
+              value={draft.name}
+              onChange={(e) => onChange({ ...draft, name: e.target.value })}
+              placeholder="Ex.: Operação Laboratorial"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+            />
+          </label>
+          <label className="grid gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground">Categoria</span>
+            <select
+              value={draft.category}
+              onChange={(e) => onChange({ ...draft, category: e.target.value as ChainCategory })}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+            >
+              {VALUE_CHAIN_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground">Descrição</span>
+            <textarea
+              value={draft.description}
+              onChange={(e) => onChange({ ...draft, description: e.target.value })}
+              rows={3}
+              placeholder="Breve descrição do fluxo de valor."
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
+            <span className="text-sm font-medium text-foreground">Ativa</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={draft.status.toLowerCase().startsWith("ativ")}
+              onClick={() =>
+                onChange({
+                  ...draft,
+                  status: draft.status.toLowerCase().startsWith("ativ") ? "Inativa" : "Ativa",
+                })
+              }
+              className={`relative h-8 w-14 shrink-0 rounded-full border px-1 transition ${
+                draft.status.toLowerCase().startsWith("ativ")
+                  ? "border-emerald-500/40 bg-emerald-500/15"
+                  : "border-border bg-muted"
+              }`}
+            >
+              <span
+                className={`block h-5 w-5 rounded-full transition ${
+                  draft.status.toLowerCase().startsWith("ativ")
+                    ? "translate-x-6 bg-emerald-600"
+                    : "translate-x-0 bg-muted-foreground"
+                }`}
+              />
+            </button>
+          </label>
+          <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex h-10 items-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={!valid || saving}
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-45"
+            >
+              <Save className="h-4 w-4" /> {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

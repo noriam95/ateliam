@@ -951,17 +951,13 @@ function WorkspaceHome() {
 
                   {activeArea === "value-chain" ? (
                     <div key="value-chain" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+                      {/* O cadastro foi incorporado ao relatório (tabela editável);
+                          a antiga entrada "Cadastro" deixou de existir. */}
                       <TreeButton
                         active={view === "value-chain-report"}
                         onClick={() => setView("value-chain-report")}
                       >
-                        <Network className="h-4 w-4" /> Relatório
-                      </TreeButton>
-                      <TreeButton
-                        active={view === "value-chains"}
-                        onClick={() => setView("value-chains")}
-                      >
-                        <Database className="h-4 w-4" /> Cadastro
+                        <Network className="h-4 w-4" /> Cadeia de Valor
                       </TreeButton>
                     </div>
                   ) : null}
