@@ -5886,11 +5886,11 @@ function ModuleWorkspacePage() {
             />
           ) : null}
           <aside
-            className={`fixed bottom-0 left-[52px] top-14 z-30 min-h-0 w-[min(320px,calc(100vw-52px))] overflow-hidden border-r border-border bg-card shadow-xl lg:static lg:w-auto lg:bg-card/58 lg:shadow-none ${
+            className={`fixed bottom-0 left-[52px] top-14 z-30 min-h-0 w-[min(320px,calc(100vw-52px))] overflow-hidden border-r border-border bg-card shadow-xl lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:self-start lg:w-auto lg:bg-card/58 lg:shadow-none ${
               treeOpen ? "block" : "hidden lg:block"
             }`}
           >
-            <div className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col">
+            <div className="flex h-full flex-col">
               <div className="border-b border-border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
