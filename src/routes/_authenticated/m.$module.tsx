@@ -78,13 +78,8 @@ import {
 } from "@/lib/workspace.functions";
 import {
   createOrganizationCause,
-  createOrganizationDepartment,
-  createOrganizationProcess,
-  createOrganizationProcessOwner,
   deleteModuleDocument,
-  deleteOrganizationCatalogItem,
   deleteOrganizationCause,
-  deleteOrganizationProcess,
   getModuleDocumentContent,
   getModuleDocumentVersionContent,
   getMe,
@@ -96,9 +91,7 @@ import {
   listOrganizationDocumentModels,
   reserveCode,
   saveModuleDocument,
-  updateOrganizationCatalogItem,
   updateOrganizationCause,
-  updateOrganizationProcess,
 } from "@/lib/config.functions";
 import {
   type CodeSettings,
@@ -4333,7 +4326,7 @@ function ModuleWorkspacePage() {
   const [moduleEditStarted, setModuleEditStarted] = useState(moduleId === "bpmn");
   const [showLibrary, setShowLibrary] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [ddpView, setDdpView] = useState<"editor" | "causes" | "processes">("editor");
+  const [ddpView, setDdpView] = useState<"editor" | "causes">("editor");
   const [activeOrganizationId, setActiveOrganizationId] = useState(() =>
     typeof window === "undefined"
       ? ""
@@ -4349,29 +4342,16 @@ function ModuleWorkspacePage() {
   const listUsers = useServerFn(listUserAccess);
   const listCatalogs = useServerFn(listOrganizationCatalogs);
   const listDocumentModels = useServerFn(listOrganizationDocumentModels);
-  const createDepartment = useServerFn(createOrganizationDepartment);
-  const createProcessOwner = useServerFn(createOrganizationProcessOwner);
   const createSharedCause = useServerFn(createOrganizationCause);
-  const createProcess = useServerFn(createOrganizationProcess);
-  const updateProcess = useServerFn(updateOrganizationProcess);
   const listCloudDocuments = useServerFn(listModuleDocuments);
   const getCloudDocument = useServerFn(getModuleDocumentContent);
   const listCloudDocumentVersions = useServerFn(listModuleDocumentVersions);
   const getCloudDocumentVersion = useServerFn(getModuleDocumentVersionContent);
   const saveCloudDocument = useServerFn(saveModuleDocument);
   const removeCloudDocument = useServerFn(deleteModuleDocument);
-  const updateCatalogItem = useServerFn(updateOrganizationCatalogItem);
-  const removeCatalogItem = useServerFn(deleteOrganizationCatalogItem);
   const updateSharedCause = useServerFn(updateOrganizationCause);
   const removeSharedCause = useServerFn(deleteOrganizationCause);
-  const removeProcess = useServerFn(deleteOrganizationProcess);
   const [demoCatalogs, setDemoCatalogs] = useState<OrganizationCatalogs>(DEMO_CATALOGS);
-  const [processTypes, setProcessTypes] = useState([
-    "process",
-    "subprocess",
-    "atividade",
-    "tarefa",
-  ]);
   // Alteração de status do documento na tela de consulta (Em andamento, etc.).
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
 
@@ -4556,38 +4536,6 @@ function ModuleWorkspacePage() {
     return result.code;
   }
 
-  // Código automático do CADASTRO DE PROCESSO (tipo "processo" = PR), com a
-  // sequência por área conforme configurado em Configurações.
-  const processCodeRule = normalizeRule(codeSettings?.processo);
-  const isAutoProcessCode = processCodeRule.mode === "auto";
-  function processCodePreviewFor(areaSigla: string): string {
-    if (!isAutoProcessCode || areaSigla.length !== 3) return "";
-    return isDemo
-      ? previewDemoDocumentCode(codeOrganizationId, "processo", areaSigla, codeSettings)
-      : previewDocumentCode("processo", areaSigla, processCodeRule);
-  }
-  async function reserveProcessCode(areaSigla: string): Promise<string> {
-    if (areaSigla.length !== 3) {
-      throw new Error("Selecione uma área (com sigla de 3 letras) para gerar o código.");
-    }
-    if (isDemo) {
-      return reserveDemoDocumentCode(codeOrganizationId, "processo", areaSigla, codeSettings);
-    }
-    const result = await reserveCodeFn({
-      data: { organizationId: codeOrganizationId, type: "processo", areaSigla },
-    });
-    return result.code;
-  }
-
-  const documentModels = isDemo
-    ? demoDocumentModels
-    : DEFAULT_DOCUMENT_MODELS.map((fallback) => ({
-        ...fallback,
-        ...((documentModelsQ.data as DocumentModelRow[] | undefined)?.find(
-          (row) => row.model_key === fallback.model_key,
-        ) ?? {}),
-      }));
-
   useEffect(() => {
     function updateDemoBrand() {
       setDemoOrganizationLogo(window.localStorage.getItem("ateliam-demo-organization-logo"));
@@ -4698,21 +4646,6 @@ function ModuleWorkspacePage() {
     // No view param — always reset to editor to avoid stale surface from previous navigation
     setModuleSurface("editor");
   }, [moduleId, search.view]);
-
-  useEffect(() => {
-    const key = `ateliam-process-types:${organizationBrand.name || "default"}`;
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(key) ?? "[]") as unknown;
-      if (Array.isArray(stored)) {
-        const values = stored.filter(
-          (item): item is string => typeof item === "string" && !!item.trim(),
-        );
-        if (values.length) setProcessTypes(values);
-      }
-    } catch {
-      // Keep the default process types when local preferences are unavailable.
-    }
-  }, [organizationBrand.name]);
 
   function updateWorkspace(updater: (current: WorkspaceState) => WorkspaceState) {
     setWorkspace((current) => updater(current));
@@ -5042,43 +4975,6 @@ function ModuleWorkspacePage() {
     };
   }
 
-  async function addDepartmentToCatalog(name: string) {
-    const clean = plain(name);
-    if (!clean) return null;
-    const existing = organizationCatalogs.departments.find(
-      (item) => normalizeLabel(item.name) === normalizeLabel(clean),
-    );
-    if (existing) return existing;
-    if (isDemo) {
-      const row = { id: id("dept"), name: clean };
-      setDemoCatalogs((current) => ({ ...current, departments: [...current.departments, row] }));
-      return row;
-    }
-    const row = await createDepartment({ data: { name: clean } });
-    await catalogsQ.refetch();
-    return row;
-  }
-
-  async function addProcessOwnerToCatalog(name: string) {
-    const clean = plain(name);
-    if (!clean) return null;
-    const existing = organizationCatalogs.processOwners.find(
-      (item) => normalizeLabel(item.name) === normalizeLabel(clean),
-    );
-    if (existing) return existing;
-    if (isDemo) {
-      const row = { id: id("owner"), name: clean };
-      setDemoCatalogs((current) => ({
-        ...current,
-        processOwners: [...current.processOwners, row],
-      }));
-      return row;
-    }
-    const row = await createProcessOwner({ data: { name: clean } });
-    await catalogsQ.refetch();
-    return row;
-  }
-
   async function addCauseToCatalog(gap: GapItem) {
     const title = plain(gap.causa);
     if (!title) throw new Error("Informe o nome da causa antes de cadastrar na biblioteca.");
@@ -5138,121 +5034,6 @@ function ModuleWorkspacePage() {
     return changed ? { ...source, ddp: { ...source.ddp, gaps } } : source;
   }
 
-  async function addProcessToCatalog(
-    draft: Partial<OrganizationProcess> & { name: string; type?: string },
-  ) {
-    const name = plain(draft.name);
-    if (!name) throw new Error("Informe o nome do processo.");
-    const existing = organizationCatalogs.processes.find(
-      (item) => normalizeLabel(item.name) === normalizeLabel(name),
-    );
-    if (existing) return existing;
-    const payload = {
-      code: plain(draft.code) || null,
-      name,
-      type:
-        draft.type === "macroprocess" || draft.type === "subprocess" || draft.type === "process"
-          ? draft.type
-          : "process",
-      parent_process_id: draft.parent_process_id || null,
-      department: plain(draft.department) || null,
-      owner: plain(draft.owner) || null,
-      description: plain(draft.description) || null,
-      status:
-        draft.status === "Em revisão" || draft.status === "Arquivado" || draft.status === "Ativo"
-          ? draft.status
-          : "Ativo",
-    };
-    if (isDemo) {
-      const row: OrganizationProcess = {
-        id: id("process"),
-        organization_id: "demo",
-        current_version: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        ...payload,
-      };
-      setDemoCatalogs((current) => ({ ...current, processes: [...current.processes, row] }));
-      return row;
-    }
-    const row = await createProcess({ data: payload });
-    await catalogsQ.refetch();
-    return row;
-  }
-
-  async function updateProcessCatalog(process: OrganizationProcess) {
-    if (isDemo) {
-      // Processos não são versionados: não incrementamos current_version.
-      const row = {
-        ...process,
-        updated_at: new Date().toISOString(),
-      };
-      setDemoCatalogs((current) => ({
-        ...current,
-        processes: current.processes.map((item) => (item.id === row.id ? row : item)),
-      }));
-      return row;
-    }
-    const row = await updateProcess({
-      data: {
-        id: process.id,
-        code: process.code,
-        name: process.name,
-        type: process.type as "macroprocess" | "process" | "subprocess" | "atividade" | "tarefa",
-        parent_process_id: process.parent_process_id,
-        department: process.department,
-        owner: process.owner,
-        description: process.description,
-        status: process.status as "Ativo" | "Em revisão" | "Arquivado",
-      },
-    });
-    await catalogsQ.refetch();
-    return row;
-  }
-
-  async function deleteProcessCatalog(processId: string) {
-    if (isDemo) {
-      setDemoCatalogs((current) => ({
-        ...current,
-        processes: current.processes.filter((item) => item.id !== processId),
-      }));
-      return;
-    }
-    await removeProcess({ data: { id: processId } });
-    await catalogsQ.refetch();
-  }
-
-  async function saveCatalogName(kind: "department" | "owner", item: OrganizationCatalogItem) {
-    if (isDemo) {
-      setDemoCatalogs((current) => ({
-        ...current,
-        [kind === "department" ? "departments" : "processOwners"]: (kind === "department"
-          ? current.departments
-          : current.processOwners
-        ).map((row) => (row.id === item.id ? { ...row, name: item.name } : row)),
-      }));
-      return item;
-    }
-    const row = await updateCatalogItem({ data: { kind, id: item.id, name: item.name } });
-    await catalogsQ.refetch();
-    return row;
-  }
-
-  async function deleteCatalogName(kind: "department" | "owner", itemId: string) {
-    if (isDemo) {
-      setDemoCatalogs((current) => ({
-        ...current,
-        [kind === "department" ? "departments" : "processOwners"]: (kind === "department"
-          ? current.departments
-          : current.processOwners
-        ).filter((row) => row.id !== itemId),
-      }));
-      return;
-    }
-    await removeCatalogItem({ data: { kind, id: itemId } });
-    await catalogsQ.refetch();
-  }
-
   async function updateCauseCatalog(cause: OrganizationCause) {
     if (isDemo) {
       setDemoCatalogs((current) => ({
@@ -5285,19 +5066,6 @@ function ModuleWorkspacePage() {
     }
     await removeSharedCause({ data: { id: causeId } });
     await catalogsQ.refetch();
-  }
-
-  function persistProcessTypes(next: string[]) {
-    const normalized = [...new Set(next.map((item) => item.trim()).filter(Boolean))];
-    setProcessTypes(normalized);
-    try {
-      window.localStorage.setItem(
-        `ateliam-process-types:${organizationBrand.name || "default"}`,
-        JSON.stringify(normalized),
-      );
-    } catch {
-      // The in-memory catalog remains usable when local storage is blocked.
-    }
   }
 
   async function signOut() {
@@ -5680,22 +5448,7 @@ function ModuleWorkspacePage() {
           </Panel>
         ) : null}
         {loaded && moduleId === "ddp" ? (
-          ddpView === "processes" ? (
-            <ProcessRegistryModule
-              catalogs={organizationCatalogs}
-              processTypes={processTypes}
-              onCreateProcess={addProcessToCatalog}
-              onUpdateProcess={updateProcessCatalog}
-              onDeleteProcess={deleteProcessCatalog}
-
-              autoCode={isAutoProcessCode}
-
-              previewCode={processCodePreviewFor}
-
-              onReserveCode={reserveProcessCode}
-              onOpenEditor={() => setDdpView("editor")}
-            />
-          ) : ddpView === "causes" ? (
+          ddpView === "causes" ? (
             <DdpCausesModuleV2
               data={workspace.ddp}
               catalogs={organizationCatalogs}
@@ -6900,552 +6653,6 @@ function RowActions({
       >
         <Trash2 className="h-4 w-4" />
       </button>
-    </div>
-  );
-}
-
-function CatalogRegistryModule({
-  title,
-  singular,
-  items,
-  onCreate,
-  onUpdate,
-  onDelete,
-}: {
-  title: string;
-  singular: string;
-  items: OrganizationCatalogItem[];
-  onCreate: (name: string) => Promise<OrganizationCatalogItem | null>;
-  onUpdate: (item: OrganizationCatalogItem) => Promise<OrganizationCatalogItem | null | void>;
-  onDelete: (id: string) => Promise<void>;
-}) {
-  const [selectedId, setSelectedId] = useState("");
-  const [draft, setDraft] = useState<OrganizationCatalogItem | null>(null);
-
-  async function save() {
-    if (!draft?.name.trim()) return;
-    try {
-      if (draft.id) await onUpdate({ ...draft, name: draft.name.trim() });
-      else await onCreate(draft.name.trim());
-      setDraft(null);
-      toast.success(`${singular[0]?.toUpperCase()}${singular.slice(1)} salvo(a).`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o cadastro.");
-    }
-  }
-
-  async function remove() {
-    if (!selectedId || !window.confirm(`Excluir o ${singular} selecionado?`)) return;
-    try {
-      await onDelete(selectedId);
-      setSelectedId("");
-      setDraft(null);
-      toast.success("Cadastro excluído.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível excluir o cadastro.");
-    }
-  }
-
-  function exportRows() {
-    downloadBlob(
-      `${cleanFileName(title)}-${today()}.xlsx`,
-      buildXlsxWorkbook([
-        {
-          name: title,
-          rows: [
-            ["Nome", "Criado em", "Atualizado em"],
-            ...items.map((item) => [
-              item.name,
-              item.created_at ? new Date(item.created_at).toLocaleString("pt-BR") : "-",
-              item.updated_at ? new Date(item.updated_at).toLocaleString("pt-BR") : "-",
-            ]),
-          ],
-        },
-      ]),
-    );
-  }
-
-  return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Cadastros de Processo
-          </div>
-          <h1 className="mt-1 text-xl font-semibold">{title}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setDraft({ id: "", name: "" })}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" /> Novo
-          </button>
-          <button
-            type="button"
-            disabled={!selectedId}
-            onClick={() => setDraft(items.find((item) => item.id === selectedId) ?? null)}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-40"
-          >
-            <Pencil className="h-4 w-4" /> Editar
-          </button>
-          <button
-            type="button"
-            disabled={!selectedId}
-            onClick={remove}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-40"
-          >
-            <Trash2 className="h-4 w-4" /> Excluir
-          </button>
-          <button
-            type="button"
-            onClick={exportRows}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted"
-          >
-            <FileSpreadsheet className="h-4 w-4" /> Exportar para Excel
-          </button>
-        </div>
-      </header>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-          <thead className="bg-muted/80 text-xs text-muted-foreground">
-            <tr>
-              <th className="w-12 px-4 py-3" />
-              <th className="px-3 py-3 font-semibold">Nome</th>
-              <th className="px-3 py-3 font-semibold">Criado em</th>
-              <th className="px-3 py-3 font-semibold">Atualizado em</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr
-                key={item.id}
-                onClick={() => setSelectedId(item.id)}
-                onDoubleClick={() => setDraft(item)}
-                className={`cursor-pointer border-t border-border ${selectedId === item.id ? "bg-accent/70" : "hover:bg-muted/45"}`}
-              >
-                <td className="px-4 py-3">
-                  <input
-                    type="radio"
-                    checked={selectedId === item.id}
-                    onChange={() => setSelectedId(item.id)}
-                  />
-                </td>
-                <td className="px-3 py-3 font-semibold">{item.name}</td>
-                <td className="px-3 py-3 text-muted-foreground">
-                  {item.created_at ? new Date(item.created_at).toLocaleDateString("pt-BR") : "-"}
-                </td>
-                <td className="px-3 py-3 text-muted-foreground">
-                  {item.updated_at ? new Date(item.updated_at).toLocaleDateString("pt-BR") : "-"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {draft ? (
-        <div className="border-t border-border bg-muted/25 p-5">
-          <div className="grid max-w-xl gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-            <Field
-              label={`Nome do ${singular}`}
-              value={draft.name}
-              onChange={(name) => setDraft({ ...draft, name })}
-            />
-            <button
-              type="button"
-              onClick={() => setDraft(null)}
-              className="h-10 rounded-md border border-border px-4 text-sm font-semibold hover:bg-muted"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
-            >
-              Salvar
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function ProcessTypeRegistryModule({
-  values,
-  onChange,
-}: {
-  values: string[];
-  onChange: (values: string[]) => void;
-}) {
-  const items = values.map((name) => ({ id: name, name }));
-  return (
-    <CatalogRegistryModule
-      title="Categorias de Processo"
-      singular="categoria"
-      items={items}
-      onCreate={async (name) => {
-        if (values.some((item) => normalizeLabel(item) === normalizeLabel(name))) return null;
-        onChange([...values, name]);
-        return { id: name, name };
-      }}
-      onUpdate={async (item) => {
-        const previous = values.find((value) => value === item.id);
-        if (!previous) return null;
-        onChange(values.map((value) => (value === previous ? item.name : value)));
-        return item;
-      }}
-      onDelete={async (id) => onChange(values.filter((value) => value !== id))}
-    />
-  );
-}
-
-function ProcessRegistryModule({
-  catalogs,
-  processTypes,
-  onCreateProcess,
-  onUpdateProcess,
-  onDeleteProcess,
-  onOpenEditor,
-  autoCode = false,
-  previewCode,
-  onReserveCode,
-}: {
-  catalogs: OrganizationCatalogs;
-  processTypes: string[];
-  onCreateProcess: (
-    process: Partial<OrganizationProcess> & { name: string; type?: string },
-  ) => Promise<OrganizationProcess>;
-  onUpdateProcess: (process: OrganizationProcess) => Promise<OrganizationProcess>;
-  onDeleteProcess: (processId: string) => Promise<void>;
-  onOpenEditor: () => void;
-  autoCode?: boolean;
-  previewCode?: (areaSigla: string) => string;
-  onReserveCode?: (areaSigla: string) => Promise<string>;
-}) {
-  const processes = catalogs.processes;
-  // Sigla da área do rascunho atual, usada na pré-visualização e no código.
-  function draftAreaSigla(name: string | null | undefined): string {
-    const match = catalogs.departments.find((dept) => dept.name === name);
-    return normalizeSigla(match?.sigla ?? name ?? "");
-  }
-  const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("Todos");
-  const [draft, setDraft] = useState<OrganizationProcess | null>(null);
-  const [selectedId, setSelectedId] = useState("");
-  const filtered = useMemo(() => {
-    const normalized = normalizeLabel(query);
-    return processes.filter((process) => {
-      const matchesType = typeFilter === "Todos" || process.type === typeFilter;
-      const matchesQuery =
-        !normalized ||
-        normalizeLabel(
-          [
-            process.code,
-            process.name,
-            process.department,
-            process.owner,
-            process.description,
-            process.status,
-          ].join(" "),
-        ).includes(normalized);
-      return matchesType && matchesQuery;
-    });
-  }, [processes, query, typeFilter]);
-
-  const processOptions = processes.map((process) => ({
-    id: process.id,
-    label: processDisplayName(process),
-  }));
-
-  function newDraft() {
-    setDraft({
-      id: "",
-      code: "",
-      name: "",
-      type: "process",
-      parent_process_id: null,
-      department: "",
-      owner: "",
-      description: "",
-      status: "Ativo",
-      current_version: 1,
-      created_at: "",
-      updated_at: "",
-    });
-  }
-
-  async function saveDraft() {
-    if (!draft) return;
-    try {
-      if (draft.id) {
-        await onUpdateProcess(draft);
-        toast.success("Processo atualizado e versionado.");
-      } else {
-        // Código automático: reserva (consome) a sequência no momento de salvar.
-        const code =
-          autoCode && onReserveCode
-            ? await onReserveCode(draftAreaSigla(draft.department))
-            : draft.code;
-        await onCreateProcess({ ...draft, code });
-        toast.success("Processo cadastrado.");
-      }
-      setDraft(null);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o processo.");
-    }
-  }
-
-  async function removeSelected() {
-    if (!selectedId || !window.confirm("Excluir o processo selecionado?")) return;
-    try {
-      await onDeleteProcess(selectedId);
-      setSelectedId("");
-      setDraft(null);
-      toast.success("Processo excluído.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível excluir o processo.");
-    }
-  }
-
-  function exportVisible() {
-    downloadBlob(
-      `processos-${today()}.xlsx`,
-      buildXlsxWorkbook([
-        {
-          name: "Processos",
-          rows: [
-            ["Código", "Processo", "Tipo", "Área", "Dono", "Status"],
-            ...filtered.map((process) => [
-              process.code || "-",
-              process.name,
-              process.type,
-              process.department || "-",
-              process.owner || "-",
-              process.status,
-            ]),
-          ],
-        },
-      ]),
-    );
-  }
-
-  return (
-    <div className="grid gap-5">
-      <Hero title="Processos da organização" eyebrow="Catálogo · versões · vínculos" progress={100}>
-        Consulte, cadastre e gerencie processos para que Relatórios de Mapeamento, macroprocessos e
-        subprocessos tenham um vínculo corporativo claro.
-      </Hero>
-      <Panel title="Consulta de processos" progress={processes.length ? 100 : 0}>
-        <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_180px]">
-          <Field label="Buscar" value={query} onChange={setQuery} />
-          <SelectField
-            label="Tipo"
-            value={typeFilter}
-            options={["Todos", ...processTypes]}
-            onChange={setTypeFilter}
-          />
-        </div>
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={newDraft}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" /> Novo processo
-          </button>
-          <button
-            type="button"
-            disabled={!selectedId}
-            onClick={() => setDraft(processes.find((item) => item.id === selectedId) ?? null)}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-40"
-          >
-            <Pencil className="h-4 w-4" /> Editar
-          </button>
-          <button
-            type="button"
-            disabled={!selectedId}
-            onClick={removeSelected}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-40"
-          >
-            <Trash2 className="h-4 w-4" /> Excluir
-          </button>
-          <button
-            type="button"
-            onClick={exportVisible}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted"
-          >
-            <FileSpreadsheet className="h-4 w-4" /> Exportar para Excel
-          </button>
-          <button
-            type="button"
-            onClick={onOpenEditor}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted"
-          >
-            <FileText className="h-4 w-4" /> Preenchimento
-          </button>
-        </div>
-        <div className="overflow-hidden rounded-lg border border-[#d2d2d7] bg-white">
-          <div className="overflow-auto">
-            <table className="w-full min-w-[1050px] border-collapse text-left text-sm">
-              <thead className="bg-[#f5f5f7] text-[11px] uppercase tracking-[0.14em] text-[#6e6e73]">
-                <tr>
-                  <th className="w-12 px-3 py-3" />
-                  <th className="px-3 py-3">Código</th>
-                  <th className="px-3 py-3">Processo</th>
-                  <th className="px-3 py-3">Tipo</th>
-                  <th className="px-3 py-3">Área</th>
-                  <th className="px-3 py-3">Dono</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((process) => (
-                  <tr
-                    key={process.id}
-                    onClick={() => setSelectedId(process.id)}
-                    className={`cursor-pointer border-t border-[#d2d2d7] ${selectedId === process.id ? "bg-accent/70" : ""}`}
-                  >
-                    <td className="px-3 py-3">
-                      <input
-                        type="radio"
-                        checked={selectedId === process.id}
-                        onChange={() => setSelectedId(process.id)}
-                      />
-                    </td>
-                    <td className="px-3 py-3 font-semibold text-[#515154]">
-                      {process.code || "-"}
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="font-black text-[#1d1d1f]">{process.name}</div>
-                      <div className="mt-1 line-clamp-1 text-xs text-[#6e6e73]">
-                        {process.description || "Sem descrição"}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-[#515154]">{process.type}</td>
-                    <td className="px-3 py-3 text-[#515154]">{process.department || "-"}</td>
-                    <td className="px-3 py-3 text-[#515154]">{process.owner || "-"}</td>
-                    <td className="px-3 py-3">
-                      <span className="rounded-full border border-[#d2d2d7] bg-[#f5f5f7] px-2.5 py-1 text-xs font-bold text-[#515154]">
-                        {process.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setDraft(process)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-[#d2d2d7] px-3 py-2 text-xs font-bold text-[#3f3f46] hover:bg-[#f5f5f7]"
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!filtered.length ? (
-                  <tr>
-                    <td colSpan={8} className="px-3 py-10 text-center text-sm text-[#6e6e73]">
-                      Nenhum processo encontrado.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Panel>
-
-      {draft ? (
-        <Panel
-          title={draft.id ? "Editar processo" : "Novo processo"}
-          progress={completionPercent([draft.name, draft.type, draft.status])}
-        >
-          <div className="grid gap-4 md:grid-cols-3">
-            {autoCode ? (
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">
-                  Código (automático)
-                </span>
-                <div className="w-full rounded-md border border-input bg-muted px-3 py-2.5 text-sm font-mono text-foreground">
-                  {draft.code ||
-                    previewCode?.(draftAreaSigla(draft.department)) ||
-                    "Selecione a área para gerar o código"}
-                </div>
-              </label>
-            ) : (
-              <Field
-                label="Código"
-                value={draft.code ?? ""}
-                onChange={(code) => setDraft({ ...draft, code })}
-              />
-            )}
-            <Field
-              label="Nome do processo"
-              value={draft.name}
-              onChange={(name) => setDraft({ ...draft, name })}
-            />
-            <SelectField
-              label="Tipo"
-              value={draft.type}
-              options={processTypes}
-              onChange={(type) => setDraft({ ...draft, type })}
-            />
-            {draft.type !== "process" ? (
-              <SelectField
-                label="Processo pai"
-                value={draft.parent_process_id ?? ""}
-                options={["", ...processOptions.map((option) => option.id)]}
-                onChange={(parent_process_id) =>
-                  setDraft({ ...draft, parent_process_id: parent_process_id || null })
-                }
-              />
-            ) : null}
-            <SelectField
-              label="Área / Departamento"
-              value={draft.department ?? ""}
-              options={["", ...catalogs.departments.map((item) => item.name)]}
-              onChange={(department) => setDraft({ ...draft, department })}
-            />
-            <SelectField
-              label="Dono"
-              value={draft.owner ?? ""}
-              options={["", ...catalogs.processOwners.map((item) => item.name)]}
-              onChange={(owner) => setDraft({ ...draft, owner })}
-            />
-            <SelectField
-              label="Status"
-              value={draft.status}
-              options={["Ativo", "Em revisão", "Arquivado"]}
-              onChange={(status) => setDraft({ ...draft, status })}
-            />
-            <div className="md:col-span-3">
-              <TextArea
-                label="Descrição"
-                value={draft.description ?? ""}
-                onChange={(description) => setDraft({ ...draft, description })}
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setDraft(null)}
-              className="rounded-lg px-4 py-2 text-sm hover:bg-[#f5f5f7]"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={saveDraft}
-              className="rounded-lg bg-[#3f3f46] px-4 py-2 text-sm font-bold text-white hover:bg-[#27272a]"
-            >
-              Salvar processo
-            </button>
-          </div>
-        </Panel>
-      ) : null}
     </div>
   );
 }
