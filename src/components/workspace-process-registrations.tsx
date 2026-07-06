@@ -165,12 +165,17 @@ const PROCESS_PARENT_LABEL: Record<Process["type"], string> = {
 
 function ownerDisplayName(owner: Pick<Owner, "name" | "role_title">) {
   const value = owner.role_title || owner.name || "";
-  const separators = [" \u00b7 ", " \u2022 ", " \u00c2\u00b7 ", " \u00c3\u0082\u00c2\u00b7 ", " - "];
-  let normalized = value;
-  for (const separator of separators) {
-    normalized = normalized.split(separator)[0] ?? normalized;
-  }
-  return normalized.trim() || value.trim();
+  return value
+    .replace(/\s*(?:·|•|Â·|Ã‚Â·|-)\s*.*$/u, "")
+    .trim() || value.trim();
+}
+
+function normalizeLabel(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase();
 }
 
 const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
@@ -626,6 +631,8 @@ type RelatedCreateState = {
 
 function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
   const type = "process";
+  const firstActiveValueChain =
+    data.valueChains.find((chain) => chain.status !== "Inativa") ?? data.valueChains[0];
   return {
     id: "",
     name: "",
@@ -634,7 +641,7 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
     status: view === "value-chains" ? "Ativa" : "Ativo",
     code: "",
     type,
-    valueChainId: data.valueChains[0]?.id ?? "",
+    valueChainId: firstActiveValueChain?.id ?? "",
     parentProcessId: "",
     department: data.areas[0]?.name ?? "",
     departmentId: data.areas[0]?.id ?? "",
@@ -1594,7 +1601,9 @@ function RegistrationFields({
           <SearchableCreateSelect
             label="Macroprocesso pai"
             value={draft.valueChainId}
-            options={data.valueChains.map((chain) => ({ value: chain.id, label: chain.name }))}
+            options={data.valueChains
+              .filter((chain) => chain.status !== "Inativa")
+              .map((chain) => ({ value: chain.id, label: chain.name }))}
             createLabel="Cadastrar macroprocesso"
             onChange={(valueChainId) => setDraft((d) => ({ ...d, valueChainId }))}
             onCreate={
@@ -2217,9 +2226,11 @@ export function ProcessRegistrationDialog({
   // Quando os catálogos chegam (nuvem), completa os defaults que ainda não
   // tinham opção disponível no primeiro render.
   useEffect(() => {
+    const firstActiveValueChain =
+      data.valueChains.find((chain) => chain.status !== "Inativa") ?? data.valueChains[0];
     setDraft((current) => ({
       ...current,
-      valueChainId: current.valueChainId || data.valueChains[0]?.id || "",
+      valueChainId: current.valueChainId || firstActiveValueChain?.id || "",
       department: current.department || data.areas[0]?.name || "",
       departmentId: current.departmentId || data.areas[0]?.id || "",
       owner: current.owner || (data.owners[0] ? ownerDisplayName(data.owners[0]) : ""),

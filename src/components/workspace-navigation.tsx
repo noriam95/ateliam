@@ -257,7 +257,7 @@ const MODULES_TREE_REGISTRATIONS: Array<{
   { view: "processes", label: "Processos", icon: <GitBranch className="h-4 w-4" /> },
   { view: "areas", label: "Áreas", icon: <Layers className="h-4 w-4" /> },
   { view: "owners", label: "Donos de Processo", icon: <Users className="h-4 w-4" /> },
-  { view: "owner-users", label: "Vínculo Dono × Usuário", icon: <Link2 className="h-4 w-4" /> },
+  { view: "owner-users", label: "Vínculo Dono x Usuário", icon: <Link2 className="h-4 w-4" /> },
   { view: "systems", label: "Sistemas", icon: <Database className="h-4 w-4" /> },
   {
     view: "process-types",

@@ -910,7 +910,7 @@ function WorkspaceHome() {
                             search: { view: target.task },
                           });
                         } else if (target.kind === "registrations-root") {
-                          setView("processes");
+                          toggle("registrations");
                         } else {
                           setView(target.view);
                         }

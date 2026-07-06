@@ -5975,7 +5975,7 @@ function ModuleWorkspacePage() {
                         else if (target.task === "cause-new") openCauses("new");
                         else openCauses("consult");
                       } else if (target.kind === "registrations-root") {
-                        selectRegistration("processes");
+                        toggleTree("registrations");
                       } else if (["processes", "areas", "owners", "process-types"].includes(target.view)) {
                         selectRegistration(target.view as ModuleRegistrationView);
                       } else {
