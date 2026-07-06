@@ -6041,13 +6041,13 @@ function ModuleWorkspacePage() {
                         <GitBranch className="h-4 w-4 shrink-0" /> Processos
                       </ModuleTreeAnchor>
                       <ModuleTreeAnchor href="/?area=modules&view=areas">
-                        <Layers className="h-4 w-4 shrink-0" /> Ãreas
+                        <Layers className="h-4 w-4 shrink-0" /> Áreas
                       </ModuleTreeAnchor>
                       <ModuleTreeAnchor href="/?area=modules&view=owners">
                         <Users className="h-4 w-4 shrink-0" /> Donos de Processo
                       </ModuleTreeAnchor>
                       <ModuleTreeAnchor href="/?area=modules&view=owner-users">
-                        <Link2 className="h-4 w-4 shrink-0" /> VÃ­nculo Dono Ã— UsuÃ¡rio
+                        <Link2 className="h-4 w-4 shrink-0" /> Vínculo Dono × Usuário
                       </ModuleTreeAnchor>
                       <ModuleTreeAnchor href="/?area=modules&view=systems">
                         <Database className="h-4 w-4 shrink-0" /> Sistemas
