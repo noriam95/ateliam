@@ -1,5 +1,23 @@
 import type { ReactNode } from "react";
-import { ChevronDown, ChevronRight, GitBranch, Home, Network, Settings } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  FileText,
+  FlaskConical,
+  GitBranch,
+  Home,
+  Layers,
+  Link2,
+  ListChecks,
+  Network,
+  Plus,
+  Search,
+  Settings,
+  Users,
+  Workflow,
+} from "lucide-react";
 
 export type WorkspaceRailArea =
   | "home"
@@ -195,6 +213,144 @@ export function ModuleBranch({
           <div className="ml-5 py-1 pl-2">{children}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Árvore de "Processos" (módulos + cadastros) ─────────────────────────────
+// UM único componente com todo o markup (títulos, ícones, ordem e cores) usado
+// pela página inicial E pela página de módulo. As páginas fornecem apenas o
+// comportamento (o que acontece ao clicar e qual item está ativo); o visual é
+// idêntico por construção e não pode divergir.
+
+export type ModulesTreeModuleId = "ddp" | "pop" | "bpmn";
+export type ModulesTreeTask = "new" | "consult" | "cause-new" | "cause-consult";
+export type ModulesTreeRegistration =
+  | "processes"
+  | "areas"
+  | "owners"
+  | "owner-users"
+  | "systems"
+  | "process-types";
+
+export type ModulesTreeTarget =
+  | { kind: "module-root"; moduleId: ModulesTreeModuleId }
+  | { kind: "module-task"; moduleId: ModulesTreeModuleId; task: ModulesTreeTask }
+  | { kind: "registrations-root" }
+  | { kind: "registration"; view: ModulesTreeRegistration };
+
+const MODULES_TREE_BRANCHES: Array<{
+  moduleId: ModulesTreeModuleId;
+  title: string;
+  icon: ReactNode;
+}> = [
+  { moduleId: "ddp", title: "Mapeamento", icon: <FileText className="h-4 w-4" /> },
+  { moduleId: "pop", title: "Documentação", icon: <CheckCircle2 className="h-4 w-4" /> },
+  { moduleId: "bpmn", title: "Fluxograma", icon: <Workflow className="h-4 w-4" /> },
+];
+
+const MODULES_TREE_REGISTRATIONS: Array<{
+  view: ModulesTreeRegistration;
+  label: string;
+  icon: ReactNode;
+}> = [
+  { view: "processes", label: "Processos", icon: <GitBranch className="h-4 w-4" /> },
+  { view: "areas", label: "Áreas", icon: <Layers className="h-4 w-4" /> },
+  { view: "owners", label: "Donos de Processo", icon: <Users className="h-4 w-4" /> },
+  { view: "owner-users", label: "Vínculo Dono × Usuário", icon: <Link2 className="h-4 w-4" /> },
+  { view: "systems", label: "Sistemas", icon: <Database className="h-4 w-4" /> },
+  {
+    view: "process-types",
+    label: "Categorias de Processo",
+    icon: <ListChecks className="h-4 w-4" />,
+  },
+];
+
+export function WorkspaceModulesTree({
+  expanded,
+  onToggle,
+  isActive,
+  onNavigate,
+}: {
+  expanded: Record<string, boolean>;
+  onToggle: (key: string) => void;
+  isActive: (target: ModulesTreeTarget) => boolean;
+  onNavigate: (target: ModulesTreeTarget) => void;
+}) {
+  return (
+    <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+      {MODULES_TREE_BRANCHES.map((branch) => (
+        <ModuleBranch
+          key={branch.moduleId}
+          title={branch.title}
+          icon={branch.icon}
+          active={isActive({ kind: "module-root", moduleId: branch.moduleId })}
+          open={!!expanded[branch.moduleId]}
+          onSelect={() => onNavigate({ kind: "module-root", moduleId: branch.moduleId })}
+          onToggle={() => onToggle(branch.moduleId)}
+        >
+          <TreeButton
+            active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
+            onClick={() =>
+              onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
+            }
+          >
+            <Plus className="h-4 w-4" /> Novo
+          </TreeButton>
+          <TreeButton
+            active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })}
+            onClick={() =>
+              onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
+            }
+          >
+            <Search className="h-4 w-4" /> Consultar
+          </TreeButton>
+          {branch.moduleId === "ddp" ? (
+            <TreeSection
+              title="Causas"
+              icon={<FlaskConical className="h-4 w-4" />}
+              open={!!expanded.causes}
+              onToggle={() => onToggle("causes")}
+            >
+              <TreeButton
+                active={isActive({ kind: "module-task", moduleId: "ddp", task: "cause-new" })}
+                onClick={() =>
+                  onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-new" })
+                }
+              >
+                <Plus className="h-4 w-4" /> Novo
+              </TreeButton>
+              <TreeButton
+                active={isActive({ kind: "module-task", moduleId: "ddp", task: "cause-consult" })}
+                onClick={() =>
+                  onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-consult" })
+                }
+              >
+                <Search className="h-4 w-4" /> Consultar
+              </TreeButton>
+            </TreeSection>
+          ) : null}
+        </ModuleBranch>
+      ))}
+
+      <ModuleBranch
+        title="Cadastros"
+        icon={<Database className="h-4 w-4" />}
+        active={isActive({ kind: "registrations-root" })}
+        open={!!expanded.registrations}
+        onSelect={() => onNavigate({ kind: "registrations-root" })}
+        onToggle={() => onToggle("registrations")}
+      >
+        {MODULES_TREE_REGISTRATIONS.map((item) => (
+          <TreeButton
+            key={item.view}
+            active={isActive({ kind: "registration", view: item.view })}
+            onClick={() => onNavigate({ kind: "registration", view: item.view })}
+          >
+            {item.icon} {item.label}
+          </TreeButton>
+        ))}
+      </ModuleBranch>
     </div>
   );
 }

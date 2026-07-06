@@ -2,6 +2,7 @@ import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  Building2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -23,7 +24,9 @@ import {
   Link2,
   ListChecks,
   Lock,
+  LogOut,
   Network,
+  Palette,
   Users,
   Menu,
   MessageSquare,
@@ -52,9 +55,8 @@ import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import {
-  ModuleBranch as ModuleTreeBranch,
   TreeButton as ModuleTreeButton,
-  TreeSection as ModuleTreeSection,
+  WorkspaceModulesTree,
   WorkspaceRail,
   type WorkspaceRailArea,
 } from "@/components/workspace-navigation";
@@ -5944,134 +5946,64 @@ function ModuleWorkspacePage() {
               <div className="min-h-0 flex-1 overflow-y-auto p-3">
 
                 {railArea === "modules" ? (
-                  <div className="grid gap-1">
-                    <ModuleTreeBranch
-                      title="Mapeamento"
-                      icon={<FileText className="h-4 w-4" />}
-                      active={contentMode === "module" && moduleId === "ddp"}
-                      open={contentMode === "module" && expandedTree.ddp}
-                      onSelect={() => openModuleBranch("ddp")}
-                      onToggle={() => toggleTree("ddp")}
-                    >
-                      <ModuleTreeButton onClick={() => openNewForModule("ddp")}>
-                        <Plus className="h-4 w-4 shrink-0" /> Novo
-                      </ModuleTreeButton>
-                      <ModuleTreeButton
-                        active={
-                          moduleId === "ddp" &&
-                          contentMode === "module" &&
-                          moduleSurface === "consult"
-                        }
-                        onClick={() => openSearchForModule("ddp")}
-                      >
-                        <Search className="h-4 w-4 shrink-0" /> Consultar
-                      </ModuleTreeButton>
-                      <ModuleTreeSection
-                        title="Causas"
-                        icon={<FlaskConical className="h-4 w-4" />}
-                        open={expandedTree.causes}
-                        onToggle={() => toggleTree("causes")}
-                      >
-                        <ModuleTreeButton onClick={() => openCauses("new")}>
-                          <Plus className="h-4 w-4 shrink-0" /> Novo
-                        </ModuleTreeButton>
-                        <ModuleTreeButton onClick={() => openCauses("consult")}>
-                          <Search className="h-4 w-4 shrink-0" /> Consultar
-                        </ModuleTreeButton>
-                      </ModuleTreeSection>
-                    </ModuleTreeBranch>
-
-                    <ModuleTreeBranch
-                      title="Documentação"
-                      icon={<CheckCircle2 className="h-4 w-4" />}
-                      active={contentMode === "module" && moduleId === "pop"}
-                      open={contentMode === "module" && expandedTree.pop}
-                      onSelect={() => openModuleBranch("pop")}
-                      onToggle={() => toggleTree("pop")}
-                    >
-                      <ModuleTreeButton onClick={() => openNewForModule("pop")}>
-                        <Plus className="h-4 w-4 shrink-0" /> Novo
-                      </ModuleTreeButton>
-                      <ModuleTreeButton
-                        active={
-                          moduleId === "pop" &&
-                          contentMode === "module" &&
-                          moduleSurface === "consult"
-                        }
-                        onClick={() => openSearchForModule("pop")}
-                      >
-                        <Search className="h-4 w-4 shrink-0" /> Consultar
-                      </ModuleTreeButton>
-                    </ModuleTreeBranch>
-
-                    <ModuleTreeBranch
-                      title="Fluxograma"
-                      icon={<Workflow className="h-4 w-4" />}
-                      active={contentMode === "module" && moduleId === "bpmn"}
-                      open={contentMode === "module" && expandedTree.bpmn}
-                      onSelect={() => openModuleBranch("bpmn")}
-                      onToggle={() => toggleTree("bpmn")}
-                    >
-                      <ModuleTreeButton onClick={() => openNewForModule("bpmn")}>
-                        <Plus className="h-4 w-4 shrink-0" /> Novo
-                      </ModuleTreeButton>
-                      <ModuleTreeButton
-                        active={
-                          moduleId === "bpmn" &&
-                          contentMode === "module" &&
-                          moduleSurface === "consult"
-                        }
-                        onClick={() => openSearchForModule("bpmn")}
-                      >
-                        <Search className="h-4 w-4 shrink-0" /> Consultar
-                      </ModuleTreeButton>
-                    </ModuleTreeBranch>
-
-                    <ModuleTreeBranch
-                      title="Cadastros"
-                      icon={<Database className="h-4 w-4" />}
-                      active={contentMode === "registrations"}
-                      open={expandedTree.registrations}
-                      onSelect={() =>
-                        navigate({ to: "/", search: { area: "modules", view: "processes" } })
+                  <WorkspaceModulesTree
+                    expanded={expandedTree}
+                    onToggle={toggleTree}
+                    isActive={(target) =>
+                      target.kind === "module-root"
+                        ? moduleId === target.moduleId && contentMode === "module"
+                        : target.kind === "module-task"
+                          ? target.task === "consult" &&
+                            moduleId === target.moduleId &&
+                            contentMode === "module" &&
+                            moduleSurface === "consult"
+                          : target.kind === "registrations-root"
+                            ? contentMode === "registrations"
+                            : false
+                    }
+                    onNavigate={(target) => {
+                      if (target.kind === "module-root") {
+                        openModuleBranch(target.moduleId);
+                      } else if (target.kind === "module-task") {
+                        if (target.task === "new") openNewForModule(target.moduleId);
+                        else if (target.task === "consult") openSearchForModule(target.moduleId);
+                        else if (target.task === "cause-new") openCauses("new");
+                        else openCauses("consult");
+                      } else if (target.kind === "registrations-root") {
+                        navigate({ to: "/", search: { area: "modules", view: "processes" } });
+                      } else {
+                        navigate({ to: "/", search: { area: "modules", view: target.view } });
                       }
-                      onToggle={() => toggleTree("registrations")}
-                    >
-                      <ModuleTreeAnchor href="/?area=modules&view=processes">
-                        <GitBranch className="h-4 w-4 shrink-0" /> Processos
-                      </ModuleTreeAnchor>
-                      <ModuleTreeAnchor href="/?area=modules&view=areas">
-                        <Layers className="h-4 w-4 shrink-0" /> Áreas
-                      </ModuleTreeAnchor>
-                      <ModuleTreeAnchor href="/?area=modules&view=owners">
-                        <Users className="h-4 w-4 shrink-0" /> Donos de Processo
-                      </ModuleTreeAnchor>
-                      <ModuleTreeAnchor href="/?area=modules&view=owner-users">
-                        <Link2 className="h-4 w-4 shrink-0" /> Vínculo Dono × Usuário
-                      </ModuleTreeAnchor>
-                      <ModuleTreeAnchor href="/?area=modules&view=systems">
-                        <Database className="h-4 w-4 shrink-0" /> Sistemas
-                      </ModuleTreeAnchor>
-                      <ModuleTreeAnchor href="/?area=modules&view=process-types">
-                        <ListChecks className="h-4 w-4 shrink-0" /> Categorias de Processo
-                      </ModuleTreeAnchor>
-                    </ModuleTreeBranch>
-                  </div>
+                    }}
+                  />
                 ) : null}
 
                 {railArea === "settings" ? (
-                  <div className="grid gap-1">
-                    <ModuleTreeAnchor href="/?area=settings&view=users">Usuários</ModuleTreeAnchor>
-                    <ModuleTreeAnchor href="/?area=settings&view=organizations">
-                      Organizações
-                    </ModuleTreeAnchor>
+                  <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+                    {/* Mesmos itens/ícones da página inicial (componentes compartilhados). */}
+                    <ModuleTreeButton
+                      onClick={() =>
+                        navigate({ to: "/", search: { area: "settings", view: "users" } })
+                      }
+                    >
+                      <Users className="h-4 w-4" /> Usuários
+                    </ModuleTreeButton>
+                    <ModuleTreeButton
+                      onClick={() =>
+                        navigate({ to: "/", search: { area: "settings", view: "organizations" } })
+                      }
+                    >
+                      <Building2 className="h-4 w-4" /> Organizações
+                    </ModuleTreeButton>
                     <ModuleTreeButton
                       active={settingsView === "theme"}
                       onClick={() => selectSettings("theme")}
                     >
-                      Tema
+                      <Palette className="h-4 w-4" /> Tema
                     </ModuleTreeButton>
-                    <ModuleTreeButton onClick={signOut}>Sair</ModuleTreeButton>
+                    <ModuleTreeButton onClick={signOut}>
+                      <LogOut className="h-4 w-4" /> Sair
+                    </ModuleTreeButton>
                   </div>
                 ) : null}
               </div>
@@ -6254,35 +6186,6 @@ function ModuleWorkspacePage() {
     </div>
   );
 }
-
-function ModuleTreeAnchor({ href, children }: { href: string; children: ReactNode }) {
-  const navigate = useNavigate();
-  // Navegação client-side: um <a href> puro recarrega a página inteira e descarta
-  // o estado em memória (o menu "volta para uma versão antiga"). Interceptamos o
-  // clique esquerdo e navegamos pelo router, preservando o estado; o href é mantido
-  // para semântica de link (abrir em nova aba, ctrl/cmd+clique, etc.).
-  return (
-    <a
-      href={href}
-      onClick={(event) => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-        event.preventDefault();
-        const params = new URLSearchParams(href.split("?")[1] ?? "");
-        const area = (params.get("area") ?? undefined) as
-          | "modules"
-          | "registrations"
-          | "reports"
-          | "settings"
-          | undefined;
-        navigate({ to: "/", search: { area, view: params.get("view") ?? undefined } });
-      }}
-      className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150"
-    >
-      {children}
-    </a>
-  );
-}
-
 function ModuleSettingsPanel({
   view,
   organizationName,

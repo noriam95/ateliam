@@ -32,12 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
-import {
-  ModuleBranch as ModuleTreeGroup,
-  TreeButton,
-  TreeSection,
-  WorkspaceRail,
-} from "@/components/workspace-navigation";
+import { TreeButton, WorkspaceModulesTree, WorkspaceRail } from "@/components/workspace-navigation";
 import { WorkspaceSystemSettings } from "@/components/workspace-system-settings";
 import {
   WorkspaceProcessRegistrations,
@@ -886,105 +881,39 @@ function WorkspaceHome() {
 
                 <div className="min-h-0 flex-1 overflow-y-auto p-3">
                   {activeArea === "modules" ? (
-                    <div key="modules" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                      <ModuleTreeGroup
-                        title="Mapeamento"
-                        icon={<FileText className="h-4 w-4" />}
-                        active={isModuleView(view, "ddp")}
-                        open={expanded.ddp}
-                        onSelect={() => navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })}
-                        onToggle={() => toggle("ddp")}
-                      >
-                        <TreeLink moduleId="ddp" targetView="new">
-                          <Plus className="h-4 w-4" /> Novo
-                        </TreeLink>
-                        <TreeLink moduleId="ddp" targetView="consult">
-                          <Search className="h-4 w-4" /> Consultar
-                        </TreeLink>
-                        <TreeSection
-                          title="Causas"
-                          icon={<FlaskConical className="h-4 w-4" />}
-                          open={expanded.causes}
-                          onToggle={() => toggle("causes")}
-                        >
-                          <TreeLink moduleId="ddp" targetView="cause-new">
-                            <Plus className="h-4 w-4" /> Novo
-                          </TreeLink>
-                          <TreeLink moduleId="ddp" targetView="cause-consult">
-                            <Search className="h-4 w-4" /> Consultar
-                          </TreeLink>
-                        </TreeSection>
-                      </ModuleTreeGroup>
-
-                      <ModuleTreeGroup
-                        title="Documentação"
-                        icon={<CheckCircle2 className="h-4 w-4" />}
-                        active={isModuleView(view, "pop")}
-                        open={expanded.pop}
-                        onSelect={() => navigate({ to: "/m/$module", params: { module: "pop" }, search: { view: "consult" } })}
-                        onToggle={() => toggle("pop")}
-                      >
-                        <TreeLink moduleId="pop" targetView="new">
-                          <Plus className="h-4 w-4" /> Novo
-                        </TreeLink>
-                        <TreeLink moduleId="pop" targetView="consult">
-                          <Search className="h-4 w-4" /> Consultar
-                        </TreeLink>
-                      </ModuleTreeGroup>
-
-                      <ModuleTreeGroup
-                        title="Fluxograma"
-                        icon={<Workflow className="h-4 w-4" />}
-                        active={isModuleView(view, "bpmn")}
-                        open={expanded.bpmn}
-                        onSelect={() => navigate({ to: "/m/$module", params: { module: "bpmn" }, search: { view: "consult" } })}
-                        onToggle={() => toggle("bpmn")}
-                      >
-                        <TreeLink moduleId="bpmn" targetView="new">
-                          <Plus className="h-4 w-4" /> Novo
-                        </TreeLink>
-                        <TreeLink moduleId="bpmn" targetView="consult">
-                          <Search className="h-4 w-4" /> Consultar
-                        </TreeLink>
-                      </ModuleTreeGroup>
-
-                      <ModuleTreeGroup
-                        title="Cadastros"
-                        icon={<Database className="h-4 w-4" />}
-                        active={isRegistrationView(view)}
-                        open={expanded.registrations}
-                        onSelect={() => setView("processes")}
-                        onToggle={() => toggle("registrations")}
-                      >
-                        <TreeButton
-                          active={view === "processes"}
-                          onClick={() => setView("processes")}
-                        >
-                          <GitBranch className="h-4 w-4" /> Processos
-                        </TreeButton>
-                        <TreeButton active={view === "areas"} onClick={() => setView("areas")}>
-                          <Layers className="h-4 w-4" /> Áreas
-                        </TreeButton>
-                        <TreeButton active={view === "owners"} onClick={() => setView("owners")}>
-                          <Users className="h-4 w-4" /> Donos de Processo
-                        </TreeButton>
-                        <TreeButton
-                          active={view === "owner-users"}
-                          onClick={() => setView("owner-users")}
-                        >
-                          <Link2 className="h-4 w-4" /> Vínculo Dono × Usuário
-                        </TreeButton>
-                        <TreeButton active={view === "systems"} onClick={() => setView("systems")}>
-                          <Database className="h-4 w-4" /> Sistemas
-                        </TreeButton>
-                        <TreeButton
-                          active={view === "process-types"}
-                          onClick={() => setView("process-types")}
-                        >
-                          <ListChecks className="h-4 w-4" /> Categorias de Processo
-                        </TreeButton>
-                      </ModuleTreeGroup>
-                    </div>
+                    <WorkspaceModulesTree
+                      key="modules"
+                      expanded={expanded}
+                      onToggle={toggle}
+                      isActive={(target) =>
+                        target.kind === "module-root"
+                          ? isModuleView(view, target.moduleId)
+                          : target.kind === "registrations-root"
+                            ? isRegistrationView(view)
+                            : target.kind === "registration"
+                              ? view === target.view
+                              : false
+                      }
+                      onNavigate={(target) => {
+                        if (target.kind === "module-root") {
+                          navigate({
+                            to: "/m/$module",
+                            params: { module: target.moduleId },
+                            search: { view: "consult" },
+                          });
+                        } else if (target.kind === "module-task") {
+                          navigate({
+                            to: "/m/$module",
+                            params: { module: target.moduleId },
+                            search: { view: target.task },
+                          });
+                        } else if (target.kind === "registrations-root") {
+                          setView("processes");
+                        } else {
+                          setView(target.view);
+                        }
+                      }}
+                    />
                   ) : null}
 
                   {activeArea === "value-chain" ? (
@@ -2874,31 +2803,6 @@ function SimplePanel({
     </section>
   );
 }
-
-function TreeLink({
-  moduleId,
-  targetView,
-  children,
-}: {
-  moduleId: AteliamModule;
-  targetView: "new" | "consult" | "cause-new" | "cause-consult";
-  children: ReactNode;
-}) {
-  // Navegação client-side (Link do router) em vez de <a href>: um <a> força
-  // reload completo da página, descartando o estado em memória e recarregando
-  // a última versão salva ("voltar para versão antiga"). O Link preserva o estado.
-  return (
-    <Link
-      to="/m/$module"
-      params={{ module: moduleId }}
-      search={{ view: targetView }}
-      className="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold)]"
-    >
-      {children}
-    </Link>
-  );
-}
-
 function DashboardMetric({
   icon,
   label,
