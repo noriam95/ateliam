@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticated")({
 
     if (isDemoSessionActive()) return { isDemo: true, user: null };
 
-    throw redirect({ to: "/auth" });
+    throw redirect({ to: "/auth", reloadDocument: true });
   },
   component: () => <Outlet />,
 });
