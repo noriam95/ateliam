@@ -301,30 +301,7 @@ function WorkspaceHome() {
   const [view, setView] = useState<WorkspaceView>(
     (search.view as WorkspaceView | undefined) ?? "overview",
   );
-  // Mantém o estado em sincronia com a URL quando ela muda com o componente já
-  // montado (voltar/avançar do navegador, links de outras telas para "/?area=...").
-  // Sem isto a tela "volta para uma versão antiga": a URL muda mas o conteúdo não.
-  // Mudanças internas (cliques na árvore) não alteram a URL, então este efeito só
-  // dispara em navegações reais.
-  useEffect(() => {
-    const nextArea = (search.area ?? "home") as WorkspaceArea;
-    const nextView = (search.view as WorkspaceView | undefined) ?? "overview";
-    setActiveArea(nextArea);
-    setView(nextView);
-    setTreeOpen(!!search.area && !window.matchMedia("(max-width: 1023px)").matches);
-    // Garante que o grupo da árvore correspondente à view esteja aberto.
-    setExpanded((current) => ({
-      ...current,
-      modules: current.modules || nextArea === "modules",
-      registrations:
-        current.registrations ||
-        ["processes", "areas", "owners", "owner-users", "systems", "process-types"].includes(
-          nextView,
-        ),
-      valueChain: current.valueChain || nextArea === "value-chain",
-      settings: current.settings || nextArea === "settings",
-    }));
-  }, [search.area, search.view]);
+  const initialView = (search.view as WorkspaceView | undefined) ?? "overview";
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     organization: true,
     modules: true,
@@ -333,12 +310,30 @@ function WorkspaceHome() {
     bpmn: false,
     causes: false,
     valueChain: true,
-    registrations: false,
+    registrations: isRegistrationView(initialView),
     processRegistrations: true,
     systemRegistrations: true,
     governance: true,
     settings: true,
   });
+
+  // Mant?m o estado em sincronia com a URL quando ela muda com o componente j?
+  // montado (voltar/avan?ar do navegador, links de outras telas para "/?area=...").
+  useEffect(() => {
+    const nextArea = (search.area ?? "home") as WorkspaceArea;
+    const nextView = (search.view as WorkspaceView | undefined) ?? "overview";
+    const isRegistration = isRegistrationView(nextView);
+    setActiveArea(nextArea);
+    setView(nextView);
+    setTreeOpen(!!search.area && !window.matchMedia("(max-width: 1023px)").matches);
+    setExpanded((current) => ({
+      ...current,
+      modules: current.modules || nextArea === "modules",
+      registrations: isRegistration,
+      valueChain: current.valueChain || nextArea === "value-chain",
+      settings: current.settings || nextArea === "settings",
+    }));
+  }, [search.area, search.view]);
   const dashboardFn = useServerFn(getOrganizationDashboard);
   const accessibleOrganizationsFn = useServerFn(listAccessibleOrganizations);
   const accessibleOrganizationsQ = useQuery({

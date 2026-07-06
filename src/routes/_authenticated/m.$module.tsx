@@ -5959,7 +5959,9 @@ function ModuleWorkspacePage() {
                             moduleSurface === "consult"
                           : target.kind === "registrations-root"
                             ? contentMode === "registrations"
-                            : false
+                            : target.kind === "registration"
+                              ? contentMode === "registrations" && registrationView === target.view
+                              : false
                     }
                     onNavigate={(target) => {
                       if (target.kind === "module-root") {
@@ -5970,7 +5972,9 @@ function ModuleWorkspacePage() {
                         else if (target.task === "cause-new") openCauses("new");
                         else openCauses("consult");
                       } else if (target.kind === "registrations-root") {
-                        navigate({ to: "/", search: { area: "modules", view: "processes" } });
+                        selectRegistration("processes");
+                      } else if (["processes", "areas", "owners", "process-types"].includes(target.view)) {
+                        selectRegistration(target.view as ModuleRegistrationView);
                       } else {
                         navigate({ to: "/", search: { area: "modules", view: target.view } });
                       }
