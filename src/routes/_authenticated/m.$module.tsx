@@ -6469,6 +6469,56 @@ function compareModuleGridRows(
   }) * sign;
 }
 
+function moduleStatusStyle(status: string): CSSProperties {
+  const normalized = normalizeLabel(status);
+  if (normalized.includes("concluido")) {
+    return { backgroundColor: "#DFF5E6", color: "#147A3A", borderColor: "#A8E5BA" };
+  }
+  if (normalized.includes("aprovado")) {
+    return { backgroundColor: "#E6F4FF", color: "#145DA0", borderColor: "#B9DEFF" };
+  }
+  if (normalized.includes("revisao")) {
+    return { backgroundColor: "#FFF3D8", color: "#9A5A00", borderColor: "#F3D18A" };
+  }
+  if (
+    normalized.includes("andamento") ||
+    normalized.includes("ativo") ||
+    normalized.includes("salvo")
+  ) {
+    return {
+      backgroundColor: "color-mix(in oklab, var(--gold) 14%, var(--card))",
+      color: "var(--gold)",
+      borderColor: "color-mix(in oklab, var(--gold) 35%, var(--border))",
+    };
+  }
+  return {
+    backgroundColor: "var(--muted)",
+    color: "var(--muted-foreground)",
+    borderColor: "var(--border)",
+  };
+}
+
+function ModuleStatusSummary({ rows }: { rows: ModuleGridRow[] }) {
+  const counts = MODULE_STATUS_OPTIONS.map((status) => ({
+    status,
+    count: rows.filter((row) => normalizeLabel(row.status) === normalizeLabel(status)).length,
+  }));
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {counts.map((item) => (
+        <div
+          key={item.status}
+          className="flex items-center justify-between rounded-lg border px-3 py-2"
+          style={moduleStatusStyle(item.status)}
+        >
+          <span className="text-xs font-semibold">{item.status}</span>
+          <span className="font-data text-lg font-bold">{item.count}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ModuleDocumentGrid({
   moduleId,
   rows,
@@ -6638,6 +6688,11 @@ function ModuleDocumentGrid({
             className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
           />
         </div>
+        {moduleId === "ddp" ? (
+          <div className="mt-4">
+            <ModuleStatusSummary rows={rows} />
+          </div>
+        ) : null}
       </header>
 
       <div className="overflow-x-auto">
@@ -6725,7 +6780,8 @@ function ModuleDocumentGrid({
                                 if (nextStatus === row.status) return;
                                 setPendingStatus({ row, status: nextStatus });
                               }}
-                              className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                              className="h-8 rounded-md border px-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20"
+                              style={moduleStatusStyle(value)}
                             >
                               {options.map((opt) => (
                                 <option key={opt} value={opt}>
