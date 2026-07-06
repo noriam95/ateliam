@@ -1,6 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  ArrowDown,
+  ArrowDownUp,
+  ArrowUp,
   Database,
   GitBranch,
   Layers3,
@@ -113,6 +116,16 @@ const VALUE_CHAIN_CATEGORIES: Array<{
 function valueChainCategoryLabel(value: ValueChainCategory) {
   return VALUE_CHAIN_CATEGORIES.find((category) => category.value === value)?.label ?? value;
 }
+
+function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
+  if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
+  return dir === "asc" ? (
+    <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+  ) : (
+    <ArrowDown className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+  );
+}
+
 type Process = {
   id: string;
   code: string | null;
@@ -1040,9 +1053,7 @@ export function WorkspaceProcessRegistrations({
                       className="inline-flex items-center gap-1 hover:text-foreground"
                     >
                       {column}
-                      <span className={sortCol === colIndex ? "opacity-90" : "opacity-30"}>
-                        {sortCol === colIndex ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
-                      </span>
+                      <SortIcon active={sortCol === colIndex} dir={sortDir} />
                     </button>
                   </th>
                 ))}
@@ -1723,7 +1734,7 @@ function registryCopy(view: ProcessRegistrationView) {
     singular: "Processo",
     description:
       "Cadastre Processos, Subprocessos, Atividades e Tarefas vinculados à Cadeia de Valor.",
-    columns: ["Código", "Processo", "Tipo", "Cadeia de Valor", "Área", "Dono"],
+    columns: ["Código", "Processo", "Tipo", "Macroprocesso pai", "Área", "Dono"],
     icon: <GitBranch className="h-5 w-5" />,
   };
 }
@@ -1770,17 +1781,26 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
         item.status,
       ],
     }));
-  return data.processes.map((item) => ({
-    id: item.id,
-    values: [
-      item.code || "-",
-      item.name,
-      data.types.find((type) => type.code === item.type)?.label || item.type,
-      data.valueChains.find((chain) => chain.id === item.value_chain_id)?.name || "-",
-      item.department || "-",
-      item.owner ? ownerDisplayName({ name: item.owner, role_title: null }) : "-",
-    ],
-  }));
+  return data.processes.map((item) => {
+    const directChain = data.valueChains.find((chain) => chain.id === item.value_chain_id);
+    const parent = item.parent_process_id
+      ? data.processes.find((process) => process.id === item.parent_process_id)
+      : null;
+    const parentChain = parent?.value_chain_id
+      ? data.valueChains.find((chain) => chain.id === parent.value_chain_id)
+      : null;
+    return {
+      id: item.id,
+      values: [
+        item.code || "-",
+        item.name,
+        data.types.find((type) => type.code === item.type)?.label || item.type,
+        directChain?.name || parentChain?.name || "-",
+        item.department || "-",
+        item.owner ? ownerDisplayName({ name: item.owner, role_title: null }) : "-",
+      ],
+    };
+  });
 }
 
 function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryData): Draft {
@@ -2083,7 +2103,7 @@ function SearchableCreateSelect({
             setQuery(event.target.value);
           }}
           onBlur={() => setTimeout(() => setOpen(false), 120)}
-          placeholder={placeholder}
+          placeholder={onCreate ? `${placeholder} ou digite para cadastrar` : placeholder}
           className={inputClass}
         />
         {open ? (
@@ -2104,7 +2124,9 @@ function SearchableCreateSelect({
               </button>
             ))}
             {!visible.length ? (
-              <div className="px-2 py-2 text-sm text-muted-foreground">Nenhum item encontrado.</div>
+              <div className="px-2 py-2 text-sm text-muted-foreground">
+                Nenhum item encontrado.
+              </div>
             ) : null}
             {canCreate ? (
               <button
