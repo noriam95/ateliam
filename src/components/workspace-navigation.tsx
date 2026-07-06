@@ -336,9 +336,9 @@ export function WorkspaceModulesTree({
       <ModuleBranch
         title="Cadastros"
         icon={<Database className="h-4 w-4" />}
-        active={isActive({ kind: "registrations-root" })}
+        active={false}
         open={!!expanded.registrations}
-        onSelect={() => onNavigate({ kind: "registrations-root" })}
+        onSelect={() => onToggle("registrations")}
         onToggle={() => onToggle("registrations")}
       >
         {MODULES_TREE_REGISTRATIONS.map((item) => (

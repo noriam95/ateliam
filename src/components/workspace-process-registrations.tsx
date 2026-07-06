@@ -1586,56 +1586,64 @@ function RegistrationFields({
           />
         </Field>
       </div>
-      <SearchableCreateSelect
-        label="Macroprocesso pai"
-        value={draft.valueChainId}
-        options={data.valueChains.map((chain) => ({ value: chain.id, label: chain.name }))}
-        createLabel="Cadastrar macroprocesso"
-        onChange={(valueChainId) => setDraft((d) => ({ ...d, valueChainId }))}
-        onCreate={
-          quickCreate?.onCreateValueChain
-            ? (name) => quickCreate.onCreateValueChain?.(name)
-            : undefined
-        }
-      />
-      <Field label="Tipo">
-        <select
-          value={draft.type}
-          onChange={(e) =>
-            setDraft((d) => ({
-              ...d,
-              type: e.target.value as Draft["type"],
-              parentProcessId: "",
-            }))
-          }
-          className={inputClass}
-        >
-          {data.types
-            .filter((type) => type.active && type.code !== "macroprocess")
-            .map((type) => (
-              <option key={type.code} value={type.code}>
-                {type.label}
-              </option>
-            ))}
-        </select>
-      </Field>
-      {draft.type !== "process" && draft.type !== "macroprocess" ? (
-        <Field label={`${PROCESS_PARENT_LABEL[draft.type]} pai`}>
-          <select
-            required
-            value={draft.parentProcessId}
-            onChange={(e) => setDraft((d) => ({ ...d, parentProcessId: e.target.value }))}
-            className={inputClass}
-          >
-            <option value="">Selecione</option>
-            {parentOptions.map((process) => (
-              <option key={process.id} value={process.id}>
-                {process.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-      ) : null}
+      <div className="rounded-lg border border-border bg-background/55 p-3">
+        <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Hierarquia do processo
+        </div>
+        <div className="grid gap-3">
+          <SearchableCreateSelect
+            label="Macroprocesso pai"
+            value={draft.valueChainId}
+            options={data.valueChains.map((chain) => ({ value: chain.id, label: chain.name }))}
+            createLabel="Cadastrar macroprocesso"
+            onChange={(valueChainId) => setDraft((d) => ({ ...d, valueChainId }))}
+            onCreate={
+              quickCreate?.onCreateValueChain
+                ? (name) => quickCreate.onCreateValueChain?.(name)
+                : undefined
+            }
+          />
+          <Field label="Tipo">
+            <select
+              value={draft.type}
+              onChange={(e) =>
+                setDraft((d) => ({
+                  ...d,
+                  type: e.target.value as Draft["type"],
+                  parentProcessId: "",
+                }))
+              }
+              className={inputClass}
+            >
+              {data.types
+                .filter((type) => type.active && type.code !== "macroprocess")
+                .map((type) => (
+                  <option key={type.code} value={type.code}>
+                    {type.label}
+                  </option>
+                ))}
+            </select>
+          </Field>
+          {draft.type !== "process" && draft.type !== "macroprocess" ? (
+            <Field label={`${PROCESS_PARENT_LABEL[draft.type]} pai`}>
+              <select
+                required
+                value={draft.parentProcessId}
+                onChange={(e) => setDraft((d) => ({ ...d, parentProcessId: e.target.value }))}
+                className={inputClass}
+              >
+                <option value="">Selecione</option>
+                {parentOptions.map((process) => (
+                  <option key={process.id} value={process.id}>
+                    {process.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : null}
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <SearchableCreateSelect
           label="Área"
           value={draft.department}
@@ -1666,6 +1674,7 @@ function RegistrationFields({
               : undefined
           }
         />
+      </div>
       <Field label="Descrição">
         <textarea
           rows={4}
