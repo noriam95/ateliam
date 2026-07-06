@@ -152,11 +152,12 @@ const PROCESS_PARENT_LABEL: Record<Process["type"], string> = {
 
 function ownerDisplayName(owner: Pick<Owner, "name" | "role_title">) {
   const value = owner.role_title || owner.name || "";
-  return value
-    .split(" Â· ")[0]
-    .split(" · ")[0]
-    .split(" - ")[0]
-    .trim();
+  const separators = [" \u00b7 ", " \u2022 ", " \u00c2\u00b7 ", " \u00c3\u0082\u00c2\u00b7 ", " - "];
+  let normalized = value;
+  for (const separator of separators) {
+    normalized = normalized.split(separator)[0] ?? normalized;
+  }
+  return normalized.trim() || value.trim();
 }
 
 const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
@@ -1979,7 +1980,7 @@ function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
   if (view === "systems") return !!draft.name.trim();
   if (view === "process-types") return !!draft.label.trim();
   if (view === "processes") {
-    const needsParent = draft.type !== "process" && draft.type !== "macroprocess";
+    const needsParent = draft.type !== "process";
     return (
       !!draft.name.trim() &&
       !!draft.valueChainId &&
