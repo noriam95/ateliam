@@ -8444,6 +8444,12 @@ function DdpModule({
           displayName={(process) => process.name}
           onRequestCreate={(name) => setCreateProcessName(name)}
         />
+        {selectedProcess ? (
+          <SelectedProcessSummary
+            process={selectedProcess}
+            valueChain={selectedProcessValueChain?.name ?? ""}
+          />
+        ) : null}
         <div className="mt-4 grid gap-4 md:grid-cols-4">
           {processDataFields.map((field) => (
             <ReadOnlyField key={field.label} label={field.label} value={field.value} />
@@ -8482,7 +8488,11 @@ function DdpModule({
         </div>
       ) : null}
       <MappingSectionsGate enabled={!!selectedProcess}>
-      <Panel title="Dados do Mapeamento" progress={sectionProgress.identification}>
+      <Panel
+        title="Dados do Mapeamento"
+        progress={sectionProgress.identification}
+        defaultOpen={!!selectedProcess}
+      >
         <div className="grid gap-4 md:grid-cols-3">
           {data.meta.codigo ? (
             <ReadOnlyField label="Código do mapeamento" value={data.meta.codigo} />
@@ -10240,6 +10250,9 @@ function Panel({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(title ? defaultOpen : true);
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       {title ? (
@@ -10285,20 +10298,72 @@ function FixedPanel({ title, children }: { title: string; children: ReactNode })
   );
 }
 
+function SelectedProcessSummary({
+  process,
+  valueChain,
+}: {
+  process: OrganizationProcess;
+  valueChain: string;
+}) {
+  return (
+    <div className="mt-4 rounded-lg border border-[color-mix(in_oklab,var(--gold)_28%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_6%,var(--card))] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--gold)]">
+            <CheckCircle2 className="h-4 w-4" />
+            Processo selecionado
+          </div>
+          <h3 className="truncate text-base font-semibold text-foreground">{process.name}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            O preenchimento do mapeamento será iniciado em branco para este processo.
+          </p>
+        </div>
+        <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground">
+          {processTypeLabel(process.type)}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        <span>
+          <strong className="text-foreground">Código:</strong> {process.code || "-"}
+        </span>
+        <span>
+          <strong className="text-foreground">Macroprocesso:</strong> {valueChain || "-"}
+        </span>
+        <span>
+          <strong className="text-foreground">Área:</strong> {process.department || "-"}
+        </span>
+        <span>
+          <strong className="text-foreground">Dono:</strong> {process.owner || "-"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function MappingSectionsGate({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   return (
     <div className="grid gap-3">
       <div
         className={[
-          "rounded-lg border px-4 py-3 text-sm transition",
+          "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm transition",
           enabled
             ? "border-[color-mix(in_oklab,var(--gold)_35%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] text-foreground"
             : "border-dashed border-border bg-muted/30 text-muted-foreground",
         ].join(" ")}
       >
-        {enabled
-          ? "Processo selecionado. As seções abaixo estão habilitadas para preenchimento."
-          : "Selecione um processo cadastrado em Dados do processo para habilitar as seções de preenchimento."}
+        <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-card text-[var(--gold)]">
+          {enabled ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+        </span>
+        <span>
+          <strong className="block text-sm text-foreground">
+            {enabled ? "Preenchimento habilitado" : "Preenchimento bloqueado"}
+          </strong>
+          <span className="mt-0.5 block text-xs leading-5">
+            {enabled
+              ? "As seções abaixo estão disponíveis para registrar um novo mapeamento."
+              : "Selecione um processo cadastrado em Dados do processo para habilitar as seções de preenchimento."}
+          </span>
+        </span>
       </div>
       <fieldset
         disabled={!enabled}
@@ -10355,6 +10420,10 @@ function RegisteredProcessSelect({
       )
       .slice(0, 12);
   }, [normalizedQuery, processes]);
+  const canRequestCreate =
+    !!onRequestCreate &&
+    !!query.trim() &&
+    !processes.some((process) => normalizeLabel(displayName(process)) === normalizedQuery);
 
   useEffect(() => {
     if (!open) setQuery(selected ? displayName(selected) : "");
@@ -10398,7 +10467,7 @@ function RegisteredProcessSelect({
         ) : null}
       </div>
       {open ? (
-        <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-lg">
+        <div className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg">
           {filtered.length ? (
             filtered.map((process) => (
               <button
@@ -10409,13 +10478,20 @@ function RegisteredProcessSelect({
                   onSelect(process);
                   setOpen(false);
                 }}
-                className="grid w-full gap-0.5 rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                className="grid w-full gap-1 rounded-md border border-transparent px-3 py-2.5 text-left text-sm hover:border-border hover:bg-muted"
               >
-                <span className="font-semibold text-foreground">{displayName(process)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {processTypeLabel(process.type)}
-                  {process.department ? ` · ${process.department}` : ""}
-                  {process.owner ? ` · ${process.owner}` : ""}
+                <span className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="truncate font-semibold text-foreground">
+                    {displayName(process)}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    {processTypeLabel(process.type)}
+                  </span>
+                </span>
+                <span className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-3">
+                  <span className="truncate">{process.code || "Sem código"}</span>
+                  <span className="truncate">{process.department || "Sem área"}</span>
+                  <span className="truncate">{process.owner || "Sem dono"}</span>
                 </span>
               </button>
             ))
@@ -10424,15 +10500,15 @@ function RegisteredProcessSelect({
               Nenhum processo encontrado.
             </div>
           )}
-          {onRequestCreate ? (
+          {canRequestCreate ? (
             <button
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 setOpen(false);
-                onRequestCreate(query);
+                onRequestCreate?.(query.trim());
               }}
-              className="mt-1 flex w-full items-center gap-2 rounded-md border-t border-border px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-muted"
+              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-muted"
             >
               <Plus className="h-4 w-4" />
               Cadastrar novo processo{query.trim() ? ` "${query.trim()}"` : ""}
