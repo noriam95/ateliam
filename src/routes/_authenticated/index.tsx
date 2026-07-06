@@ -5,6 +5,9 @@ import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from
 import { createPortal } from "react-dom";
 import {
   Activity,
+  ArrowDown,
+  ArrowDownUp,
+  ArrowUp,
   BarChart2,
   Building2,
   CheckCircle2,
@@ -1339,6 +1342,43 @@ function ProcessRecordsTable({
 }
 
 type DashboardSortDir = "asc" | "desc";
+
+function SortGlyph({
+  active,
+  dir,
+}: {
+  active: boolean;
+  dir: DashboardSortDir;
+}) {
+  if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
+  return dir === "asc" ? (
+    <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+  ) : (
+    <ArrowDown className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const normalized = status.trim().toLowerCase();
+  const tone = normalized.includes("conclu")
+    ? { bg: "#DFF5E6", fg: "#147A3A", border: "#A8E5BA" }
+    : normalized.includes("aprov")
+      ? { bg: "#E6F4FF", fg: "#145DA0", border: "#B9DEFF" }
+      : normalized.includes("revis")
+        ? { bg: "#FFF3D8", fg: "#9A5A00", border: "#F3D18A" }
+        : normalized.includes("andamento") || normalized.includes("ativo")
+          ? { bg: "color-mix(in oklab, var(--gold) 15%, var(--card))", fg: "var(--gold)", border: "color-mix(in oklab, var(--gold) 35%, var(--border))" }
+          : { bg: "var(--muted)", fg: "var(--muted-foreground)", border: "var(--border)" };
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
+      style={{ backgroundColor: tone.bg, color: tone.fg, borderColor: tone.border }}
+    >
+      {status || "-"}
+    </span>
+  );
+}
+
 type DashboardMappingColumn = keyof Pick<
   DashboardMappingRow,
   "code" | "name" | "process" | "modalidade" | "area" | "owner" | "responsible" | "status" | "updatedAt"
@@ -1423,9 +1463,7 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
                     className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
                   >
                     {label}
-                    <span className="text-[10px]">
-                      {sortField === field ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
-                    </span>
+                    <SortGlyph active={sortField === field} dir={sortDir} />
                   </button>
                 </th>
               ))}
@@ -1436,9 +1474,13 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
               <tr key={row.id} className="hover:bg-muted/30">
                 {DASHBOARD_MAPPING_COLUMNS.map(([field]) => (
                   <td key={field} className="break-words px-3 py-3 text-foreground">
-                    {field === "updatedAt"
-                      ? new Date(row.updatedAt).toLocaleString("pt-BR")
-                      : row[field] || "-"}
+                    {field === "updatedAt" ? (
+                      new Date(row.updatedAt).toLocaleString("pt-BR")
+                    ) : field === "status" ? (
+                      <StatusBadge status={row.status || "-"} />
+                    ) : (
+                      row[field] || "-"
+                    )}
                   </td>
                 ))}
               </tr>
@@ -1572,6 +1614,14 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
   const [sortField, setSortField] = useState<DocumentCatalogColumn>("updatedAt");
   const [sortDir, setSortDir] = useState<DashboardSortDir>("desc");
 
+  useEffect(() => {
+    if (rows.some((row) => row.documentType === activeType)) return;
+    const nextType = DOCUMENT_CATALOG_TYPES.find((type) =>
+      rows.some((row) => row.documentType === type),
+    );
+    if (nextType) setActiveType(nextType);
+  }, [activeType, rows]);
+
   function toggleSort(field: DocumentCatalogColumn) {
     if (field === sortField) {
       setSortDir((current) => (current === "asc" ? "desc" : "asc"));
@@ -1635,9 +1685,7 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
                     className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
                   >
                     {label}
-                    <span className="text-[10px]">
-                      {sortField === field ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
-                    </span>
+                    <SortGlyph active={sortField === field} dir={sortDir} />
                   </button>
                 </th>
               ))}
@@ -1648,9 +1696,13 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
               <tr key={row.id} className="hover:bg-muted/30">
                 {DOCUMENT_CATALOG_COLUMNS.map(([field]) => (
                   <td key={field} className="break-words px-3 py-3 text-foreground">
-                    {field === "updatedAt"
-                      ? new Date(row.updatedAt).toLocaleString("pt-BR")
-                      : row[field] || "-"}
+                    {field === "updatedAt" ? (
+                      new Date(row.updatedAt).toLocaleString("pt-BR")
+                    ) : field === "status" ? (
+                      <StatusBadge status={row.status || "-"} />
+                    ) : (
+                      row[field] || "-"
+                    )}
                   </td>
                 ))}
               </tr>
@@ -2078,15 +2130,13 @@ function WorkspaceContent({
                   {DOCUMENT_CATALOG_TYPES.map((type) => {
                     const count = documentTypeCount(documentCatalogRows, type);
                     return (
-                    <tr key={type}>
-                      <td className="py-1.5 font-medium text-foreground">{type}</td>
-                      <td className="py-1.5 text-right font-data text-foreground">{count}</td>
-                      <td className="py-1.5 text-right">
-                        <span className="inline-flex rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
-                          {count > 0 ? "Ativo" : "—"}
-                        </span>
-                      </td>
-                    </tr>
+                      <tr key={type}>
+                        <td className="py-1.5 font-medium text-foreground">{type}</td>
+                        <td className="py-1.5 text-right font-data text-foreground">{count}</td>
+                        <td className="py-1.5 text-right">
+                          <StatusBadge status={count > 0 ? "Ativo" : "-"} />
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -2897,4 +2947,3 @@ function RankingCard({ title, rows }: { title: string; rows: { label: string; va
     </div>
   );
 }
-
