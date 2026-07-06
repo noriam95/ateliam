@@ -66,7 +66,9 @@ import {
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
 import {
   ProcessRegistrationDialog,
+  WorkspaceProcessRegistrations,
   type CreatedProcess,
+  type ProcessRegistrationView,
 } from "@/components/workspace-process-registrations";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -201,7 +203,7 @@ const moduleGrayVars = {
 type RailArea = WorkspaceRailArea;
 type ModuleContentMode = "module" | "registrations" | "settings";
 type ModuleSurface = "editor" | "consult";
-type ModuleRegistrationView = "areas" | "process-types" | "owners" | "processes";
+type ModuleRegistrationView = Exclude<ProcessRegistrationView, "value-chains">;
 type ModuleSettingsView = "theme";
 
 type TextItem = { id: string; text: string };
@@ -5650,46 +5652,13 @@ function ModuleWorkspacePage() {
 
   const moduleMainContent =
     contentMode === "registrations" ? (
-      registrationView === "processes" ? (
-        <ProcessRegistryModule
-          catalogs={organizationCatalogs}
-          processTypes={processTypes}
-          onCreateProcess={addProcessToCatalog}
-          onUpdateProcess={updateProcessCatalog}
-          onDeleteProcess={deleteProcessCatalog}
-
-          autoCode={isAutoProcessCode}
-
-          previewCode={processCodePreviewFor}
-
-          onReserveCode={reserveProcessCode}
-          onOpenEditor={() => {
-            setDdpView("editor");
-            openModuleBranch("ddp");
-          }}
-        />
-      ) : registrationView === "areas" || registrationView === "owners" ? (
-        <CatalogRegistryModule
-          title={registrationView === "areas" ? "Áreas" : "Donos de Processo"}
-          singular={registrationView === "areas" ? "área" : "dono de processo"}
-          items={
-            registrationView === "areas"
-              ? organizationCatalogs.departments
-              : organizationCatalogs.processOwners
-          }
-          onCreate={
-            registrationView === "areas" ? addDepartmentToCatalog : addProcessOwnerToCatalog
-          }
-          onUpdate={(item) =>
-            saveCatalogName(registrationView === "areas" ? "department" : "owner", item)
-          }
-          onDelete={(id) =>
-            deleteCatalogName(registrationView === "areas" ? "department" : "owner", id)
-          }
-        />
-      ) : (
-        <ProcessTypeRegistryModule values={processTypes} onChange={persistProcessTypes} />
-      )
+      <WorkspaceProcessRegistrations
+        view={registrationView}
+        organizationId={selectedOrganizationId}
+        organizationName={organizationBrand.name}
+        codeSettings={codeSettings}
+        isDemo={isDemo}
+      />
     ) : contentMode === "settings" ? (
       <ModuleSettingsPanel view={settingsView} organizationName={organizationBrand.name} />
     ) : moduleSurface === "consult" ? (
@@ -5976,10 +5945,8 @@ function ModuleWorkspacePage() {
                         else openCauses("consult");
                       } else if (target.kind === "registrations-root") {
                         toggleTree("registrations");
-                      } else if (["processes", "areas", "owners", "process-types"].includes(target.view)) {
-                        selectRegistration(target.view as ModuleRegistrationView);
                       } else {
-                        navigate({ to: "/", search: { area: "modules", view: target.view } });
+                        selectRegistration(target.view as ModuleRegistrationView);
                       }
                     }}
                   />

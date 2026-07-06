@@ -1725,7 +1725,7 @@ function registryCopy(view: ProcessRegistrationView) {
     };
   if (view === "owner-users")
     return {
-      title: "Vínculo Dono × Usuário",
+      title: "Vínculo Dono x Usuário",
       singular: "Vínculo",
       description: "Associe cada dono de processo a um usuário do sistema.",
       columns: ["Dono", "Usuário"],
