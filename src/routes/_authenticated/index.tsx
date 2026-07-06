@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
+  FileCheck2,
   FileText,
   FlaskConical,
   GitBranch,
@@ -208,6 +209,9 @@ const MAPPING_STATUS_TILES: Array<{
   { key: "aprovado", label: "Aprovado", color: "#1f9d6b" },
   { key: "concluido", label: "Concluído", color: "#0e8fa6" },
 ];
+
+const DASHBOARD_CARD_CLASS =
+  "rounded-lg border border-border bg-card p-5 shadow-sm ring-1 ring-transparent transition-shadow hover:shadow-md";
 type DashboardDocumentType = "Norma" | "POP" | "Instrução" | "Fluxograma" | "Mapeamento";
 type DashboardDocumentCatalogRow = {
   id: string;
@@ -1011,10 +1015,16 @@ function ExpandableCard({
   return (
     <>
       <div className={className}>
-        <div className="flex items-center justify-between">
-          <span className={titleClassName}>{title}</span>
+        <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
+          <span className="flex min-w-0 items-center gap-2">
+            {icon ? (
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))]">
+                {icon}
+              </span>
+            ) : null}
+            <span className={titleClassName}>{title}</span>
+          </span>
           <div className="flex items-center gap-1.5">
-            {icon}
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -1060,6 +1070,49 @@ function ExpandableCard({
           )
         : null}
     </>
+  );
+}
+
+function StatusSummaryTile({
+  label,
+  value,
+  total,
+  color,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  color: string;
+}) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className="rounded-lg border border-border bg-background p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-data text-3xl font-bold leading-none" style={{ color }}>
+            {value}
+          </div>
+          <div className="mt-1 text-[11px] font-medium leading-tight text-muted-foreground">
+            {label}
+          </div>
+        </div>
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          style={{
+            backgroundColor: `color-mix(in oklab, ${color} 14%, var(--card))`,
+            color,
+          }}
+        >
+          {pct}%
+        </span>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1553,12 +1606,12 @@ function DocumentTypeQuadrant({
   const areas = topAreasForDocumentType(rows, type);
   const maxValue = Math.max(1, areas[0]?.value ?? 1);
   return (
-    <div className="rounded-md border border-border bg-background/45 p-3">
+    <div className="min-h-[118px] rounded-lg border border-border bg-background p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {type}
         </div>
-        <span className="font-data text-xs font-semibold text-[var(--gold)]">
+        <span className="rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 font-data text-xs font-semibold text-[var(--gold)]">
           {documentTypeCount(rows, type)}
         </span>
       </div>
@@ -1567,16 +1620,16 @@ function DocumentTypeQuadrant({
           areas.map((area, index) => (
             <div
               key={area.label}
-              className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)_minmax(2.25rem,3.75rem)_1.25rem] items-center gap-2"
+              className="grid min-w-0 grid-cols-[1rem_minmax(6rem,1fr)_4.5rem_1.25rem] items-center gap-2"
             >
               <span className="text-[10px] font-data font-bold text-[var(--gold)]">
                 {index + 1}
               </span>
               <span className="min-w-0 flex-1 truncate text-xs text-foreground">{area.label}</span>
-              <div className="h-1.5 min-w-0 overflow-hidden rounded-full bg-muted">
+              <div className="h-1.5 w-full min-w-0 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-[var(--gold)]/80"
-                  style={{ width: `${(area.value / maxValue) * 100}%` }}
+                  style={{ width: `${Math.max(10, (area.value / maxValue) * 100)}%` }}
                 />
               </div>
               <span className="text-right text-[10px] font-data text-muted-foreground">
@@ -2018,27 +2071,34 @@ function WorkspaceContent({
 
   return (
     <div className="mx-auto grid w-full max-w-[1600px] gap-5">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">
-            Página Inicial
+      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">
+              Página Inicial
+            </div>
+            <h1 className="mt-2 font-display text-2xl font-bold text-foreground">
+              Visão operacional
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Acompanhe mapeamentos, cobertura de processos, catálogo documental e atividades recentes.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-background px-4 py-3 text-right">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Atualização do Painel
+            </div>
+            <div className="mt-0.5 text-sm font-semibold text-foreground">
+              {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+            </div>
+            {isLoading ? (
+              <span className="mt-1 inline-flex rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                Atualizando...
+              </span>
+            ) : null}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Atualização do Painel:
-          </div>
-          <div className="mt-0.5 text-sm font-semibold text-foreground">
-            {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
-          </div>
-          {isLoading ? (
-            <span className="mt-1 inline-flex rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              Atualizando...
-            </span>
-          ) : null}
-        </div>
-      </div>
+      </section>
 
       {/* Top Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -2046,7 +2106,7 @@ function WorkspaceContent({
         <ExpandableCard
           title="Índice de Mapeamento"
           icon={<Activity className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[230px] flex-col gap-4`}
           expanded={<MappingCoverageExpanded coverage={mappingCoverage} />}
         >
           <div className="flex items-center gap-4">
@@ -2077,25 +2137,18 @@ function WorkspaceContent({
         <ExpandableCard
           title="Acompanhamento de Mapeamentos"
           icon={<FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm xl:col-span-2"
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[230px] flex-col gap-4 xl:col-span-2`}
           expanded={<MappingRecordsTable rows={mappingRows} />}
         >
           <div className="mt-auto grid grid-cols-2 gap-3 lg:grid-cols-4">
             {MAPPING_STATUS_TILES.map((tile) => (
-              <div
+              <StatusSummaryTile
                 key={tile.key}
-                className="rounded-md p-3 text-center"
-                style={{
-                  backgroundColor: `color-mix(in oklab, ${tile.color} 14%, var(--card))`,
-                }}
-              >
-                <div className="font-data text-3xl font-bold" style={{ color: tile.color }}>
-                  {mappingStatusCounts[tile.key]}
-                </div>
-                <div className="mt-1 text-[11px] leading-tight text-muted-foreground">
-                  {tile.label}
-                </div>
-              </div>
+                label={tile.label}
+                value={mappingStatusCounts[tile.key]}
+                total={mappingRows.length}
+                color={tile.color}
+              />
             ))}
           </div>
         </ExpandableCard>
@@ -2107,9 +2160,9 @@ function WorkspaceContent({
         {/* Catálogo e Conformidade */}
         <ExpandableCard
           title="Catálogo e Conformidade"
-          icon={<CheckCircle2 className="h-4 w-4 text-[var(--gold)]" />}
+          icon={<FileCheck2 className="h-4 w-4 text-[var(--gold)]" />}
           titleClassName="text-sm font-semibold text-foreground"
-          className="rounded-lg border border-border bg-card p-5 shadow-sm"
+          className={DASHBOARD_CARD_CLASS}
           expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
         >
           <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
@@ -2148,7 +2201,7 @@ function WorkspaceContent({
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Documentos por Área
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 xl:grid-cols-2">
                 {DOCUMENT_CATALOG_TYPES.map((type, index) => (
                   <div
                     key={type}
@@ -2172,7 +2225,7 @@ function WorkspaceContent({
           title="Painel de Atividade Recente"
           icon={<Activity className="h-4 w-4 text-[var(--gold)]" />}
           titleClassName="text-sm font-semibold text-foreground"
-          className="rounded-lg border border-border bg-card p-5 shadow-sm"
+          className={DASHBOARD_CARD_CLASS}
         >
           <div className="mt-4">
             <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -2183,18 +2236,21 @@ function WorkspaceContent({
             ) : (
               <div className="grid gap-2">
                 {recentActivityItems.map((item) => (
-                  <div key={item.id} className="rounded-md border border-border bg-background/50 p-2.5">
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-border bg-background p-3 transition hover:border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] hover:bg-[color-mix(in_oklab,var(--gold)_5%,var(--background))]"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
+                          <span className="inline-flex rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
                             {item.tag}
                           </span>
                           <div className="min-w-0 truncate text-xs font-semibold text-foreground">
                             {item.title}
                           </div>
                         </div>
-                        <div className="mt-1 text-[10px] text-muted-foreground">{item.subtitle}</div>
+                        <div className="mt-1 text-[11px] text-muted-foreground">{item.subtitle}</div>
                       </div>
                       <div className="shrink-0 text-right">
                         {item.version ? (
