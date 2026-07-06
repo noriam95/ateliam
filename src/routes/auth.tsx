@@ -14,8 +14,8 @@ export const Route = createFileRoute("/auth")({
 const LOGIN_MESSAGES = [
   {
     eyebrow: "workspace de processos",
-    title: "Crie, versione e organize.\nEm um só lugar.",
-    text: "Um ambiente modular para fluxos de atividades, políticas, procedimentos e diagnósticos, com histórico completo de versões.",
+    title: "Crie, mapeie e organize.\nEm um só lugar.",
+    text: "Um ambiente modular para fluxos de atividades, políticas, procedimentos e registros de mapeamento.",
   },
   {
     eyebrow: "diagnóstico de processo",
@@ -146,7 +146,7 @@ function AuthPage() {
         </div>
 
         <div className="relative z-10 text-[11px] text-background/50">
-          © {new Date().getFullYear()} <span className="ateliam-wordmark">BF Flow</span>
+          © 2026 <span className="ateliam-wordmark">BF Flow</span>
         </div>
       </section>
 
@@ -161,7 +161,7 @@ function AuthPage() {
           <div className="mb-8">
             <h2 className="font-display text-2xl font-bold">Entrar no workspace</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Acesse seus documentos, versões e módulos de processo.
+              Acesse seus documentos, registros e processos.
             </p>
           </div>
 

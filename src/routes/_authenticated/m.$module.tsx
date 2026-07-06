@@ -7212,7 +7212,7 @@ function ProcessRegistryModule({
   return (
     <div className="grid gap-5">
       <Hero title="Processos da organização" eyebrow="Catálogo · versões · vínculos" progress={100}>
-        Consulte, cadastre e versione processos para que Relatórios de Mapeamento, macroprocessos e
+        Consulte, cadastre e gerencie processos para que Relatórios de Mapeamento, macroprocessos e
         subprocessos tenham um vínculo corporativo claro.
       </Hero>
       <Panel title="Consulta de processos" progress={processes.length ? 100 : 0}>
