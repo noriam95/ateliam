@@ -2,6 +2,9 @@ import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  ArrowDown,
+  ArrowDownUp,
+  ArrowUp,
   Building2,
   ChevronDown,
   ChevronLeft,
@@ -6435,6 +6438,21 @@ type ModuleGridColumn = keyof Pick<
   "code" | "name" | "type" | "modalidade" | "process" | "area" | "owner" | "responsible" | "status" | "updatedAt"
 >;
 
+function ModuleSortGlyph({
+  active,
+  dir,
+}: {
+  active: boolean;
+  dir: ModuleGridSortDir;
+}) {
+  if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
+  return dir === "asc" ? (
+    <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+  ) : (
+    <ArrowDown className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+  );
+}
+
 function compareModuleGridRows(
   a: ModuleGridRow,
   b: ModuleGridRow,
@@ -6644,9 +6662,7 @@ function ModuleDocumentGrid({
                     className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
                   >
                     {label}
-                    <span className="text-[10px]">
-                      {sortField === key ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
-                    </span>
+                    <ModuleSortGlyph active={sortField === key} dir={sortDir} />
                   </button>
                 </th>
               ))}
@@ -6747,7 +6763,7 @@ function ModuleDocumentGrid({
       {pendingStatus ? (
         <Modal
           title="Alterar status do mapeamento"
-          subtitle={`Confirma alterar o status de “${pendingStatus.row.status}” para “${pendingStatus.status}”?`}
+          subtitle={`Confirma alterar o status de "${pendingStatus.row.status}" para "${pendingStatus.status}"?`}
           onClose={() => setPendingStatus(null)}
         >
           <div className="flex justify-end gap-2">
@@ -8177,7 +8193,7 @@ function DdpModule({
     [catalogs.processes],
   );
   const flowProcessOptions = useMemo(() => {
-    const allowedTypes = new Set(["macroprocess", "process", "atividade", "task"]);
+    const allowedTypes = new Set(["process", "subprocess", "atividade", "tarefa"]);
     const base = catalogs.processes.filter(
       (process) => process.status !== "Arquivado" && allowedTypes.has(process.type),
     );
@@ -10271,17 +10287,31 @@ function FixedPanel({ title, children }: { title: string; children: ReactNode })
 
 function MappingSectionsGate({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   return (
-    <fieldset
-      disabled={!enabled}
-      className={[
-        "grid gap-5 transition",
-        enabled
-          ? "opacity-100"
-          : "pointer-events-none opacity-55 [&_section]:border-dashed [&_section]:bg-muted/20",
-      ].join(" ")}
-    >
-      {children}
-    </fieldset>
+    <div className="grid gap-3">
+      <div
+        className={[
+          "rounded-lg border px-4 py-3 text-sm transition",
+          enabled
+            ? "border-[color-mix(in_oklab,var(--gold)_35%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] text-foreground"
+            : "border-dashed border-border bg-muted/30 text-muted-foreground",
+        ].join(" ")}
+      >
+        {enabled
+          ? "Processo selecionado. As seções abaixo estão habilitadas para preenchimento."
+          : "Selecione um processo cadastrado em Dados do processo para habilitar as seções de preenchimento."}
+      </div>
+      <fieldset
+        disabled={!enabled}
+        className={[
+          "grid gap-5 transition",
+          enabled
+            ? "opacity-100"
+            : "pointer-events-none opacity-55 [&_section]:border-dashed [&_section]:bg-muted/20",
+        ].join(" ")}
+      >
+        {children}
+      </fieldset>
+    </div>
   );
 }
 
