@@ -39,15 +39,32 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const technicalMessage = error?.message?.trim();
   useEffect(() => {
     reportError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold">Não foi possível carregar a página</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Tente novamente em alguns instantes.</p>
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+        <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-destructive/10 text-sm font-bold text-destructive">
+          !
+        </div>
+        <h1 className="mt-4 text-xl font-semibold">Nao foi possivel carregar a pagina</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          A navegacao encontrou uma falha inesperada. Tente recarregar a pagina; se o erro
+          continuar, volte para o inicio e acesse novamente o modulo desejado.
+        </p>
+        {technicalMessage ? (
+          <details className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-left">
+            <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
+              Detalhe tecnico
+            </summary>
+            <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
+              {technicalMessage}
+            </pre>
+          </details>
+        ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -58,11 +75,18 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           >
             Tentar de novo
           </button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
+            Recarregar
+          </button>
           <a
             href="/"
             className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
           >
-            Início
+            Inicio
           </a>
         </div>
       </div>
@@ -78,7 +102,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "BF Flow — Workspace de processos" },
       {
         name: "description",
-        content: "Workspace modular para criar, versionar e gerenciar documentos de processo.",
+        content: "Workspace modular para cadastrar processos, registrar mapeamentos e gerenciar documentos.",
       },
     ],
     links: [
