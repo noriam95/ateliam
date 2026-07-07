@@ -1775,7 +1775,10 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
     return (data.ownerUsers ?? []).map((item) => ({
       id: item.id,
       values: [
-        data.owners.find((owner) => owner.id === item.owner_id)?.name || "-",
+        (() => {
+          const owner = data.owners.find((row) => row.id === item.owner_id);
+          return owner ? ownerDisplayName(owner) : "-";
+        })(),
         item.user,
       ],
     }));

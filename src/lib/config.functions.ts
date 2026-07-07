@@ -143,19 +143,6 @@ async function sha256Hex(value: string): Promise<string> {
     .join("");
 }
 
-function processSnapshot(process: z.infer<typeof processSchema>) {
-  return {
-    code: process.code ?? null,
-    name: process.name,
-    type: process.type,
-    parent_process_id: process.parent_process_id ?? null,
-    department: process.department ?? null,
-    owner: process.owner ?? null,
-    description: process.description ?? null,
-    status: process.status,
-  };
-}
-
 async function rolesFor(context: AuthContext, userId = context.userId) {
   const { data, error } = await context.supabase
     .from("user_roles")
@@ -680,7 +667,7 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
       value_chain_id: data.valueChainId ?? null,
       parent_process_id: data.parentProcessId ?? null,
       department: data.department ?? null,
-      owner: data.owner ?? null,
+      owner: data.owner ? cleanOwnerLabel(data.owner, "") : null,
       description: data.description ?? null,
       status: data.status,
       updated_at: new Date().toISOString(),
@@ -922,7 +909,7 @@ export const createOrganizationProcess = createServerFn({ method: "POST" })
         type: data.type,
         parent_process_id: data.parent_process_id || null,
         department: data.department || null,
-        owner: data.owner || null,
+        owner: data.owner ? cleanOwnerLabel(data.owner, "") : null,
         description: data.description || null,
         status: data.status,
         current_version: 1,
@@ -934,16 +921,6 @@ export const createOrganizationProcess = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { error: versionError } = await context.supabase
-      .from("organization_process_versions")
-      .insert({
-        process_id: row.id,
-        organization_id: access.organizationId,
-        version_number: 1,
-        snapshot: processSnapshot(data),
-        created_by: context.userId,
-      });
-    if (versionError) throw new Error(versionError.message);
     return row;
   });
 
@@ -963,7 +940,6 @@ export const updateOrganizationProcess = createServerFn({ method: "POST" })
     if (!access.isMaestro && current.organization_id !== access.organizationId) {
       throw new Error("Você só pode alterar processos da sua organização.");
     }
-    const nextVersion = (current.current_version ?? 0) + 1;
     const { data: row, error } = await context.supabase
       .from("organization_processes")
       .update({
@@ -972,10 +948,9 @@ export const updateOrganizationProcess = createServerFn({ method: "POST" })
         type: data.type,
         parent_process_id: data.parent_process_id || null,
         department: data.department || null,
-        owner: data.owner || null,
+        owner: data.owner ? cleanOwnerLabel(data.owner, "") : null,
         description: data.description || null,
         status: data.status,
-        current_version: nextVersion,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.id)
@@ -985,16 +960,6 @@ export const updateOrganizationProcess = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { error: versionError } = await context.supabase
-      .from("organization_process_versions")
-      .insert({
-        process_id: row.id,
-        organization_id: row.organization_id,
-        version_number: nextVersion,
-        snapshot: processSnapshot(data),
-        created_by: context.userId,
-      });
-    if (versionError) throw new Error(versionError.message);
     return row;
   });
 
@@ -1204,6 +1169,16 @@ function readString(value: unknown, fallback = "-") {
   return text || fallback;
 }
 
+function cleanOwnerLabel(value: unknown, fallback = "-") {
+  const text = readString(value, fallback);
+  if (text === fallback) return text;
+  return (
+    text
+      .replace(/\s*(?:·|•|Â·|Ã‚Â·|-)\s*.*$/u, "")
+      .trim() || text
+  );
+}
+
 function objectAt(value: unknown, key: string): Record<string, unknown> {
   if (!value || typeof value !== "object") return {};
   const nested = (value as Record<string, unknown>)[key];
@@ -1235,7 +1210,7 @@ function dashboardMappingRowFromDocument(document: {
       process: readString(macroprocess.titulo, readString(legacy.processName)),
       modalidade: readString(meta.modalidade, "AS IS"),
       area: readString(legacy.processArea, readString(meta.area)),
-      owner: readString(legacy.processOwner, readString(overview.donoProcesso)),
+      owner: cleanOwnerLabel(legacy.processOwner, cleanOwnerLabel(overview.donoProcesso)),
       responsible: readString(meta.elaborador),
       status: readString(meta.status, "Em andamento"),
       updatedAt: document.updated_at,
@@ -1431,7 +1406,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       name: process.name,
       type: process.type,
       department: process.department,
-      owner: process.owner,
+      owner: cleanOwnerLabel(process.owner, ""),
       status: process.status,
       updatedAt: process.updated_at,
       mappings: mappingsByProcess.get(process.id) ?? [],
@@ -1450,7 +1425,9 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         valueChains: valueChains?.length ?? 0,
       },
       topDepartments: rank((processes ?? []).map((process) => process.department)),
-      topOwners: rank((processes ?? []).map((process) => process.owner)),
+      topOwners: rank((processes ?? []).map((process) =>
+        process.owner ? cleanOwnerLabel(process.owner, "") : null,
+      )),
       mappingRows: dashboardMappingRows,
       mappingStatusCounts,
       documentCatalogRows,

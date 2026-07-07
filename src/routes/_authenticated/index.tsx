@@ -1910,7 +1910,7 @@ function WorkspaceContent({
           </div>
           <h1 className="mt-3 font-display text-3xl font-bold">Documentos da organização</h1>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Consulte mapeamentos, documentações, fluxogramas e versões salvas.
+            Consulte mapeamentos, documentações, fluxogramas e registros salvos.
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
