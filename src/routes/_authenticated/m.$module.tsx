@@ -2147,7 +2147,6 @@ function getDdpExportModel(data: DdpState) {
         { title: "Objetivo", text: data.overview.objetivo },
         { title: "Escopo", text: data.overview.escopo },
         { title: "Contexto", text: data.overview.kpis },
-        { title: "Situação Atual", text: data.overview.estadoAtual },
       ].filter((item) => item.text);
 
   const legacySystems = arrayAt(legacy, "sistemas").map((item, index) => {
@@ -2288,21 +2287,21 @@ function getDdpExportModel(data: DdpState) {
   });
   const nextSteps: ExportNextStep[] = legacyNext.length
     ? legacyNext
-    : data.nextSteps.map((item) => {
-        const parts = item.text.split("|").map((part) => plain(part));
-        return {
-          title: parts[0] || item.text,
-          description: parts[1] || "",
-          owner: item.responsavel || parts[2] || "",
-          due: item.prazo || parts[3] || "",
-        };
-      });
+    : data.nextSteps.map((item) => ({
+        title: plain(item.text),
+        description: "",
+        owner: item.responsavel || "",
+        due: item.prazo || "",
+      }));
 
   const macro = objectAt(legacy, "macroprocesso");
   const currentMacro = data.macroprocess;
 
   return {
     meta: data.meta,
+    // Área e Dono do documento vêm do processo vinculado (preenchido no cadastro).
+    area: textAt(legacy, "processArea") || data.meta.area,
+    owner: textAt(legacy, "processOwner") || data.meta.responsavel,
     description: data.overview.objetivo,
     scope: data.overview.escopo,
     overview: data.overview.estadoAtual,
@@ -3612,15 +3611,14 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       [
         [
           { xml: doc.labelValue("Tipo", "Relatório de Mapeamento de Processo") },
-          { xml: doc.labelValue("Subtítulo", model.meta.subtitulo) },
           { xml: doc.labelValue("Data", model.meta.dataRelatorio || model.meta.data) },
           { xml: doc.labelValue("Modalidade", model.meta.modalidade) },
+          { xml: doc.labelValue("Área", model.area) },
         ],
         [
           { xml: doc.labelValue("Elaborador", model.meta.elaborador), fill: doc.C.gray50 },
           { xml: doc.labelValue("Revisor", model.meta.revisor), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Área", model.meta.area), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Responsável", model.meta.responsavel), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Dono", model.owner), fill: doc.C.gray50, gridSpan: 2 },
         ],
       ],
       [2576, 2576, 2576, 2578],
@@ -3657,18 +3655,16 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [
             [
               doc.headerCell("Sistema"),
-              doc.headerCell("Tipo"),
               doc.headerCell("Descrição"),
               doc.headerCell("Uso"),
             ],
             ...model.systems.map((system) => [
               doc.bodyCell(system.name),
-              doc.bodyCell(system.type),
               doc.bodyCell(system.description),
               doc.bodyCell(system.items.join("; ") || system.description),
             ]),
           ],
-          [2100, 1500, 3900, 2806],
+          [2600, 4500, 3206],
           { full: true },
         )
       : doc.p("Nenhum sistema cadastrado."),
@@ -3793,7 +3789,6 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [{ xml: doc.mixedP("Descrição: ", gap.description || "-"), gridSpan: 3 }],
           [{ xml: doc.mixedP("Impacto esperado: ", gap.impact || "-"), gridSpan: 3 }],
           [{ xml: doc.mixedP("Ação proposta: ", gap.action || "-"), gridSpan: 3 }],
-          [{ xml: doc.mixedP("Como implementar: ", gap.implementation || "-"), gridSpan: 3 }],
         ],
         [3100, 3100, 4106],
         { full: true },
@@ -3809,18 +3804,16 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [
             [
               doc.headerCell("Ação"),
-              doc.headerCell("Descrição"),
               doc.headerCell("Responsável"),
               doc.headerCell("Prazo"),
             ],
             ...model.nextSteps.map((step) => [
               doc.bodyCell(step.title),
-              doc.bodyCell(step.description),
               doc.bodyCell(step.owner || "A definir"),
               doc.bodyCell(step.due || "A definir"),
             ]),
           ],
-          [2600, 4200, 1900, 1606],
+          [5500, 2900, 1906],
           { full: true },
         )
       : doc.p("Nenhum próximo passo cadastrado."),
@@ -4968,10 +4961,13 @@ function ModuleWorkspacePage() {
 
   function brandForDocumentModel(modelKey: DocumentModelRow["model_key"]): OrganizationBrand {
     const model = documentModels.find((item) => item.model_key === modelKey);
+    // A logo do documento usa o que foi configurado no modelo; se o modelo não
+    // tiver logo, cai para a logo da organização; por fim, o nome como texto.
+    const logo = model?.logo_data_url ?? organizationBrand.logo_data_url ?? null;
     return {
-      name: model?.logo_data_url ? organizationBrand.name : "Ateliam",
-      logo_data_url: model?.logo_data_url ?? null,
-      word_header_color: model?.primary_color ?? "1D1F23",
+      name: organizationBrand.name || "Ateliam",
+      logo_data_url: logo,
+      word_header_color: model?.primary_color ?? organizationBrand.word_header_color ?? "1D1F23",
     };
   }
 
@@ -7770,6 +7766,15 @@ function DdpModule({
         </Panel>
       <Panel title="Visão geral" progress={sectionProgress.overview}>
         <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <TextArea
+              label="Situação atual (parágrafo de abertura da Visão Geral)"
+              value={data.overview.estadoAtual}
+              onChange={(estadoAtual) =>
+                update({ ...data, overview: { ...data.overview, estadoAtual } })
+              }
+            />
+          </div>
           <TextArea
             label="Objetivo"
             value={data.overview.objetivo}
