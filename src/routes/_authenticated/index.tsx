@@ -210,6 +210,19 @@ const MAPPING_STATUS_TILES: Array<{
   { key: "concluido", label: "Concluído", color: "#0e8fa6" },
 ];
 
+function normalizeStatusKey(status: string): keyof DashboardMappingStatusCounts | null {
+  const value = status
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase();
+  if (value.includes("andamento")) return "emAndamento";
+  if (value.includes("revisao")) return "emRevisao";
+  if (value.includes("aprov")) return "aprovado";
+  if (value.includes("conclu")) return "concluido";
+  return null;
+}
+
 const DASHBOARD_CARD_CLASS =
   "rounded-lg border border-border bg-card p-5 shadow-sm ring-1 ring-transparent transition-shadow hover:shadow-md";
 type DashboardDocumentType = "Norma" | "POP" | "Instrução" | "Fluxograma" | "Mapeamento";
@@ -1493,6 +1506,25 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
 
   return (
     <div className="grid gap-3">
+      <div className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div>
+          <div className="text-xs font-semibold text-foreground">Consulta somente leitura</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Use esta tabela para acompanhar os registros. Edição, exclusão e mudança de status
+            continuam restritas à consulta de mapeamentos.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          {MAPPING_STATUS_TILES.map((tile) => (
+            <div key={tile.key} className="rounded-md border border-border bg-card px-3 py-2">
+              <div className="font-data text-lg font-bold" style={{ color: tile.color }}>
+                {rows.filter((row) => normalizeStatusKey(row.status) === tile.key).length}
+              </div>
+              <div className="text-[10px] text-muted-foreground">{tile.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-muted-foreground">
           {visibleRows.length} {visibleRows.length === 1 ? "registro" : "registros"}
@@ -1698,6 +1730,13 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
 
   return (
     <div className="grid gap-4">
+      <div className="rounded-lg border border-border bg-muted/30 p-3">
+        <div className="text-xs font-semibold text-foreground">Catálogo por tipo de documento</div>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Alterne entre as abas para consultar os registros por tipo. A tabela preserva filtro e
+          ordenação para facilitar conferência.
+        </p>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1">
           {DOCUMENT_CATALOG_TYPES.map((type) => (
