@@ -129,7 +129,7 @@ type MappingRow = {
   owner: string | null;
   status: string;
   updatedAt: string;
-  mappings: Array<{ name: string; version: number; updatedAt: string }>;
+  mappings: Array<{ name: string; updatedAt: string }>;
 };
 type MappingCoverage = { covered: number; total: number; rows: MappingRow[] };
 
@@ -143,16 +143,16 @@ const PROCESS_TYPE_LABELS: Record<string, string> = {
 
 // Mapeamentos por processo no modo demonstração (espelham os documentos demo do
 // módulo de Mapeamento). Um processo aqui listado conta como "coberto".
-const DEMO_PROCESS_MAPPINGS: Record<string, { name: string; version: number }> = {
-  "Planejamento Estratégico": { name: "MAP.PMO.001 — Planejamento Estratégico", version: 3 },
-  "Gestão de Indicadores e Desempenho": { name: "MAP.PMO.002 — Gestão de Indicadores", version: 2 },
-  "Recrutamento e Seleção": { name: "MAP.RH.001 — Recrutamento e Seleção", version: 1 },
-  "Integração e Onboarding": { name: "MAP.RH.002 — Integração e Onboarding", version: 1 },
-  "Gestão de Demandas de TI": { name: "MAP.TI.001 — Gestão de Demandas de TI", version: 4 },
-  "Gestão de Segurança da Informação": { name: "MAP.TI.002 — Segurança da Informação", version: 1 },
-  "Prospecção e Geração de Leads": { name: "MAP.COM.001 — Prospecção e Leads", version: 2 },
-  "Planejamento da Produção": { name: "MAP.OPE.001 — Planejamento da Produção", version: 1 },
-  "Contas a Receber": { name: "MAP.FIN.001 — Contas a Receber", version: 1 },
+const DEMO_PROCESS_MAPPINGS: Record<string, { name: string }> = {
+  "Planejamento Estratégico": { name: "MAP.PMO.001 — Planejamento Estratégico" },
+  "Gestão de Indicadores e Desempenho": { name: "MAP.PMO.002 — Gestão de Indicadores" },
+  "Recrutamento e Seleção": { name: "MAP.RH.001 — Recrutamento e Seleção" },
+  "Integração e Onboarding": { name: "MAP.RH.002 — Integração e Onboarding" },
+  "Gestão de Demandas de TI": { name: "MAP.TI.001 — Gestão de Demandas de TI" },
+  "Gestão de Segurança da Informação": { name: "MAP.TI.002 — Segurança da Informação" },
+  "Prospecção e Geração de Leads": { name: "MAP.COM.001 — Prospecção e Leads" },
+  "Planejamento da Produção": { name: "MAP.OPE.001 — Planejamento da Produção" },
+  "Contas a Receber": { name: "MAP.FIN.001 — Contas a Receber" },
 };
 
 function buildDemoMappingCoverage(): MappingCoverage {
@@ -167,7 +167,7 @@ function buildDemoMappingCoverage(): MappingCoverage {
       owner: process.owner,
       status: process.status,
       updatedAt: now,
-      mappings: mapping ? [{ name: mapping.name, version: mapping.version, updatedAt: now }] : [],
+      mappings: mapping ? [{ name: mapping.name, updatedAt: now }] : [],
     };
   });
   return {
@@ -2841,7 +2841,14 @@ function getModuleDocuments(
         : index === 0
           ? "Gestão de Demandas de BI Analytics"
           : "Controle de Acesso às Unidades",
-    status: index === 0 ? "Versionado" : "Em revisão",
+    status:
+      moduleId === "ddp"
+        ? index === 0
+          ? "Concluído"
+          : "Em revisão"
+        : index === 0
+          ? "Versionado"
+          : "Em revisão",
     owner: index === 0 ? "PMO / Processos" : "Dono do processo",
   }));
 }
@@ -2851,7 +2858,7 @@ function getModuleFlow(moduleId: AteliamModule) {
     return [
       "Criar ou abrir um mapeamento.",
       "Preencher dados do processo, sistemas, fluxo, SIPOC, causas e próximos passos.",
-      "Salvar uma nova versão no sistema.",
+      "Salvar o preenchimento como registro de mapeamento.",
       "Exportar apresentação HTML e relatório Word no modelo oficial.",
     ];
   }
