@@ -33,7 +33,10 @@ async function main() {
   for (const route of routes) {
     await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle", timeout: 60000 });
     await page.waitForTimeout(700);
-    const body = await page.locator("body").innerText().catch(() => "");
+    const body = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "");
     results.push({
       route,
       url: page.url(),
