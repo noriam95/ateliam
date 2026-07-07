@@ -4960,7 +4960,10 @@ function ModuleWorkspacePage() {
   });
 
   function brandForDocumentModel(modelKey: DocumentModelRow["model_key"]): OrganizationBrand {
-    const model = documentModels.find((item) => item.model_key === modelKey);
+    const models = isDemo
+      ? demoDocumentModels
+      : ((documentModelsQ.data as DocumentModelRow[] | undefined) ?? DEFAULT_DOCUMENT_MODELS);
+    const model = models.find((item) => item.model_key === modelKey);
     // A logo do documento usa o que foi configurado no modelo; se o modelo não
     // tiver logo, cai para a logo da organização; por fim, o nome como texto.
     const logo = model?.logo_data_url ?? organizationBrand.logo_data_url ?? null;
