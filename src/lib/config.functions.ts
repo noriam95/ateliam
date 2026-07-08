@@ -11,10 +11,10 @@ import {
   normalizeSigla,
 } from "@/lib/code-generation";
 
-type AppRole = "maestro" | "admin" | "editor" | "viewer";
+type AppRole = "admin" | "editor" | "viewer";
 type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
 
-const appRoleSchema = z.enum(["maestro", "admin", "editor", "viewer"]);
+const appRoleSchema = z.enum(["admin", "editor", "viewer"]);
 const orgSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(2).max(120),
@@ -165,9 +165,9 @@ async function profileFor(context: AuthContext, userId = context.userId) {
 
 async function permissionContext(context: AuthContext, requestedOrganizationId?: string | null) {
   const [profile, roles] = await Promise.all([profileFor(context), rolesFor(context)]);
-  const isMaestro = roles.includes("maestro");
+  const isAdmin = roles.includes("admin");
   const organizationId = requestedOrganizationId || profile.organization_id;
-  if (organizationId !== profile.organization_id && !isMaestro) {
+  if (organizationId !== profile.organization_id && !isAdmin) {
     const { data: membership, error } = await context.supabase
       .from("user_organization_access")
       .select("organization_id")
@@ -181,38 +181,22 @@ async function permissionContext(context: AuthContext, requestedOrganizationId?:
     profile,
     roles,
     organizationId,
-    isMaestro,
-    isAdmin: roles.includes("admin"),
+    isAdmin,
   };
-}
-
-async function assertMaestro(context: AuthContext) {
-  const access = await permissionContext(context);
-  if (!access.isMaestro) throw new Error("Acesso restrito ao Maestro BF Flow.");
-  return access;
 }
 
 async function assertOrganizationAdmin(context: AuthContext, organizationId?: string) {
   const access = await permissionContext(context, organizationId);
-  if (access.isMaestro) return access;
   if (!access.isAdmin) throw new Error("Acesso restrito a administradores da organização.");
   return access;
 }
 
 async function assertOrganizationEditor(context: AuthContext, organizationId?: string) {
   const access = await permissionContext(context, organizationId);
-  if (access.isMaestro) return access;
   if (!access.roles.some((role) => role === "admin" || role === "editor")) {
     throw new Error("Acesso restrito a administradores e editores da organização.");
   }
   return access;
-}
-
-function rolesAllowedBy(access: Awaited<ReturnType<typeof permissionContext>>, roles: AppRole[]) {
-  if (access.isMaestro) return roles;
-  if (roles.includes("maestro"))
-    throw new Error("Somente o Maestro BF Flow pode conceder Maestro.");
-  return roles.filter((role) => role !== "maestro");
 }
 
 export const getAppConfig = createServerFn({ method: "GET" })
@@ -250,7 +234,7 @@ export const listOrganizations = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const access = await permissionContext(context);
     let query = context.supabase.from("organizations").select("*").order("name", { ascending: true });
-    if (!access.isMaestro) query = query.eq("id", access.organizationId);
+    if (!access.isAdmin) query = query.eq("id", access.organizationId);
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -266,7 +250,7 @@ export const listAccessibleOrganizations = createServerFn({ method: "GET" })
       .select("organization_id, is_default")
       .eq("user_id", context.userId);
     if (membershipError) throw new Error(membershipError.message);
-    if (!access.isMaestro) {
+    if (!access.isAdmin) {
       organizationIds = Array.from(
         new Set([
           access.profile.organization_id,
@@ -294,7 +278,7 @@ export const createOrganization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: z.infer<typeof orgCreateSchema>) => orgCreateSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertMaestro(context);
+    await assertOrganizationAdmin(context);
     const { data: row, error } = await context.supabase
       .from("organizations")
       .insert({
@@ -354,6 +338,44 @@ export const updateOrganization = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+const ORGANIZATION_LINKED_RECORD_CHECKS: Array<{
+  table: "organization_departments" | "organization_process_owners" | "organization_value_chains" | "organization_causes" | "organization_processes" | "documents" | "profiles";
+  label: string;
+}> = [
+  { table: "organization_departments", label: "áreas" },
+  { table: "organization_process_owners", label: "donos de processo" },
+  { table: "organization_value_chains", label: "cadeias de valor" },
+  { table: "organization_causes", label: "causas" },
+  { table: "organization_processes", label: "processos" },
+  { table: "documents", label: "documentos" },
+  { table: "profiles", label: "usuários vinculados" },
+];
+
+export const deleteOrganization = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertOrganizationAdmin(context, data.id);
+
+    for (const check of ORGANIZATION_LINKED_RECORD_CHECKS) {
+      const { count, error } = await context.supabase
+        .from(check.table)
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", data.id);
+      if (error) throw new Error(error.message);
+      if ((count ?? 0) > 0) {
+        throw new Error(
+          `Não é possível excluir: existem ${check.label} vinculados a esta organização.`,
+        );
+      }
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("organizations").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 // Gera o próximo código para um tipo de cadastro e incrementa a sequência da
@@ -937,7 +959,7 @@ export const updateOrganizationProcess = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .single();
     if (currentError) throw new Error(currentError.message);
-    if (!access.isMaestro && current.organization_id !== access.organizationId) {
+    if (!access.isAdmin && current.organization_id !== access.organizationId) {
       throw new Error("Você só pode alterar processos da sua organização.");
     }
     const { data: row, error } = await context.supabase
@@ -1083,7 +1105,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(error.message);
       doc = existing;
-      if (!access.isMaestro && doc.organization_id !== access.organizationId) {
+      if (!access.isAdmin && doc.organization_id !== access.organizationId) {
         throw new Error("Você só pode salvar documentos da sua organização.");
       }
     }
@@ -1452,7 +1474,7 @@ export const listUserAccess = createServerFn({ method: "GET" })
       .from("profiles")
       .select("id, email, display_name, organization_id, created_at, updated_at")
       .order("created_at", { ascending: true });
-    if (!access.isMaestro) {
+    if (!access.isAdmin) {
       const { data: scopedMemberships, error: scopedError } = await supabaseAdmin
         .from("user_organization_access")
         .select("user_id")
@@ -1521,12 +1543,12 @@ export const updateUserAccess = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const targetProfile = await profileFor(context, data.userId);
     const targetOrgId = data.organizationId ?? targetProfile.organization_id;
-    const access = await assertOrganizationAdmin(context, targetOrgId);
-    const nextRoles = rolesAllowedBy(access, data.roles);
+    await assertOrganizationAdmin(context, targetOrgId);
+    const nextRoles = data.roles;
 
     if (
       data.userId === context.userId &&
-      !nextRoles.some((role) => role === "admin" || role === "maestro")
+      !nextRoles.some((role) => role === "admin")
     ) {
       throw new Error("Você não pode remover seu próprio acesso administrativo.");
     }
@@ -1601,10 +1623,10 @@ export const createUserAccess = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationAdmin(context, data.organizationId ?? undefined);
-    const organizationId = access.isMaestro
+    const organizationId = access.isAdmin
       ? data.organizationId || access.organizationId
       : access.organizationId;
-    const roles = rolesAllowedBy(access, data.roles);
+    const roles = data.roles;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -1659,6 +1681,21 @@ export const createUserAccess = createServerFn({ method: "POST" })
     return { ok: true, userId };
   });
 
+export const deleteUserAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const targetProfile = await profileFor(context, data.userId);
+    await assertOrganizationAdmin(context, targetProfile.organization_id);
+    if (data.userId === context.userId) {
+      throw new Error("Você não pode excluir seu próprio usuário.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const updateAppConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(
@@ -1676,7 +1713,7 @@ export const updateAppConfig = createServerFn({ method: "POST" })
         .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertMaestro(context);
+    await assertOrganizationAdmin(context);
     const { error } = await context.supabase
       .from("app_config")
       .update({ ...data, updated_at: new Date().toISOString() })
@@ -1717,7 +1754,6 @@ export const getMe = createServerFn({ method: "GET" })
       profile,
       organization,
       roles,
-      isMaestro: roles.includes("maestro"),
       isOrganizationAdmin: roles.includes("admin"),
     };
   });

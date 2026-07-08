@@ -4381,8 +4381,7 @@ function ModuleWorkspacePage() {
     accessibleOrganizations.find((organization) => organization.id === selectedOrganizationId) ??
     null;
 
-  const canListUsers =
-    !isDemo && !!meQ.data?.roles?.some((role) => role === "maestro" || role === "admin");
+  const canListUsers = !isDemo && !!meQ.data?.roles?.some((role) => role === "admin");
   const usersQ = useQuery({
     queryKey: ["module-users", isDemo ? "demo" : (selectedOrganizationId ?? "cloud")],
     queryFn: () => listUsers({ data: { organizationId: selectedOrganizationId } }),
