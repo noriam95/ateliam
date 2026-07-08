@@ -1009,7 +1009,7 @@ export function WorkspaceProcessRegistrations({
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-            cadastros · {organizationName}
+            processos · cadastros
           </div>
           <h1 className="mt-2 font-display text-3xl font-bold">{copy.title}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
