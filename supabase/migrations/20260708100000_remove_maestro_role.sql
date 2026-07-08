@@ -8,7 +8,18 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   SELECT public.has_role(_user_id, 'admin')
 $$;
 
--- Defensive: reassign any leftover 'maestro' rows to 'admin' (no-op if none exist).
+-- Defensive: reassign any leftover 'maestro' rows to 'admin' (no-op if none
+-- exist). Some users hold both 'maestro' and 'admin' already (the old
+-- trigger granted both to the first user), so drop the now-redundant
+-- 'maestro' row for those first to avoid colliding with the existing
+-- 'admin' row on the (user_id, role) unique constraint.
+DELETE FROM public.user_roles ur
+WHERE ur.role = 'maestro'
+  AND EXISTS (
+    SELECT 1 FROM public.user_roles ur2
+    WHERE ur2.user_id = ur.user_id AND ur2.role = 'admin'
+  );
+
 UPDATE public.user_roles SET role = 'admin' WHERE role = 'maestro';
 
 -- Never grant 'maestro' to new users again; the trigger already stopped doing
