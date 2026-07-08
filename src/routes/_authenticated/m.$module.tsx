@@ -7525,9 +7525,9 @@ function DdpModule({
       data.meta.elaborador,
       data.meta.revisor,
     ]),
+    scope: completionPercent([data.overview.escopo]),
     overview: completionPercent([
       data.overview.objetivo,
-      data.overview.escopo,
       data.overview.frequencia,
       data.overview.kpis,
       data.overview.dores,
@@ -7769,6 +7769,14 @@ function DdpModule({
           />
         </div>
         </Panel>
+      <Panel title="Abrangência / Escopo do Mapeamento" progress={sectionProgress.scope}>
+        <TextArea
+          label="Abrangência / Escopo"
+          value={data.overview.escopo}
+          onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
+          rows={8}
+        />
+      </Panel>
       <Panel title="Visão geral" progress={sectionProgress.overview}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -7784,11 +7792,6 @@ function DdpModule({
             label="Objetivo"
             value={data.overview.objetivo}
             onChange={(objetivo) => update({ ...data, overview: { ...data.overview, objetivo } })}
-          />
-          <TextArea
-            label="Escopo"
-            value={data.overview.escopo}
-            onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
           />
           <SelectField
             label="Frequência"
@@ -9877,10 +9880,12 @@ function TextArea({
   label,
   value,
   onChange,
+  rows = 5,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  rows?: number;
 }) {
   return (
     <label className="block">
@@ -9888,7 +9893,7 @@ function TextArea({
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        rows={5}
+        rows={rows}
         className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
       />
     </label>
