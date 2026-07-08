@@ -5920,37 +5920,37 @@ function ModuleSettingsPanel({
 }) {
   const copy: Record<string, { eyebrow: string; title: string; text: string }> = {
     appearance: {
-      eyebrow: "configurações",
+      eyebrow: "configurações · aparência",
       title: "Aparência",
       text: `Ajuste a experiência visual do workspace para a organização ${organizationName}.`,
     },
     theme: {
-      eyebrow: "configurações",
+      eyebrow: "configurações · aparência",
       title: "Tema",
       text: "Controle tema claro, escuro e preferência automática do navegador.",
     },
     preferences: {
-      eyebrow: "configurações",
+      eyebrow: "configurações · aparência",
       title: "Preferências",
       text: "Defina comportamento padrão, densidade visual e preferências gerais do workspace.",
     },
     "visual-identity": {
-      eyebrow: "identidade visual",
+      eyebrow: "configurações · identidade visual",
       title: "Identidade visual",
       text: "Configure logo, cores institucionais e personalização dos cabeçalhos dos documentos exportados.",
     },
     integrations: {
-      eyebrow: "configurações",
+      eyebrow: "configurações · integrações",
       title: "Integrações",
       text: "Gerencie conexões do sistema, serviços externos e integrações técnicas.",
     },
     "local-environment": {
-      eyebrow: "configurações",
+      eyebrow: "configurações · ambiente local",
       title: "Ambiente de teste/local",
       text: "Controle recursos locais de teste sem expor ações técnicas na navegação dos módulos.",
     },
     profile: {
-      eyebrow: "perfil e acesso",
+      eyebrow: "configurações · perfil",
       title: "Perfil",
       text: "Use o avatar no canto superior direito para adicionar sua foto, trocar a senha ou sair do sistema.",
     },
@@ -5958,7 +5958,7 @@ function ModuleSettingsPanel({
   const item = copy[view];
   return (
     <section className="rounded-lg border border-border bg-card p-6">
-      <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
         {item.eyebrow}
       </div>
       <h1 className="mt-3 font-display text-3xl font-bold text-foreground">{item.title}</h1>
@@ -7660,7 +7660,11 @@ function DdpModule({
           }}
         />
       ) : null}
-      <Hero title="Formulário de Preenchimento" eyebrow="Mapeamento" progress={completion} />
+      <Hero
+        title="Formulário de Preenchimento"
+        eyebrow="Processos · Mapeamento"
+        progress={completion}
+      />
       <FixedPanel title="Dados do processo">
         <RegisteredProcessSelect
           required
@@ -8532,7 +8536,11 @@ function PopModule({
 
   return (
     <div className="grid gap-5">
-      <Hero title="Documento Normativo e Operacional" eyebrow="Documentação" progress={completion}>
+      <Hero
+        title="Documento Normativo e Operacional"
+        eyebrow="Processos · Documentação"
+        progress={completion}
+      >
         Crie Norma, POP ou IT com identificação completa, premissas, conteúdo, responsabilidades,
         referências, histórico e controle de alterações.
       </Hero>
@@ -9170,7 +9178,7 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
     <div className="grid gap-5">
       <Hero
         title="Editor de fluxograma"
-        eyebrow="Fluxo de atividades"
+        eyebrow="Processos · Fluxograma"
         progress={data.nodes.length ? 100 : 0}
       >
         Um modelador visual leve para desenhar fluxo, movimentar elementos e exportar o diagrama.

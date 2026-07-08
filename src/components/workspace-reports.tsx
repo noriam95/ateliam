@@ -263,7 +263,7 @@ function ValueChainReport({
   return (
     <section className="grid gap-4">
       <div className="rounded-lg border border-border bg-card p-6">
-        <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
           cadeia de valor · cadastro
         </div>
         <h1 className="mt-3 font-display text-3xl font-bold">Cadeia de Valor</h1>
