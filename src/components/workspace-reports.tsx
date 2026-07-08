@@ -190,7 +190,7 @@ function ValueChainReport({
       });
     },
     onSuccess: async () => {
-      toast.success("Cadeia de valor salva.");
+      toast.success("Macroprocesso salvo.");
       setEditingChain(null);
       if (!isDemo) await catalogsQ.refetch();
     },
@@ -206,7 +206,7 @@ function ValueChainReport({
       await deleteChainFn({ data: { organizationId, kind: "value-chain", id } });
     },
     onSuccess: async () => {
-      toast.success("Cadeia de valor excluída.");
+      toast.success("Macroprocesso excluído.");
       if (!isDemo) await catalogsQ.refetch();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -259,7 +259,6 @@ function ValueChainReport({
   const primary = filteredChains.filter((c) => c.category === "primary");
   const support = filteredChains.filter((c) => c.category === "support");
   const management = filteredChains.filter((c) => c.category === "management");
-  const isEmpty = chains.length === 0 && !catalogsQ.isLoading;
 
   return (
     <section className="grid gap-4">
@@ -275,18 +274,6 @@ function ValueChainReport({
 
       {catalogsQ.isLoading && !isDemo ? (
         <LoadingSkeleton />
-      ) : isEmpty ? (
-        <EmptyState
-          onNewChain={() =>
-            setEditingChain({
-              id: null,
-              name: "",
-              category: "primary",
-              description: "",
-              status: "Ativa",
-            })
-          }
-        />
       ) : (
         <>
           <PorterDiagram
@@ -383,13 +370,13 @@ function ChainActionConfirm({
   const isDelete = action.type === "delete";
   const willActivate = action.type === "toggle" && !isActiveChain(action.chain);
   const title = isDelete
-    ? "Excluir cadeia de valor"
+    ? "Excluir Macroprocesso"
     : willActivate
-      ? "Ativar cadeia de valor"
-      : "Desativar cadeia de valor";
+      ? "Ativar Macroprocesso"
+      : "Desativar Macroprocesso";
   const message = isDelete
-    ? `Confirma excluir a cadeia de valor "${action.chain.name}"? Esta ação não pode ser desfeita.`
-    : `Confirma ${willActivate ? "ativar" : "desativar"} a cadeia de valor "${action.chain.name}"?`;
+    ? `Confirma excluir o Macroprocesso "${action.chain.name}"? Esta ação não pode ser desfeita.`
+    : `Confirma ${willActivate ? "ativar" : "desativar"} o Macroprocesso "${action.chain.name}"?`;
   const confirmLabel = isDelete ? "Excluir" : willActivate ? "Ativar" : "Desativar";
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]">
@@ -1048,7 +1035,7 @@ function ConsultationTable({
                         <button
                           type="button"
                           title="Editar"
-                          aria-label="Editar cadeia de valor"
+                          aria-label="Editar Macroprocesso"
                           onClick={() => onEditChain(chain)}
                           className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
@@ -1057,7 +1044,7 @@ function ConsultationTable({
                         <button
                           type="button"
                           title="Excluir"
-                          aria-label="Excluir cadeia de valor"
+                          aria-label="Excluir Macroprocesso"
                           onClick={() => onDeleteChain(chain)}
                           className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
@@ -1071,7 +1058,7 @@ function ConsultationTable({
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-8 text-center text-sm text-muted-foreground">
-                    Nenhuma cadeia de valor encontrada com os filtros atuais.
+                    Nenhum Macroprocesso encontrado com os filtros atuais.
                   </td>
                 </tr>
               )}
@@ -1450,7 +1437,7 @@ function ValueChainForm({
       <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-xl">
         <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
           <h2 className="font-display text-lg font-bold">
-            {draft.id ? "Editar cadeia de valor" : "Nova cadeia de valor"}
+            {draft.id ? "Editar Macroprocesso" : "Novo Macroprocesso"}
           </h2>
           <button
             type="button"
@@ -1553,26 +1540,15 @@ function ValueChainForm({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function EmptyState({ onNewChain }: { onNewChain?: () => void }) {
+function EmptyState() {
   return (
     <div className="grid place-items-center rounded-lg border border-border bg-card py-16">
       <div className="grid place-items-center gap-3 text-center">
         <Network className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-sm font-semibold text-foreground">Nenhuma cadeia cadastrada</p>
+        <p className="text-sm font-semibold text-foreground">Nenhum Macroprocesso cadastrado</p>
         <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-          {onNewChain
-            ? "Cadastre processos de gestão, negócios e suporte para montar a cadeia de valor."
-            : "Acesse Cadeia de Valor → Cadastro para adicionar processos de gestão, negócios e suporte."}
+          Acesse Cadeia de Valor → Cadastro para adicionar processos de gestão, negócios e suporte.
         </p>
-        {onNewChain ? (
-          <button
-            type="button"
-            onClick={onNewChain}
-            className="mt-1 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90"
-          >
-            <Plus className="h-4 w-4" /> Nova cadeia de valor
-          </button>
-        ) : null}
       </div>
     </div>
   );
