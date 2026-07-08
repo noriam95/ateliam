@@ -6371,8 +6371,8 @@ function ModuleDocumentGrid({
       <header className="border-b border-border bg-card px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {moduleDocumentLabel(moduleId)}
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+              processos · {moduleDocumentLabel(moduleId)}
             </div>
             <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
           </div>
@@ -6900,8 +6900,8 @@ function DdpCausesModuleV2({
         <header className="border-b border-border bg-card px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Causas
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+                processos · mapeamento · causas
               </div>
               <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
             </div>
