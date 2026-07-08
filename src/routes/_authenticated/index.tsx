@@ -2583,12 +2583,8 @@ function ModuleWorkspacePanel({
       <section className="rounded-lg border border-border bg-card p-5 shadow-[0_24px_70px_-55px_rgba(0,0,0,.75)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              <span>workspace</span>
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/60" />
-              <span>módulos</span>
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/60" />
-              <span>{module.glyph}</span>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+              processos · {module.title}
             </div>
             <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-4xl">
               {module.title}
