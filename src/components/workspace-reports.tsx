@@ -276,7 +276,17 @@ function ValueChainReport({
       {catalogsQ.isLoading && !isDemo ? (
         <LoadingSkeleton />
       ) : isEmpty ? (
-        <EmptyState />
+        <EmptyState
+          onNewChain={() =>
+            setEditingChain({
+              id: null,
+              name: "",
+              category: "primary",
+              description: "",
+              status: "Ativa",
+            })
+          }
+        />
       ) : (
         <>
           <PorterDiagram
@@ -1543,15 +1553,26 @@ function ValueChainForm({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ onNewChain }: { onNewChain?: () => void }) {
   return (
     <div className="grid place-items-center rounded-lg border border-border bg-card py-16">
       <div className="grid place-items-center gap-3 text-center">
         <Network className="h-10 w-10 text-muted-foreground/40" />
         <p className="text-sm font-semibold text-foreground">Nenhuma cadeia cadastrada</p>
         <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-          Acesse Cadeia de Valor → Cadastro para adicionar processos de gestão, negócios e suporte.
+          {onNewChain
+            ? "Cadastre processos de gestão, negócios e suporte para montar a cadeia de valor."
+            : "Acesse Cadeia de Valor → Cadastro para adicionar processos de gestão, negócios e suporte."}
         </p>
+        {onNewChain ? (
+          <button
+            type="button"
+            onClick={onNewChain}
+            className="mt-1 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" /> Nova cadeia de valor
+          </button>
+        ) : null}
       </div>
     </div>
   );
