@@ -7466,12 +7466,6 @@ function DdpModule({
   }
 
   const selectedProcessValueChain = findProcessValueChain(selectedProcess);
-  const processDataFields = [
-    { label: "Código do processo", value: selectedProcess?.code ?? "" },
-    { label: "Cadeia de valor", value: selectedProcessValueChain?.name ?? "" },
-    { label: "Área / Departamento", value: selectedProcess?.department ?? "" },
-    { label: "Responsável / Dono", value: selectedProcess?.owner ?? "" },
-  ];
 
   function selectPrimaryProcess(process: OrganizationProcess | null) {
     const valueChain = findProcessValueChain(process);
@@ -7686,11 +7680,6 @@ function DdpModule({
             valueChain={selectedProcessValueChain?.name ?? ""}
           />
         ) : null}
-        <div className="mt-4 grid gap-4 md:grid-cols-4">
-          {processDataFields.map((field) => (
-            <ReadOnlyField key={field.label} label={field.label} value={field.value} />
-          ))}
-        </div>
         {!selectedProcess ? (
           <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
             Selecione um processo cadastrado para habilitar o preenchimento do mapeamento.
@@ -7738,12 +7727,12 @@ function DdpModule({
             value={data.meta.titulo}
             onChange={(titulo) => update({ ...data, meta: { ...data.meta, titulo } })}
           />
-          <Field
-            label="Data"
-            type="date"
-            value={data.meta.data}
-            onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
-          />
+          {/* Ordem abaixo espelha a tabela de identificação do relatório Word
+              (Tipo/Dono/Área/Modalidade, Elaborador/Revisor/Data). Tipo, Dono e
+              Área são automáticos — não editáveis aqui. */}
+          <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
+          <ReadOnlyField label="Dono" value={selectedProcess?.owner ?? ""} />
+          <ReadOnlyField label="Área" value={selectedProcess?.department ?? ""} />
           <SelectField
             label="Modalidade"
             value={data.meta.modalidade || "AS IS"}
@@ -7765,6 +7754,12 @@ function DdpModule({
             label="Revisor"
             value={data.meta.revisor}
             onChange={(revisor) => update({ ...data, meta: { ...data.meta, revisor } })}
+          />
+          <Field
+            label="Data"
+            type="date"
+            value={data.meta.data}
+            onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
           />
           <SelectField
             label="Status"
