@@ -3375,7 +3375,7 @@ function createDocxContext(params: {
   function imageParagraph(
     dataUri: string,
     title: string,
-    widthIn = 6.7,
+    widthIn = 7.0,
     maxH = 4.6,
     scope: DocxMedia["scope"] = "document",
   ) {
@@ -3664,7 +3664,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
               doc.bodyCell(system.items.join("; ") || system.description),
             ]),
           ],
-          [2600, 4500, 3206],
+          [2600, 4200, 3506],
           { full: true },
         )
       : doc.p("Nenhum sistema cadastrado."),
@@ -3683,7 +3683,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     }
   }
   model.flowSteps.forEach((step, index) => {
-    parts.push(doc.subTitle(`${String(index + 1).padStart(2, "0")} - ${step.title || "Etapa"}`));
+    parts.push(doc.subTitle(`${String(index + 1).padStart(2, "0")} — ${step.title || "Etapa"}`));
     parts.push(doc.p(step.description, { align: "both", line: 1.05 }));
     if (step.owner || step.system || step.risk) {
       parts.push(
@@ -3722,7 +3722,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
               doc.bodyCell(substep.description),
             ]),
           ],
-          [900, 3000, 6406],
+          [1000, 3100, 6206],
           { full: true },
         ),
       );
@@ -3770,7 +3770,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
         [
           [
             {
-              xml: doc.p(`${String(index + 1).padStart(2, "0")} - ${gap.title || "Causa-raiz"}`, {
+              xml: doc.p(`${String(index + 1).padStart(2, "0")} — ${gap.title || "Causa-raiz"}`, {
                 size: 11.5,
                 bold: true,
                 caps: true,
@@ -3786,9 +3786,9 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
             doc.bodyCell(`Responsável: ${gap.owner || "-"}`),
             doc.bodyCell(`Prazo: ${gap.due || "-"}`),
           ],
-          [{ xml: doc.mixedP("Descrição: ", gap.description || "-"), gridSpan: 3 }],
-          [{ xml: doc.mixedP("Impacto esperado: ", gap.impact || "-"), gridSpan: 3 }],
-          [{ xml: doc.mixedP("Ação proposta: ", gap.action || "-"), gridSpan: 3 }],
+          [{ xml: doc.mixedP("Descrição: ", gap.description || "-", { size: 9 }), gridSpan: 3 }],
+          [{ xml: doc.mixedP("Impacto esperado: ", gap.impact || "-", { size: 9 }), gridSpan: 3 }],
+          [{ xml: doc.mixedP("Ação proposta: ", gap.action || "-", { size: 9 }), gridSpan: 3 }],
         ],
         [3100, 3100, 4106],
         { full: true },
@@ -3813,7 +3813,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
               doc.bodyCell(step.due || "A definir"),
             ]),
           ],
-          [5500, 2900, 1906],
+          [6800, 1900, 1606],
           { full: true },
         )
       : doc.p("Nenhum próximo passo cadastrado."),
