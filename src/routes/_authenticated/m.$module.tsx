@@ -3530,7 +3530,7 @@ function createDocxContext(params: {
     const headerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:tbl><w:tblPr><w:tblW w:w="${PAGE_W}" w:type="dxa"/><w:tblInd w:w="-${MARGIN_X}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="8334"/><w:gridCol w:w="3572"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val="1590" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="8334" w:type="dxa"/><w:shd w:fill="${C.green}"/><w:vAlign w:val="center"/><w:tcMar><w:top w:w="240" w:type="dxa"/><w:left w:w="680" w:type="dxa"/><w:bottom w:w="220" w:type="dxa"/><w:right w:w="220" w:type="dxa"/></w:tcMar></w:tcPr>${p(
       params.code,
       { size: 10, bold: true, color: C.white, after: 6 },
-    )}${p(params.title, { size: 20, bold: true, color: C.white, after: 0, line: 1 })}</w:tc><w:tc><w:tcPr><w:tcW w:w="3572" w:type="dxa"/><w:shd w:fill="${C.green}"/><w:vAlign w:val="center"/></w:tcPr>${headerBrandXml}</w:tc></w:tr><w:tr><w:trPr><w:trHeight w:val="70" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="${PAGE_W}" w:type="dxa"/><w:shd w:fill="${C.headerLine}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="2"/></w:rPr><w:t> </w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:hdr>`;
+    )}${p(params.title, { size: 20, bold: true, color: C.white, after: 0, line: 1 })}</w:tc><w:tc><w:tcPr><w:tcW w:w="3572" w:type="dxa"/><w:tcBorders><w:left w:val="single" w:sz="16" w:space="0" w:color="${C.white}"/></w:tcBorders><w:shd w:fill="${C.green}"/><w:vAlign w:val="center"/></w:tcPr>${headerBrandXml}</w:tc></w:tr><w:tr><w:trPr><w:trHeight w:val="70" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="${PAGE_W}" w:type="dxa"/><w:shd w:fill="${C.headerLine}"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="2"/></w:rPr><w:t> </w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:hdr>`;
     const footerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:tbl><w:tblPr><w:tblW w:w="${CONTENT_W}" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:color="${C.gray300}" w:sz="6"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="7000"/><w:gridCol w:w="3306"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="7000" w:type="dxa"/></w:tcPr>${p(
       params.footerLeft,
       { size: 8, color: C.gray600, after: 0 },
@@ -3611,14 +3611,18 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       [
         [
           { xml: doc.labelValue("Tipo", "Relatório de Mapeamento de Processo") },
-          { xml: doc.labelValue("Data", model.meta.dataRelatorio || model.meta.data) },
-          { xml: doc.labelValue("Modalidade", model.meta.modalidade) },
+          { xml: doc.labelValue("Dono", model.owner) },
           { xml: doc.labelValue("Área", model.area) },
+          { xml: doc.labelValue("Modalidade", model.meta.modalidade) },
         ],
         [
           { xml: doc.labelValue("Elaborador", model.meta.elaborador), fill: doc.C.gray50 },
           { xml: doc.labelValue("Revisor", model.meta.revisor), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Dono", model.owner), fill: doc.C.gray50, gridSpan: 2 },
+          {
+            xml: doc.labelValue("Data", model.meta.dataRelatorio || model.meta.data),
+            fill: doc.C.gray50,
+            gridSpan: 2,
+          },
         ],
       ],
       [2576, 2576, 2576, 2578],
