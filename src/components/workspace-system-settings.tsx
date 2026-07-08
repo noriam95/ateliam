@@ -122,6 +122,8 @@ import { BFFlowMark } from "@/components/bf-flow-mark";
 import {
   createOrganization,
   createUserAccess,
+  deleteOrganization,
+  deleteUserAccess,
   listAccessibleOrganizations,
   listOrganizationDocumentModels,
   listUserAccess,
@@ -139,7 +141,7 @@ import {
 
 export type WorkspaceSystemSettingsView = "users" | "organizations" | "document-models";
 
-type AppRole = "maestro" | "admin" | "editor" | "viewer";
+type AppRole = "admin" | "editor" | "viewer";
 type OrganizationRow = {
   id: string;
   name: string;
@@ -202,11 +204,48 @@ function defaultModelsForOrganization(color: string) {
 }
 
 const roleLabels: Record<AppRole, string> = {
-  maestro: "Maestro BF Flow",
   admin: "Administrador",
   editor: "Editor",
   viewer: "Consulta",
 };
+
+function Modal({
+  title,
+  subtitle,
+  children,
+  onClose,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-lg border border-border bg-card p-5 text-foreground shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black tracking-tight">{title}</h2>
+            {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+          </div>
+          <button
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function WorkspaceSystemSettings({
   view,
@@ -223,9 +262,11 @@ export function WorkspaceSystemSettings({
   const listOrgs = useServerFn(listAccessibleOrganizations);
   const createOrg = useServerFn(createOrganization);
   const updateOrg = useServerFn(updateOrganization);
+  const deleteOrg = useServerFn(deleteOrganization);
   const listUsers = useServerFn(listUserAccess);
   const createUser = useServerFn(createUserAccess);
   const updateUser = useServerFn(updateUserAccess);
+  const deleteUser = useServerFn(deleteUserAccess);
   const listDocumentModels = useServerFn(listOrganizationDocumentModels);
   const saveDocumentModel = useServerFn(saveOrganizationDocumentModel);
 
@@ -381,6 +422,25 @@ export function WorkspaceSystemSettings({
           await queryClient.invalidateQueries({ queryKey: ["organization-dashboard"] });
           return row as OrganizationRow;
         }}
+        onDelete={async (row) => {
+          if (isDemo) {
+            if (row.id === "demo-bom-futuro") {
+              throw new Error(
+                "Não é possível excluir: existem cadastros vinculados a esta organização.",
+              );
+            }
+            setDemoOrganizations((current) => {
+              const next = current.filter((item) => item.id !== row.id);
+              window.localStorage.setItem("ateliam-demo-organizations", JSON.stringify(next));
+              window.dispatchEvent(new Event("ateliam-organizations-changed"));
+              return next;
+            });
+            return;
+          }
+          await deleteOrg({ data: { id: row.id } });
+          await organizationsQ.refetch();
+          await queryClient.invalidateQueries({ queryKey: ["organization-dashboard"] });
+        }}
       />
     );
   }
@@ -452,6 +512,14 @@ export function WorkspaceSystemSettings({
         }
         await usersQ.refetch();
       }}
+      onDelete={async (row) => {
+        if (isDemo) {
+          setDemoUsers((current) => current.filter((item) => item.id !== row.id));
+          return;
+        }
+        await deleteUser({ data: { userId: row.id } });
+        await usersQ.refetch();
+      }}
     />
   );
 }
@@ -466,6 +534,7 @@ function OrganizationsSettings({
   demoDocumentModels,
   setDemoDocumentModels,
   onSave,
+  onDelete,
 }: {
   isDemo: boolean;
   rows: OrganizationRow[];
@@ -474,10 +543,13 @@ function OrganizationsSettings({
   demoDocumentModels: DocumentModelRow[];
   setDemoDocumentModels: Dispatch<SetStateAction<DocumentModelRow[]>>;
   onSave: (draft: OrganizationDraft) => Promise<OrganizationRow>;
+  onDelete: (row: OrganizationRow) => Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const listDocumentModels = useServerFn(listOrganizationDocumentModels);
   const saveDocumentModel = useServerFn(saveOrganizationDocumentModel);
+  const [pendingDelete, setPendingDelete] = useState<OrganizationRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const emptyDraft = (): OrganizationDraft => ({
     id: "",
     name: "",
@@ -564,6 +636,22 @@ function OrganizationsSettings({
     reader.readAsDataURL(file);
   }
 
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete(pendingDelete);
+      toast.success("Organização excluída.");
+      setPendingDelete(null);
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível excluir a organização.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <SettingsSurface
       eyebrow="configurações · administração"
@@ -621,17 +709,27 @@ function OrganizationsSettings({
                   </td>
                   <td className="px-3 py-3 text-muted-foreground">{row.slug}</td>
                   <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDraft(row);
-                        setFormOpen(true);
-                      }}
-                      className={iconButtonClass}
-                      title="Editar organização"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraft(row);
+                          setFormOpen(true);
+                        }}
+                        className={iconButtonClass}
+                        title="Editar organização"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingDelete(row)}
+                        className={iconButtonClass}
+                        title="Excluir organização"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -773,6 +871,33 @@ function OrganizationsSettings({
             </div>
             </form>
           </div>
+        ) : null}
+
+        {pendingDelete ? (
+          <Modal
+            title="Excluir organização"
+            subtitle={`Confirma excluir a organização "${pendingDelete.name}"? Só é possível excluir organizações sem nenhum cadastro vinculado.`}
+            onClose={() => setPendingDelete(null)}
+          >
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleting ? "Excluindo..." : "Excluir"}
+              </button>
+            </div>
+          </Modal>
         ) : null}
       </div>
     </SettingsSurface>
@@ -1091,13 +1216,17 @@ function UsersSettings({
   loading,
   error,
   onSave,
+  onDelete,
 }: {
   rows: UserAccessRow[];
   organizations: OrganizationRow[];
   loading: boolean;
   error: unknown;
   onSave: (draft: UserDraft) => Promise<void>;
+  onDelete: (row: UserAccessRow) => Promise<void>;
 }) {
+  const [pendingDelete, setPendingDelete] = useState<UserAccessRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const emptyDraft = (): UserDraft => ({
     id: "",
     email: "",
@@ -1156,6 +1285,20 @@ function UsersSettings({
       role,
     });
     setFormOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete(pendingDelete);
+      toast.success("Usuário excluído.");
+      setPendingDelete(null);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível excluir o usuário.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function toggleOrganization(organizationId: string) {
@@ -1249,14 +1392,24 @@ function UsersSettings({
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      onClick={() => edit(row)}
-                      className={iconButtonClass}
-                      title="Editar usuário"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => edit(row)}
+                        className={iconButtonClass}
+                        title="Editar usuário"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingDelete(row)}
+                        className={iconButtonClass}
+                        title="Excluir usuário"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1401,6 +1554,33 @@ function UsersSettings({
             </div>
             </form>
           </div>
+        ) : null}
+
+        {pendingDelete ? (
+          <Modal
+            title="Excluir usuário"
+            subtitle={`Confirma excluir o acesso de "${pendingDelete.display_name || pendingDelete.email}"?`}
+            onClose={() => setPendingDelete(null)}
+          >
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleting ? "Excluindo..." : "Excluir"}
+              </button>
+            </div>
+          </Modal>
         ) : null}
       </div>
     </SettingsSurface>

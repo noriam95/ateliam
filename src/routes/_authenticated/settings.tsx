@@ -54,9 +54,8 @@ function Settings() {
 
   const meQ = useQuery({ queryKey: ["me"], queryFn: () => me(), enabled: !isDemo });
   const cfgQ = useQuery({ queryKey: ["cfg"], queryFn: () => getCfg(), enabled: !isDemo });
-  const isMaestro = !isDemo && meQ.data?.roles?.includes("maestro");
   const isAdmin = !isDemo && meQ.data?.roles?.includes("admin");
-  const canAdmin = isDemo || isMaestro || isAdmin;
+  const canAdmin = isDemo || isAdmin;
   const organizationsQ = useQuery({
     queryKey: ["organizations"],
     queryFn: () => listOrgs(),
@@ -68,7 +67,7 @@ function Settings() {
     enabled: !isDemo && canAdmin,
   });
 
-  const effectiveRoles = isDemo ? ["maestro", "admin", "editor"] : (meQ.data?.roles ?? []);
+  const effectiveRoles = isDemo ? ["admin", "editor"] : (meQ.data?.roles ?? []);
   const [siteId, setSiteId] = useState("");
   const [driveId, setDriveId] = useState("");
   const [folder, setFolder] = useState("/BFFlow");
@@ -336,8 +335,7 @@ function Settings() {
 
         {!isDemo && !canAdmin && (
           <div className="bg-secondary border border-border rounded-lg p-4 text-sm text-muted-foreground">
-            Apenas administradores da organização ou o Maestro BF Flow podem alterar essas
-            configurações.
+            Apenas administradores da organização podem alterar essas configurações.
           </div>
         )}
 
@@ -399,11 +397,8 @@ function Settings() {
               </div>
               <div className="mt-3 space-y-2 text-sm text-muted-foreground">
                 <p>
-                  <strong className="text-foreground">Maestro BF Flow:</strong> gerencia o sistema e
-                  todas as organizações.
-                </p>
-                <p>
-                  <strong className="text-foreground">Admin:</strong> configura sistema e usuários.
+                  <strong className="text-foreground">Admin:</strong> gerencia o sistema, todas as
+                  organizações e usuários.
                 </p>
                 <p>
                   <strong className="text-foreground">Editor:</strong> cria e versiona documentos.
@@ -431,11 +426,11 @@ function Settings() {
                 </p>
               </div>
               <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                {isDemo ? "Teste local" : isMaestro ? "Maestro BF Flow" : "Admin da organização"}
+                {isDemo ? "Teste local" : "Admin da organização"}
               </span>
             </div>
 
-            {(isDemo || isMaestro) && (
+            {(isDemo || isAdmin) && (
               <div className="rounded-lg border border-border bg-secondary/35 p-4">
                 <h3 className="font-display text-sm font-bold uppercase tracking-wider">
                   Cadastrar organização
@@ -494,7 +489,7 @@ function Settings() {
                 <OrganizationIdentityItem
                   key={org.id}
                   row={org}
-                  canEdit={isDemo || isMaestro || org.id === activeOrganizationId}
+                  canEdit={isDemo || isAdmin || org.id === activeOrganizationId}
                   busy={orgUpdateMut.isPending}
                   onSave={(next) => orgUpdateMut.mutate(next)}
                 />
@@ -519,7 +514,7 @@ function Settings() {
                 </p>
               </div>
               <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                {isDemo ? "Teste local" : isMaestro ? "Maestro BF Flow" : "Admin"}
+                {isDemo ? "Teste local" : "Admin"}
               </span>
             </div>
 
@@ -556,7 +551,7 @@ function Settings() {
                         organizationId: e.target.value,
                       }))
                     }
-                    disabled={!isDemo && !isMaestro}
+                    disabled={!isDemo && !isAdmin}
                     className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-secondary"
                   >
                     {organizationRows.map((org) => (
@@ -604,13 +599,11 @@ function Settings() {
                     }
                     className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    {(Object.keys(ROLE_LABELS) as AppRole[])
-                      .filter((role) => isDemo || isMaestro || role !== "maestro")
-                      .map((role) => (
-                        <option key={role} value={role}>
-                          {ROLE_LABELS[role]}
-                        </option>
-                      ))}
+                    {(Object.keys(ROLE_LABELS) as AppRole[]).map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -631,8 +624,7 @@ function Settings() {
                   row={row}
                   isDemo={isDemo}
                   organizations={organizationRows}
-                  canGrantMaestro={isDemo || isMaestro}
-                  canChangeOrganization={isDemo || isMaestro}
+                  canChangeOrganization={isDemo || isAdmin}
                   busy={accessMut.isPending}
                   onNameChange={updateDemoUserName}
                   onRoleChange={changeRole}
@@ -647,7 +639,7 @@ function Settings() {
         )}
 
         <div
-          className={`bg-card border border-border rounded-lg p-5 space-y-4 ${!isMaestro ? "opacity-60 pointer-events-none" : ""}`}
+          className={`bg-card border border-border rounded-lg p-5 space-y-4 ${!isAdmin ? "opacity-60 pointer-events-none" : ""}`}
         >
           <h2 className="font-display text-base font-bold uppercase tracking-wider">
             Site e biblioteca global
@@ -756,7 +748,7 @@ function Settings() {
   );
 }
 
-type AppRole = "maestro" | "admin" | "editor" | "viewer";
+type AppRole = "admin" | "editor" | "viewer";
 
 type OrganizationRow = {
   id: string;
@@ -779,7 +771,6 @@ type UserAccessRow = {
 };
 
 const ROLE_LABELS: Record<AppRole, string> = {
-  maestro: "Maestro BF Flow",
   admin: "Admin",
   editor: "Editor",
   viewer: "Viewer",
@@ -805,7 +796,7 @@ const DEMO_USERS: UserAccessRow[] = [
     display_name: "Administrador local",
     organization_id: "demo-org-bfflow",
     organization: { id: "demo-org-bfflow", name: "BF Flow Demo", slug: "bfflow-demo" },
-    roles: ["maestro", "admin", "editor"],
+    roles: ["admin", "editor"],
   },
   {
     id: "demo-editor",
@@ -853,7 +844,6 @@ function UserAccessItem({
   row,
   isDemo,
   organizations,
-  canGrantMaestro,
   canChangeOrganization,
   busy,
   onNameChange,
@@ -863,7 +853,6 @@ function UserAccessItem({
   row: UserAccessRow;
   isDemo: boolean;
   organizations: OrganizationRow[];
-  canGrantMaestro: boolean;
   canChangeOrganization: boolean;
   busy: boolean;
   onNameChange: (id: string, value: string) => void;
@@ -916,21 +905,19 @@ function UserAccessItem({
           ))}
         </select>
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(ROLE_LABELS) as AppRole[])
-            .filter((role) => canGrantMaestro || role !== "maestro")
-            .map((role) => (
-              <label
-                key={role}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12px]"
-              >
-                <input
-                  type="checkbox"
-                  checked={draft.roles.includes(role)}
-                  onChange={(e) => setRole(role, e.target.checked)}
-                />
-                {ROLE_LABELS[role]}
-              </label>
-            ))}
+          {(Object.keys(ROLE_LABELS) as AppRole[]).map((role) => (
+            <label
+              key={role}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12px]"
+            >
+              <input
+                type="checkbox"
+                checked={draft.roles.includes(role)}
+                onChange={(e) => setRole(role, e.target.checked)}
+              />
+              {ROLE_LABELS[role]}
+            </label>
+          ))}
         </div>
         <button
           onClick={() => onSave(draft)}
