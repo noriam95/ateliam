@@ -8042,7 +8042,7 @@ function DdpModule({
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
-                <div className="grid flex-1 gap-3 md:grid-cols-2">
+                <div className="min-w-0 flex-1">
                   <RegisteredProcessSelect
                     label="Processo, macroprocesso ou atividade"
                     value={step.processId ?? ""}
@@ -8058,12 +8058,6 @@ function DdpModule({
                       })
                     }
                   />
-                  <Field
-                    compact
-                    label="Responsável"
-                    value={step.responsavel}
-                    onChange={(responsavel) => updateStep(step.id, { responsavel })}
-                  />
                 </div>
                 <IconButton
                   label="Excluir"
@@ -8076,38 +8070,10 @@ function DdpModule({
               </div>
               {openSteps[step.id] ? (
                 <>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {(["entrada", "atividade", "saida"] as const).map((field) => (
-                  <TextArea
-                    key={field}
-                    label={field === "saida" ? "Saída" : field[0].toUpperCase() + field.slice(1)}
-                    value={step[field]}
-                    onChange={(value) => updateStep(step.id, { [field]: value })}
-                  />
-                ))}
-                <SelectField
-                  label="Sistema"
-                  value={step.sistema}
-                  options={[
-                    "",
-                    ...data.systems.map((s) => s.nome).filter((nome): nome is string => !!nome),
-                  ]}
-                  onChange={(sistema) => updateStep(step.id, { sistema })}
-                />
-                <TextArea
-                  label="Risco / ponto de atenção"
-                  value={step.risco}
-                  onChange={(risco) => updateStep(step.id, { risco })}
-                />
-                <TextArea
-                  label="Observações adicionais"
-                  value={step.observacoes}
-                  onChange={(observacoes) => updateStep(step.id, { observacoes })}
-                />
-              </div>
-              <div className="mt-3 grid gap-3">
+              <div className="grid gap-3">
                 <ImageManager
-                  label="Diagramas / imagens da etapa"
+                  label="Imagens da etapa"
+                  captionLabel="Descrição"
                   images={step.images}
                   onChange={(images) => updateStep(step.id, { images })}
                 />
