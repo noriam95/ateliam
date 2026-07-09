@@ -7526,13 +7526,7 @@ function DdpModule({
       data.meta.revisor,
     ]),
     scope: completionPercent([data.overview.escopo]),
-    overview: completionPercent([
-      data.overview.objetivo,
-      data.overview.frequencia,
-      data.overview.kpis,
-      data.overview.dores,
-      data.overview.oportunidades,
-    ]),
+    overview: completionPercent([data.overview.objetivo, data.overview.escopo, data.overview.kpis]),
     systems: completionPercent(
       data.systems.flatMap((system) => [
         system.nome,
@@ -7779,45 +7773,23 @@ function DdpModule({
       </Panel>
       <Panel title="Visão geral" progress={sectionProgress.overview}>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <TextArea
-              label="Situação atual (parágrafo de abertura da Visão Geral)"
-              value={data.overview.estadoAtual}
-              onChange={(estadoAtual) =>
-                update({ ...data, overview: { ...data.overview, estadoAtual } })
-              }
-            />
-          </div>
           <TextArea
             label="Objetivo"
             value={data.overview.objetivo}
             onChange={(objetivo) => update({ ...data, overview: { ...data.overview, objetivo } })}
           />
-          <SelectField
-            label="Frequência"
-            value={data.overview.frequencia}
-            options={["Conforme demanda", "Diário", "Semanal", "Mensal", "Anual"]}
-            onChange={(frequencia) =>
-              update({ ...data, overview: { ...data.overview, frequencia } })
-            }
-          />
           <TextArea
-            label="Indicadores / evidências"
-            value={data.overview.kpis}
-            onChange={(kpis) => update({ ...data, overview: { ...data.overview, kpis } })}
+            label="Escopo"
+            value={data.overview.escopo}
+            onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
           />
-          <TextArea
-            label="Dores / problemas"
-            value={data.overview.dores}
-            onChange={(dores) => update({ ...data, overview: { ...data.overview, dores } })}
-          />
-          <TextArea
-            label="Oportunidades"
-            value={data.overview.oportunidades}
-            onChange={(oportunidades) =>
-              update({ ...data, overview: { ...data.overview, oportunidades } })
-            }
-          />
+          <div className="md:col-span-2">
+            <TextArea
+              label="Contexto"
+              value={data.overview.kpis}
+              onChange={(kpis) => update({ ...data, overview: { ...data.overview, kpis } })}
+            />
+          </div>
         </div>
       </Panel>
       <Panel title="Sistemas envolvidos" progress={sectionProgress.systems}>
