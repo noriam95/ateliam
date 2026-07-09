@@ -337,6 +337,16 @@ function WorkspaceHome() {
     settings: true,
   });
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("area") !== "registrations") return;
+    navigate({
+      to: "/",
+      search: { area: "modules", view: search.view },
+      replace: true,
+    });
+  }, [navigate, search.view]);
+
   // Mant?m o estado em sincronia com a URL quando ela muda com o componente j?
   // montado (voltar/avan?ar do navegador, links de outras telas para "/?area=...").
   useEffect(() => {

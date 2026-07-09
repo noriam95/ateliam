@@ -9,6 +9,7 @@ const shouldStartServer = !process.env.BASE_URL;
 const protectedRoutes = [
   "/",
   "/?area=modules&view=processes",
+  "/?area=registrations&view=areas",
   "/m/ddp?view=consult",
   "/m/ddp?view=new",
   "/?area=value-chain&view=value-chain-report",
@@ -30,7 +31,7 @@ function hasFallback(text) {
 }
 
 function hasMojibake(text) {
-  return /(?:Ã[\u0080-\u00bf]|Â[\u0080-\u00bf])/u.test(text);
+  return /(?:\u00c3[\u0080-\u00bf]|\u00c2[\u0080-\u00bf])/u.test(text);
 }
 
 function normalizeText(text) {
@@ -104,6 +105,8 @@ async function collectPageResult(page, route) {
     fallback: hasFallback(body),
     forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
     hasBadEncoding: hasMojibake(body),
+    hasCanonicalLegacyArea:
+      route.includes("area=registrations") ? page.url().includes("area=modules") : undefined,
     hasProcessLabel: normalizedBody.includes("processos"),
     hasMappingForm:
       route === "/m/ddp?view=new"
@@ -148,7 +151,7 @@ async function inspectProcessRegistrationDialog(page) {
 
   const newButtons = page.getByRole("button", { name: /^Novo$/i });
   if (!(await newButtons.count())) {
-    return { opened: false, reason: "Botão Novo não encontrado." };
+    return { opened: false, reason: "Botao Novo nao encontrado." };
   }
   await newButtons.last().click();
   await page.waitForTimeout(700);
@@ -193,12 +196,25 @@ async function inspectRegistrationsNavigation(page) {
 
     const cadastros = page.getByRole("button", { name: /Cadastros/i }).first();
     if (!(await cadastros.count())) {
-      results.push({ startRoute, opened: false, reason: "Cadastros não encontrado." });
+      results.push({ startRoute, opened: false, reason: "Cadastros nao encontrado." });
       continue;
     }
     await cadastros.click();
     await page.waitForTimeout(300);
-    await page.getByRole("button", { name: /Áreas/i }).first().click();
+    const buttons = await page.getByRole("button").all();
+    let clickedAreas = false;
+    for (const button of buttons) {
+      const label = normalizeText(await button.innerText().catch(() => ""));
+      if (label.trim() === "areas") {
+        await button.click();
+        clickedAreas = true;
+        break;
+      }
+    }
+    if (!clickedAreas) {
+      results.push({ startRoute, opened: false, reason: "Areas nao encontrado." });
+      continue;
+    }
     await page.waitForTimeout(700);
     const body = await page
       .locator("body")
@@ -281,6 +297,7 @@ async function main() {
 
     const routeFailures = desktop.results.filter((result) => {
       if (result.fallback || result.forbidden.length || result.hasBadEncoding) return true;
+      if (desktop.demoActive && result.hasCanonicalLegacyArea === false) return true;
       if (desktop.demoActive && result.route === "/" && !result.hasDashboardCards) return true;
       if (desktop.demoActive && result.route === "/m/ddp?view=new" && !result.hasMappingForm) {
         return true;
