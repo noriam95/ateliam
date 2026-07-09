@@ -19,12 +19,7 @@ import {
   Workflow,
 } from "lucide-react";
 
-export type WorkspaceRailArea =
-  | "home"
-  | "modules"
-  | "value-chain"
-  | "reports"
-  | "settings";
+export type WorkspaceRailArea = "home" | "modules" | "value-chain" | "reports" | "settings";
 
 export function WorkspaceRail({
   activeArea,
@@ -177,7 +172,11 @@ export function ModuleBranch({
   onToggle: () => void;
 }) {
   return (
-    <div className="mb-1 animate-in slide-in-from-left-2 fade-in duration-200">
+    <div
+      className="mb-1 animate-in slide-in-from-left-2 fade-in duration-200"
+      data-nav-branch={title}
+      data-open={open ? "true" : "false"}
+    >
       <div
         className={`flex items-stretch rounded-md ${
           active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-muted"

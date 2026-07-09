@@ -134,8 +134,9 @@ async function runDesktopSmoke(browser, logs) {
     results.push(await collectPageResult(page, route));
   }
   const processRegistration = demoActive ? await inspectProcessRegistrationDialog(page) : null;
+  const registrationsNavigation = demoActive ? await inspectRegistrationsNavigation(page) : null;
   await page.close();
-  return { demoActive, results, processRegistration };
+  return { demoActive, results, processRegistration, registrationsNavigation };
 }
 
 async function inspectProcessRegistrationDialog(page) {
@@ -171,6 +172,64 @@ async function inspectProcessRegistrationDialog(page) {
     hasAreaField: modalText.includes("area"),
     hasBadEncoding: hasMojibake(body),
   };
+}
+
+async function inspectRegistrationsNavigation(page) {
+  const results = [];
+  for (const startRoute of ["/", "/m/ddp?view=consult"]) {
+    await page.goto(`${baseUrl}${startRoute}`, {
+      waitUntil: "networkidle",
+      timeout: 60000,
+    });
+    await page.waitForTimeout(700);
+
+    if (startRoute === "/") {
+      await page
+        .getByRole("button", { name: /^Processos$/i })
+        .first()
+        .click();
+      await page.waitForTimeout(300);
+    }
+
+    const cadastros = page.getByRole("button", { name: /Cadastros/i }).first();
+    if (!(await cadastros.count())) {
+      results.push({ startRoute, opened: false, reason: "Cadastros não encontrado." });
+      continue;
+    }
+    await cadastros.click();
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: /Áreas/i }).first().click();
+    await page.waitForTimeout(700);
+    const body = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "");
+    const normalizedBody = normalizeText(body);
+    const branches = await page.locator("[data-nav-branch]").evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        title: node.getAttribute("data-nav-branch") || "",
+        open: node.getAttribute("data-open") === "true",
+      })),
+    );
+    const normalizedBranches = Object.fromEntries(
+      branches.map((branch) => [normalizeText(branch.title), branch.open]),
+    );
+    results.push({
+      startRoute,
+      url: page.url(),
+      canonical: page.url().includes("area=modules") && page.url().includes("view=areas"),
+      hasAreasTitle: normalizedBody.includes("areas"),
+      hasOnlyRegistrationsOpen:
+        normalizedBranches.cadastros === true &&
+        normalizedBranches.mapeamento === false &&
+        normalizedBranches.documentacao === false &&
+        normalizedBranches.fluxograma === false,
+      hasBadEncoding: hasMojibake(body),
+      fallback: hasFallback(body),
+      forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
+    });
+  }
+  return results;
 }
 
 async function runMobileSmoke(browser, logs) {
@@ -237,6 +296,18 @@ async function main() {
         !desktop.processRegistration.hasOwnerField ||
         !desktop.processRegistration.hasAreaField ||
         desktop.processRegistration.hasBadEncoding);
+    const registrationsNavigationFailures =
+      desktop.demoActive && desktop.registrationsNavigation
+        ? desktop.registrationsNavigation.filter(
+            (result) =>
+              !result.canonical ||
+              !result.hasAreasTitle ||
+              !result.hasOnlyRegistrationsOpen ||
+              result.hasBadEncoding ||
+              result.fallback ||
+              result.forbidden?.length,
+          )
+        : [];
     const mobileFailure =
       mobile.fallback ||
       mobile.forbidden.length > 0 ||
@@ -246,6 +317,7 @@ async function main() {
     if (
       routeFailures.length ||
       processRegistrationFailure ||
+      registrationsNavigationFailures.length ||
       mobileFailure ||
       relevantLogs.length
     ) {
@@ -254,6 +326,7 @@ async function main() {
           {
             routeFailures,
             processRegistration: desktop.processRegistration,
+            registrationsNavigationFailures,
             mobile,
             relevantLogs,
           },

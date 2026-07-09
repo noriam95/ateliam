@@ -349,6 +349,10 @@ function WorkspaceHome() {
     setExpanded((current) => ({
       ...current,
       modules: current.modules || nextArea === "modules",
+      ddp: isRegistration ? false : current.ddp,
+      pop: isRegistration ? false : current.pop,
+      bpmn: isRegistration ? false : current.bpmn,
+      causes: isRegistration ? false : current.causes,
       registrations: isRegistration,
       valueChain: current.valueChain || nextArea === "value-chain",
       settings: current.settings || nextArea === "settings",
@@ -925,7 +929,10 @@ function WorkspaceHome() {
                         } else if (target.kind === "registrations-root") {
                           toggle("registrations");
                         } else {
-                          setView(target.view);
+                          navigate({
+                            to: "/",
+                            search: { area: "modules", view: target.view },
+                          });
                         }
                       }}
                     />

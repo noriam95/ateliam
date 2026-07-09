@@ -5108,9 +5108,7 @@ function ModuleWorkspacePage() {
   }
 
   function selectRegistration(view: ModuleRegistrationView) {
-    setRailArea("modules");
-    setContentMode("registrations");
-    setRegistrationView(view);
+    navigate({ to: "/", search: { area: "modules", view } });
   }
 
   function selectSettings(view: ModuleSettingsView) {
