@@ -7536,13 +7536,11 @@ function DdpModule({
         system.descricao,
       ]),
     ),
-    macroprocess: completionPercent([
+    flowStage: completionPercent([
       data.macroprocess.titulo,
       data.macroprocess.legenda,
       data.macroprocess.src,
-    ]),
-    flow: completionPercent(
-      data.steps.flatMap((step) => [
+      ...data.steps.flatMap((step) => [
         step.etapa,
         step.responsavel,
         step.entrada,
@@ -7559,16 +7557,14 @@ function DdpModule({
           substep.images,
         ]),
       ]),
-    ),
-    sipoc: completionPercent(
-      data.sipocRows.flatMap((row) => [
+      ...data.sipocRows.flatMap((row) => [
         row.fornecedores,
         row.entradas,
         row.processo,
         row.saidas,
         row.clientes,
       ]),
-    ),
+    ]),
     gaps: completionPercent(
       data.gaps.flatMap((gap) => [
         gap.causa,
@@ -7860,7 +7856,12 @@ function DdpModule({
           </button>
         </div>
       </Panel>
-      <Panel title="Representação do processo" progress={sectionProgress.macroprocess}>
+      <Panel title="Fluxo AS IS — Etapas do processo" progress={sectionProgress.flowStage}>
+        <div className="grid gap-5">
+        <div>
+        <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+          Representação do processo
+        </h3>
         <div className="grid gap-4 md:grid-cols-2">
           <Field
             label="Título da representação"
@@ -7906,8 +7907,11 @@ function DdpModule({
             />
           </div>
         </div>
-      </Panel>
-      <Panel title="Fluxo AS IS" progress={sectionProgress.flow}>
+        </div>
+        <div className="border-t border-border pt-5">
+        <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+          Fluxo AS IS
+        </h3>
         <div className="grid gap-3">
           {data.steps.map((step, index) => (
             <div key={step.id} className="rounded-lg border border-border bg-card p-3">
@@ -8114,8 +8118,11 @@ function DdpModule({
             Adicionar etapa
           </button>
         </div>
-      </Panel>
-      <Panel title="SIPOC" progress={sectionProgress.sipoc}>
+        </div>
+        <div className="border-t border-border pt-5">
+        <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+          SIPOC
+        </h3>
         <div className="grid gap-3">
           {data.sipocRows.map((row) => (
             <div
@@ -8174,6 +8181,8 @@ function DdpModule({
             <Plus className="h-4 w-4" />
             Adicionar linha SIPOC
           </button>
+        </div>
+        </div>
         </div>
       </Panel>
       <Panel title="Gaps e causas-raiz" progress={sectionProgress.gaps}>
