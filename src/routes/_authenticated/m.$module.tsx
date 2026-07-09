@@ -7977,57 +7977,50 @@ function DdpModule({
         <div className="grid gap-5">
         <div>
         <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
-          Representação do processo
+          Macroprocesso
         </h3>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field
-            label="Título da representação"
-            value={data.macroprocess.titulo}
-            onChange={(titulo) =>
-              update({ ...data, macroprocess: { ...data.macroprocess, titulo } })
-            }
+        <div className="grid gap-4">
+          <RegisteredProcessSelect
+            label="Processo, macroprocesso ou atividade"
+            value={data.macroprocess.processId ?? ""}
+            processes={primaryProcessOptions}
+            placeholder="Buscar processo, macroprocesso ou atividade"
+            onSelect={selectPrimaryProcess}
+            onRequestCreate={(name) => setCreateProcessName(name)}
           />
-          <Field
-            label="Legenda"
-            value={data.macroprocess.legenda}
-            onChange={(legenda) =>
-              update({ ...data, macroprocess: { ...data.macroprocess, legenda } })
+          <ImageManager
+            label="Imagem do processo"
+            captionLabel="Descrição"
+            images={
+              data.macroprocess.src
+                ? [
+                    {
+                      id: "macroprocess",
+                      titulo: data.macroprocess.titulo || "Diagrama do Macroprocesso",
+                      legenda: data.macroprocess.legenda,
+                      src: data.macroprocess.src,
+                    },
+                  ]
+                : []
             }
+            onChange={(images) => {
+              const image = images[images.length - 1];
+              update({
+                ...data,
+                macroprocess: {
+                  ...data.macroprocess,
+                  titulo: image?.titulo ?? data.macroprocess.titulo,
+                  legenda: image?.legenda ?? data.macroprocess.legenda,
+                  src: image?.src ?? "",
+                },
+              });
+            }}
           />
-          <div className="md:col-span-2">
-            <ImageManager
-              label="Imagem do processo"
-              images={
-                data.macroprocess.src
-                  ? [
-                      {
-                        id: "macroprocess",
-                        titulo: data.macroprocess.titulo || "Diagrama do Macroprocesso",
-                        legenda: data.macroprocess.legenda,
-                        src: data.macroprocess.src,
-                      },
-                    ]
-                  : []
-              }
-              onChange={(images) => {
-                const image = images[images.length - 1];
-                update({
-                  ...data,
-                  macroprocess: {
-                    ...data.macroprocess,
-                    titulo: image?.titulo ?? data.macroprocess.titulo,
-                    legenda: image?.legenda ?? data.macroprocess.legenda,
-                    src: image?.src ?? "",
-                  },
-                });
-              }}
-            />
-          </div>
         </div>
         </div>
         <div className="border-t border-border pt-5">
         <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
-          Fluxo AS IS
+          Etapas do processo
         </h3>
         <div className="grid gap-3">
           {data.steps.map((step, index) => (
@@ -10057,10 +10050,12 @@ function TextArea({
 
 function ImageManager({
   label = "Imagens",
+  captionLabel = "Legenda",
   images,
   onChange,
 }: {
   label?: string;
+  captionLabel?: string;
   images: ModuleImage[];
   onChange: (images: ModuleImage[]) => void;
 }) {
@@ -10129,7 +10124,7 @@ function ImageManager({
                 />
                 <Field
                   compact
-                  label="Legenda"
+                  label={captionLabel}
                   value={image.legenda}
                   onChange={(legenda) =>
                     onChange(
