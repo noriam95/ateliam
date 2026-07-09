@@ -513,7 +513,9 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
     if (causesError) throw new Error(causesError.message);
     if (processesError) throw new Error(processesError.message);
     if (valueChainsError) throw new Error(valueChainsError.message);
-    if (systemsError) throw new Error(systemsError.message);
+    // organization_systems só existe depois que a migração correspondente é
+    // aplicada; não deixa a falta dela derrubar o resto dos catálogos.
+    if (systemsError) console.error("organization_systems:", systemsError.message);
     return {
       departments: departments ?? [],
       processOwners: processOwners ?? [],
@@ -565,9 +567,12 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
         error: { message: string } | null;
       }>,
     ]);
-    for (const result of [areas, owners, types, valueChains, processes, systems]) {
+    for (const result of [areas, owners, types, valueChains, processes]) {
       if (result.error) throw new Error(result.error.message);
     }
+    // organization_systems só existe depois que a migração correspondente é
+    // aplicada; não deixa a falta dela derrubar o resto dos catálogos.
+    if (systems.error) console.error("organization_systems:", systems.error.message);
     return {
       organizationId,
       areas: areas.data ?? [],
