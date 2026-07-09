@@ -29,6 +29,10 @@ function hasFallback(text) {
   return normalized.includes("nao foi possivel carregar");
 }
 
+function hasMojibake(text) {
+  return /(?:Ã[\u0080-\u00bf]|Â[\u0080-\u00bf])/u.test(text);
+}
+
 function normalizeText(text) {
   return text
     .normalize("NFD")
@@ -99,6 +103,7 @@ async function collectPageResult(page, route) {
     url: page.url(),
     fallback: hasFallback(body),
     forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
+    hasBadEncoding: hasMojibake(body),
     hasProcessLabel: normalizedBody.includes("processos"),
     hasMappingForm:
       route === "/m/ddp?view=new"
@@ -164,6 +169,7 @@ async function inspectProcessRegistrationDialog(page) {
     hasMacroprocessTypeOption: typeBlock.includes("macroprocesso"),
     hasOwnerField: modalText.includes("dono do processo"),
     hasAreaField: modalText.includes("area"),
+    hasBadEncoding: hasMojibake(body),
   };
 }
 
@@ -197,6 +203,7 @@ async function runMobileSmoke(browser, logs) {
     url: page.url(),
     fallback: hasFallback(body),
     forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
+    hasBadEncoding: hasMojibake(body),
     authVisible: normalizedBody.includes("entrar no workspace"),
     dashboardVisible:
       normalizedBody.includes("visao operacional") || normalizedBody.includes("pagina inicial"),
@@ -214,7 +221,7 @@ async function main() {
     const relevantLogs = logs.filter((line) => !line.includes("404"));
 
     const routeFailures = desktop.results.filter((result) => {
-      if (result.fallback || result.forbidden.length) return true;
+      if (result.fallback || result.forbidden.length || result.hasBadEncoding) return true;
       if (desktop.demoActive && result.route === "/" && !result.hasDashboardCards) return true;
       if (desktop.demoActive && result.route === "/m/ddp?view=new" && !result.hasMappingForm) {
         return true;
@@ -228,10 +235,12 @@ async function main() {
         desktop.processRegistration.hasOldValueChainField ||
         desktop.processRegistration.hasMacroprocessTypeOption ||
         !desktop.processRegistration.hasOwnerField ||
-        !desktop.processRegistration.hasAreaField);
+        !desktop.processRegistration.hasAreaField ||
+        desktop.processRegistration.hasBadEncoding);
     const mobileFailure =
       mobile.fallback ||
       mobile.forbidden.length > 0 ||
+      mobile.hasBadEncoding ||
       (mobile.demoActive ? !mobile.dashboardVisible : !mobile.authVisible);
 
     if (
