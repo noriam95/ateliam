@@ -86,6 +86,11 @@ async function main() {
       url: page.url(),
       fallback: hasFallback(body),
       oldModules: body.includes("Módulos"),
+      oldStepFields:
+        route === "/m/ddp?view=new" &&
+        ["Risco / ponto de atenção", "Observações adicionais", "Diagramas / imagens da etapa"].some(
+          (text) => body.includes(text),
+        ),
       hasProcessLabel: body.includes("Processos"),
     });
   }
@@ -94,7 +99,9 @@ async function main() {
   if (server) server.kill();
 
   const relevantLogs = logs.filter((line) => !line.includes("404"));
-  const failures = results.filter((result) => result.fallback || result.oldModules);
+  const failures = results.filter(
+    (result) => result.fallback || result.oldModules || result.oldStepFields,
+  );
   if (failures.length || relevantLogs.length) {
     console.error(JSON.stringify({ failures, relevantLogs }, null, 2));
     process.exit(1);
