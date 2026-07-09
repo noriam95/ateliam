@@ -1,12 +1,12 @@
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
 import http from "node:http";
+import { spawn } from "node:child_process";
+import { chromium } from "playwright";
 
 const baseUrl = (process.env.BASE_URL || "http://127.0.0.1:4180").replace(/\/$/, "");
 const channel = process.env.PLAYWRIGHT_CHANNEL || "chrome";
 const shouldStartServer = !process.env.BASE_URL;
 
-const routes = [
+const protectedRoutes = [
   "/",
   "/?area=modules&view=processes",
   "/m/ddp?view=consult",
@@ -14,8 +14,26 @@ const routes = [
   "/?area=value-chain&view=value-chain-report",
 ];
 
+const forbiddenTexts = [
+  "modulos",
+  "mapeamentos pendentes",
+  "processos & documentos em revisao",
+  "versao do processo",
+  "risco / ponto de atencao",
+  "observacoes adicionais",
+  "diagramas / imagens da etapa",
+];
+
 function hasFallback(text) {
-  return text.includes("Não foi possível carregar") || text.includes("Nao foi possivel carregar");
+  const normalized = normalizeText(text);
+  return normalized.includes("nao foi possivel carregar");
+}
+
+function normalizeText(text) {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 }
 
 function isReachable(url) {
@@ -58,56 +76,132 @@ async function startLocalServerIfNeeded() {
   return child;
 }
 
-async function main() {
-  const server = await startLocalServerIfNeeded();
-  const browser = await chromium.launch({ channel, headless: true });
+async function enterDemoIfAvailable(page) {
+  await page.goto(`${baseUrl}/auth`, { waitUntil: "networkidle", timeout: 60000 });
+  const demoButton = page.getByText(/Testar localmente sem login/i);
+  if (await demoButton.count()) {
+    await demoButton.first().click();
+    await page.waitForTimeout(1000);
+  }
+  return !page.url().includes("/auth");
+}
+
+async function collectPageResult(page, route) {
+  await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.waitForTimeout(700);
+  const body = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
+  const normalizedBody = normalizeText(body);
+  return {
+    route,
+    url: page.url(),
+    fallback: hasFallback(body),
+    forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
+    hasProcessLabel: normalizedBody.includes("processos"),
+    hasMappingForm:
+      route === "/m/ddp?view=new"
+        ? normalizedBody.includes("dados do processo") &&
+          normalizedBody.includes("dados do mapeamento")
+        : undefined,
+    hasDashboardCards:
+      route === "/"
+        ? [
+            "acompanhamento de mapeamentos",
+            "catalogo e conformidade",
+            "painel de atividade recente",
+          ].every((text) => normalizedBody.includes(text))
+        : undefined,
+  };
+}
+
+async function runDesktopSmoke(browser, logs) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  const logs = [];
   page.on("console", (msg) => {
     if (["error", "warning"].includes(msg.type())) logs.push(`${msg.type()}: ${msg.text()}`);
   });
   page.on("pageerror", (error) => logs.push(`pageerror: ${error.message}`));
 
-  await page.goto(`${baseUrl}/auth`, { waitUntil: "networkidle", timeout: 60000 });
-  const demoButton = page.getByText(/Testar localmente sem login/i);
-  if (await demoButton.count()) await demoButton.first().click();
-  await page.waitForTimeout(1000);
-
+  const demoActive = await enterDemoIfAvailable(page);
   const results = [];
-  for (const route of routes) {
-    await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle", timeout: 60000 });
-    await page.waitForTimeout(700);
-    const body = await page
-      .locator("body")
-      .innerText()
-      .catch(() => "");
-    results.push({
-      route,
-      url: page.url(),
-      fallback: hasFallback(body),
-      oldModules: body.includes("Módulos"),
-      oldStepFields:
-        route === "/m/ddp?view=new" &&
-        ["Risco / ponto de atenção", "Observações adicionais", "Diagramas / imagens da etapa"].some(
-          (text) => body.includes(text),
-        ),
-      hasProcessLabel: body.includes("Processos"),
+  for (const route of protectedRoutes) {
+    results.push(await collectPageResult(page, route));
+  }
+  await page.close();
+  return { demoActive, results };
+}
+
+async function runMobileSmoke(browser, logs) {
+  const page = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+  });
+  page.on("console", (msg) => {
+    if (["error", "warning"].includes(msg.type())) logs.push(`${msg.type()}: ${msg.text()}`);
+  });
+  page.on("pageerror", (error) => logs.push(`pageerror: ${error.message}`));
+
+  let demoActive = await enterDemoIfAvailable(page);
+  if (!demoActive && shouldStartServer) {
+    await page.goto(`${baseUrl}/auth`, { waitUntil: "networkidle", timeout: 60000 });
+    await page.evaluate(() => window.localStorage.setItem("atelier_demo_session", "1"));
+    demoActive = true;
+  }
+  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.waitForTimeout(700);
+  const body = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
+  const normalizedBody = normalizeText(body);
+  await page.close();
+
+  return {
+    demoActive,
+    url: page.url(),
+    fallback: hasFallback(body),
+    forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
+    authVisible: normalizedBody.includes("entrar no workspace"),
+    dashboardVisible:
+      normalizedBody.includes("visao operacional") || normalizedBody.includes("pagina inicial"),
+  };
+}
+
+async function main() {
+  const server = await startLocalServerIfNeeded();
+  const browser = await chromium.launch({ channel, headless: true });
+  const logs = [];
+
+  try {
+    const desktop = await runDesktopSmoke(browser, logs);
+    const mobile = await runMobileSmoke(browser, logs);
+    const relevantLogs = logs.filter((line) => !line.includes("404"));
+
+    const routeFailures = desktop.results.filter((result) => {
+      if (result.fallback || result.forbidden.length) return true;
+      if (desktop.demoActive && result.route === "/" && !result.hasDashboardCards) return true;
+      if (desktop.demoActive && result.route === "/m/ddp?view=new" && !result.hasMappingForm) {
+        return true;
+      }
+      return false;
     });
+    const mobileFailure =
+      mobile.fallback ||
+      mobile.forbidden.length > 0 ||
+      (mobile.demoActive ? !mobile.dashboardVisible : !mobile.authVisible);
+
+    if (routeFailures.length || mobileFailure || relevantLogs.length) {
+      console.error(JSON.stringify({ routeFailures, mobile, relevantLogs }, null, 2));
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(JSON.stringify({ ok: true, desktop, mobile }, null, 2));
+  } finally {
+    await browser.close();
+    if (server) server.kill();
   }
-
-  await browser.close();
-  if (server) server.kill();
-
-  const relevantLogs = logs.filter((line) => !line.includes("404"));
-  const failures = results.filter(
-    (result) => result.fallback || result.oldModules || result.oldStepFields,
-  );
-  if (failures.length || relevantLogs.length) {
-    console.error(JSON.stringify({ failures, relevantLogs }, null, 2));
-    process.exit(1);
-  }
-
-  console.log(JSON.stringify({ ok: true, routes: results }, null, 2));
 }
 
 main().catch((error) => {
