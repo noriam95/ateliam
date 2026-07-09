@@ -128,8 +128,43 @@ async function runDesktopSmoke(browser, logs) {
   for (const route of protectedRoutes) {
     results.push(await collectPageResult(page, route));
   }
+  const processRegistration = demoActive ? await inspectProcessRegistrationDialog(page) : null;
   await page.close();
-  return { demoActive, results };
+  return { demoActive, results, processRegistration };
+}
+
+async function inspectProcessRegistrationDialog(page) {
+  await page.goto(`${baseUrl}/?area=modules&view=processes`, {
+    waitUntil: "networkidle",
+    timeout: 60000,
+  });
+  await page.waitForTimeout(700);
+
+  const newButtons = page.getByRole("button", { name: /^Novo$/i });
+  if (!(await newButtons.count())) {
+    return { opened: false, reason: "Botão Novo não encontrado." };
+  }
+  await newButtons.last().click();
+  await page.waitForTimeout(700);
+
+  const body = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
+  const normalizedBody = normalizeText(body);
+  const modalStart = normalizedBody.indexOf("novo processo");
+  const modalText = modalStart >= 0 ? normalizedBody.slice(modalStart, modalStart + 1800) : "";
+  const typeStart = modalText.indexOf("tipo");
+  const typeBlock = typeStart >= 0 ? modalText.slice(typeStart, typeStart + 120) : "";
+
+  return {
+    opened: modalText.includes("novo processo"),
+    hasParentMacroprocess: modalText.includes("macroprocesso pai"),
+    hasOldValueChainField: modalText.includes("cadeia de valor"),
+    hasMacroprocessTypeOption: typeBlock.includes("macroprocesso"),
+    hasOwnerField: modalText.includes("dono do processo"),
+    hasAreaField: modalText.includes("area"),
+  };
 }
 
 async function runMobileSmoke(browser, logs) {
@@ -186,13 +221,37 @@ async function main() {
       }
       return false;
     });
+    const processRegistrationFailure =
+      desktop.demoActive &&
+      (!desktop.processRegistration?.opened ||
+        !desktop.processRegistration.hasParentMacroprocess ||
+        desktop.processRegistration.hasOldValueChainField ||
+        desktop.processRegistration.hasMacroprocessTypeOption ||
+        !desktop.processRegistration.hasOwnerField ||
+        !desktop.processRegistration.hasAreaField);
     const mobileFailure =
       mobile.fallback ||
       mobile.forbidden.length > 0 ||
       (mobile.demoActive ? !mobile.dashboardVisible : !mobile.authVisible);
 
-    if (routeFailures.length || mobileFailure || relevantLogs.length) {
-      console.error(JSON.stringify({ routeFailures, mobile, relevantLogs }, null, 2));
+    if (
+      routeFailures.length ||
+      processRegistrationFailure ||
+      mobileFailure ||
+      relevantLogs.length
+    ) {
+      console.error(
+        JSON.stringify(
+          {
+            routeFailures,
+            processRegistration: desktop.processRegistration,
+            mobile,
+            relevantLogs,
+          },
+          null,
+          2,
+        ),
+      );
       process.exitCode = 1;
       return;
     }
