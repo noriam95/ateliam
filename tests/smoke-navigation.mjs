@@ -1,7 +1,10 @@
 import { chromium } from "playwright";
+import { spawn } from "node:child_process";
+import http from "node:http";
 
 const baseUrl = (process.env.BASE_URL || "http://127.0.0.1:4180").replace(/\/$/, "");
 const channel = process.env.PLAYWRIGHT_CHANNEL || "chrome";
+const shouldStartServer = !process.env.BASE_URL;
 
 const routes = [
   "/",
@@ -15,7 +18,48 @@ function hasFallback(text) {
   return text.includes("Não foi possível carregar") || text.includes("Nao foi possivel carregar");
 }
 
+function isReachable(url) {
+  return new Promise((resolve) => {
+    const request = http.get(url, (response) => {
+      response.resume();
+      resolve(true);
+    });
+    request.on("error", () => resolve(false));
+    request.setTimeout(1000, () => {
+      request.destroy();
+      resolve(false);
+    });
+  });
+}
+
+async function waitForServer(url, timeoutMs = 30000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await isReachable(url)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return false;
+}
+
+async function startLocalServerIfNeeded() {
+  if (!shouldStartServer) return null;
+  if (await isReachable(`${baseUrl}/auth`)) return null;
+
+  const child = spawn("npm run dev -- --host 127.0.0.1 --port 4180", {
+    shell: true,
+    stdio: "ignore",
+  });
+
+  const ready = await waitForServer(`${baseUrl}/auth`);
+  if (!ready) {
+    child.kill();
+    throw new Error(`Servidor local não respondeu em ${baseUrl}.`);
+  }
+  return child;
+}
+
 async function main() {
+  const server = await startLocalServerIfNeeded();
   const browser = await chromium.launch({ channel, headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const logs = [];
@@ -47,6 +91,7 @@ async function main() {
   }
 
   await browser.close();
+  if (server) server.kill();
 
   const relevantLogs = logs.filter((line) => !line.includes("404"));
   const failures = results.filter((result) => result.fallback || result.oldModules);
