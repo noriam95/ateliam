@@ -66,6 +66,7 @@ import {
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
 import {
   ProcessRegistrationDialog,
+  SystemRegistrationDialog,
   WorkspaceProcessRegistrations,
   type CreatedProcess,
   type ProcessRegistrationView,
@@ -204,6 +205,7 @@ type NextStepItem = TextItem & { responsavel?: string; prazo?: string };
 type ModuleImage = { id: string; titulo: string; legenda: string; src: string };
 type DdpSystem = {
   id: string;
+  systemId?: string;
   nome: string;
   tipo: string;
   dono: string;
@@ -5498,6 +5500,16 @@ function ModuleWorkspacePage() {
                   await catalogsQ.refetch();
                 }
               }}
+              onSystemCreated={async (system) => {
+                if (isDemo) {
+                  setDemoCatalogs((current) => ({
+                    ...current,
+                    systems: [...current.systems, system],
+                  }));
+                } else {
+                  await catalogsQ.refetch();
+                }
+              }}
             />
           )
         ) : null}
@@ -7401,6 +7413,7 @@ function DdpModule({
   isDemo,
   codeSettings,
   onProcessCreated,
+  onSystemCreated,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
@@ -7413,8 +7426,14 @@ function DdpModule({
   codeSettings: CodeSettings | null;
   // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
+  // Idem, para o sistema recém-cadastrado a partir de "Sistemas envolvidos".
+  onSystemCreated: (system: OrganizationSystem) => Promise<void> | void;
 }) {
   const [createProcessName, setCreateProcessName] = useState<string | null>(null);
+  const [createSystemRequest, setCreateSystemRequest] = useState<{
+    stepId: string;
+    query: string;
+  } | null>(null);
   const selectedProcess = useMemo(
     () => catalogs.processes.find((process) => process.id === data.macroprocess.processId) ?? null,
     [catalogs.processes, data.macroprocess.processId],
@@ -7650,6 +7669,32 @@ function DdpModule({
           }}
         />
       ) : null}
+      {createSystemRequest !== null ? (
+        <SystemRegistrationDialog
+          organizationId={organizationId}
+          isDemo={isDemo}
+          initialName={createSystemRequest.query}
+          onClose={() => setCreateSystemRequest(null)}
+          onCreated={async (system) => {
+            await onSystemCreated(system);
+            const { stepId } = createSystemRequest;
+            update({
+              ...data,
+              systems: data.systems.map((item) =>
+                item.id === stepId
+                  ? {
+                      ...item,
+                      systemId: system.id,
+                      nome: system.name,
+                      descricao: item.descricao || system.description || "",
+                    }
+                  : item,
+              ),
+            });
+            setCreateSystemRequest(null);
+          }}
+        />
+      ) : null}
       <Hero
         title="Formulário de Preenchimento"
         eyebrow="Processos · Mapeamento"
@@ -7797,18 +7842,27 @@ function DdpModule({
               key={system.id}
               className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[1fr_auto]"
             >
-              <SelectField
+              <RegisteredSystemSelect
                 label="Sistema"
-                value={system.nome}
-                options={["", ...catalogs.systems.map((s) => s.name)]}
-                onChange={(nome) =>
+                value={system.systemId ?? ""}
+                systems={catalogs.systems}
+                placeholder="Buscar sistema cadastrado..."
+                onSelect={(selectedSystem) =>
                   update({
                     ...data,
                     systems: data.systems.map((item) =>
-                      item.id === system.id ? { ...item, nome } : item,
+                      item.id === system.id
+                        ? {
+                            ...item,
+                            systemId: selectedSystem?.id ?? "",
+                            nome: selectedSystem?.name ?? "",
+                            descricao: item.descricao || selectedSystem?.description || "",
+                          }
+                        : item,
                     ),
                   })
                 }
+                onRequestCreate={(query) => setCreateSystemRequest({ stepId: system.id, query })}
               />
               <IconButton
                 label="Excluir"
@@ -9739,6 +9793,127 @@ function RegisteredProcessSelect({
             >
               <Plus className="h-4 w-4" />
               Cadastrar novo processo{query.trim() ? ` "${query.trim()}"` : ""}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Mesma lógica de busca + cadastro rápido do RegisteredProcessSelect, aplicada
+// ao catálogo de sistemas (Cadastros → Sistemas).
+function RegisteredSystemSelect({
+  label,
+  value,
+  systems,
+  onSelect,
+  placeholder = "Buscar sistema cadastrado...",
+  onRequestCreate,
+}: {
+  label: string;
+  value: string;
+  systems: OrganizationSystem[];
+  onSelect: (system: OrganizationSystem | null) => void;
+  placeholder?: string;
+  // Abre o cadastro de um novo sistema (pré-preenchendo o nome pesquisado).
+  onRequestCreate?: (query: string) => void;
+}) {
+  const selected = systems.find((system) => system.id === value) ?? null;
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const normalizedQuery = normalizeLabel(query);
+  const filtered = useMemo(() => {
+    if (!normalizedQuery) return systems.slice(0, 12);
+    return systems
+      .filter((system) =>
+        normalizeLabel([system.name, system.description].join(" ")).includes(normalizedQuery),
+      )
+      .slice(0, 12);
+  }, [normalizedQuery, systems]);
+  const canRequestCreate =
+    !!onRequestCreate &&
+    !!query.trim() &&
+    !systems.some((system) => normalizeLabel(system.name) === normalizedQuery);
+
+  useEffect(() => {
+    if (!open) setQuery(selected ? selected.name : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selected?.id]);
+
+  return (
+    <div className="relative">
+      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={open ? query : (selected?.name ?? "")}
+          placeholder={placeholder}
+          onFocus={() => {
+            setQuery("");
+            setOpen(true);
+          }}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          className="w-full rounded-md border border-input bg-background py-2.5 pl-9 pr-9 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+        />
+        {value ? (
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              setQuery("");
+              onSelect(null);
+            }}
+            className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Limpar seleção"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg">
+          {filtered.length ? (
+            filtered.map((system) => (
+              <button
+                type="button"
+                key={system.id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onSelect(system);
+                  setOpen(false);
+                }}
+                className="grid w-full gap-1 rounded-md border border-transparent px-3 py-2.5 text-left text-sm hover:border-border hover:bg-muted"
+              >
+                <span className="truncate font-semibold text-foreground">{system.name}</span>
+                {system.description ? (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {system.description}
+                  </span>
+                ) : null}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              Nenhum sistema encontrado.
+            </div>
+          )}
+          {canRequestCreate ? (
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                setOpen(false);
+                onRequestCreate?.(query.trim());
+              }}
+              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-muted"
+            >
+              <Plus className="h-4 w-4" />
+              Cadastrar novo sistema{query.trim() ? ` "${query.trim()}"` : ""}
             </button>
           ) : null}
         </div>

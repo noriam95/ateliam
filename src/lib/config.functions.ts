@@ -112,6 +112,11 @@ const valueChainSchema = organizationScopeSchema.extend({
   description: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["Ativa", "Inativa"]).default("Ativa"),
 });
+const systemRegistrationSchema = organizationScopeSchema.extend({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(2).max(180),
+  description: z.string().trim().max(2000).optional().nullable(),
+});
 const ownerRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   departmentId: z.string().uuid(),
@@ -463,6 +468,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       { data: causes, error: causesError },
       { data: processes, error: processesError },
       { data: valueChains, error: valueChainsError },
+      { data: systems, error: systemsError },
     ] = await Promise.all([
       context.supabase
         .from("organization_departments")
@@ -493,18 +499,28 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
         .select("id, name, category, description, status, organization_id, created_at, updated_at")
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }),
+      (context.supabase as any)
+        .from("organization_systems")
+        .select("id, name, description, organization_id, created_at, updated_at")
+        .eq("organization_id", organizationId)
+        .order("name", { ascending: true }) as Promise<{
+        data: { id: string; name: string; description: string | null }[] | null;
+        error: { message: string } | null;
+      }>,
     ]);
     if (departmentsError) throw new Error(departmentsError.message);
     if (ownersError) throw new Error(ownersError.message);
     if (causesError) throw new Error(causesError.message);
     if (processesError) throw new Error(processesError.message);
     if (valueChainsError) throw new Error(valueChainsError.message);
+    if (systemsError) throw new Error(systemsError.message);
     return {
       departments: departments ?? [],
       processOwners: processOwners ?? [],
       causes: causes ?? [],
       processes: (processes ?? []).filter((process) => process.type !== "macroprocess"),
       valueChains: valueChains ?? [],
+      systems: systems ?? [],
     };
   });
 
@@ -514,7 +530,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
     const organizationId = access.organizationId;
-    const [areas, owners, types, valueChains, processes] = await Promise.all([
+    const [areas, owners, types, valueChains, processes, systems] = await Promise.all([
       context.supabase
         .from("organization_departments")
         .select("*")
@@ -540,8 +556,16 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
         .select("*")
         .eq("organization_id", organizationId)
         .order("name"),
+      (context.supabase as any)
+        .from("organization_systems")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("name") as Promise<{
+        data: { id: string; name: string; description: string | null }[] | null;
+        error: { message: string } | null;
+      }>,
     ]);
-    for (const result of [areas, owners, types, valueChains, processes]) {
+    for (const result of [areas, owners, types, valueChains, processes, systems]) {
       if (result.error) throw new Error(result.error.message);
     }
     return {
@@ -551,6 +575,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
       types: (types.data ?? []).filter((type) => type.code !== "macroprocess"),
       valueChains: valueChains.data ?? [],
       processes: (processes.data ?? []).filter((process) => process.type !== "macroprocess"),
+      systems: systems.data ?? [],
     };
   });
 
@@ -674,6 +699,28 @@ export const saveValueChainRegistration = createServerFn({ method: "POST" })
     return row;
   });
 
+export const saveSystemRegistration = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: z.infer<typeof systemRegistrationSchema>) =>
+    systemRegistrationSchema.parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const payload = {
+      organization_id: access.organizationId,
+      name: data.name,
+      description: data.description ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    const table = context.supabase.from("organization_systems" as any);
+    const query = data.id
+      ? table.update(payload).eq("id", data.id)
+      : table.insert({ ...payload, created_by: context.userId });
+    const { data: row, error } = await query.select("*").single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
 export const saveProcessRegistration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: z.infer<typeof processRegistrationSchema>) =>
@@ -721,7 +768,7 @@ export const deleteProcessRegistration = createServerFn({ method: "POST" })
   .validator((data: { organizationId?: string | null; kind: string; id: string }) =>
     organizationScopeSchema
       .extend({
-        kind: z.enum(["value-chain", "process", "area", "owner"]),
+        kind: z.enum(["value-chain", "process", "area", "owner", "system"]),
         id: z.string().uuid(),
       })
       .parse(data),
@@ -735,9 +782,11 @@ export const deleteProcessRegistration = createServerFn({ method: "POST" })
           ? "organization_processes"
           : data.kind === "area"
             ? "organization_departments"
-            : "organization_process_owners";
+            : data.kind === "system"
+              ? "organization_systems"
+              : "organization_process_owners";
     const { error } = await context.supabase
-      .from(table)
+      .from(table as any)
       .delete()
       .eq("id", data.id)
       .eq("organization_id", access.organizationId);

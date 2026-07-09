@@ -32,6 +32,7 @@ import {
   saveProcessOwnerRegistration,
   saveProcessRegistration,
   saveProcessTypeRegistration,
+  saveSystemRegistration,
   saveValueChainRegistration,
 } from "@/lib/config.functions";
 import {
@@ -676,6 +677,7 @@ export function WorkspaceProcessRegistrations({
   const saveType = useServerFn(saveProcessTypeRegistration);
   const saveValueChain = useServerFn(saveValueChainRegistration);
   const saveProcess = useServerFn(saveProcessRegistration);
+  const saveSystem = useServerFn(saveSystemRegistration);
   const reserveCodeFn = useServerFn(reserveCode);
   const removeRegistration = useServerFn(deleteProcessRegistration);
   const processRule = normalizeRule(codeSettings?.processo);
@@ -794,7 +796,14 @@ export function WorkspaceProcessRegistrations({
         throw new Error("Vínculo de usuário disponível no modo de demonstração.");
       }
       if (view === "systems") {
-        throw new Error("Cadastro de sistemas disponível no modo de demonstração.");
+        return saveSystem({
+          data: {
+            id: draft.id || undefined,
+            organizationId,
+            name: draft.name,
+            description: draft.description || null,
+          },
+        });
       }
       if (view === "process-types") {
         return saveType({
@@ -859,7 +868,9 @@ export function WorkspaceProcessRegistrations({
             ? "process"
             : view === "areas"
               ? "area"
-              : "owner";
+              : view === "systems"
+                ? "system"
+                : "owner";
       await removeRegistration({ data: { organizationId, kind, id } });
     },
     onSuccess: async () => {
@@ -2533,6 +2544,108 @@ export function ProcessRegistrationDialog({
           </form>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// Mesmo formulário do cadastro de sistemas (view "systems"), em modal, para
+// permitir cadastrar um sistema novo sem sair do preenchimento do mapeamento.
+export function SystemRegistrationDialog({
+  organizationId,
+  isDemo,
+  initialName = "",
+  onClose,
+  onCreated,
+}: {
+  organizationId: string | null;
+  isDemo: boolean;
+  initialName?: string;
+  onClose: () => void;
+  onCreated: (system: SystemItem) => void;
+}) {
+  const saveSystem = useServerFn(saveSystemRegistration);
+  const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState("");
+  const valid = name.trim().length >= 2;
+
+  const mutation = useMutation({
+    mutationFn: async (): Promise<SystemItem> => {
+      if (isDemo) {
+        return { id: `demo-system-${Date.now()}`, name: name.trim(), description };
+      }
+      const row = await saveSystem({
+        data: { organizationId, name: name.trim(), description: description || null },
+      });
+      return { id: row.id, name: row.name, description: row.description ?? "" };
+    },
+    onSuccess: (system) => {
+      toast.success("Sistema cadastrado.");
+      onCreated(system);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-xl">
+        <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+          <h2 className="font-display text-lg font-bold">Novo sistema</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (valid) mutation.mutate();
+          }}
+          className="grid gap-4 pt-4"
+        >
+          <Field label="Sistema">
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nome do sistema"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Descrição">
+            <textarea
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Informações pertinentes sobre o sistema"
+              className={`${inputClass} h-auto py-2`}
+            />
+          </Field>
+          <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 items-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={!valid || mutation.isPending}
+              className={primaryButtonClass}
+            >
+              <Save className="h-4 w-4" /> {mutation.isPending ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
