@@ -7557,14 +7557,16 @@ function DdpModule({
           substep.images,
         ]),
       ]),
-      ...data.sipocRows.flatMap((row) => [
+    ]),
+    sipoc: completionPercent(
+      data.sipocRows.flatMap((row) => [
         row.fornecedores,
         row.entradas,
         row.processo,
         row.saidas,
         row.clientes,
       ]),
-    ]),
+    ),
     gaps: completionPercent(
       data.gaps.flatMap((gap) => [
         gap.causa,
@@ -7856,6 +7858,67 @@ function DdpModule({
           </button>
         </div>
       </Panel>
+      <Panel title="Análise SIPOC do processo" progress={sectionProgress.sipoc}>
+        <div className="grid gap-3">
+          {data.sipocRows.map((row) => (
+            <div
+              key={row.id}
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+            >
+              {(["fornecedores", "entradas", "processo", "saidas", "clientes"] as const).map(
+                (field) => (
+                  <TextArea
+                    key={field}
+                    label={field === "saidas" ? "Saídas" : field}
+                    value={row[field]}
+                    onChange={(value) =>
+                      update({
+                        ...data,
+                        sipocRows: data.sipocRows.map((item) =>
+                          item.id === row.id ? { ...item, [field]: value } : item,
+                        ),
+                      })
+                    }
+                  />
+                ),
+              )}
+              <IconButton
+                label="Excluir"
+                onClick={() =>
+                  update({
+                    ...data,
+                    sipocRows: data.sipocRows.filter((item) => item.id !== row.id),
+                  })
+                }
+              >
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            </div>
+          ))}
+          <button
+            onClick={() =>
+              update({
+                ...data,
+                sipocRows: [
+                  ...data.sipocRows,
+                  {
+                    id: id("sipoc"),
+                    fornecedores: "",
+                    entradas: "",
+                    processo: "",
+                    saidas: "",
+                    clientes: "",
+                  },
+                ],
+              })
+            }
+            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar linha SIPOC
+          </button>
+        </div>
+      </Panel>
       <Panel title="Fluxo AS IS — Etapas do processo" progress={sectionProgress.flowStage}>
         <div className="grid gap-5">
         <div>
@@ -8116,70 +8179,6 @@ function DdpModule({
           >
             <Plus className="h-4 w-4" />
             Adicionar etapa
-          </button>
-        </div>
-        </div>
-        <div className="border-t border-border pt-5">
-        <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
-          SIPOC
-        </h3>
-        <div className="grid gap-3">
-          {data.sipocRows.map((row) => (
-            <div
-              key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
-            >
-              {(["fornecedores", "entradas", "processo", "saidas", "clientes"] as const).map(
-                (field) => (
-                  <TextArea
-                    key={field}
-                    label={field === "saidas" ? "Saídas" : field}
-                    value={row[field]}
-                    onChange={(value) =>
-                      update({
-                        ...data,
-                        sipocRows: data.sipocRows.map((item) =>
-                          item.id === row.id ? { ...item, [field]: value } : item,
-                        ),
-                      })
-                    }
-                  />
-                ),
-              )}
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  update({
-                    ...data,
-                    sipocRows: data.sipocRows.filter((item) => item.id !== row.id),
-                  })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                sipocRows: [
-                  ...data.sipocRows,
-                  {
-                    id: id("sipoc"),
-                    fornecedores: "",
-                    entradas: "",
-                    processo: "",
-                    saidas: "",
-                    clientes: "",
-                  },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar linha SIPOC
           </button>
         </div>
         </div>
