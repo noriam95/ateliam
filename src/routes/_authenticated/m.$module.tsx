@@ -7850,6 +7850,7 @@ function DdpModule({
           <div className="grid min-w-0 gap-4">
       <Panel
         id="sec-identification"
+        num="01"
         openSignal={openTarget === "identification" ? openNonce : 0}
         title="Dados do Mapeamento"
         progress={sectionProgress.identification}
@@ -7908,6 +7909,7 @@ function DdpModule({
         </Panel>
       <Panel
         id="sec-scope"
+        num="02"
         openSignal={openTarget === "scope" ? openNonce : 0}
         title="Abrangência / Escopo do Mapeamento"
         progress={sectionProgress.scope}
@@ -7921,6 +7923,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-overview"
+        num="03"
         openSignal={openTarget === "overview" ? openNonce : 0}
         title="Visão geral"
         progress={sectionProgress.overview}
@@ -7947,6 +7950,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-systems"
+        num="04"
         openSignal={openTarget === "systems" ? openNonce : 0}
         title="Sistemas envolvidos"
         progress={sectionProgress.systems}
@@ -8029,6 +8033,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-sipoc"
+        num="05"
         openSignal={openTarget === "sipoc" ? openNonce : 0}
         title="Análise SIPOC do processo"
         progress={sectionProgress.sipoc}
@@ -8095,6 +8100,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-flowStage"
+        num="06"
         openSignal={openTarget === "flowStage" ? openNonce : 0}
         title="Fluxo AS IS — Etapas do processo"
         progress={sectionProgress.flowStage}
@@ -8324,6 +8330,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-gaps"
+        num="07"
         openSignal={openTarget === "gaps" ? openNonce : 0}
         title="Gaps e causas-raiz"
         progress={sectionProgress.gaps}
@@ -8486,6 +8493,7 @@ function DdpModule({
       </Panel>
       <ListEditor
         id="sec-nextSteps"
+        num="08"
         openSignal={openTarget === "nextSteps" ? openNonce : 0}
         title="Próximos passos"
         items={data.nextSteps}
@@ -8495,6 +8503,7 @@ function DdpModule({
       />
       <Panel
         id="sec-glossary"
+        num="09"
         openSignal={openTarget === "glossary" ? openNonce : 0}
         title="Glossário"
         progress={sectionProgress.glossary}
@@ -9625,6 +9634,7 @@ function Panel({
   progress,
   defaultOpen = false,
   id,
+  num,
   openSignal,
   children,
 }: {
@@ -9633,6 +9643,8 @@ function Panel({
   defaultOpen?: boolean;
   // Âncora para navegação pelo índice do relatório.
   id?: string;
+  // Número da seção (ordem do relatório) — exibido num selo à esquerda.
+  num?: string;
   // Sinal externo (número crescente) que força a abertura do painel — usado
   // quando o usuário clica na seção no índice lateral.
   openSignal?: number;
@@ -9645,34 +9657,67 @@ function Panel({
   useEffect(() => {
     if (openSignal) setOpen(true);
   }, [openSignal]);
+  const complete = typeof progress === "number" && progress >= 100;
   return (
     <section
       id={id}
-      className="scroll-mt-[16rem] overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+      className={`scroll-mt-[16rem] overflow-hidden rounded-xl border bg-card transition-shadow ${
+        open
+          ? "border-[color-mix(in_oklab,var(--gold)_28%,var(--border))] shadow-[0_10px_30px_-22px_rgba(24,24,34,.45)]"
+          : "border-border shadow-sm hover:border-[color-mix(in_oklab,var(--gold)_22%,var(--border))]"
+      }`}
     >
       {title ? (
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
-          className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/45"
+          className={`flex min-h-16 w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors ${open ? "bg-[color-mix(in_oklab,var(--gold)_5%,transparent)]" : "hover:bg-muted/40"}`}
         >
-          {open ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-          <h2 className="min-w-0 flex-1 text-[15px] font-semibold text-foreground">{title}</h2>
+          {num ? (
+            <span
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg font-data text-[12px] font-bold transition-colors ${
+                complete
+                  ? "bg-emerald-500/15 text-emerald-600"
+                  : open
+                    ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
+                    : "bg-accent text-[var(--gold)]"
+              }`}
+            >
+              {complete ? <Check className="h-4 w-4" strokeWidth={3} /> : num}
+            </span>
+          ) : null}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-display text-[15px] font-semibold text-foreground">
+              {title}
+            </span>
+            {typeof progress === "number" ? (
+              <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
+                {complete ? "Seção concluída" : progress > 0 ? "Em preenchimento" : "Não iniciada"}
+              </span>
+            ) : null}
+          </span>
           {typeof progress === "number" ? (
-            <span className="rounded-full border border-border bg-muted/70 px-2.5 py-1 text-xs font-semibold text-foreground">
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 font-data text-xs font-bold ${
+                complete
+                  ? "bg-emerald-500/12 text-emerald-600"
+                  : progress > 0
+                    ? "bg-[color-mix(in_oklab,var(--gold)_16%,transparent)] text-[var(--gold-ink,var(--gold))]"
+                    : "bg-muted/70 text-muted-foreground"
+              }`}
+            >
               {progress}%
             </span>
           ) : null}
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors">
+            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </span>
         </button>
       ) : null}
       {title && typeof progress === "number" ? (
-        <div className="h-px bg-border">
+        <div className="h-[3px] bg-border/60">
           <div
-            className="h-px bg-[var(--gold)] transition-[width]"
+            className={`h-[3px] transition-[width] ${complete ? "bg-emerald-500" : "bg-[var(--gold)]"}`}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -10147,9 +10192,9 @@ function RegisteredSystemSelect({
 // dourado, hover discreto no contorno. Mantém o comportamento — só refina a
 // aparência e a consistência entre as seções.
 const fieldLabelClass =
-  "mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground";
+  "mb-1.5 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground/90";
 const fieldInputBase =
-  "w-full rounded-md border border-input bg-background text-sm text-foreground outline-none transition placeholder:text-muted-foreground/55 hover:border-[color-mix(in_oklab,var(--foreground)_22%,var(--input))] focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/15";
+  "w-full rounded-lg border border-input bg-background text-sm text-foreground outline-none transition placeholder:text-muted-foreground/50 hover:border-[color-mix(in_oklab,var(--foreground)_22%,var(--input))] focus:border-[var(--gold)] focus:ring-[3px] focus:ring-[var(--gold)]/18";
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   // Campo preenchido automaticamente pelo cadastro — visualmente "travado".
@@ -10158,7 +10203,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
       <span className={fieldLabelClass}>
         <Lock className="h-3 w-3" />
         {label}
-        <span className="font-normal italic opacity-70">· do cadastro</span>
+        <span className="font-medium normal-case italic opacity-70">· do cadastro</span>
       </span>
       <input
         readOnly
@@ -10396,6 +10441,7 @@ function ListEditor({
   placeholder,
   progress,
   id,
+  num,
   openSignal,
 }: {
   title: string;
@@ -10404,10 +10450,11 @@ function ListEditor({
   placeholder: string;
   progress?: number;
   id?: string;
+  num?: string;
   openSignal?: number;
 }) {
   return (
-    <Panel title={title} progress={progress} id={id} openSignal={openSignal}>
+    <Panel title={title} progress={progress} id={id} num={num} openSignal={openSignal}>
       <div className="grid gap-2">
         {items.map((item, index) => (
           <div
