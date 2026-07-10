@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Check,
   CheckCircle2,
   Circle,
   Diamond,
@@ -4310,6 +4311,9 @@ function ModuleWorkspacePage() {
   const [showSave, setShowSave] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [comment, setComment] = useState("");
+  // Incrementa a cada salvamento concluído — informa ao formulário de mapeamento
+  // que o estado "não salvo" pode ser limpo.
+  const [savedNonce, setSavedNonce] = useState(0);
   const [demoVersion, setDemoVersion] = useState(() => getDemoWorkspaceVersion());
   const [demoOrganizationLogo, setDemoOrganizationLogo] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -4916,6 +4920,7 @@ function ModuleWorkspacePage() {
       toast.success(moduleId === "ddp" ? "Mapeamento salvo." : `Versão v${revisionVersion} salva.`);
       setShowSave(false);
       setComment("");
+      setSavedNonce((n) => n + 1);
       if (moduleId === "ddp") {
         if (!isDemo && "document" in result) {
           setActiveCloudDocument({
@@ -5482,6 +5487,8 @@ function ModuleWorkspacePage() {
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
               onSave={() => setShowSave(true)}
               onPreview={previewCurrentDdp}
+              saving={saveMut.isPending}
+              savedNonce={savedNonce}
               organizationId={codeOrganizationId}
               isDemo={isDemo}
               codeSettings={codeSettings}
@@ -7407,6 +7414,8 @@ function DdpModule({
   update,
   onSave,
   onPreview,
+  saving = false,
+  savedNonce = 0,
   organizationId,
   isDemo,
   codeSettings,
@@ -7419,6 +7428,10 @@ function DdpModule({
   update: (value: DdpState) => void;
   onSave?: () => void;
   onPreview?: () => void;
+  // Salvamento em andamento (do mutation do pai).
+  saving?: boolean;
+  // Contador que incrementa a cada salvamento concluído com sucesso.
+  savedNonce?: number;
   organizationId: string | null;
   isDemo: boolean;
   codeSettings: CodeSettings | null;
@@ -7482,7 +7495,6 @@ function DdpModule({
     return null;
   }
 
-  const selectedProcessValueChain = findProcessValueChain(selectedProcess);
 
   function selectPrimaryProcess(process: OrganizationProcess | null) {
     const valueChain = findProcessValueChain(process);
@@ -7519,20 +7531,6 @@ function DdpModule({
     });
   }
 
-  const completion = useMemo(() => {
-    const fields = [
-      data.macroprocess.processId,
-      data.meta.titulo,
-      data.meta.responsavel,
-      data.meta.elaborador,
-      data.meta.revisor,
-      data.overview.objetivo,
-      data.overview.escopo,
-      data.overview.donoProcesso,
-      data.sipocRows[0]?.processo,
-    ];
-    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-  }, [data]);
   const sectionProgress = {
     // Não contabilizamos campos preenchidos automaticamente (código, data de
     // hoje, modalidade e status já vêm com valor padrão) — só os campos que
@@ -7601,6 +7599,117 @@ function DdpModule({
     ),
     glossary: completionPercent(data.glossary.flatMap((item) => [item.termo, item.definicao])),
   };
+
+  // Seções na ordem exata do relatório em Word — fonte única para o índice
+  // lateral e para o medidor segmentado da barra de comando.
+  const sections: MappingSectionInfo[] = [
+    { key: "identification", num: "01", title: "Dados do Mapeamento", pct: sectionProgress.identification },
+    { key: "scope", num: "02", title: "Abrangência / Escopo", pct: sectionProgress.scope },
+    { key: "overview", num: "03", title: "Visão geral", pct: sectionProgress.overview },
+    { key: "systems", num: "04", title: "Sistemas envolvidos", pct: sectionProgress.systems },
+    { key: "sipoc", num: "05", title: "Análise SIPOC", pct: sectionProgress.sipoc },
+    { key: "flowStage", num: "06", title: "Fluxo AS IS", pct: sectionProgress.flowStage },
+    { key: "gaps", num: "07", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
+    { key: "nextSteps", num: "08", title: "Próximos passos", pct: sectionProgress.nextSteps },
+    { key: "glossary", num: "09", title: "Glossário", pct: sectionProgress.glossary },
+  ];
+  const overallPct = Math.round(
+    sections.reduce((sum, section) => sum + section.pct, 0) / sections.length,
+  );
+
+  const [activeSection, setActiveSection] = useState("identification");
+  const [openNonce, setOpenNonce] = useState(0);
+  const [openTarget, setOpenTarget] = useState<string | null>(null);
+
+  function goToSection(key: string) {
+    setActiveSection(key);
+    setOpenTarget(key);
+    setOpenNonce((n) => n + 1);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  // Scrollspy: destaca no índice a última seção cujo topo já cruzou a linha
+  // logo abaixo da barra de comando fixa (≈ a seção que está sendo lida).
+  useEffect(() => {
+    if (!selectedProcess) return;
+    const sectionKeys = [
+      "identification",
+      "scope",
+      "overview",
+      "systems",
+      "sipoc",
+      "flowStage",
+      "gaps",
+      "nextSteps",
+      "glossary",
+    ];
+    function onScroll() {
+      const line = 280;
+      let current = sectionKeys[0];
+      for (const key of sectionKeys) {
+        const el = document.getElementById(`sec-${key}`);
+        if (el && el.getBoundingClientRect().top <= line) current = key;
+      }
+      setActiveSection(current);
+    }
+    onScroll();
+    // Captura scroll de qualquer contêiner (a página usa scroll na janela, mas
+    // capture=true garante que funcione mesmo se houver rolagem aninhada).
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProcess]);
+
+  // Estado de salvamento honesto: marca "não salvo" ao editar; limpa quando o
+  // pai sinaliza um salvamento concluído (savedNonce). O salvamento pode alterar
+  // o próprio documento (reserva de código) — a flag ignora essa mudança.
+  const [dirty, setDirty] = useState(false);
+  const dataMounted = useRef(false);
+  const justSaved = useRef(false);
+  useEffect(() => {
+    if (!dataMounted.current) {
+      dataMounted.current = true;
+      return;
+    }
+    if (justSaved.current) {
+      justSaved.current = false;
+      return;
+    }
+    setDirty(true);
+  }, [data]);
+  useEffect(() => {
+    if (!savedNonce) return;
+    justSaved.current = true;
+    setDirty(false);
+  }, [savedNonce]);
+
+  const saveState: "idle" | "dirty" | "saving" | "saved" = saving
+    ? "saving"
+    : dirty
+      ? "dirty"
+      : savedNonce
+        ? "saved"
+        : "idle";
+
+  // Atalho ⌘S / Ctrl+S para salvar o preenchimento.
+  useEffect(() => {
+    if (!onSave) return;
+    function onKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        if (selectedProcess) onSave?.();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onSave, selectedProcess]);
 
   function updateStep(stepId: string, patch: Partial<DdpFlowStep>) {
     update({
@@ -7693,62 +7802,53 @@ function DdpModule({
           }}
         />
       ) : null}
-      <Hero
-        title="Formulário de Preenchimento"
-        eyebrow="Processos · Mapeamento"
-        progress={completion}
-      />
-      <FixedPanel title="Dados do processo">
-        <RegisteredProcessSelect
-          required
-          label="Processo cadastrado"
-          value={data.macroprocess.processId ?? ""}
-          processes={primaryProcessOptions}
-          placeholder="Selecione o processo que será mapeado"
-          onSelect={selectPrimaryProcess}
-          displayName={(process) => process.name}
-          onRequestCreate={(name) => setCreateProcessName(name)}
-        />
-        {selectedProcess ? (
-          <SelectedProcessSummary
-            process={selectedProcess}
-            valueChain={selectedProcessValueChain?.name ?? ""}
+      <FlowCommandBar
+        code={data.meta.codigo}
+        sections={sections}
+        overallPct={overallPct}
+        saveState={saveState}
+        canSave={!!selectedProcess}
+        onSave={onSave}
+        onPreview={onPreview}
+        processControl={
+          <RegisteredProcessSelect
+            required
+            label="Processo do mapeamento"
+            value={data.macroprocess.processId ?? ""}
+            processes={primaryProcessOptions}
+            placeholder="Selecione o processo que será mapeado"
+            onSelect={selectPrimaryProcess}
+            displayName={(process) => process.name}
+            onRequestCreate={(name) => setCreateProcessName(name)}
           />
-        ) : null}
-        {!selectedProcess ? (
-          <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
-            Selecione um processo cadastrado para habilitar o preenchimento do mapeamento.
+        }
+      />
+      {!selectedProcess ? (
+        <div className="mt-2 grid place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
+          <div className="grid max-w-sm gap-2">
+            <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-accent text-[var(--gold)]">
+              <Lock className="h-5 w-5" />
+            </span>
+            <h2 className="font-display text-lg font-bold text-foreground">
+              Selecione um processo para começar
+            </h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Escolha, no campo acima, o processo cadastrado que será mapeado. As seções do
+              relatório serão liberadas em seguida.
+            </p>
           </div>
-        ) : null}
-      </FixedPanel>
-      {selectedProcess && (onSave || onPreview) ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {onSave ? (
-            <button
-              type="button"
-              onClick={onSave}
-              className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
-              title="Salvar o preenchimento do mapeamento"
-            >
-              <Save className="h-4 w-4" />
-              Salvar preenchimento
-            </button>
-          ) : null}
-          {onPreview ? (
-            <button
-              type="button"
-              onClick={onPreview}
-              className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted"
-              title="Visualizar o que está sendo preenchido"
-            >
-              <Eye className="h-4 w-4" />
-              Visualizar preenchimento
-            </button>
-          ) : null}
         </div>
-      ) : null}
-      <MappingSectionsGate enabled={!!selectedProcess}>
+      ) : (
+        <div className="mt-2 grid gap-5 lg:grid-cols-[218px_minmax(0,1fr)] lg:items-start">
+          <MappingSectionNav
+            sections={sections}
+            activeKey={activeSection}
+            onSelect={goToSection}
+          />
+          <div className="grid min-w-0 gap-4">
       <Panel
+        id="sec-identification"
+        openSignal={openTarget === "identification" ? openNonce : 0}
         title="Dados do Mapeamento"
         progress={sectionProgress.identification}
         defaultOpen={!!selectedProcess}
@@ -7804,7 +7904,12 @@ function DdpModule({
           />
         </div>
         </Panel>
-      <Panel title="Abrangência / Escopo do Mapeamento" progress={sectionProgress.scope}>
+      <Panel
+        id="sec-scope"
+        openSignal={openTarget === "scope" ? openNonce : 0}
+        title="Abrangência / Escopo do Mapeamento"
+        progress={sectionProgress.scope}
+      >
         <TextArea
           label="Abrangência / Escopo"
           value={data.overview.escopo}
@@ -7812,7 +7917,12 @@ function DdpModule({
           rows={8}
         />
       </Panel>
-      <Panel title="Visão geral" progress={sectionProgress.overview}>
+      <Panel
+        id="sec-overview"
+        openSignal={openTarget === "overview" ? openNonce : 0}
+        title="Visão geral"
+        progress={sectionProgress.overview}
+      >
         <div className="grid gap-4 md:grid-cols-2">
           <TextArea
             label="Objetivo"
@@ -7833,7 +7943,12 @@ function DdpModule({
           </div>
         </div>
       </Panel>
-      <Panel title="Sistemas envolvidos" progress={sectionProgress.systems}>
+      <Panel
+        id="sec-systems"
+        openSignal={openTarget === "systems" ? openNonce : 0}
+        title="Sistemas envolvidos"
+        progress={sectionProgress.systems}
+      >
         <div className="grid gap-3">
           {data.systems.map((system) => (
             <div
@@ -7910,7 +8025,12 @@ function DdpModule({
           </button>
         </div>
       </Panel>
-      <Panel title="Análise SIPOC do processo" progress={sectionProgress.sipoc}>
+      <Panel
+        id="sec-sipoc"
+        openSignal={openTarget === "sipoc" ? openNonce : 0}
+        title="Análise SIPOC do processo"
+        progress={sectionProgress.sipoc}
+      >
         <div className="grid gap-3">
           {data.sipocRows.map((row) => (
             <div
@@ -7971,7 +8091,12 @@ function DdpModule({
           </button>
         </div>
       </Panel>
-      <Panel title="Fluxo AS IS — Etapas do processo" progress={sectionProgress.flowStage}>
+      <Panel
+        id="sec-flowStage"
+        openSignal={openTarget === "flowStage" ? openNonce : 0}
+        title="Fluxo AS IS — Etapas do processo"
+        progress={sectionProgress.flowStage}
+      >
         <div className="grid gap-5">
         <div>
         <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -8195,7 +8320,12 @@ function DdpModule({
         </div>
         </div>
       </Panel>
-      <Panel title="Gaps e causas-raiz" progress={sectionProgress.gaps}>
+      <Panel
+        id="sec-gaps"
+        openSignal={openTarget === "gaps" ? openNonce : 0}
+        title="Gaps e causas-raiz"
+        progress={sectionProgress.gaps}
+      >
         <div className="grid gap-3">
           <div className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="overflow-auto">
@@ -8353,13 +8483,20 @@ function DdpModule({
         </div>
       </Panel>
       <ListEditor
+        id="sec-nextSteps"
+        openSignal={openTarget === "nextSteps" ? openNonce : 0}
         title="Próximos passos"
         items={data.nextSteps}
         onChange={(nextSteps) => update({ ...data, nextSteps })}
         placeholder="Próxima ação recomendada"
         progress={sectionProgress.nextSteps}
       />
-      <Panel title="Glossário" progress={sectionProgress.glossary}>
+      <Panel
+        id="sec-glossary"
+        openSignal={openTarget === "glossary" ? openNonce : 0}
+        title="Glossário"
+        progress={sectionProgress.glossary}
+      >
         <div className="grid gap-3">
           {data.glossary.map((item) => (
             <div
@@ -8416,7 +8553,12 @@ function DdpModule({
           </button>
         </div>
       </Panel>
-      </MappingSectionsGate>
+          {/* Folga para que qualquer seção consiga alcançar o topo (abaixo da
+              barra fixa) ao ser aberta pelo índice. */}
+          <div aria-hidden className="h-[45vh]" />
+          </div>
+        </div>
+      )}
       {pendingStatus ? (
         <Modal
           title="Alterar status do mapeamento"
@@ -9480,19 +9622,32 @@ function Panel({
   title,
   progress,
   defaultOpen = false,
+  id,
+  openSignal,
   children,
 }: {
   title?: string;
   progress?: number;
   defaultOpen?: boolean;
+  // Âncora para navegação pelo índice do relatório.
+  id?: string;
+  // Sinal externo (número crescente) que força a abertura do painel — usado
+  // quando o usuário clica na seção no índice lateral.
+  openSignal?: number;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(title ? defaultOpen : true);
   useEffect(() => {
     if (defaultOpen) setOpen(true);
   }, [defaultOpen]);
+  useEffect(() => {
+    if (openSignal) setOpen(true);
+  }, [openSignal]);
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+    <section
+      id={id}
+      className="scroll-mt-[16rem] overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+    >
       {title ? (
         <button
           type="button"
@@ -9525,97 +9680,204 @@ function Panel({
   );
 }
 
-function FixedPanel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="overflow-visible rounded-lg border border-border bg-card shadow-sm">
-      <div className="flex min-h-14 items-center border-b border-border px-4 py-3">
-        <h2 className="min-w-0 flex-1 text-[15px] font-semibold text-foreground">{title}</h2>
-      </div>
-      <div className="p-4 md:p-5">{children}</div>
-    </section>
-  );
-}
+// ─── Formulário de Mapeamento: barra de comando fixa + índice do relatório ────
 
-function SelectedProcessSummary({
-  process,
-  valueChain,
+type MappingSectionInfo = { key: string; num: string; title: string; pct: number };
+
+// Barra fixa no topo do formulário de mapeamento: identidade do documento,
+// medidor de progresso segmentado (uma marca por seção), estado de salvamento e
+// as ações Salvar / Visualizar sempre acessíveis.
+function FlowCommandBar({
+  code,
+  sections,
+  overallPct,
+  saveState,
+  canSave,
+  onSave,
+  onPreview,
+  processControl,
 }: {
-  process: OrganizationProcess;
-  valueChain: string;
+  code: string;
+  sections: MappingSectionInfo[];
+  overallPct: number;
+  saveState: "idle" | "dirty" | "saving" | "saved";
+  canSave: boolean;
+  onSave?: () => void;
+  onPreview?: () => void;
+  processControl: ReactNode;
 }) {
+  const stateLabel =
+    saveState === "saving"
+      ? "Salvando…"
+      : saveState === "dirty"
+        ? "Alterações não salvas"
+        : saveState === "saved"
+          ? "Tudo salvo"
+          : "";
   return (
-    <div className="mt-4 rounded-lg border border-[color-mix(in_oklab,var(--gold)_28%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_6%,var(--card))] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="sticky top-14 z-30 -mx-5 border-b border-border bg-[color-mix(in_oklab,var(--card)_88%,transparent)] px-5 py-3 backdrop-blur-md">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0">
-          <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--gold)]">
-            <CheckCircle2 className="h-4 w-4" />
-            Processo selecionado
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">
+            Processos · Mapeamento
           </div>
-          <h3 className="truncate text-base font-semibold text-foreground">{process.name}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            O preenchimento do mapeamento será iniciado em branco para este processo.
-          </p>
+          <h1 className="mt-0.5 flex items-baseline gap-2.5 font-display text-lg font-bold text-foreground md:text-xl">
+            Formulário de Preenchimento
+            {code ? <span className="font-data text-xs font-semibold text-muted-foreground">{code}</span> : null}
+          </h1>
         </div>
-        <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground">
-          {processTypeLabel(process.type)}
-        </span>
+
+        <div className="flex-1" />
+
+        <div className="flex items-center gap-3" title="Preenchimento por seção">
+          <div className="flex gap-[3px]">
+            {sections.map((s) => (
+              <span
+                key={s.key}
+                title={`${s.num} ${s.title} · ${s.pct}%`}
+                className={[
+                  "h-2 w-3.5 rounded-[3px] transition-colors",
+                  s.pct >= 100
+                    ? "bg-emerald-500"
+                    : s.pct > 0
+                      ? "bg-[var(--gold)]"
+                      : "bg-border",
+                ].join(" ")}
+              />
+            ))}
+          </div>
+          <div className="text-right leading-none">
+            <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+              Preench.
+            </div>
+            <div className="mt-0.5 font-data text-sm font-bold text-foreground">{overallPct}%</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          {stateLabel ? (
+            <div className="hidden text-right sm:block">
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[var(--gold)]">
+                {saveState === "dirty" ? (
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />
+                ) : saveState === "saved" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : null}
+                {stateLabel}
+              </span>
+              <div className="mt-0.5 text-[10px] text-muted-foreground/70">
+                salvar{" "}
+                <kbd className="rounded border border-border bg-muted/60 px-1 font-data">⌘S</kbd>
+              </div>
+            </div>
+          ) : null}
+          {onPreview ? (
+            <button
+              type="button"
+              onClick={onPreview}
+              disabled={!canSave}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3.5 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45"
+              title="Visualizar o que está sendo preenchido"
+            >
+              <Eye className="h-4 w-4" />
+              Visualizar
+            </button>
+          ) : null}
+          {onSave ? (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={!canSave}
+              className="relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-45"
+              title="Salvar o preenchimento do mapeamento"
+            >
+              {saveState === "dirty" && canSave ? (
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[var(--gold)] ring-2 ring-card" />
+              ) : null}
+              <Save className="h-4 w-4" />
+              Salvar
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-        <span>
-          <strong className="text-foreground">Código:</strong> {process.code || "-"}
-        </span>
-        <span>
-          <strong className="text-foreground">Macroprocesso:</strong> {valueChain || "-"}
-        </span>
-        <span>
-          <strong className="text-foreground">Área:</strong> {process.department || "-"}
-        </span>
-        <span>
-          <strong className="text-foreground">Dono:</strong> {process.owner || "-"}
-        </span>
-      </div>
+      <div className="mt-3 max-w-xl">{processControl}</div>
     </div>
   );
 }
 
-function MappingSectionsGate({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+// Índice lateral do relatório: lista as seções na ordem em que aparecem no
+// documento (a mesma do Word), com o estado de preenchimento de cada uma.
+function MappingSectionNav({
+  sections,
+  activeKey,
+  onSelect,
+}: {
+  sections: MappingSectionInfo[];
+  activeKey: string;
+  onSelect: (key: string) => void;
+}) {
+  const done = sections.filter((s) => s.pct >= 100).length;
   return (
-    <div className="grid gap-3">
-      <div
-        className={[
-          "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm transition",
-          enabled
-            ? "border-[color-mix(in_oklab,var(--gold)_35%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] text-foreground"
-            : "border-dashed border-border bg-muted/30 text-muted-foreground",
-        ].join(" ")}
-      >
-        <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-card text-[var(--gold)]">
-          {enabled ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-        </span>
-        <span>
-          <strong className="block text-sm text-foreground">
-            {enabled ? "Preenchimento habilitado" : "Preenchimento bloqueado"}
-          </strong>
-          <span className="mt-0.5 block text-xs leading-5">
-            {enabled
-              ? "As seções abaixo estão disponíveis para registrar um novo mapeamento."
-              : "Selecione um processo cadastrado em Dados do processo para habilitar as seções de preenchimento."}
-          </span>
-        </span>
+    <nav className="sticky top-[16.5rem] hidden lg:block" aria-label="Índice do relatório">
+      <div className="mb-3 ml-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+        Índice do relatório
       </div>
-      <fieldset
-        disabled={!enabled}
-        className={[
-          "grid gap-5 transition",
-          enabled
-            ? "opacity-100"
-            : "pointer-events-none opacity-55 [&_section]:border-dashed [&_section]:bg-muted/20",
-        ].join(" ")}
-      >
-        {children}
-      </fieldset>
-    </div>
+      <ul className="grid gap-0.5">
+        {sections.map((s) => {
+          const active = s.key === activeKey;
+          return (
+            <li key={s.key}>
+              <button
+                type="button"
+                onClick={() => onSelect(s.key)}
+                className={[
+                  "grid w-full grid-cols-[20px_1fr_auto] items-center gap-2.5 rounded-md border-l-2 py-2 pl-2 pr-2.5 text-left transition",
+                  active
+                    ? "border-[var(--gold)] bg-accent text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                ].join(" ")}
+              >
+                <span
+                  className={`text-center font-data text-[11px] font-semibold ${active ? "text-[var(--gold)]" : "text-muted-foreground/70"}`}
+                >
+                  {s.num}
+                </span>
+                <span className={`truncate text-[12.5px] ${active ? "font-bold" : "font-medium"}`}>
+                  {s.title}
+                </span>
+                <MappingSectionDot pct={s.pct} />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-3 ml-1 flex items-center justify-between border-t border-border/70 pt-3 text-[11.5px] text-muted-foreground">
+        <span>Seções concluídas</span>
+        <b className="font-data text-foreground">
+          {done} / {sections.length}
+        </b>
+      </div>
+    </nav>
   );
+}
+
+function MappingSectionDot({ pct }: { pct: number }) {
+  if (pct >= 100) {
+    return (
+      <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-emerald-500 text-white">
+        <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+      </span>
+    );
+  }
+  if (pct > 0) {
+    return (
+      <span
+        className="h-3.5 w-3.5 rounded-full border-[1.5px] border-[var(--gold)]"
+        style={{ background: "conic-gradient(var(--gold) 55%, transparent 55%)" }}
+      />
+    );
+  }
+  return <span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-border" />;
 }
 
 function RegisteredProcessSelect({
@@ -10117,15 +10379,19 @@ function ListEditor({
   onChange,
   placeholder,
   progress,
+  id,
+  openSignal,
 }: {
   title: string;
   items: NextStepItem[];
   onChange: (items: NextStepItem[]) => void;
   placeholder: string;
   progress?: number;
+  id?: string;
+  openSignal?: number;
 }) {
   return (
-    <Panel title={title} progress={progress}>
+    <Panel title={title} progress={progress} id={id} openSignal={openSignal}>
       <div className="grid gap-2">
         {items.map((item, index) => (
           <div
