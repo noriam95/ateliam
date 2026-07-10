@@ -306,6 +306,20 @@ async function inspectMappingCreationFlow(page) {
   const titleFieldBlank =
     processInputIndex >= 0 &&
     inputs.slice(processInputIndex + 1).some((input) => input.placeholder === "" && input.value === "");
+  const nextStepsSection = page.locator("#sec-nextSteps");
+  const nextStepsInitiallyOpen = await nextStepsSection
+    .locator("input")
+    .count()
+    .then((count) => count > 0)
+    .catch(() => false);
+  if (!nextStepsInitiallyOpen) {
+    await nextStepsSection.locator("> button").click();
+    await page.waitForTimeout(200);
+  }
+  const nextStepsBefore = await nextStepsSection.locator("input").count();
+  await nextStepsSection.getByRole("button", { name: /^Adicionar$/ }).click();
+  await page.waitForTimeout(200);
+  const nextStepsAfter = await nextStepsSection.locator("input").count();
 
   return {
     opened: true,
@@ -319,6 +333,7 @@ async function inspectMappingCreationFlow(page) {
     hasArea: inputs.some((input) => input.value === "Tecnologia da Informação"),
     hasOwner: inputs.some((input) => input.value === "Dono do processo"),
     blankMappingFields: blankFields && titleFieldBlank,
+    nextStepAddWorks: nextStepsAfter > nextStepsBefore,
     hasBadEncoding: hasMojibake(body),
     fallback: hasFallback(body),
     forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
@@ -415,6 +430,7 @@ async function main() {
         !desktop.mappingCreation.hasArea ||
         !desktop.mappingCreation.hasOwner ||
         !desktop.mappingCreation.blankMappingFields ||
+        !desktop.mappingCreation.nextStepAddWorks ||
         desktop.mappingCreation.hasBadEncoding ||
         desktop.mappingCreation.fallback ||
         desktop.mappingCreation.forbidden?.length);

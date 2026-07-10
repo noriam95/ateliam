@@ -10438,7 +10438,7 @@ function ListEditor({
   onChange,
   placeholder,
   progress,
-  id,
+  id: panelId,
   num,
   openSignal,
 }: {
@@ -10452,7 +10452,7 @@ function ListEditor({
   openSignal?: number;
 }) {
   return (
-    <Panel title={title} progress={progress} id={id} num={num} openSignal={openSignal}>
+    <Panel title={title} progress={progress} id={panelId} num={num} openSignal={openSignal}>
       <div className="grid gap-2">
         {items.map((item, index) => (
           <div
