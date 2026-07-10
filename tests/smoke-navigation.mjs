@@ -110,8 +110,8 @@ async function collectPageResult(page, route) {
     hasProcessLabel: normalizedBody.includes("processos"),
     hasMappingForm:
       route === "/m/ddp?view=new"
-        ? normalizedBody.includes("dados do processo") &&
-          normalizedBody.includes("dados do mapeamento")
+        ? normalizedBody.includes("processo do mapeamento") &&
+          normalizedBody.includes("selecione um processo para comecar")
         : undefined,
     hasDashboardCards:
       route === "/"
@@ -138,8 +138,18 @@ async function runDesktopSmoke(browser, logs) {
   }
   const processRegistration = demoActive ? await inspectProcessRegistrationDialog(page) : null;
   const registrationsNavigation = demoActive ? await inspectRegistrationsNavigation(page) : null;
+  const mappingCreation = demoActive ? await inspectMappingCreationFlow(page) : null;
   await page.close();
-  return { demoActive, results, processRegistration, registrationsNavigation };
+  return { demoActive, results, processRegistration, registrationsNavigation, mappingCreation };
+}
+
+async function findInputByPlaceholder(page, expected) {
+  const inputs = await page.locator("input").all();
+  for (const input of inputs) {
+    const placeholder = await input.getAttribute("placeholder");
+    if (normalizeText(placeholder || "").includes(expected)) return input;
+  }
+  return null;
 }
 
 async function inspectProcessRegistrationDialog(page) {
@@ -248,6 +258,73 @@ async function inspectRegistrationsNavigation(page) {
   return results;
 }
 
+async function inspectMappingCreationFlow(page) {
+  await page.goto(`${baseUrl}/m/ddp?view=new`, {
+    waitUntil: "networkidle",
+    timeout: 60000,
+  });
+  await page.waitForTimeout(700);
+
+  const initialBody = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
+  const normalizedInitialBody = normalizeText(initialBody);
+  const processInput = await findInputByPlaceholder(page, "selecione o processo");
+  if (!processInput) return { opened: false, reason: "Campo de processo nao encontrado." };
+
+  await processInput.click();
+  await page.waitForTimeout(300);
+  const firstOption = page.locator(".absolute.z-30 button").first();
+  if (!(await firstOption.count())) {
+    return { opened: true, optionFound: false };
+  }
+  await firstOption.click();
+  await page.waitForTimeout(700);
+
+  const body = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
+  const normalizedBody = normalizeText(body);
+  const inputs = await page.locator("input").evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      placeholder: node.getAttribute("placeholder") || "",
+      value: node.value || "",
+    })),
+  );
+  const blankFields = inputs
+    .filter((input) =>
+      ["pesquise um usuario cadastrado"].some((placeholder) =>
+        normalizeText(input.placeholder).includes(placeholder),
+      ),
+    )
+    .every((input) => input.value === "");
+  const processInputIndex = inputs.findIndex((input) =>
+    normalizeText(input.placeholder).includes("selecione o processo"),
+  );
+  const titleFieldBlank =
+    processInputIndex >= 0 &&
+    inputs.slice(processInputIndex + 1).some((input) => input.placeholder === "" && input.value === "");
+
+  return {
+    opened: true,
+    optionFound: true,
+    initiallyBlocked: normalizedInitialBody.includes("selecione um processo para comecar"),
+    initiallyZero: normalizedInitialBody.includes("preench.\n0%"),
+    selected: normalizedBody.includes("indice do relatorio"),
+    enabled: normalizedBody.includes("dados do mapeamento"),
+    hasProcessCode: inputs.some((input) => input.value === "Gestão de Demandas de BI Analytics"),
+    hasValueChain: normalizedBody.includes("abrangencia / escopo"),
+    hasArea: inputs.some((input) => input.value === "Tecnologia da Informação"),
+    hasOwner: inputs.some((input) => input.value === "Dono do processo"),
+    blankMappingFields: blankFields && titleFieldBlank,
+    hasBadEncoding: hasMojibake(body),
+    fallback: hasFallback(body),
+    forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
+  };
+}
+
 async function runMobileSmoke(browser, logs) {
   const page = await browser.newPage({
     viewport: { width: 390, height: 844 },
@@ -325,6 +402,22 @@ async function main() {
               result.forbidden?.length,
           )
         : [];
+    const mappingCreationFailure =
+      desktop.demoActive &&
+      (!desktop.mappingCreation?.opened ||
+        !desktop.mappingCreation.optionFound ||
+        !desktop.mappingCreation.initiallyBlocked ||
+        !desktop.mappingCreation.initiallyZero ||
+        !desktop.mappingCreation.selected ||
+        !desktop.mappingCreation.enabled ||
+        !desktop.mappingCreation.hasProcessCode ||
+        !desktop.mappingCreation.hasValueChain ||
+        !desktop.mappingCreation.hasArea ||
+        !desktop.mappingCreation.hasOwner ||
+        !desktop.mappingCreation.blankMappingFields ||
+        desktop.mappingCreation.hasBadEncoding ||
+        desktop.mappingCreation.fallback ||
+        desktop.mappingCreation.forbidden?.length);
     const mobileFailure =
       mobile.fallback ||
       mobile.forbidden.length > 0 ||
@@ -335,6 +428,7 @@ async function main() {
       routeFailures.length ||
       processRegistrationFailure ||
       registrationsNavigationFailures.length ||
+      mappingCreationFailure ||
       mobileFailure ||
       relevantLogs.length
     ) {
@@ -344,6 +438,7 @@ async function main() {
             routeFailures,
             processRegistration: desktop.processRegistration,
             registrationsNavigationFailures,
+            mappingCreation: desktop.mappingCreation,
             mobile,
             relevantLogs,
           },
