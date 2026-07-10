@@ -7220,7 +7220,7 @@ function DdpCausesModuleV2({
               </button>
               <div className="mt-4 grid gap-2">
                 {draft.comentarios.map((comment) => (
-                  <div key={comment.id} className="rounded-lg border border-border bg-card p-3">
+                  <div key={comment.id} className="rounded-lg border border-border bg-muted/20 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm leading-5 text-foreground">{comment.text}</p>
                       <button
@@ -7955,7 +7955,7 @@ function DdpModule({
           {data.systems.map((system) => (
             <div
               key={system.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[1fr_auto]"
             >
               <RegisteredSystemSelect
                 label="Sistema"
@@ -8020,7 +8020,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar sistema
@@ -8037,7 +8037,7 @@ function DdpModule({
           {data.sipocRows.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
             >
               {(["fornecedores", "entradas", "processo", "saidas", "clientes"] as const).map(
                 (field) => (
@@ -8086,7 +8086,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar linha SIPOC
@@ -8149,7 +8149,7 @@ function DdpModule({
         </h3>
         <div className="grid gap-3">
           {data.steps.map((step, index) => (
-            <div key={step.id} className="rounded-lg border border-border bg-card p-3">
+            <div key={step.id} className="rounded-lg border border-border bg-muted/20 p-3">
               <div className={`flex items-center gap-3 ${openSteps[step.id] ? "mb-3" : ""}`}>
                 <button
                   type="button"
@@ -8202,7 +8202,7 @@ function DdpModule({
                   images={step.images}
                   onChange={(images) => updateStep(step.id, { images })}
                 />
-                <div className="rounded-lg border border-border bg-muted/35 p-3">
+                <div className="rounded-lg border border-border bg-card p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="text-[11px] font-semibold text-foreground">Subetapas</div>
@@ -8239,7 +8239,7 @@ function DdpModule({
                       {step.substeps.map((substep) => (
                         <div
                           key={substep.id}
-                          className="rounded-lg border border-border bg-card p-3"
+                          className="rounded-lg border border-border bg-muted/20 p-3"
                         >
                           <div className="mb-3 grid gap-3 md:grid-cols-[120px_1fr_auto]">
                             <Field
@@ -8313,7 +8313,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar etapa
@@ -8477,7 +8477,7 @@ function DdpModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar gap
@@ -8503,7 +8503,7 @@ function DdpModule({
           {data.glossary.map((item) => (
             <div
               key={item.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[240px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[240px_1fr_auto]"
             >
               <Field
                 compact
@@ -8548,7 +8548,7 @@ function DdpModule({
                 glossary: [...data.glossary, { id: id("gloss"), termo: "", definicao: "" }],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar termo
@@ -8782,7 +8782,7 @@ function PopModule({
       <Panel title="Conteúdo do documento" progress={sectionProgress.sections}>
         <div className="grid gap-3">
           {data.sections.map((section) => (
-            <div key={section.id} className="rounded-lg border border-border bg-card p-3">
+            <div key={section.id} className="rounded-lg border border-border bg-muted/20 p-3">
               <div className="mb-3 flex gap-2">
                 <input
                   value={section.title}
@@ -8885,7 +8885,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar seção
@@ -8897,7 +8897,7 @@ function PopModule({
           {data.responsibilities.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[240px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[240px_1fr_auto]"
             >
               <Field
                 compact
@@ -8947,7 +8947,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar responsabilidade
@@ -8959,7 +8959,7 @@ function PopModule({
           {data.references.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[160px_1fr_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[160px_1fr_1fr_auto]"
             >
               <Field
                 compact
@@ -9023,7 +9023,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar referência
@@ -9036,7 +9036,7 @@ function PopModule({
           {data.history.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 lg:grid-cols-[120px_100px_140px_1fr_1fr_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[120px_100px_140px_1fr_1fr_1fr_auto]"
             >
               <Field
                 compact
@@ -9145,7 +9145,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar histórico
@@ -9156,7 +9156,7 @@ function PopModule({
           {data.changes.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[120px_220px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[120px_220px_1fr_auto]"
             >
               <Field
                 compact
@@ -9217,7 +9217,7 @@ function PopModule({
                 ],
               })
             }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
             Adicionar alteração
@@ -10143,11 +10143,19 @@ function RegisteredSystemSelect({
   );
 }
 
+// Linguagem visual única dos campos do formulário: mesma altura, foco em
+// dourado, hover discreto no contorno. Mantém o comportamento — só refina a
+// aparência e a consistência entre as seções.
+const fieldLabelClass =
+  "mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground";
+const fieldInputBase =
+  "w-full rounded-md border border-input bg-background text-sm text-foreground outline-none transition placeholder:text-muted-foreground/55 hover:border-[color-mix(in_oklab,var(--foreground)_22%,var(--input))] focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/15";
+
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   // Campo preenchido automaticamente pelo cadastro — visualmente "travado".
   return (
     <label className="block">
-      <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+      <span className={fieldLabelClass}>
         <Lock className="h-3 w-3" />
         {label}
         <span className="font-normal italic opacity-70">· do cadastro</span>
@@ -10157,7 +10165,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
         tabIndex={-1}
         value={value}
         placeholder="Preenchido pelo processo selecionado"
-        className="w-full cursor-not-allowed rounded-md border border-dashed border-border bg-muted/70 px-3 py-2.5 text-sm text-muted-foreground outline-none"
+        className="h-10 w-full cursor-not-allowed rounded-md border border-dashed border-border bg-muted/60 px-3 text-sm text-muted-foreground outline-none placeholder:text-muted-foreground/50"
       />
     </label>
   );
@@ -10178,12 +10186,12 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <span className={fieldLabelClass}>{label}</span>
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10 ${compact ? "py-2" : "py-2.5"}`}
+        className={`${fieldInputBase} px-3 ${compact ? "h-9" : "h-10"}`}
       />
     </label>
   );
@@ -10204,14 +10212,17 @@ function UserSearchField({
   const uniqueOptions = useMemo(() => Array.from(new Set(options.filter(Boolean))), [options]);
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
-      <input
-        list={uniqueOptions.length ? listId.current : undefined}
-        value={value}
-        placeholder={uniqueOptions.length ? "Pesquise um usuário cadastrado" : "Informe o usuário"}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
-      />
+      <span className={fieldLabelClass}>{label}</span>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+        <input
+          list={uniqueOptions.length ? listId.current : undefined}
+          value={value}
+          placeholder={uniqueOptions.length ? "Pesquise um usuário cadastrado" : "Informe o usuário"}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${fieldInputBase} h-10 pl-9 pr-3`}
+        />
+      </div>
       {uniqueOptions.length ? (
         <datalist id={listId.current}>
           {uniqueOptions.map((option) => (
@@ -10236,18 +10247,21 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <span className={fieldLabelClass}>{label}</span>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${fieldInputBase} h-10 cursor-pointer appearance-none px-3 pr-9`}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      </div>
     </label>
   );
 }
@@ -10265,12 +10279,12 @@ function TextArea({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <span className={fieldLabelClass}>{label}</span>
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
-        className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+        className={`${fieldInputBase} resize-y px-3 py-2.5 leading-relaxed`}
       />
     </label>
   );
@@ -10306,7 +10320,7 @@ function ImageManager({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-muted/35 p-3">
+    <div className="rounded-lg border border-border bg-card p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
@@ -10334,7 +10348,7 @@ function ImageManager({
           {images.map((image) => (
             <div
               key={image.id}
-              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[160px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[160px_1fr_auto]"
             >
               <div className="overflow-hidden rounded-md border border-border bg-background">
                 <img src={image.src} alt={image.titulo} className="h-32 w-full object-contain" />
@@ -10453,7 +10467,7 @@ function ListEditor({
         <button
           type="button"
           onClick={() => onChange([...items, { id: id("item"), text: "", responsavel: "", prazo: "" }])}
-          className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg border-2 border-dashed border-[var(--gold)]/45 bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))] px-4 py-2.5 text-sm font-bold text-[color-mix(in_oklab,var(--gold)_82%,var(--foreground))] shadow-sm transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_16%,var(--card))]"
+          className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
         >
           <Plus className="h-4 w-4" />
           Adicionar
@@ -10498,7 +10512,7 @@ function IconButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="grid h-10 w-10 place-items-center rounded-md border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
     >
       {children}
     </button>
