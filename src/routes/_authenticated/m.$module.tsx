@@ -7490,6 +7490,24 @@ function TableSelect({
   );
 }
 
+function TableReadonly({
+  value,
+  multiline = false,
+}: {
+  value: string;
+  multiline?: boolean;
+}) {
+  return (
+    <div
+      className={`min-w-[140px] rounded-md border border-border bg-muted/35 px-2.5 py-2 text-xs text-muted-foreground ${
+        multiline ? "min-h-[62px] whitespace-pre-wrap leading-relaxed" : "min-h-[34px]"
+      }`}
+    >
+      {value?.trim() ? value : "-"}
+    </div>
+  );
+}
+
 function DdpModule({
   data,
   catalogs,
@@ -7530,6 +7548,8 @@ function DdpModule({
     stepId: string;
     query: string;
   } | null>(null);
+  const [libraryCauseRows, setLibraryCauseRows] = useState<Record<string, boolean>>({});
+  const [causeSearch, setCauseSearch] = useState<Record<string, string>>({});
   const selectedProcess = useMemo(
     () => catalogs.processes.find((process) => process.id === data.macroprocess.processId) ?? null,
     [catalogs.processes, data.macroprocess.processId],
@@ -7818,13 +7838,37 @@ function DdpModule({
     });
   }
 
+  function setGapLibraryMode(gapId: string, enabled: boolean) {
+    setLibraryCauseRows((current) => ({ ...current, [gapId]: enabled }));
+    setCauseSearch((current) => {
+      const next = { ...current };
+      delete next[gapId];
+      return next;
+    });
+    if (!enabled) updateGap(gapId, { sharedCauseId: "" });
+  }
+
   function applySharedCauseToGap(gapId: string, causeId: string) {
     const cause = catalogs.causes.find((item) => item.id === causeId);
     if (!cause) {
       updateGap(gapId, { sharedCauseId: "" });
       return;
     }
+    setLibraryCauseRows((current) => ({ ...current, [gapId]: true }));
+    setCauseSearch((current) => {
+      const next = { ...current };
+      delete next[gapId];
+      return next;
+    });
     updateGap(gapId, gapPatchFromOrganizationCause(cause));
+  }
+
+  function selectSharedCauseByTitle(gapId: string, value: string) {
+    setCauseSearch((current) => ({ ...current, [gapId]: value }));
+    const selected = catalogs.causes.find(
+      (cause) => normalizeLabel(cause.title) === normalizeLabel(value),
+    );
+    if (selected) applySharedCauseToGap(gapId, selected.id);
   }
 
   function requestStatusChange(status: string) {
@@ -7933,7 +7977,21 @@ function DdpModule({
       >
         <div className="grid gap-4 md:grid-cols-3">
           {data.meta.codigo ? (
-            <ReadOnlyField label="Código do mapeamento" value={data.meta.codigo} />
+            <div className="md:col-span-3 rounded-xl border border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_10%,var(--card))] px-4 py-3 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
+                    Código gerado do mapeamento
+                  </span>
+                  <strong className="mt-1 block font-data text-2xl font-black tracking-[0.14em] text-foreground">
+                    {data.meta.codigo}
+                  </strong>
+                </div>
+                <span className="rounded-full border border-border bg-background px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  Registro único
+                </span>
+              </div>
+            </div>
           ) : null}
           <Field
             label="Título do Mapeamento"
@@ -8416,8 +8474,8 @@ function DdpModule({
               <table className="w-full min-w-[1540px] border-collapse text-left text-sm">
                 <thead className="bg-muted text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-3">Origem</th>
-                    <th className="px-3 py-3">Causa reutilizável</th>
+                    <th className="px-3 py-3">Usar causa cadastrada?</th>
+                    <th className="px-3 py-3">Causa cadastrada</th>
                     <th className="px-3 py-3">Causa</th>
                     <th className="px-3 py-3">Descrição</th>
                     <th className="px-3 py-3">Impacto</th>
@@ -8430,99 +8488,180 @@ function DdpModule({
                   </tr>
                 </thead>
                 <tbody>
-                  {data.gaps.map((gap) => (
-                    <tr key={gap.id} className="border-t border-border align-top">
-                      <td className="px-3 py-3">
-                        <span className="inline-flex rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                          {gap.sharedCauseId ? "Biblioteca" : "Mapeamento"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <select
-                          value={gap.sharedCauseId ?? ""}
-                          onChange={(event) => applySharedCauseToGap(gap.id, event.target.value)}
-                          className="w-full min-w-[190px] rounded-md border border-input bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
-                        >
-                          <option value="">Causa local / nova</option>
-                          {catalogs.causes.map((cause) => (
-                            <option key={cause.id} value={cause.id}>
-                              {cause.title}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableInput
-                          value={gap.causa}
-                          onChange={(causa) => updateGap(gap.id, { causa })}
-                          placeholder="Nome da causa"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableTextarea
-                          value={gap.descricao}
-                          onChange={(descricao) => updateGap(gap.id, { descricao })}
-                          placeholder="Descreva a causa"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableTextarea
-                          value={gap.impacto}
-                          onChange={(impacto) => updateGap(gap.id, { impacto })}
-                          placeholder="Impacto"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableTextarea
-                          value={gap.acao}
-                          onChange={(acao) => updateGap(gap.id, { acao })}
-                          placeholder="Ação proposta"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableInput
-                          value={gap.responsavel}
-                          onChange={(responsavel) => updateGap(gap.id, { responsavel })}
-                          placeholder="Responsável"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableDateRange
-                          value={gap.prazo}
-                          onChange={(prazo) => updateGap(gap.id, { prazo })}
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableSelect
-                          value={gap.prioridade}
-                          options={[...CAUSE_PRIORITY_OPTIONS]}
-                          onChange={(prioridade) => updateGap(gap.id, { prioridade })}
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <TableSelect
-                          value={gap.status}
-                          options={[...CAUSE_STATUS_OPTIONS]}
-                          onChange={(status) => updateGap(gap.id, { status })}
-                        />
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            update({
-                              ...data,
-                              gaps: data.gaps.filter((item) => item.id !== gap.id),
-                            })
-                          }
-                          className="inline-flex items-center gap-2 rounded-md border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/5"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Excluir
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {data.gaps.map((gap) => {
+                    const usesLibraryCause = libraryCauseRows[gap.id] ?? Boolean(gap.sharedCauseId);
+                    const selectedCause = catalogs.causes.find((cause) => cause.id === gap.sharedCauseId);
+                    const causeSearchValue = causeSearch[gap.id] ?? selectedCause?.title ?? "";
+
+                    return (
+                      <tr key={gap.id} className="border-t border-border align-top">
+                        <td className="px-3 py-3">
+                          <div className="grid min-w-[180px] gap-2">
+                            <div className="grid grid-cols-2 overflow-hidden rounded-md border border-border bg-background p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setGapLibraryMode(gap.id, false)}
+                                className={`rounded px-2.5 py-1.5 text-xs font-bold transition ${
+                                  !usesLibraryCause
+                                    ? "bg-[var(--gold)] text-black"
+                                    : "text-muted-foreground hover:bg-muted"
+                                }`}
+                              >
+                                Não
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGapLibraryMode(gap.id, true)}
+                                className={`rounded px-2.5 py-1.5 text-xs font-bold transition ${
+                                  usesLibraryCause
+                                    ? "bg-[var(--gold)] text-black"
+                                    : "text-muted-foreground hover:bg-muted"
+                                }`}
+                              >
+                                Sim
+                              </button>
+                            </div>
+                            <span className="text-[11px] leading-snug text-muted-foreground">
+                              {usesLibraryCause
+                                ? "Dados bloqueados pela causa cadastrada."
+                                : "Gap local/editavel neste mapeamento."}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause ? (
+                            <div className="grid min-w-[230px] gap-2">
+                              <input
+                                list={`gap-cause-options-${gap.id}`}
+                                value={causeSearchValue}
+                                onChange={(event) =>
+                                  selectSharedCauseByTitle(gap.id, event.target.value)
+                                }
+                                placeholder="Pesquisar causa cadastrada"
+                                className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+                              />
+                              <datalist id={`gap-cause-options-${gap.id}`}>
+                                {catalogs.causes.map((cause) => (
+                                  <option key={cause.id} value={cause.title} />
+                                ))}
+                              </datalist>
+                              {!selectedCause ? (
+                                <span className="text-[11px] text-muted-foreground">
+                                  Selecione uma causa da lista para preencher os campos.
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="min-w-[230px] rounded-md border border-dashed border-border bg-muted/25 px-2.5 py-2 text-xs text-muted-foreground">
+                              Marque Sim para pesquisar uma causa existente.
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.causa} />
+                          ) : (
+                            <TableInput
+                              value={gap.causa}
+                              onChange={(causa) => updateGap(gap.id, { causa })}
+                              placeholder="Nome da causa"
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.descricao} multiline />
+                          ) : (
+                            <TableTextarea
+                              value={gap.descricao}
+                              onChange={(descricao) => updateGap(gap.id, { descricao })}
+                              placeholder="Descreva a causa"
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.impacto} multiline />
+                          ) : (
+                            <TableTextarea
+                              value={gap.impacto}
+                              onChange={(impacto) => updateGap(gap.id, { impacto })}
+                              placeholder="Impacto"
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.acao} multiline />
+                          ) : (
+                            <TableTextarea
+                              value={gap.acao}
+                              onChange={(acao) => updateGap(gap.id, { acao })}
+                              placeholder="Ação proposta"
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.responsavel} />
+                          ) : (
+                            <TableInput
+                              value={gap.responsavel}
+                              onChange={(responsavel) => updateGap(gap.id, { responsavel })}
+                              placeholder="Responsável"
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.prazo} />
+                          ) : (
+                            <TableDateRange
+                              value={gap.prazo}
+                              onChange={(prazo) => updateGap(gap.id, { prazo })}
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.prioridade} />
+                          ) : (
+                            <TableSelect
+                              value={gap.prioridade}
+                              options={[...CAUSE_PRIORITY_OPTIONS]}
+                              onChange={(prioridade) => updateGap(gap.id, { prioridade })}
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {usesLibraryCause && selectedCause ? (
+                            <TableReadonly value={gap.status} />
+                          ) : (
+                            <TableSelect
+                              value={gap.status}
+                              options={[...CAUSE_STATUS_OPTIONS]}
+                              onChange={(status) => updateGap(gap.id, { status })}
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              update({
+                                ...data,
+                                gaps: data.gaps.filter((item) => item.id !== gap.id),
+                              })
+                            }
+                            className="inline-flex items-center gap-2 rounded-md border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/5"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Excluir
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {!data.gaps.length ? (
                     <tr>
                       <td
