@@ -278,11 +278,26 @@ type CauseComment = TextItem & { createdAt?: string };
 type GlossaryItem = { id: string; termo: string; definicao: string };
 type PopSection = {
   id: string;
+  code?: string;
   title: string;
   description: string;
   body: string;
   records: string;
   risks: string;
+  images: ModuleImage[];
+  subitems?: PopProcedureSubitem[];
+};
+type PopProcedureSubitem = {
+  id: string;
+  code: string;
+  title: string;
+  clauses: PopProcedureClause[];
+};
+type PopProcedureClause = {
+  id: string;
+  letter: string;
+  text: string;
+  alert: string;
   images: ModuleImage[];
 };
 type ResponsibilityItem = { id: string; area: string; responsabilidade: string };
@@ -640,21 +655,40 @@ function defaultWorkspace(): WorkspaceState {
       sections: [
         {
           id: id("sec"),
+          code: "3.1",
           title: "3.1 Procedimento principal",
-          description: "Descreva o processo, a rotina ou a diretriz operacional.",
+          description: "",
           body: "",
           records: "",
           risks: "",
           images: [],
+          subitems: [
+            {
+              id: id("sub"),
+              code: "3.1.1",
+              title: "Primeiro subitem",
+              clauses: [
+                {
+                  id: id("clause"),
+                  letter: "a",
+                  text: "",
+                  alert: "",
+                  images: [],
+                },
+              ],
+            },
+          ],
         },
         {
           id: id("sec"),
+          code: "3.2",
           title: "3.2 Tratamento de exceções e registros",
-          description: "Registre condições fora do fluxo normal, evidências e controles mínimos.",
+          description: "",
           body: "",
           records: "",
           risks: "",
           images: [],
+          subitems: [],
         },
       ],
       responsibilities: [
@@ -1399,20 +1433,67 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
 }
 
 function normalizePop(input: Partial<PopState> | undefined, fallback: PopState): PopState {
+  const normalizeClauses = (items: unknown[] | undefined, fallbackText = ""): PopProcedureClause[] => {
+    const source = Array.isArray(items) ? items : [];
+    if (!source.length && fallbackText.trim()) {
+      return [{ id: id("clause"), letter: "a", text: fallbackText, alert: "", images: [] }];
+    }
+    return source.map((item, index) => {
+      const row = (item && typeof item === "object" ? item : {}) as Partial<PopProcedureClause>;
+      return {
+        id: row.id || id("clause"),
+        letter: row.letter || String.fromCharCode(97 + index),
+        text: row.text || "",
+        alert: row.alert || "",
+        images: normalizeImages(row.images, "popclauseimg"),
+      };
+    });
+  };
+  const normalizeSubitems = (
+    items: unknown[] | undefined,
+    sectionCode: string,
+    fallbackText = "",
+  ): PopProcedureSubitem[] => {
+    const source = Array.isArray(items) ? items : [];
+    if (!source.length && fallbackText.trim()) {
+      return [
+        {
+          id: id("sub"),
+          code: `${sectionCode}.1`,
+          title: "Subitem",
+          clauses: normalizeClauses(undefined, fallbackText),
+        },
+      ];
+    }
+    return source.map((item, index) => {
+      const row = (item && typeof item === "object" ? item : {}) as Partial<PopProcedureSubitem>;
+      return {
+        id: row.id || id("sub"),
+        code: row.code || `${sectionCode}.${index + 1}`,
+        title: row.title || "Subitem",
+        clauses: normalizeClauses(row.clauses, ""),
+      };
+    });
+  };
   return {
     ...fallback,
     ...input,
     meta: { ...fallback.meta, ...(input?.meta ?? {}) },
     purpose: { ...fallback.purpose, ...(input?.purpose ?? {}) },
-    sections: (input?.sections ?? fallback.sections).map((section) => ({
-      id: section.id || id("sec"),
-      title: section.title || "Nova seção",
-      description: section.description || "",
-      body: section.body || "",
-      records: section.records || "",
-      risks: section.risks || "",
-      images: normalizeImages(section.images, "popimg"),
-    })),
+    sections: (input?.sections ?? fallback.sections).map((section, index) => {
+      const code = section.code || `3.${index + 1}`;
+      return {
+        id: section.id || id("sec"),
+        code,
+        title: section.title || `${code} Novo item`,
+        description: section.description || "",
+        body: section.body || "",
+        records: section.records || "",
+        risks: section.risks || "",
+        images: normalizeImages(section.images, "popimg"),
+        subitems: normalizeSubitems(section.subitems, code, section.body || section.description || ""),
+      };
+    }),
     responsibilities: (input?.responsibilities ?? fallback.responsibilities).map((item) => {
       const legacy = item as Partial<ResponsibilityItem> & Partial<TextItem>;
       return {
@@ -2273,62 +2354,50 @@ function getDdpExportModel(data: DdpState) {
 }
 
 function getPopExportModel(data: PopState) {
-  const legacy = data.legacy ?? {};
-  const legacySections = arrayAt(legacy, "secoes").map((item, index) => {
-    const row = asObject(item);
-    const current = data.sections[index];
-    return {
-      title: current?.title || textAt(row, "titulo"),
-      description: current?.description || textAt(row, "descricao"),
-      items: current?.images?.length
+  const sections: ExportPopSection[] = data.sections.map((section) => {
+    const nestedItems =
+      section.subitems?.flatMap((subitem) => [
+        {
+          text: `${subitem.code} ${subitem.title}`.trim(),
+          note: "",
+          images: [],
+        },
+        ...subitem.clauses.map((clause) => ({
+          text: `${clause.letter}) ${clause.text}`.trim(),
+          note: clause.alert,
+          images: clause.images.map((image) => ({
+            title: image.titulo,
+            caption: image.legenda,
+            src: image.src,
+          })),
+        })),
+      ]) ?? [];
+    const legacyItems = [
+      ...splitText(section.body || section.records || section.risks).map((line) => ({
+        text: line,
+        note: "",
+        images: [],
+      })),
+      ...(section.images.length
         ? [
             {
-              text: current.body || current.description,
-              note: joinClean([current.records, current.risks]),
-              images: current.images.map((image) => ({
+              text: "Imagens e evidências",
+              note: "",
+              images: section.images.map((image) => ({
                 title: image.titulo,
                 caption: image.legenda,
                 src: image.src,
               })),
             },
           ]
-        : arrayAt(row, "itens").map((sectionItem) => {
-            const currentItem = asObject(sectionItem);
-            return {
-              text: textAt(currentItem, "texto"),
-              note: textAt(currentItem, "observacao"),
-              images: exportImages(arrayAt(currentItem, "imagens"), "Figura"),
-            };
-          }),
-    };
-  });
-
-  const sections: ExportPopSection[] = legacySections.length
-    ? legacySections
-    : data.sections.map((section) => ({
+        : []),
+    ];
+    return {
         title: section.title,
         description: section.description,
-        items: [
-          ...splitText(section.body || section.records || section.risks).map((line) => ({
-            text: line,
-            note: "",
-            images: [],
-          })),
-          ...(section.images.length
-            ? [
-                {
-                  text: "Imagens e evidências",
-                  note: "",
-                  images: section.images.map((image) => ({
-                    title: image.titulo,
-                    caption: image.legenda,
-                    src: image.src,
-                  })),
-                },
-              ]
-            : []),
-        ],
-      }));
+        items: nestedItems.length ? nestedItems : legacyItems,
+      };
+  });
 
   return {
     meta: data.meta,
@@ -9056,20 +9125,22 @@ function PopModule({
       data.meta.aprovacao,
       data.meta.publicacao,
     ]),
-    purpose: completionPercent([
-      data.purpose.objetivo,
-      data.purpose.abrangencia,
-      data.purpose.premissas,
-      data.purpose.importante,
-    ]),
+    objective: completionPercent([data.purpose.objetivo]),
+    scope: completionPercent([data.purpose.abrangencia]),
     sections: completionPercent(
       data.sections.flatMap((section) => [
+        section.code,
         section.title,
-        section.description,
-        section.body,
-        section.records,
-        section.risks,
-        section.images,
+        ...(section.subitems ?? []).flatMap((subitem) => [
+          subitem.code,
+          subitem.title,
+          ...subitem.clauses.flatMap((clause) => [
+            clause.letter,
+            clause.text,
+            clause.alert,
+            clause.images,
+          ]),
+        ]),
       ]),
     ),
     responsibilities: completionPercent(
@@ -9091,8 +9162,9 @@ function PopModule({
     ]),
   };
   const sections: MappingSectionInfo[] = [
-    { key: "identification", num: "01", title: "Dados do documento", pct: sectionProgress.identification },
-    { key: "purpose", num: "02", title: "Objetivo e abrangência", pct: sectionProgress.purpose },
+    { key: "identification", num: "00", title: "Dados do documento", pct: sectionProgress.identification },
+    { key: "objective", num: "01", title: "Objetivo", pct: sectionProgress.objective },
+    { key: "scope", num: "02", title: "Abrangência", pct: sectionProgress.scope },
     { key: "procedure", num: "03", title: "Procedimento operacional", pct: sectionProgress.sections },
     { key: "responsibilities", num: "04", title: "Responsabilidades", pct: sectionProgress.responsibilities },
     { key: "references", num: "05", title: "Referências normativas", pct: sectionProgress.references },
@@ -9188,6 +9260,58 @@ function PopModule({
       ...data,
       sections: data.sections.map((item) => (item.id === sectionId ? { ...item, ...patch } : item)),
     });
+  }
+
+  function updateProcedureSubitem(
+    sectionId: string,
+    subitemId: string,
+    patch: Partial<PopProcedureSubitem>,
+  ) {
+    update({
+      ...data,
+      sections: data.sections.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              subitems: (section.subitems ?? []).map((subitem) =>
+                subitem.id === subitemId ? { ...subitem, ...patch } : subitem,
+              ),
+            }
+          : section,
+      ),
+    });
+  }
+
+  function updateProcedureClause(
+    sectionId: string,
+    subitemId: string,
+    clauseId: string,
+    patch: Partial<PopProcedureClause>,
+  ) {
+    update({
+      ...data,
+      sections: data.sections.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              subitems: (section.subitems ?? []).map((subitem) =>
+                subitem.id === subitemId
+                  ? {
+                      ...subitem,
+                      clauses: subitem.clauses.map((clause) =>
+                        clause.id === clauseId ? { ...clause, ...patch } : clause,
+                      ),
+                    }
+                  : subitem,
+              ),
+            }
+          : section,
+      ),
+    });
+  }
+
+  function nextClauseLetter(clauses: PopProcedureClause[]) {
+    return String.fromCharCode(97 + clauses.length);
   }
 
   return (
@@ -9325,34 +9449,34 @@ function PopModule({
         </div>
       </Panel>
       <Panel
-        id="pop-sec-purpose"
-        num="02"
-        title="Objetivo e abrangência"
-        progress={sectionProgress.purpose}
-        openSignal={openSignals.purpose}
+        id="pop-sec-objective"
+        num="01"
+        title="Objetivo"
+        progress={sectionProgress.objective}
+        openSignal={openSignals.objective}
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           <TextArea
-            label="1. Objetivo"
+            label="Objetivo"
             value={data.purpose.objetivo}
             onChange={(objetivo) => update({ ...data, purpose: { ...data.purpose, objetivo } })}
           />
+        </div>
+      </Panel>
+      <Panel
+        id="pop-sec-scope"
+        num="02"
+        title="Abrangência"
+        progress={sectionProgress.scope}
+        openSignal={openSignals.scope}
+      >
+        <div className="grid gap-4">
           <TextArea
-            label="2. Abrangência"
+            label="Abrangência"
             value={data.purpose.abrangencia}
             onChange={(abrangencia) =>
               update({ ...data, purpose: { ...data.purpose, abrangencia } })
             }
-          />
-          <TextArea
-            label="Premissas e regras gerais"
-            value={data.purpose.premissas}
-            onChange={(premissas) => update({ ...data, purpose: { ...data.purpose, premissas } })}
-          />
-          <TextArea
-            label="Bloco importante / observações críticas"
-            value={data.purpose.importante}
-            onChange={(importante) => update({ ...data, purpose: { ...data.purpose, importante } })}
           />
         </div>
       </Panel>
@@ -9366,21 +9490,21 @@ function PopModule({
         <div className="grid gap-3">
           {data.sections.map((section) => (
             <div key={section.id} className="rounded-lg border border-border bg-muted/20 p-3">
-              <div className="mb-3 flex gap-2">
-                <input
-                  value={section.title}
-                  onChange={(event) =>
-                    update({
-                      ...data,
-                      sections: data.sections.map((item) =>
-                        item.id === section.id ? { ...item, title: event.target.value } : item,
-                      ),
-                    })
-                  }
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+              <div className="mb-3 grid gap-3 md:grid-cols-[100px_1fr_auto]">
+                <Field
+                  compact
+                  label="Item"
+                  value={section.code ?? ""}
+                  onChange={(code) => updateSection(section.id, { code })}
+                />
+                <Field
+                  compact
+                  label="Título do item"
+                  value={section.title.replace(/^3\.\d+\s*/, "")}
+                  onChange={(title) => updateSection(section.id, { title })}
                 />
                 <IconButton
-                  label="Excluir"
+                  label="Excluir item"
                   onClick={() =>
                     update({
                       ...data,
@@ -9391,62 +9515,127 @@ function PopModule({
                   <Trash2 className="h-4 w-4" />
                 </IconButton>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <TextArea
-                  label="Contexto / descrição"
-                  value={section.description}
-                  onChange={(description) =>
-                    update({
-                      ...data,
-                      sections: data.sections.map((item) =>
-                        item.id === section.id ? { ...item, description } : item,
-                      ),
+              <div className="grid gap-3">
+                {(section.subitems ?? []).map((subitem) => (
+                  <div key={subitem.id} className="rounded-lg border border-border bg-card p-3">
+                    <div className="mb-3 grid gap-3 md:grid-cols-[120px_1fr_auto]">
+                      <Field
+                        compact
+                        label="Subitem"
+                        value={subitem.code}
+                        onChange={(code) => updateProcedureSubitem(section.id, subitem.id, { code })}
+                      />
+                      <Field
+                        compact
+                        label="Título do subitem"
+                        value={subitem.title}
+                        onChange={(title) => updateProcedureSubitem(section.id, subitem.id, { title })}
+                      />
+                      <IconButton
+                        label="Excluir subitem"
+                        onClick={() =>
+                          updateSection(section.id, {
+                            subitems: (section.subitems ?? []).filter((item) => item.id !== subitem.id),
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </IconButton>
+                    </div>
+                    <div className="grid gap-3">
+                      {subitem.clauses.map((clause) => (
+                        <div key={clause.id} className="rounded-lg border border-border bg-muted/20 p-3">
+                          <div className="mb-3 grid gap-3 md:grid-cols-[80px_1fr_auto]">
+                            <Field
+                              compact
+                              label="Alínea"
+                              value={clause.letter}
+                              onChange={(letter) =>
+                                updateProcedureClause(section.id, subitem.id, clause.id, { letter })
+                              }
+                            />
+                            <TextArea
+                              label="Texto da alínea"
+                              value={clause.text}
+                              rows={3}
+                              onChange={(text) =>
+                                updateProcedureClause(section.id, subitem.id, clause.id, { text })
+                              }
+                            />
+                            <IconButton
+                              label="Excluir alínea"
+                              onClick={() =>
+                                updateProcedureSubitem(section.id, subitem.id, {
+                                  clauses: subitem.clauses.filter((item) => item.id !== clause.id),
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </IconButton>
+                          </div>
+                          <div className="grid gap-3">
+                            <TextArea
+                              label="Alerta / observação crítica"
+                              value={clause.alert}
+                              rows={2}
+                              onChange={(alert) =>
+                                updateProcedureClause(section.id, subitem.id, clause.id, { alert })
+                              }
+                            />
+                            <ImageManager
+                              label="Imagens da alínea"
+                              images={clause.images}
+                              onChange={(images) =>
+                                updateProcedureClause(section.id, subitem.id, clause.id, { images })
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateProcedureSubitem(section.id, subitem.id, {
+                            clauses: [
+                              ...subitem.clauses,
+                              {
+                                id: id("clause"),
+                                letter: nextClauseLetter(subitem.clauses),
+                                text: "",
+                                alert: "",
+                                images: [],
+                              },
+                            ],
+                          })
+                        }
+                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Adicionar alínea
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateSection(section.id, {
+                      subitems: [
+                        ...(section.subitems ?? []),
+                        {
+                          id: id("sub"),
+                          code: `${section.code || `3.${data.sections.indexOf(section) + 1}`}.${(section.subitems ?? []).length + 1}`,
+                          title: "Novo subitem",
+                          clauses: [{ id: id("clause"), letter: "a", text: "", alert: "", images: [] }],
+                        },
+                      ],
                     })
                   }
-                />
-                <TextArea
-                  label={data.meta.tipo === "Norma" ? "Diretriz / regra" : "Procedimento / instrução"}
-                  value={section.body}
-                  onChange={(body) =>
-                    update({
-                      ...data,
-                      sections: data.sections.map((item) =>
-                        item.id === section.id ? { ...item, body } : item,
-                      ),
-                    })
-                  }
-                />
-                <TextArea
-                  label="Registros / evidências"
-                  value={section.records}
-                  onChange={(records) =>
-                    update({
-                      ...data,
-                      sections: data.sections.map((item) =>
-                        item.id === section.id ? { ...item, records } : item,
-                      ),
-                    })
-                  }
-                />
-                <TextArea
-                  label="Riscos / cuidados"
-                  value={section.risks}
-                  onChange={(risks) =>
-                    update({
-                      ...data,
-                      sections: data.sections.map((item) =>
-                        item.id === section.id ? { ...item, risks } : item,
-                      ),
-                    })
-                  }
-                />
-              </div>
-              <div className="mt-3">
-                <ImageManager
-                  label="Imagens / evidências da seção"
-                  images={section.images}
-                  onChange={(images) => updateSection(section.id, { images })}
-                />
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar subitem
+                </button>
               </div>
             </div>
           ))}
@@ -9458,12 +9647,14 @@ function PopModule({
                   ...data.sections,
                   {
                     id: id("sec"),
-                    title: "Nova seção",
+                    code: `3.${data.sections.length + 1}`,
+                    title: "Novo item",
                     description: "",
                     body: "",
                     records: "",
                     risks: "",
                     images: [],
+                    subitems: [],
                   },
                 ],
               })
@@ -9471,7 +9662,7 @@ function PopModule({
             className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
-            Adicionar seção
+            Adicionar item do procedimento
           </button>
         </div>
       </Panel>
@@ -9483,6 +9674,11 @@ function PopModule({
         openSignal={openSignals.responsibilities}
       >
         <div className="grid gap-3">
+          <div className="hidden rounded-t-lg border border-border bg-muted/50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground md:grid md:grid-cols-[240px_1fr_44px]">
+            <span>Área/Cargo</span>
+            <span>Responsabilidades</span>
+            <span />
+          </div>
           {data.responsibilities.map((row) => (
             <div
               key={row.id}
@@ -9554,47 +9750,51 @@ function PopModule({
           {data.references.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[160px_1fr_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[1fr_auto]"
             >
-              <Field
-                compact
-                label="Código"
-                value={row.codigo}
-                onChange={(codigo) =>
-                  update({
-                    ...data,
-                    references: data.references.map((item) =>
-                      item.id === row.id ? { ...item, codigo } : item,
-                    ),
-                  })
-                }
-              />
-              <Field
-                compact
-                label="Título"
-                value={row.titulo}
-                onChange={(titulo) =>
-                  update({
-                    ...data,
-                    references: data.references.map((item) =>
-                      item.id === row.id ? { ...item, titulo } : item,
-                    ),
-                  })
-                }
-              />
-              <Field
-                compact
-                label="Aplicabilidade"
-                value={row.aplicabilidade}
-                onChange={(aplicabilidade) =>
-                  update({
-                    ...data,
-                    references: data.references.map((item) =>
-                      item.id === row.id ? { ...item, aplicabilidade } : item,
-                    ),
-                  })
-                }
-              />
+              <div className="grid gap-3 md:grid-cols-[160px_1fr]">
+                <Field
+                  compact
+                  label="Código"
+                  value={row.codigo}
+                  onChange={(codigo) =>
+                    update({
+                      ...data,
+                      references: data.references.map((item) =>
+                        item.id === row.id ? { ...item, codigo } : item,
+                      ),
+                    })
+                  }
+                />
+                <Field
+                  compact
+                  label="Título"
+                  value={row.titulo}
+                  onChange={(titulo) =>
+                    update({
+                      ...data,
+                      references: data.references.map((item) =>
+                        item.id === row.id ? { ...item, titulo } : item,
+                      ),
+                    })
+                  }
+                />
+                <div className="md:col-span-2">
+                  <TextArea
+                    label="Aplicabilidade"
+                    value={row.aplicabilidade}
+                    rows={2}
+                    onChange={(aplicabilidade) =>
+                      update({
+                        ...data,
+                        references: data.references.map((item) =>
+                          item.id === row.id ? { ...item, aplicabilidade } : item,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
               <IconButton
                 label="Excluir"
                 onClick={() =>
