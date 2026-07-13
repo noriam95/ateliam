@@ -12,8 +12,10 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  Copy,
   Diamond,
   Download,
+  Ellipsis,
   Eye,
   FileSpreadsheet,
   Database,
@@ -5299,6 +5301,51 @@ function ModuleWorkspacePage() {
     if (document) await openCloudModuleDocument(document);
   }
 
+  async function duplicateDocumentRow(row: ModuleGridRow) {
+    if (moduleId !== "ddp") return;
+    if (row.id.startsWith("demo-row:")) {
+      toast.info("Registro de demonstracao. Use um registro salvo para duplicar.");
+      return;
+    }
+
+    try {
+      let snapshot = resolveRowSnapshot(row);
+      if (!snapshot && !isDemo) {
+        const document = await getCloudDocument({ data: { id: row.id } });
+        if (!document.content_inline) throw new Error("Registro sem conteudo salvo.");
+        snapshot = parseWorkspace(document.content_inline);
+      }
+      if (!snapshot) throw new Error("Registro salvo nao encontrado.");
+
+      const duplicated: WorkspaceState = {
+        ...snapshot,
+        ddp: {
+          ...snapshot.ddp,
+          meta: {
+            ...snapshot.ddp.meta,
+            codigo: "",
+            titulo: snapshot.ddp.meta.titulo
+              ? `${snapshot.ddp.meta.titulo} - copia`
+              : "Copia do mapeamento",
+            data: today(),
+            dataRelatorio: today(),
+            status: "Em andamento",
+          },
+        },
+      };
+      setWorkspace(duplicated);
+      setOpenedLocalFile(null);
+      setActiveCloudDocument(null);
+      setModuleSurface("editor");
+      setModuleEditStarted(true);
+      setDdpView("editor");
+      window.localStorage.setItem(draftKey, JSON.stringify(duplicated));
+      toast.success("Copia criada. Revise e salve para gerar um novo registro.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel duplicar o mapeamento.");
+    }
+  }
+
   async function deleteDocumentRows(ids: string[]) {
     try {
       if (ids.some((id) => id.startsWith("demo-saved:"))) {
@@ -5449,6 +5496,7 @@ function ModuleWorkspacePage() {
         onDelete={deleteDocumentRows}
         onExport={exportDocumentRow}
         onView={viewDocumentRow}
+        onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
         onChangeStatus={changeRowStatus}
       />
     ) : (
@@ -5481,6 +5529,7 @@ function ModuleWorkspacePage() {
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
               onView={viewDocumentRow}
+              onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
               onChangeStatus={changeRowStatus}
             />
           ) : (
@@ -5533,6 +5582,7 @@ function ModuleWorkspacePage() {
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
               onView={viewDocumentRow}
+              onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
               onChangeStatus={changeRowStatus}
             />
           ) : (
@@ -6271,6 +6321,7 @@ function ModuleDocumentGrid({
   onDelete,
   onExport,
   onView,
+  onDuplicate,
   onChangeStatus,
 }: {
   moduleId: AteliamModule;
@@ -6280,6 +6331,7 @@ function ModuleDocumentGrid({
   onDelete: (ids: string[]) => void | Promise<void>;
   onExport: (row: ModuleGridRow, format: ExportFormat) => void | Promise<void>;
   onView: (row: ModuleGridRow) => void;
+  onDuplicate?: (row: ModuleGridRow) => void | Promise<void>;
   onChangeStatus: (row: ModuleGridRow, status: string) => void | Promise<void>;
 }) {
   const [query, setQuery] = useState("");
@@ -6547,6 +6599,7 @@ function ModuleDocumentGrid({
                         moduleId={moduleId}
                         onView={() => onView(row)}
                         onEdit={() => onEdit(row)}
+                        onDuplicate={onDuplicate ? () => onDuplicate(row) : undefined}
                         onDelete={() => removeRow(row)}
                         onExport={(format) => onExport(row, format)}
                       />
@@ -6594,60 +6647,84 @@ function RowActions({
   moduleId,
   onView,
   onEdit,
+  onDuplicate,
   onDelete,
   onExport,
 }: {
   moduleId: AteliamModule;
   onView: () => void;
   onEdit: () => void;
+  onDuplicate?: () => void;
   onDelete: () => void;
   onExport: (format: ExportFormat) => void;
 }) {
-  const [exportOpen, setExportOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!exportOpen) return;
+    if (!menuOpen) return;
     function onDocClick(event: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
-        setExportOpen(false);
+        setMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
-  }, [exportOpen]);
+  }, [menuOpen]);
 
   const reportFormat: ExportFormat = moduleId === "ddp" ? "ddp-docx" : "pop-docx";
   // Apresentação no formato padrão (HTML) — disponível apenas para Mapeamento.
   const hasPresentation = moduleId === "ddp";
-  const iconBtn =
-    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted";
+  const menuItem =
+    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-muted";
+
+  function run(action: () => void) {
+    setMenuOpen(false);
+    action();
+  }
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      <button type="button" title="Visualizar" aria-label="Visualizar" className={iconBtn} onClick={onView}>
-        <Eye className="h-4 w-4" />
-      </button>
-      <button type="button" title="Editar" aria-label="Editar" className={iconBtn} onClick={onEdit}>
-        <Pencil className="h-4 w-4" />
-      </button>
+    <div className="flex items-center justify-end">
       <div ref={wrapRef} className="relative">
         <button
           type="button"
-          title="Exportar"
-          aria-label="Exportar"
-          className={iconBtn}
-          onClick={() => setExportOpen((open) => !open)}
+          title="Mais opcoes"
+          aria-label="Mais opcoes"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
+          onClick={() => setMenuOpen((open) => !open)}
         >
-          <Download className="h-4 w-4" />
+          <Ellipsis className="h-4 w-4" />
         </button>
-        {exportOpen ? (
-          <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+        {menuOpen ? (
+          <div
+            role="menu"
+            className="absolute right-0 z-20 mt-1 w-60 overflow-hidden rounded-md border border-border bg-popover shadow-lg"
+          >
+            <button type="button" role="menuitem" className={menuItem} onClick={() => run(onView)}>
+              <Eye className="h-4 w-4 shrink-0" /> Visualizar
+            </button>
+            <button type="button" role="menuitem" className={menuItem} onClick={() => run(onEdit)}>
+              <Pencil className="h-4 w-4 shrink-0" /> Editar
+            </button>
+            {onDuplicate ? (
+              <button
+                type="button"
+                role="menuitem"
+                className={menuItem}
+                onClick={() => run(onDuplicate)}
+              >
+                <Copy className="h-4 w-4 shrink-0" /> Duplicar
+              </button>
+            ) : null}
+            <div className="border-t border-border" />
             <button
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+              role="menuitem"
+              className={menuItem}
               onClick={() => {
-                setExportOpen(false);
+                setMenuOpen(false);
                 onExport(reportFormat);
               }}
             >
@@ -6656,27 +6733,28 @@ function RowActions({
             {hasPresentation ? (
               <button
                 type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                role="menuitem"
+                className={menuItem}
                 onClick={() => {
-                  setExportOpen(false);
+                  setMenuOpen(false);
                   onExport("ddp-html");
                 }}
               >
                 <Presentation className="h-4 w-4 shrink-0" /> Apresentação
               </button>
             ) : null}
+            <div className="border-t border-border" />
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/5"
+              onClick={() => run(onDelete)}
+            >
+              <Trash2 className="h-4 w-4 shrink-0" /> Excluir
+            </button>
           </div>
         ) : null}
       </div>
-      <button
-        type="button"
-        title="Excluir"
-        aria-label="Excluir"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-destructive hover:bg-destructive/5"
-        onClick={onDelete}
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
     </div>
   );
 }
