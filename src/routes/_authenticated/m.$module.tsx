@@ -6505,7 +6505,13 @@ function ModuleDocumentGrid({
     row: ModuleGridRow;
     status: string;
   } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    ids: string[];
+    title: string;
+    message: string;
+  } | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
+  const [deleteSaving, setDeleteSaving] = useState(false);
   const filtered = useMemo(() => {
     const normalized = normalizeLabel(query);
     return rows.filter((row) =>
@@ -6583,15 +6589,33 @@ function ModuleDocumentGrid({
 
   async function removeSelected() {
     if (!selected.length) return;
-    if (!window.confirm(`Excluir ${selected.length} registro(s) selecionado(s)?`)) return;
-    await onDelete(selected);
-    setSelected([]);
+    setPendingDelete({
+      ids: selected,
+      title: "Excluir registros selecionados",
+      message: `Confirma excluir ${selected.length} registro(s) selecionado(s)?`,
+    });
   }
 
   async function removeRow(row: ModuleGridRow) {
-    if (!window.confirm(`Excluir o registro ${row.code || row.name}?`)) return;
-    await onDelete([row.id]);
-    setSelected((current) => current.filter((id) => id !== row.id));
+    setPendingDelete({
+      ids: [row.id],
+      title: "Excluir registro",
+      message: `Confirma excluir o registro "${row.code || row.name}"?`,
+    });
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleteSaving(true);
+    try {
+      await onDelete(pendingDelete.ids);
+      setSelected((current) => current.filter((id) => !pendingDelete.ids.includes(id)));
+      setPendingDelete(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel excluir o registro.");
+    } finally {
+      setDeleteSaving(false);
+    }
   }
 
   async function confirmStatusChange() {
@@ -6802,6 +6826,32 @@ function ModuleDocumentGrid({
           </div>
         </Modal>
       ) : null}
+      {pendingDelete ? (
+        <Modal
+          title={pendingDelete.title}
+          subtitle={pendingDelete.message}
+          onClose={() => setPendingDelete(null)}
+        >
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              disabled={deleteSaving}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              disabled={deleteSaving}
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Excluir
+            </button>
+          </div>
+        </Modal>
+      ) : null}
     </section>
   );
 }
@@ -6941,6 +6991,8 @@ function DdpCausesModuleV2({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [draft, setDraft] = useState<GapItem | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  const [deleteSaving, setDeleteSaving] = useState(false);
   const initializedNew = useRef(false);
   const filtered = useMemo(() => {
     const normalized = normalizeLabel(query);
@@ -7082,7 +7134,13 @@ function DdpCausesModuleV2({
 
   async function removeRows(ids: string[]) {
     if (!ids.length) return;
-    if (!window.confirm(`Excluir ${ids.length} causa(s) selecionada(s)?`)) return;
+    setPendingDeleteIds(ids);
+  }
+
+  async function confirmRemoveRows() {
+    const ids = pendingDeleteIds;
+    if (!ids.length) return;
+    setDeleteSaving(true);
     const targets = data.gaps.filter((gap) => ids.includes(gap.id));
     try {
       for (const gap of targets) {
@@ -7091,9 +7149,12 @@ function DdpCausesModuleV2({
       update({ ...data, gaps: data.gaps.filter((gap) => !ids.includes(gap.id)) });
       setSelectedIds([]);
       if (draft?.id && ids.includes(draft.id)) setDraft(null);
-      toast.success(ids.length > 1 ? "Causas excluídas." : "Causa excluída.");
+      toast.success(ids.length > 1 ? "Causas excluidas." : "Causa excluida.");
+      setPendingDeleteIds([]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível excluir a causa.");
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel excluir a causa.");
+    } finally {
+      setDeleteSaving(false);
     }
   }
 
@@ -7511,6 +7572,32 @@ function DdpCausesModuleV2({
           </div>
           </div>
         </div>
+      ) : null}
+      {pendingDeleteIds.length ? (
+        <Modal
+          title="Excluir causas selecionadas"
+          subtitle={`Confirma excluir ${pendingDeleteIds.length} causa(s) selecionada(s)?`}
+          onClose={() => setPendingDeleteIds([])}
+        >
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingDeleteIds([])}
+              disabled={deleteSaving}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmRemoveRows}
+              disabled={deleteSaving}
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Excluir
+            </button>
+          </div>
+        </Modal>
       ) : null}
     </div>
   );

@@ -698,6 +698,9 @@ export function WorkspaceProcessRegistrations({
     process: Process;
     status: "Ativo" | "Arquivado";
   } | null>(null);
+  const [pendingDeleteRow, setPendingDeleteRow] = useState<ReturnType<typeof registryRows>[number] | null>(
+    null,
+  );
 
   // O código do Processo (PR) depende da sigla da área selecionada no formulário.
   const processAreaSigla = areaSiglaByName(data.areas, draft.department);
@@ -1109,10 +1112,7 @@ export function WorkspaceProcessRegistrations({
                       {view !== "process-types" ? (
                         <IconButton
                           label="Excluir"
-                          onClick={() =>
-                            window.confirm("Excluir este registro?") &&
-                            deleteMutation.mutate(row.id)
-                          }
+                          onClick={() => setPendingDeleteRow(row)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </IconButton>
@@ -1323,6 +1323,46 @@ export function WorkspaceProcessRegistrations({
                 className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-45"
               >
                 {pendingProcessStatus.status === "Ativo" ? "Ativar" : "Desativar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {pendingDeleteRow ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-xl rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0">
+                <h2 className="font-display text-lg font-bold">Excluir registro</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Confirma excluir o registro "{pendingDeleteRow.values[0] || pendingDeleteRow.id}"?
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingDeleteRow(null)}
+                className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Fechar"
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteRow(null)}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(pendingDeleteRow.id)}
+                className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-45"
+              >
+                Excluir
               </button>
             </div>
           </div>
