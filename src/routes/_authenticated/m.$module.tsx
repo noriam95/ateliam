@@ -4035,11 +4035,12 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
   return doc.finish(parts);
 }
 
-function bfFlowLogoHtml(brand?: OrganizationBrand) {
+function bfFlowLogoHtml(brand?: OrganizationBrand, assetBase = "") {
   if (brand?.logo_data_url) {
-    return `<img class="brand-logo custom-logo" src="${html(brand.logo_data_url)}" alt="${html(brand.name || "BF Flow")}"/>`;
+    return `<img class="brand-logo custom-logo" src="${html(brand.logo_data_url)}" alt="" aria-hidden="true"/>`;
   }
-  return `<span class="system-logo-pair"><img class="brand-logo logo-light" src="/brand/bom-futuro-light.png" alt="BF Flow"/><img class="brand-logo logo-dark" src="/brand/bom-futuro-dark.png" alt="BF Flow"/></span>`;
+  const prefix = assetBase ? assetBase.replace(/\/$/, "") : "";
+  return `<span class="system-logo-pair"><img class="brand-logo logo-light" src="${html(`${prefix}/brand/bom-futuro-light.png`)}" alt="" aria-hidden="true"/><img class="brand-logo logo-dark" src="${html(`${prefix}/brand/bom-futuro-dark.png`)}" alt="" aria-hidden="true"/></span>`;
 }
 // Visualização somente-leitura genérica de um registro da consulta, a partir
 // dos metadados da linha. Usada para registros de demonstração e para a
@@ -4156,6 +4157,8 @@ ${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Áre
 function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const model = getDdpExportModel(data);
   const presentationColor = docxColor(brand?.word_header_color, "1D1F23");
+  const assetBase =
+    typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
   const legacy = data.legacy ?? {};
   const processCode = textAt(legacy, "processCode");
   const processName = textAt(legacy, "processName") || model.meta.titulo;
@@ -4345,7 +4348,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 <body>
 <div class="shell">
 <aside class="sidebar">
-  <div class="brand">${bfFlowLogoHtml(brand)}</div>
+  <div class="brand">${bfFlowLogoHtml(brand, assetBase)}</div>
   <div class="doc-code"><span>${html(code)}</span><strong>${html(model.meta.titulo || title)}</strong></div>
   <nav class="nav">${nav.map(([href, label]) => `<a href="#${href}">${html(label)}</a>`).join("")}</nav>
   <div class="theme-toggle" aria-label="Tema da apresentação"><button type="button" data-theme-choice="light" class="active">Claro</button><button type="button" data-theme-choice="dark">Escuro</button></div>
