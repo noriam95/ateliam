@@ -4157,115 +4157,245 @@ ${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Áre
 function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const model = getDdpExportModel(data);
   const presentationColor = docxColor(brand?.word_header_color, "1D1F23");
-  const code = html(model.meta.codigo);
-  const title = html(
-    plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || model.meta.titulo,
-  );
+  const legacy = data.legacy ?? {};
+  const processCode = textAt(legacy, "processCode");
+  const processName = textAt(legacy, "processName") || model.meta.titulo;
+  const processValueChain = textAt(legacy, "processValueChainName") || model.meta.valueChainName;
+  const processArea = textAt(legacy, "processArea") || model.area;
+  const processOwner = textAt(legacy, "processOwner") || model.owner;
+  const code = model.meta.codigo || "MAP";
+  const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || processName;
+  const description = model.scope || model.description || data.overview.objetivo;
   const nav = [
     ["capa", "Capa"],
-    ["sistemas", "02 Sistemas Envolvidos e Escopo"],
-    ["fluxo", "03 Fluxo AS IS"],
-    ["sipoc", "04 Análise SIPOC"],
-    ["causas", "05 Causas-Raiz e Planos de Ação"],
-    ["proximos", "06 Próximos Passos"],
-    ["glossario", "07 Glossário"],
+    ["processo", "Dados do processo"],
+    ["mapeamento", "Dados do mapeamento"],
+    ["visao", "Visão geral"],
+    ["sistemas", "Sistemas envolvidos"],
+    ["fluxo", "Fluxo AS IS"],
+    ["sipoc", "SIPOC"],
+    ["gaps", "Gaps e causas-raiz"],
+    ["proximos", "Próximos passos"],
+    ["glossario", "Glossário"],
   ];
-  const cardGrid = (items: ExportCard[]) =>
-    `<div class="cards">${items
-      .map((item) => `<article><h3>${html(item.title)}</h3><p>${html(item.text)}</p></article>`)
-      .join("")}</div>`;
-  const zoomImage = (image: ExportImage) =>
-    image.src
-      ? `<figure class="diagram"><h3>${html(image.title || "Diagrama")}</h3><img class="zoomable" src="${html(
-          image.src,
-        )}" alt="${html(image.title || "Diagrama")}" data-title="${html(
-          image.title || "Diagrama",
-        )}" onclick="openImageZoom(this)"/><p>${html(image.caption)}</p></figure>`
+
+  const emptyBlock = (text = "Sem informação preenchida.") =>
+    `<div class="empty">${html(text)}</div>`;
+
+  const fieldGrid = (items: Array<[string, string | undefined | null]>) => {
+    const rows = items
+      .filter(([, value]) => plain(value).trim())
+      .map(
+        ([label, value]) =>
+          `<div class="field"><span>${html(label)}</span><strong>${html(value)}</strong></div>`,
+      )
+      .join("");
+    return rows ? `<div class="field-grid">${rows}</div>` : emptyBlock();
+  };
+
+  const textPanel = (titleText: string, body: string) =>
+    plain(body).trim()
+      ? `<article class="text-panel"><h3>${html(titleText)}</h3><p>${html(body)}</p></article>`
       : "";
 
+  const sectionHead = (num: string, titleText: string, subtitle: string) =>
+    `<header class="section-head"><span>${html(num)}</span><div><p>Mapeamento de processo</p><h2>${html(
+      titleText,
+    )}</h2>${subtitle ? `<small>${html(subtitle)}</small>` : ""}</div></header>`;
+
+  const zoomImage = (image: ExportImage) =>
+    image.src
+      ? `<figure class="diagram"><div><h3>${html(image.title || "Imagem")}</h3>${
+          image.caption ? `<p>${html(image.caption)}</p>` : ""
+        }</div><img class="zoomable" src="${html(image.src)}" alt="${html(
+          image.title || "Imagem",
+        )}" data-title="${html(image.title || "Imagem")}" onclick="openImageZoom(this)"/></figure>`
+      : "";
+
+  const systemCards = model.systems.length
+    ? model.systems
+        .map(
+          (system, index) =>
+            `<article class="list-card"><div class="index">${String(index + 1).padStart(
+              2,
+              "0",
+            )}</div><h3>${html(system.name || "Sistema")}</h3>${
+              system.type ? `<p class="muted-line">${html(system.type)}</p>` : ""
+            }${system.description ? `<p>${html(system.description)}</p>` : ""}${
+              system.items?.length
+                ? `<ul>${system.items.map((item) => `<li>${html(item)}</li>`).join("")}</ul>`
+                : ""
+            }</article>`,
+        )
+        .join("")
+    : emptyBlock("Nenhum sistema informado.");
+
+  const flowSteps = model.flowSteps.length
+    ? model.flowSteps
+        .map(
+          (step, index) =>
+            `<article class="flow-card"><div class="index">${String(index + 1).padStart(
+              2,
+              "0",
+            )}</div><div class="flow-content"><h3>${html(step.title || "Etapa")}</h3>${
+              step.owner || step.system || step.risk
+                ? `<div class="mini-grid">${fieldGrid([
+                    ["Responsável", step.owner],
+                    ["Sistema", step.system],
+                    ["Risco", step.risk],
+                  ])}</div>`
+                : ""
+            }${step.description ? `<p>${html(step.description)}</p>` : ""}${step.images
+              .map(zoomImage)
+              .join("")}${step.substeps
+              .map(
+                (substep) =>
+                  `<div class="substep"><h4>${html(
+                    joinClean([substep.code, substep.title], " - ") || "Subetapa",
+                  )}</h4>${substep.description ? `<p>${html(substep.description)}</p>` : ""}${substep.images
+                    .map(zoomImage)
+                    .join("")}</div>`,
+              )
+              .join("")}</div></article>`,
+        )
+        .join("")
+    : emptyBlock("Nenhuma etapa informada.");
+
+  const sipocRows = model.sipocRows.length
+    ? `<div class="table-wrap"><table><thead><tr><th>Fornecedores</th><th>Entradas</th><th>Processo</th><th>Saídas</th><th>Clientes</th></tr></thead><tbody>${model.sipocRows
+        .map(
+          (row) =>
+            `<tr><td>${html(row.fornecedores)}</td><td>${html(row.entradas)}</td><td>${html(
+              row.processo,
+            )}</td><td>${html(row.saidas)}</td><td>${html(row.clientes)}</td></tr>`,
+        )
+        .join("")}</tbody></table></div>`
+    : emptyBlock("Nenhuma linha SIPOC informada.");
+
+  const gapCards = model.gaps.length
+    ? model.gaps
+        .map(
+          (gap, index) =>
+            `<article class="list-card gap-card"><div class="index">${String(index + 1).padStart(
+              2,
+              "0",
+            )}</div><h3>${html(gap.title || "Gap")}</h3>${
+              gap.description ? `<p>${html(gap.description)}</p>` : ""
+            }${fieldGrid([
+              ["Impacto", gap.impact],
+              ["Ação proposta", gap.action],
+              ["Responsável", gap.owner],
+              ["Prazo", gap.due],
+              ["Prioridade", gap.priority],
+              ["Status", gap.status],
+            ])}</article>`,
+        )
+        .join("")
+    : emptyBlock("Nenhum gap informado.");
+
+  const nextCards = model.nextSteps.length
+    ? model.nextSteps
+        .map(
+          (step, index) =>
+            `<article class="list-card"><div class="index">${String(index + 1).padStart(
+              2,
+              "0",
+            )}</div><h3>${html(step.title || "Próximo passo")}</h3>${
+              step.description ? `<p>${html(step.description)}</p>` : ""
+            }${fieldGrid([
+              ["Responsável", step.owner],
+              ["Prazo", step.due],
+            ])}</article>`,
+        )
+        .join("")
+    : emptyBlock("Nenhum próximo passo informado.");
+
+  const glossaryCards = model.glossary.length
+    ? model.glossary
+        .map(
+          (item) =>
+            `<article class="glossary-card"><h3>${html(item.termo || "Termo")}</h3><p>${html(
+              item.definicao,
+            )}</p></article>`,
+        )
+        .join("")
+    : emptyBlock("Nenhum termo informado.");
+
+  const macroDiagram = model.macroprocess.src
+    ? zoomImage({
+        title: model.macroprocess.title || "Macroprocesso",
+        caption: model.macroprocess.caption,
+        src: model.macroprocess.src,
+      })
+    : "";
+
   return `<!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>${code} - Apresentação de Mapeamento</title>
+<title>${html(code)} - Apresentação de Mapeamento</title>
 <style>
-:root{--green:#${presentationColor};--dark:#${presentationColor};--line:#c9cccb;--paper:#f8f7f1;--text:#202124;--muted:#5f6368;--nav:256px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--text);font-family:"Segoe UI",Arial,sans-serif}
-.brand{display:flex;align-items:center;gap:12px;color:white}.brand img{width:52px;height:38px;object-fit:contain;background:white;border-radius:6px;padding:3px}.brand-mark{display:grid;width:34px;height:34px;place-items:center;border-radius:10px;background:rgba(255,255,255,.12);color:#e5b653}.brand-mark span{width:17px;height:17px;border:2px solid currentColor;border-radius:50%;position:relative}.brand-mark span:after{content:"";position:absolute;inset:4px;border-radius:50%;background:currentColor}
-nav{position:fixed;inset:0 auto 0 0;width:var(--nav);background:var(--dark);padding:26px 18px;color:white;z-index:4}nav .brand{margin-bottom:36px}nav a{display:block;color:rgba(255,255,255,.82);text-decoration:none;border-left:3px solid transparent;padding:10px 10px 10px 13px;font-size:12px;text-transform:uppercase;letter-spacing:.12em}nav a:hover{background:rgba(255,255,255,.08);border-color:#e5b653;color:white}
-main{margin-left:var(--nav)}section{min-height:100vh;padding:58px 72px;border-bottom:1px solid #ddd8ca;background:#fff}section:nth-child(even){background:#fbfaf6}.kicker{font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#e5b653;font-weight:800;margin-bottom:18px}.hero{display:flex;min-height:100vh;flex-direction:column;justify-content:center;background:linear-gradient(135deg,var(--dark),color-mix(in srgb,var(--green) 74%,white));color:white}.hero h1{max-width:920px;font-size:64px;line-height:.98;margin:0 0 22px;text-transform:uppercase}.hero p{max-width:860px;font-size:21px;line-height:1.45;color:rgba(255,255,255,.82)}.meta{margin-top:42px;display:grid;gap:8px;color:rgba(255,255,255,.78)}
-.section-head{display:flex;align-items:flex-start;gap:20px;margin-bottom:32px;border-bottom:2px solid var(--line);padding-bottom:18px}.section-head span{font-size:46px;font-weight:900;color:var(--green)}.section-head h2{font-size:36px;line-height:1.05;margin:0;text-transform:uppercase;color:var(--green)}.section-head p{margin:6px 0 0;color:var(--muted)}
-.cards,.flow,.causes,.next{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.cards article,.flow article,.causes article,.next article{border:1px solid #d8d3c6;border-left:7px solid var(--green);background:#fff;padding:22px;min-height:150px}.cards h3,.flow h3,.causes h3,.next h3{margin:0 0 10px;color:var(--green);text-transform:uppercase}.cards p,.flow p,.causes p,.next p{line-height:1.48;color:#4b5563}.num{font-size:28px;font-weight:900;color:rgba(27,94,60,.38);margin-bottom:8px}.diagram img{max-width:100%;max-height:62vh;object-fit:contain;border:1px solid #d8d3c6;background:white}.diagram{margin:18px 0}.zoomable{cursor:zoom-in}.zoom-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,12,10,.92);z-index:20;padding:28px}.zoom-modal.open{display:flex}.zoom-modal img{max-width:94vw;max-height:86vh;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55);cursor:zoom-out}.zoom-title{position:fixed;left:28px;top:22px;color:white;font-weight:800;text-transform:uppercase;letter-spacing:.12em}.zoom-close{position:fixed;right:28px;top:20px;border:1px solid rgba(255,255,255,.35);background:transparent;color:white;padding:9px 14px;border-radius:6px;cursor:pointer}.sipoc{width:100%;border-collapse:collapse}.sipoc th{background:var(--green);color:white;text-align:left;text-transform:uppercase;font-size:12px;letter-spacing:.12em}.sipoc td,.sipoc th{border:1px solid #d4d0c6;padding:12px;vertical-align:top}.footer{position:absolute;right:72px;bottom:28px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.12em}@media(max-width:900px){nav{position:static;width:auto}main{margin-left:0}section{padding:34px 22px}.hero h1{font-size:42px}.cards,.flow,.causes,.next{grid-template-columns:1fr}}
+:root{--accent:#${presentationColor};--accent-strong:color-mix(in srgb,var(--accent) 78%,#000);--gold:#d49a21;--bg:#f4f2ea;--surface:#fff;--surface-2:#faf8f1;--text:#17191f;--muted:#626a73;--line:#ddd8ca;--shadow:0 18px 60px rgba(28,28,28,.12);--nav:282px}
+[data-theme="dark"]{--bg:#0f1114;--surface:#171a1f;--surface-2:#1e2329;--text:#f4f6f8;--muted:#aab2bc;--line:#343a42;--shadow:0 18px 70px rgba(0,0,0,.45);--accent-strong:color-mix(in srgb,var(--accent) 66%,#fff)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",Arial,sans-serif}.shell{display:grid;grid-template-columns:var(--nav) minmax(0,1fr);min-height:100vh}.sidebar{position:sticky;top:0;height:100vh;background:linear-gradient(180deg,var(--accent-strong),color-mix(in srgb,var(--accent) 52%,#111));color:#fff;padding:26px 20px;display:flex;flex-direction:column;gap:26px}.brand{display:flex;align-items:center;gap:12px;min-height:48px}.brand img{max-width:150px;max-height:46px;object-fit:contain;background:rgba(255,255,255,.92);border-radius:8px;padding:5px}.brand strong{font-size:15px;letter-spacing:.08em;text-transform:uppercase}.brand-mark{display:grid;width:36px;height:36px;place-items:center;border-radius:10px;background:rgba(255,255,255,.14);color:var(--gold)}.brand-mark span{width:17px;height:17px;border:2px solid currentColor;border-radius:50%;position:relative}.brand-mark span:after{content:"";position:absolute;inset:4px;border-radius:50%;background:currentColor}.doc-code{border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px;background:rgba(255,255,255,.08)}.doc-code span{display:block;font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.75}.doc-code strong{display:block;margin-top:6px;font-size:24px;letter-spacing:.08em}.nav{display:grid;gap:4px}.nav a{color:rgba(255,255,255,.82);text-decoration:none;border-radius:9px;padding:10px 12px;font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.1em}.nav a:hover{background:rgba(255,255,255,.12);color:#fff}.theme-toggle{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:5px;background:rgba(0,0,0,.12)}.theme-toggle button{border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.72);font-weight:800;padding:9px;cursor:pointer}.theme-toggle button.active{background:#fff;color:#111}.content{min-width:0}.slide{min-height:100vh;padding:56px 72px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}.slide.alt{background:var(--surface-2)}.cover{display:flex;min-height:100vh;flex-direction:column;justify-content:center;background:radial-gradient(circle at 84% 12%,color-mix(in srgb,var(--gold) 30%,transparent),transparent 30%),linear-gradient(135deg,var(--accent-strong),color-mix(in srgb,var(--accent) 48%,#111));color:#fff}.kicker{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:#ffd47a;font-weight:900}.cover h1{max-width:980px;margin:18px 0 22px;font-size:clamp(44px,6vw,82px);line-height:.95;letter-spacing:-.02em}.cover p{max-width:900px;margin:0;color:rgba(255,255,255,.84);font-size:22px;line-height:1.45}.cover-meta{margin-top:38px;display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;max-width:1020px}.cover-meta div{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);border-radius:12px;padding:12px}.cover-meta span,.field span{display:block;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase}.cover-meta span{color:rgba(255,255,255,.68)}.cover-meta strong,.field strong{display:block;margin-top:5px;font-size:14px;line-height:1.35}.section-head{display:flex;gap:22px;align-items:flex-start;margin-bottom:30px}.section-head>span{display:grid;width:64px;height:64px;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-strong);font-size:28px;font-weight:950}.section-head p{margin:0 0 7px;color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.26em;text-transform:uppercase}.section-head h2{margin:0;font-size:clamp(30px,4vw,48px);line-height:1.02}.section-head small{display:block;margin-top:8px;color:var(--muted);font-size:15px;line-height:1.45}.field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.field{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:13px 14px;box-shadow:0 1px 0 rgba(0,0,0,.03)}.field strong{color:var(--text);font-size:15px}.text-stack{display:grid;gap:14px}.text-panel,.list-card,.flow-card,.glossary-card{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);padding:22px}.text-panel{box-shadow:none;background:var(--surface-2)}.text-panel h3,.list-card h3,.flow-card h3,.glossary-card h3{margin:0 0 10px;color:var(--accent-strong);font-size:18px}.text-panel p,.list-card p,.flow-card p,.glossary-card p{margin:0;color:var(--muted);line-height:1.55}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.index{display:inline-grid;place-items:center;min-width:38px;height:30px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:950;margin-bottom:12px}.muted-line{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}.list-card ul{margin:12px 0 0;padding-left:18px;color:var(--muted)}.flow-stack{display:grid;gap:18px}.flow-card{display:grid;grid-template-columns:58px minmax(0,1fr);gap:18px}.flow-card .index{margin:0}.mini-grid .field-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:12px}.mini-grid .field{box-shadow:none;padding:9px 10px}.substep{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.substep h4{margin:0 0 6px;color:var(--text)}.diagram{display:grid;gap:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2);padding:14px;margin:16px 0}.diagram h3{margin:0;color:var(--accent-strong)}.diagram p{margin:4px 0 0;color:var(--muted)}.diagram img{width:100%;max-height:62vh;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:zoom-in}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:14px 16px;text-align:left;vertical-align:top;font-size:14px;line-height:1.45}th{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--accent-strong);font-size:11px;letter-spacing:.14em;text-transform:uppercase}.empty{border:1px dashed var(--line);border-radius:16px;background:var(--surface-2);color:var(--muted);padding:34px;text-align:center;font-style:italic}.zoom-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,7,10,.92);z-index:20;padding:28px}.zoom-modal.open{display:flex}.zoom-modal img{max-width:94vw;max-height:86vh;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55);cursor:zoom-out}.zoom-title{position:fixed;left:28px;top:22px;color:white;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.zoom-close{position:fixed;right:28px;top:20px;border:1px solid rgba(255,255,255,.35);background:transparent;color:white;padding:9px 14px;border-radius:8px;cursor:pointer}@media(max-width:980px){.shell{display:block}.sidebar{position:static;height:auto}.slide{padding:36px 22px}.cover-meta{grid-template-columns:1fr 1fr}.flow-card{grid-template-columns:1fr}.mini-grid .field-grid{grid-template-columns:1fr}}@media print{.sidebar{display:none}.shell{display:block}.slide{break-after:page;min-height:100vh;box-shadow:none}.content{margin:0}}
 </style>
 </head>
 <body>
-<nav><div class="brand">${ateliamLogoHtml(brand)}</div>${nav
-    .map(([href, label]) => `<a href="#${href}">${html(label)}</a>`)
-    .join("")}</nav>
-<main>
-<section class="hero" id="capa"><div class="kicker">Relatório de Mapeamento de Processo</div><h1>${title}</h1><p>${html(model.scope || model.description)}</p><div class="meta"><div><b>Documento:</b> ${code}</div><div><b>Modalidade:</b> ${html(model.meta.modalidade)}</div><div><b>Data:</b> ${html(model.meta.dataRelatorio || model.meta.data)}</div><div><b>Elaborador:</b> ${html(model.meta.elaborador)}</div><div><b>Revisor:</b> ${html(model.meta.revisor)}</div></div></section>
-<section id="sistemas"><div class="section-head"><span>02</span><div><h2>Sistemas Envolvidos e Escopo</h2><p>${html(model.scope)}</p></div></div>${cardGrid(
-    model.systems.map((system) => ({
-      title: system.name,
-      text: joinClean([system.type, system.description], " - "),
-    })),
-  )}</section>
-<section id="fluxo"><div class="section-head"><span>03</span><div><h2>Fluxo AS IS</h2><p>Etapas e subprocessos principais identificados no mapeamento.</p></div></div>${
-    model.macroprocess.src
-      ? `<div class="diagram"><h3>${html(model.macroprocess.title || "Macroprocesso")}</h3><img class="zoomable" src="${model.macroprocess.src}" alt="${html(
-          model.macroprocess.title,
-        )}" data-title="${html(model.macroprocess.title || "Macroprocesso")}" onclick="openImageZoom(this)"/><p>${html(model.macroprocess.caption)}</p></div>`
-      : ""
-  }<div class="flow">${model.flowSteps
-    .map(
-      (step, index) =>
-        `<article><div class="num">${String(index + 1).padStart(2, "0")}</div><h3>${html(
-          step.title,
-        )}</h3><p>${html(step.description)}</p>${step.images.map(zoomImage).join("")}${step.substeps
-          .map(
-            (substep) =>
-              `<div><h3>${html(joinClean([substep.code, substep.title], " - "))}</h3><p>${html(
-                substep.description,
-              )}</p>${substep.images.map(zoomImage).join("")}</div>`,
-          )
-          .join("")}</article>`,
-    )
-    .join("")}</div></section>
-<section id="sipoc"><div class="section-head"><span>04</span><div><h2>Análise SIPOC</h2><p>Fornecedores, entradas, processo, saídas e clientes.</p></div></div><table class="sipoc"><thead><tr><th>Fornecedores</th><th>Entradas</th><th>Processo</th><th>Saídas</th><th>Clientes</th></tr></thead><tbody>${model.sipocRows
-    .map(
-      (row) =>
-        `<tr><td>${html(row.fornecedores)}</td><td>${html(row.entradas)}</td><td>${html(
-          row.processo,
-        )}</td><td>${html(row.saidas)}</td><td>${html(row.clientes)}</td></tr>`,
-    )
-    .join("")}</tbody></table></section>
-<section id="causas"><div class="section-head"><span>05</span><div><h2>Causas-Raiz e Planos de Ação</h2><p>Causas priorizadas para encaminhamento.</p></div></div><div class="causes">${model.gaps
-    .map(
-      (gap, index) =>
-        `<article><div class="num">${String(index + 1).padStart(2, "0")}</div><h3>${html(
-          gap.title,
-        )}</h3><p>${html(gap.description)}</p><p><b>Ação:</b> ${html(gap.action)}</p><p><b>Responsável:</b> ${html(
-          gap.owner || "A definir",
-        )}</p></article>`,
-    )
-    .join("")}</div></section>
-<section id="proximos"><div class="section-head"><span>06</span><div><h2>Próximos Passos</h2><p>Responsáveis e prazos para continuidade.</p></div></div><div class="next">${model.nextSteps
-    .map(
-      (step, index) =>
-        `<article><div class="num">${String(index + 1).padStart(2, "0")}</div><h3>${html(
-          step.title,
-        )}</h3><p>${html(step.description)}</p><p><b>Responsável:</b> ${html(
-          step.owner || "A definir",
-        )} · <b>Prazo:</b> ${html(step.due || "A definir")}</p></article>`,
-    )
-    .join("")}</div></section>
-<section id="glossario"><div class="section-head"><span>07</span><div><h2>Glossário</h2><p>Termos operacionais e técnicos do relatório.</p></div></div>${cardGrid(
-    model.glossary.map((item) => ({ title: item.termo, text: item.definicao })),
-  )}</section>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">${ateliamLogoHtml(brand)}</div>
+  <div class="doc-code"><span>Código</span><strong>${html(code)}</strong></div>
+  <nav class="nav">${nav.map(([href, label]) => `<a href="#${href}">${html(label)}</a>`).join("")}</nav>
+  <div class="theme-toggle" aria-label="Tema da apresentação"><button type="button" data-theme-choice="light" class="active">Claro</button><button type="button" data-theme-choice="dark">Escuro</button></div>
+</aside>
+<main class="content">
+<section class="slide cover" id="capa"><div class="kicker">Apresentação de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "Relatório de mapeamento de processo.")}</p><div class="cover-meta"><div><span>Código</span><strong>${html(code)}</strong></div><div><span>Modalidade</span><strong>${html(model.meta.modalidade)}</strong></div><div><span>Status</span><strong>${html(model.meta.status || "Em andamento")}</strong></div><div><span>Data</span><strong>${html(model.meta.dataRelatorio || model.meta.data)}</strong></div></div></section>
+<section class="slide" id="processo">${sectionHead("01", "Dados do processo", "Informações herdadas do cadastro do processo selecionado.")}${fieldGrid([
+    ["Código do processo", processCode],
+    ["Processo", processName],
+    ["Cadeia de valor", processValueChain],
+    ["Área", processArea],
+    ["Dono do processo", processOwner],
+  ])}</section>
+<section class="slide alt" id="mapeamento">${sectionHead("02", "Dados do mapeamento", "Identificação do registro preenchido no formulário.")}${fieldGrid([
+    ["Código gerado", model.meta.codigo],
+    ["Título do mapeamento", model.meta.titulo],
+    ["Tipo", "Relatório de Mapeamento de Processo"],
+    ["Modalidade", model.meta.modalidade],
+    ["Elaborador", model.meta.elaborador],
+    ["Revisor", model.meta.revisor],
+    ["Data", model.meta.data],
+    ["Status", model.meta.status || "Em andamento"],
+  ])}</section>
+<section class="slide" id="visao">${sectionHead("03", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
+    textPanel("Objetivo", model.description),
+    textPanel("Escopo", model.scope),
+    textPanel("Estado atual", data.overview.estadoAtual),
+    textPanel("Indicadores", data.overview.kpis),
+    textPanel("Volume", data.overview.volume),
+    textPanel("Frequência", data.overview.frequencia),
+    textPanel("Dores", data.overview.dores),
+    textPanel("Oportunidades", data.overview.oportunidades),
+  ].join("") || emptyBlock()}</div></section>
+<section class="slide alt" id="sistemas">${sectionHead("04", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
+<section class="slide" id="fluxo">${sectionHead("05", "Fluxo AS IS", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
+<section class="slide alt" id="sipoc">${sectionHead("06", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
+<section class="slide" id="gaps">${sectionHead("07", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}<div class="card-grid">${gapCards}</div></section>
+<section class="slide alt" id="proximos">${sectionHead("08", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
+<section class="slide" id="glossario">${sectionHead("09", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
 </main>
+</div>
 <div class="zoom-modal" id="zoom-modal" onclick="closeImageZoom()"><div class="zoom-title" id="zoom-title"></div><button class="zoom-close" onclick="closeImageZoom();event.stopPropagation()">Fechar</button><img id="zoom-img" alt="Imagem ampliada"/></div>
 <script>
+(function(){
+  var root=document.documentElement;
+  var buttons=Array.prototype.slice.call(document.querySelectorAll('[data-theme-choice]'));
+  function apply(theme){root.setAttribute('data-theme',theme);try{localStorage.setItem('bf-flow-mapping-preview-theme',theme)}catch(e){}buttons.forEach(function(button){button.classList.toggle('active',button.getAttribute('data-theme-choice')===theme);});}
+  var saved='light';try{saved=localStorage.getItem('bf-flow-mapping-preview-theme')||'light'}catch(e){}
+  apply(saved);
+  buttons.forEach(function(button){button.addEventListener('click',function(){apply(button.getAttribute('data-theme-choice')||'light');});});
+})();
 function openImageZoom(img){var modal=document.getElementById('zoom-modal');var target=document.getElementById('zoom-img');var title=document.getElementById('zoom-title');target.src=img.src;title.textContent=img.dataset.title||img.alt||'Imagem';modal.classList.add('open');}
 function closeImageZoom(){var modal=document.getElementById('zoom-modal');var target=document.getElementById('zoom-img');modal.classList.remove('open');target.src='';}
 document.addEventListener('keydown',function(event){if(event.key==='Escape')closeImageZoom();});
@@ -4273,7 +4403,6 @@ document.addEventListener('keydown',function(event){if(event.key==='Escape')clos
 </body>
 </html>`;
 }
-
 function ModuleWorkspacePage() {
   const { module } = Route.useParams();
   const search = Route.useSearch();
