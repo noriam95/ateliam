@@ -26,9 +26,9 @@ type ChainCategory = "primary" | "support" | "management";
 // Opções completas para o formulário de cadastro (o mesmo texto do cadastro de
 // processos). A tabela continua exibindo o rótulo curto de CATEGORY_LABELS.
 const VALUE_CHAIN_CATEGORY_OPTIONS: Array<{ value: ChainCategory; label: string }> = [
-  { value: "primary", label: "Processos Primários / Finalísticos" },
-  { value: "support", label: "Processos de Apoio / Suporte" },
-  { value: "management", label: "Processos de Gestão / Estratégicos" },
+  { value: "primary", label: "Processos Finalísticos" },
+  { value: "support", label: "Processos de Suporte" },
+  { value: "management", label: "Processos de Gestão" },
 ];
 
 type ChainDraft = {
@@ -609,7 +609,7 @@ function PorterDiagram({
 
 const CATEGORY_LABELS: Record<string, string> = {
   management: "Processos de Gestão",
-  primary: "Processos de Negócios",
+  primary: "Processos Finalísticos",
   support: "Processos de Suporte",
 };
 
@@ -666,7 +666,7 @@ function ConsultationTable({
   onDeleteChain: (chain: ValueChain) => void;
   onToggleChain: (chain: ValueChain) => void;
 }) {
-  // Ordem base: gestão → negócios → suporte (mesma do diagrama),
+  // Ordem base: gestão, finalísticos e suporte (mesma do diagrama),
   // preservando uma numeração estável independente de filtros/ordenação.
   const ordered = useMemo(() => {
     const rank: Record<string, number> = { management: 0, primary: 1, support: 2 };
@@ -1355,7 +1355,7 @@ function exportCSV(primary: ValueChain[], support: ValueChain[], management: Val
   // Exporta no formato .xlsx (planilha comum do Excel), uma linha por cadeia.
   const all = [
     ...management.map((c) => ({ c, band: "Processos de Gestão" })),
-    ...primary.map((c) => ({ c, band: "Processos de Negócios" })),
+    ...primary.map((c) => ({ c, band: "Processos Finalísticos" })),
     ...support.map((c) => ({ c, band: "Processos de Suporte" })),
   ];
   const rows: (string | number)[][] = [
@@ -1558,7 +1558,7 @@ function EmptyState() {
         <Network className="h-10 w-10 text-muted-foreground/40" />
         <p className="text-sm font-semibold text-foreground">Nenhum Macroprocesso cadastrado</p>
         <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-          Acesse Cadeia de Valor → Cadastro para adicionar processos de gestão, negócios e suporte.
+          Acesse Cadeia de Valor, Cadastro, para adicionar processos de gestão, finalísticos e suporte.
         </p>
       </div>
     </div>

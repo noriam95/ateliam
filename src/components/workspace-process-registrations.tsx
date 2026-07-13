@@ -99,18 +99,18 @@ const VALUE_CHAIN_CATEGORIES: Array<{
 }> = [
   {
     value: "primary",
-    label: "Processos Primários / Finalísticos",
+    label: "Processos Finalísticos",
     description: "Entregam valor diretamente ao cliente ou ao negócio.",
   },
   {
     value: "support",
-    label: "Processos de Apoio / Suporte",
+    label: "Processos de Suporte",
     description: "Sustentam os processos principais e a operação.",
   },
   {
     value: "management",
-    label: "Processos de Gestão / Estratégicos",
-    description: "Direcionam, controlam e apoiam a tomada de decisão.",
+    label: "Processos de Gestão",
+    description: "Direcionam e controlam a gestão do negócio.",
   },
 ];
 
