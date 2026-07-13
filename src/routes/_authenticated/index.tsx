@@ -66,6 +66,25 @@ export const Route = createFileRoute("/_authenticated/")({
   }),
 });
 
+function formatDateBr(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
+  const date = new Date(raw);
+  if (!Number.isNaN(date.getTime())) return date.toLocaleDateString("pt-BR");
+  return raw;
+}
+
+function formatDateTimeBr(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatDateBr(raw);
+  const date = new Date(raw);
+  if (!Number.isNaN(date.getTime())) return date.toLocaleString("pt-BR");
+  return raw;
+}
+
 type WorkspaceView =
   | "overview"
   | "organizations"
@@ -1577,7 +1596,7 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
                 {DASHBOARD_MAPPING_COLUMNS.map(([field]) => (
                   <td key={field} className="break-words px-3 py-3 text-foreground">
                     {field === "updatedAt" ? (
-                      new Date(row.updatedAt).toLocaleString("pt-BR")
+                      formatDateTimeBr(row.updatedAt)
                     ) : field === "status" ? (
                       <StatusBadge status={row.status || "-"} />
                     ) : (
@@ -1806,7 +1825,7 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
                 {DOCUMENT_CATALOG_COLUMNS.map(([field]) => (
                   <td key={field} className="break-words px-3 py-3 text-foreground">
                     {field === "updatedAt" ? (
-                      new Date(row.updatedAt).toLocaleString("pt-BR")
+                      formatDateTimeBr(row.updatedAt)
                     ) : field === "status" ? (
                       <StatusBadge status={row.status || "-"} />
                     ) : (
@@ -1862,7 +1881,7 @@ function documentActivityTag(module: string, name = "") {
 function formatShortDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return formatDateBr(date.toISOString().slice(0, 10)).slice(0, 5);
 }
 
 function WorkspaceContent({
@@ -2145,7 +2164,7 @@ function WorkspaceContent({
               Atualização do Painel
             </div>
             <div className="mt-0.5 text-sm font-semibold text-foreground">
-              {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+              {formatDateBr(new Date().toISOString().slice(0, 10))}
             </div>
             {isLoading ? (
               <span className="mt-1 inline-flex rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
@@ -2664,7 +2683,7 @@ function ModuleWorkspacePanel({
                       </td>
                     ) : null}
                     <td className="px-3 py-3 text-muted-foreground">
-                      {new Date(document.updated_at).toLocaleDateString("pt-BR")}
+                      {formatDateBr(document.updated_at)}
                     </td>
                     <td className="px-3 py-3">
                       <Link
@@ -3022,7 +3041,7 @@ function DocumentTable({
             {document.module === "ddp" ? "" : `v${document.current_version}`}
           </span>
           <span className="text-xs text-muted-foreground">
-            {new Date(document.updated_at).toLocaleDateString("pt-BR")}
+            {formatDateBr(document.updated_at)}
           </span>
         </div>
       ))}

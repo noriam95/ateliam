@@ -516,6 +516,32 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function formatDateBr(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
+  const date = new Date(raw);
+  if (!Number.isNaN(date.getTime())) return date.toLocaleDateString("pt-BR");
+  return raw;
+}
+
+function formatDateTimeBr(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatDateBr(raw);
+  const date = new Date(raw);
+  if (!Number.isNaN(date.getTime())) return date.toLocaleString("pt-BR");
+  return raw;
+}
+
+function parseDateBrInput(value: string) {
+  const raw = value.trim();
+  const br = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+  return raw;
+}
+
 function defaultWorkspace(): WorkspaceState {
   return {
     ddp: {
@@ -3606,7 +3632,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   const doc = createDocxContext({
     code: model.meta.codigo,
     title,
-    footerLeft: `${model.meta.dataRelatorio || model.meta.data} · por ${model.meta.elaborador || "BF Flow"}`,
+    footerLeft: `${formatDateBr(model.meta.dataRelatorio || model.meta.data)} - por ${model.meta.elaborador || "BF Flow"}`,
     brand,
   });
   const parts: string[] = [];
@@ -3624,7 +3650,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           { xml: doc.labelValue("Elaborador", model.meta.elaborador), fill: doc.C.gray50 },
           { xml: doc.labelValue("Revisor", model.meta.revisor), fill: doc.C.gray50 },
           {
-            xml: doc.labelValue("Data", model.meta.dataRelatorio || model.meta.data),
+            xml: doc.labelValue("Data", formatDateBr(model.meta.dataRelatorio || model.meta.data)),
             fill: doc.C.gray50,
             gridSpan: 2,
           },
@@ -3791,7 +3817,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [
             doc.bodyCell(`Prioridade: ${gap.priority || "-"}`),
             doc.bodyCell(`Responsável: ${gap.owner || "-"}`),
-            doc.bodyCell(`Prazo: ${gap.due || "-"}`),
+            doc.bodyCell(`Prazo: ${formatGapDateRangeBr(gap.due) || "-"}`),
           ],
           [{ xml: doc.mixedP("Descrição: ", gap.description || "-", { size: 9 }), gridSpan: 3 }],
           [{ xml: doc.mixedP("Impacto esperado: ", gap.impact || "-", { size: 9 }), gridSpan: 3 }],
@@ -3817,7 +3843,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
             ...model.nextSteps.map((step) => [
               doc.bodyCell(step.title),
               doc.bodyCell(step.owner || "A definir"),
-              doc.bodyCell(step.due || "A definir"),
+              doc.bodyCell(formatDateBr(step.due) || "A definir"),
             ]),
           ],
           [6800, 1900, 1606],
@@ -3852,7 +3878,7 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
   const doc = createDocxContext({
     code: model.meta.codigo,
     title: model.meta.titulo,
-    footerLeft: `${model.meta.publicacao || model.meta.vigencia || today()} · por ${
+    footerLeft: `${formatDateBr(model.meta.publicacao || model.meta.vigencia || today())} - por ${
       model.meta.elaboracao || "BF Flow"
     }`,
     brand,
@@ -3865,7 +3891,7 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
         [
           { xml: doc.labelValue("Tipo", model.typeLabel) },
           { xml: doc.labelValue("Código", model.meta.codigo) },
-          { xml: doc.labelValue("Vigência", model.meta.vigencia) },
+          { xml: doc.labelValue("Vigência", formatDateBr(model.meta.vigencia)) },
           { xml: doc.labelValue("Versão", model.meta.versao) },
         ],
         [
@@ -3875,7 +3901,7 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
           },
           { xml: doc.labelValue("Área responsável", model.meta.area), fill: doc.C.gray50 },
           { xml: doc.labelValue("Processo relacionado", model.meta.processo), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Publicação", model.meta.publicacao), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Publicação", formatDateBr(model.meta.publicacao)), fill: doc.C.gray50 },
         ],
         [
           { xml: doc.labelValue("Elaborador", model.meta.elaboracao), fill: doc.C.gray50 },
@@ -4060,7 +4086,7 @@ function buildReadonlyPreviewHtml(
     ...(moduleId === "ddp" ? ([["Dono do processo", row.owner]] as Array<[string, string]>) : []),
     [moduleId === "ddp" ? "Elaborador" : "Responsável", row.responsible],
     ["Status", row.status],
-    ["Última atualização", new Date(row.updatedAt).toLocaleString("pt-BR")],
+    ["Última atualização", formatDateTimeBr(row.updatedAt)],
   ];
   const rows = fields
     .filter(([, value]) => value && value !== "-")
@@ -4299,7 +4325,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
               gap.description,
             )}</td><td>${html(gap.impact)}</td><td>${html(gap.action)}</td><td>${html(
               gap.owner || "A definir",
-            )}</td><td>${html(gap.due || "A definir")}</td><td>${html(
+            )}</td><td>${html(formatGapDateRangeBr(gap.due) || "A definir")}</td><td>${html(
               gap.priority,
             )}</td><td>${html(gap.status)}</td></tr>`,
         )
@@ -4316,7 +4342,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
               step.description ? `<p>${html(step.description)}</p>` : ""
             }${fieldGrid([
               ["Responsável", step.owner],
-              ["Prazo", step.due],
+              ["Prazo", formatDateBr(step.due)],
             ])}</article>`,
         )
         .join("")
@@ -4370,7 +4396,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   ].join("")}</dl>${fieldGrid([
     ["Modalidade", model.meta.modalidade],
     ["Status", model.meta.status || "Em andamento"],
-    ["Data", model.meta.dataRelatorio || model.meta.data],
+    ["Data", formatDateBr(model.meta.dataRelatorio || model.meta.data)],
     ["Elaborador", model.meta.elaborador],
     ["Revisor", model.meta.revisor],
   ]).replace('class="field-grid"', 'class="cover-meta"')}</section>
@@ -6058,7 +6084,7 @@ function ModuleWorkspacePage() {
                     {version.comment || "Sem comentário"}
                   </div>
                   <div className="text-xs text-[#6e6e73]">
-                    {new Date(version.created_at).toLocaleString("pt-BR")}
+                    {formatDateTimeBr(version.created_at)}
                   </div>
                 </div>
                 <button
@@ -6106,7 +6132,7 @@ function ModuleWorkspacePage() {
                 <div className="min-w-0">
                   <div className="truncate text-sm font-black text-[#1d1d1f]">{document.name}</div>
                   <div className="mt-1 truncate text-xs text-[#6e6e73]">
-                    Atualizado em {new Date(document.updated_at).toLocaleString("pt-BR")}
+                    Atualizado em {formatDateTimeBr(document.updated_at)}
                   </div>
                 </div>
                 <button
@@ -6544,7 +6570,7 @@ function ModuleDocumentGrid({
       ...sortedRows.map((row) =>
         columns.map(([key]) => {
           const value = row[key as keyof ModuleGridRow];
-          return key === "updatedAt" ? new Date(value).toLocaleString("pt-BR") : value;
+          return key === "updatedAt" ? formatDateTimeBr(value) : value;
         }),
       ),
     ];
@@ -6727,7 +6753,7 @@ function ModuleDocumentGrid({
                       }
                       return (
                         <td key={key} className="break-words px-3 py-3 text-foreground">
-                          {key === "updatedAt" ? new Date(value).toLocaleString("pt-BR") : value}
+                          {key === "updatedAt" ? formatDateTimeBr(value) : value}
                         </td>
                       );
                     })}
@@ -6972,7 +6998,7 @@ function DdpCausesModuleV2({
       .filter(Boolean)
       .sort();
     const last = dates.at(-1);
-    return last ? new Date(last).toLocaleString("pt-BR") : "-";
+    return last ? formatDateTimeBr(last) : "-";
   }
 
   function toggleRow(id: string) {
@@ -7098,7 +7124,7 @@ function DdpCausesModuleV2({
               gap.impacto,
               gap.acao,
               gap.responsavel || "-",
-              gap.prazo || "-",
+              formatGapDateRangeBr(gap.prazo) || "-",
               gap.prioridade,
               gap.status,
               gap.comentarios.length,
@@ -7254,7 +7280,7 @@ function DdpCausesModuleV2({
                   <td className="break-words px-3 py-3 text-foreground">
                     {gap.responsavel || "-"}
                   </td>
-                  <td className="break-words px-3 py-3 text-foreground">{gap.prazo || "-"}</td>
+                  <td className="break-words px-3 py-3 text-foreground">{formatGapDateRangeBr(gap.prazo) || "-"}</td>
                   <td className="px-3 py-3">
                     <select
                       value={gap.prioridade}
@@ -7451,7 +7477,7 @@ function DdpCausesModuleV2({
                     </div>
                     {comment.createdAt ? (
                       <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        {new Date(comment.createdAt).toLocaleString("pt-BR")}
+                        {formatDateTimeBr(comment.createdAt)}
                       </div>
                     ) : null}
                   </div>
@@ -7516,6 +7542,14 @@ function parseGapDateRange(value: string) {
 function formatGapDateRange(start: string, end: string) {
   if (start && end && start !== end) return `${start} até ${end}`;
   return start || end;
+}
+
+function formatGapDateRangeBr(value: string) {
+  const range = parseGapDateRange(value);
+  if (range.start && range.end && range.start !== range.end) {
+    return `${formatDateBr(range.start)} a ${formatDateBr(range.end)}`;
+  }
+  return formatDateBr(range.start || range.end || value);
 }
 
 function DateRangeField({
@@ -8743,7 +8777,7 @@ function DdpModule({
                         </td>
                         <td className="px-3 py-3">
                           {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.prazo} />
+                            <TableReadonly value={formatGapDateRangeBr(gap.prazo)} />
                           ) : (
                             <TableDateRange
                               value={gap.prazo}
@@ -9100,6 +9134,7 @@ function PopModule({
           />
           <Field
             label="Publicação"
+            type="date"
             value={data.meta.publicacao}
             onChange={(publicacao) => update({ ...data, meta: { ...data.meta, publicacao } })}
           />
@@ -10568,13 +10603,16 @@ function Field({
   type?: string;
   compact?: boolean;
 }) {
+  const isDate = type === "date";
   return (
     <label className="block">
       <span className={fieldLabelClass}>{label}</span>
       <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        type={isDate ? "text" : type}
+        inputMode={isDate ? "numeric" : undefined}
+        placeholder={isDate ? "dd/mm/aaaa" : undefined}
+        value={isDate ? formatDateBr(value) : value}
+        onChange={(event) => onChange(isDate ? parseDateBrInput(event.target.value) : event.target.value)}
         className={`${fieldInputBase} px-3 ${compact ? "h-9" : "h-10"}`}
       />
     </label>
@@ -10830,13 +10868,17 @@ function ListEditor({
               className="min-w-0 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-foreground outline-none transition focus:border-input focus:bg-background"
             />
             <input
-              type="date"
-              value={item.prazo ?? ""}
+              type="text"
+              inputMode="numeric"
+              placeholder="dd/mm/aaaa"
+              value={formatDateBr(item.prazo ?? "")}
               aria-label="Prazo"
               onChange={(event) =>
                 onChange(
                   items.map((current) =>
-                    current.id === item.id ? { ...current, prazo: event.target.value } : current,
+                    current.id === item.id
+                      ? { ...current, prazo: parseDateBrInput(event.target.value) }
+                      : current,
                   ),
                 )
               }
