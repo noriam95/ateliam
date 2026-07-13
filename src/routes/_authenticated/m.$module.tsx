@@ -2150,7 +2150,6 @@ function getDdpExportModel(data: DdpState) {
     ? legacyCards
     : [
         { title: "Objetivo", text: data.overview.objetivo },
-        { title: "Escopo", text: data.overview.escopo },
         { title: "Contexto", text: data.overview.kpis },
       ].filter((item) => item.text);
 
@@ -3636,8 +3635,6 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   );
   parts.push(doc.sectionTitle("Descrição do Projeto"));
   parts.push(doc.p(model.description || "Descrição não informada.", { align: "both", line: 1.05 }));
-  parts.push(doc.sectionTitle("Abrangência / Escopo"));
-  parts.push(doc.p(model.scope || "Escopo não informado.", { align: "both", line: 1.05 }));
   parts.push(doc.sectionTitle("Índice"));
   [
     ["02", "Visão Geral"],
@@ -3679,7 +3676,33 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       : doc.p("Nenhum sistema cadastrado."),
   );
 
-  parts.push(doc.sectionTitle("04 Fluxo AS IS - Etapas do Processo"));
+  parts.push(doc.sectionTitle("04 Análise SIPOC do Processo"));
+  parts.push(
+    model.sipocRows.length
+      ? doc.table(
+          [
+            [
+              doc.headerCell("Fornecedores"),
+              doc.headerCell("Entradas"),
+              doc.headerCell("Processo"),
+              doc.headerCell("Saídas"),
+              doc.headerCell("Clientes"),
+            ],
+            ...model.sipocRows.map((row) => [
+              doc.bodyCell(row.fornecedores),
+              doc.bodyCell(row.entradas),
+              doc.bodyCell(row.processo),
+              doc.bodyCell(row.saidas),
+              doc.bodyCell(row.clientes),
+            ]),
+          ],
+          [2000, 2000, 2100, 2000, 2206],
+          { full: true },
+        )
+      : doc.p("Nenhuma linha SIPOC cadastrada."),
+  );
+
+  parts.push(doc.sectionTitle("05 Fluxo AS IS - Etapas do Processo"));
   if (model.macroprocess.src) {
     parts.push(doc.subTitle(model.macroprocess.title || "Diagrama do Macroprocesso"));
     parts.push(
@@ -3745,32 +3768,6 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       );
     }
   });
-
-  parts.push(doc.sectionTitle("05 Análise SIPOC do Processo"));
-  parts.push(
-    model.sipocRows.length
-      ? doc.table(
-          [
-            [
-              doc.headerCell("Fornecedores"),
-              doc.headerCell("Entradas"),
-              doc.headerCell("Processo"),
-              doc.headerCell("Saídas"),
-              doc.headerCell("Clientes"),
-            ],
-            ...model.sipocRows.map((row) => [
-              doc.bodyCell(row.fornecedores),
-              doc.bodyCell(row.entradas),
-              doc.bodyCell(row.processo),
-              doc.bodyCell(row.saidas),
-              doc.bodyCell(row.clientes),
-            ]),
-          ],
-          [2000, 2000, 2100, 2000, 2206],
-          { full: true },
-        )
-      : doc.p("Nenhuma linha SIPOC cadastrada."),
-  );
 
   parts.push(doc.sectionTitle("06 Causas-Raiz e Planos de Ação"));
   model.gaps.forEach((gap, index) => {
@@ -4167,7 +4164,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const processOwner = textAt(legacy, "processOwner") || model.owner;
   const code = model.meta.codigo || "MAP";
   const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || processName;
-  const description = model.scope || model.description || data.overview.objetivo;
+  const description = model.description || data.overview.objetivo;
   const nav = [
     ["capa", "01 Capa"],
     ["visao", "02 Visão geral"],
@@ -4190,12 +4187,10 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     }</dd></div>`;
   };
 
-  const overviewIcon = (type: "target" | "scope" | "metrics") => {
+  const overviewIcon = (type: "target" | "metrics") => {
     const icons = {
       target:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
-      scope:
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 16.5z"/><path d="M9 5V3M15 5V3M9 21v-2M15 21v-2M5 9H3M5 15H3M21 9h-2M21 15h-2"/></svg>',
       metrics:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-4"/><path d="M12 16V8"/><path d="M16 16v-6"/><path d="M7 9l4-3 4 2 4-5"/></svg>',
     };
@@ -4378,9 +4373,8 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     ["Elaborador", model.meta.elaborador],
     ["Revisor", model.meta.revisor],
   ]).replace('class="field-grid"', 'class="cover-meta"')}</section>
-<section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
+<section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo e contexto operacional do mapeamento.")}<div class="text-stack">${[
     textPanel("Objetivo", model.description, overviewIcon("target")),
-    textPanel("Escopo", model.scope, overviewIcon("scope")),
     textPanel("Estado atual", data.overview.estadoAtual),
     textPanel("Indicadores", data.overview.kpis, overviewIcon("metrics")),
     textPanel("Volume", data.overview.volume),
@@ -7791,8 +7785,7 @@ function DdpModule({
       data.meta.elaborador,
       data.meta.revisor,
     ]),
-    scope: completionPercent([data.overview.escopo]),
-    overview: completionPercent([data.overview.objetivo, data.overview.escopo, data.overview.kpis]),
+    overview: completionPercent([data.overview.objetivo, data.overview.kpis]),
     systems: completionPercent(data.systems.flatMap((system) => [system.nome, system.descricao])),
     flowStage: completionPercent([
       data.macroprocess.processId,
@@ -7842,14 +7835,13 @@ function DdpModule({
   // lateral e para o medidor segmentado da barra de comando.
   const sections: MappingSectionInfo[] = [
     { key: "identification", num: "01", title: "Dados do Mapeamento", pct: sectionProgress.identification },
-    { key: "scope", num: "02", title: "Abrangência / Escopo", pct: sectionProgress.scope },
-    { key: "overview", num: "03", title: "Visão geral", pct: sectionProgress.overview },
-    { key: "systems", num: "04", title: "Sistemas envolvidos", pct: sectionProgress.systems },
-    { key: "sipoc", num: "05", title: "Análise SIPOC", pct: sectionProgress.sipoc },
-    { key: "flowStage", num: "06", title: "Fluxo AS IS", pct: sectionProgress.flowStage },
-    { key: "gaps", num: "07", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
-    { key: "nextSteps", num: "08", title: "Próximos passos", pct: sectionProgress.nextSteps },
-    { key: "glossary", num: "09", title: "Glossário", pct: sectionProgress.glossary },
+    { key: "overview", num: "02", title: "Visão geral", pct: sectionProgress.overview },
+    { key: "systems", num: "03", title: "Sistemas envolvidos", pct: sectionProgress.systems },
+    { key: "sipoc", num: "04", title: "Análise SIPOC", pct: sectionProgress.sipoc },
+    { key: "flowStage", num: "05", title: "Fluxo AS IS", pct: sectionProgress.flowStage },
+    { key: "gaps", num: "06", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
+    { key: "nextSteps", num: "07", title: "Próximos passos", pct: sectionProgress.nextSteps },
+    { key: "glossary", num: "08", title: "Glossário", pct: sectionProgress.glossary },
   ];
   const overallPct = Math.round(
     sections.reduce((sum, section) => sum + section.pct, 0) / sections.length,
@@ -7874,7 +7866,6 @@ function DdpModule({
     if (!selectedProcess) return;
     const sectionKeys = [
       "identification",
-      "scope",
       "overview",
       "systems",
       "sipoc",
@@ -8142,6 +8133,11 @@ function DdpModule({
           {/* Ordem abaixo espelha a tabela de identificação do relatório Word
               (Tipo/Dono/Área/Modalidade, Elaborador/Revisor/Data). Tipo, Dono e
               Área são automáticos — não editáveis aqui. */}
+          <ReadOnlyField label="Código do processo" value={selectedProcess?.code ?? ""} />
+          <ReadOnlyField
+            label="Cadeia de valor"
+            value={data.legacy?.processValueChainName?.toString() ?? ""}
+          />
           <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
           <ReadOnlyField label="Dono" value={selectedProcess?.owner ?? ""} />
           <ReadOnlyField label="Área" value={selectedProcess?.department ?? ""} />
@@ -8182,22 +8178,8 @@ function DdpModule({
         </div>
         </Panel>
       <Panel
-        id="sec-scope"
-        num="02"
-        openSignal={openTarget === "scope" ? openNonce : 0}
-        title="Abrangência / Escopo do Mapeamento"
-        progress={sectionProgress.scope}
-      >
-        <TextArea
-          label="Abrangência / Escopo"
-          value={data.overview.escopo}
-          onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
-          rows={8}
-        />
-      </Panel>
-      <Panel
         id="sec-overview"
-        num="03"
+        num="02"
         openSignal={openTarget === "overview" ? openNonce : 0}
         title="Visão geral"
         progress={sectionProgress.overview}
@@ -8207,11 +8189,6 @@ function DdpModule({
             label="Objetivo"
             value={data.overview.objetivo}
             onChange={(objetivo) => update({ ...data, overview: { ...data.overview, objetivo } })}
-          />
-          <TextArea
-            label="Escopo"
-            value={data.overview.escopo}
-            onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
           />
           <div className="md:col-span-2">
             <TextArea
@@ -8224,7 +8201,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-systems"
-        num="04"
+        num="03"
         openSignal={openTarget === "systems" ? openNonce : 0}
         title="Sistemas envolvidos"
         progress={sectionProgress.systems}
@@ -8307,7 +8284,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-sipoc"
-        num="05"
+        num="04"
         openSignal={openTarget === "sipoc" ? openNonce : 0}
         title="Análise SIPOC do processo"
         progress={sectionProgress.sipoc}
@@ -8374,7 +8351,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-flowStage"
-        num="06"
+        num="05"
         openSignal={openTarget === "flowStage" ? openNonce : 0}
         title="Fluxo AS IS — Etapas do processo"
         progress={sectionProgress.flowStage}
@@ -8604,7 +8581,7 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-gaps"
-        num="07"
+        num="06"
         openSignal={openTarget === "gaps" ? openNonce : 0}
         title="Gaps e causas-raiz"
         progress={sectionProgress.gaps}
@@ -8848,7 +8825,7 @@ function DdpModule({
       </Panel>
       <ListEditor
         id="sec-nextSteps"
-        num="08"
+        num="07"
         openSignal={openTarget === "nextSteps" ? openNonce : 0}
         title="Próximos passos"
         items={data.nextSteps}
@@ -8858,7 +8835,7 @@ function DdpModule({
       />
       <Panel
         id="sec-glossary"
-        num="09"
+        num="08"
         openSignal={openTarget === "glossary" ? openNonce : 0}
         title="Glossário"
         progress={sectionProgress.glossary}
