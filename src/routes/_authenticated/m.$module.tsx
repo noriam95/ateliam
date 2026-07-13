@@ -1997,6 +1997,7 @@ type ExportGap = {
   priority: string;
   status: string;
   implementation: string;
+  comments: CauseComment[];
 };
 type ExportNextStep = { title: string; description: string; owner: string; due: string };
 type ExportPopSection = {
@@ -2291,6 +2292,7 @@ function getDdpExportModel(data: DdpState) {
       priority: current?.prioridade || normalizePriority(textAt(row, "prioridade")),
       status: current?.status || normalizeCauseStatus(textAt(row, "status")),
       implementation: textAt(row, "comoImplementar") || current?.acao || "",
+      comments: current?.comentarios ?? [],
     };
   });
   const gaps: ExportGap[] = legacyGaps.length
@@ -2305,6 +2307,7 @@ function getDdpExportModel(data: DdpState) {
         priority: gap.prioridade,
         status: gap.status,
         implementation: gap.acao,
+        comments: gap.comentarios,
       }));
 
   const legacyNext = arrayAt(legacy, "proxPassos").map((item) => {
@@ -2331,6 +2334,10 @@ function getDdpExportModel(data: DdpState) {
   return {
     meta: data.meta,
     // Área e Dono do documento vêm do processo vinculado (preenchido no cadastro).
+    processName: textAt(legacy, "processName") || currentMacro.titulo,
+    processCode: textAt(legacy, "processCode"),
+    valueChainName:
+      textAt(legacy, "processValueChainName") || data.meta.valueChainName || data.meta.valueChainId,
     area: textAt(legacy, "processArea") || data.meta.area,
     owner: textAt(legacy, "processOwner") || data.meta.responsavel,
     description: data.overview.objetivo,
@@ -3637,38 +3644,45 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   });
   const parts: string[] = [];
 
+  parts.push(doc.sectionTitle("01 Dados do Mapeamento"));
   parts.push(
     doc.table(
       [
         [
-          { xml: doc.labelValue("Tipo", "Relatório de Mapeamento de Processo") },
-          { xml: doc.labelValue("Dono", model.owner) },
-          { xml: doc.labelValue("Área", model.area) },
+          { xml: doc.labelValue("Código do mapeamento", model.meta.codigo) },
+          { xml: doc.labelValue("Título do mapeamento", model.meta.titulo), gridSpan: 2 },
           { xml: doc.labelValue("Modalidade", model.meta.modalidade) },
         ],
         [
-          { xml: doc.labelValue("Elaborador", model.meta.elaborador), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Revisor", model.meta.revisor), fill: doc.C.gray50 },
-          {
-            xml: doc.labelValue("Data", formatDateBr(model.meta.dataRelatorio || model.meta.data)),
-            fill: doc.C.gray50,
-            gridSpan: 2,
-          },
+          { xml: doc.labelValue("Tipo", "Relatório de Mapeamento de Processo"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Status", model.meta.status || "Em andamento"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Data", formatDateBr(model.meta.dataRelatorio || model.meta.data)), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Sistema", "BF Flow"), fill: doc.C.gray50 },
+        ],
+        [
+          { xml: doc.labelValue("Processo", model.processName || "-"), gridSpan: 2 },
+          { xml: doc.labelValue("Código do processo", model.processCode || "-") },
+          { xml: doc.labelValue("Cadeia de valor", model.valueChainName || "-") },
+        ],
+        [
+          { xml: doc.labelValue("Dono", model.owner || "-"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Área", model.area || "-"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Elaborador", model.meta.elaborador || "-"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Revisor", model.meta.revisor || "-"), fill: doc.C.gray50 },
         ],
       ],
       [2576, 2576, 2576, 2578],
       { full: true },
     ),
   );
-  parts.push(doc.sectionTitle("Descrição do Projeto"));
-  parts.push(doc.p(model.description || "Descrição não informada.", { align: "both", line: 1.05 }));
   parts.push(doc.sectionTitle("Índice"));
   [
+    ["01", "Dados do Mapeamento"],
     ["02", "Visão Geral"],
     ["03", "Sistemas Envolvidos"],
-    ["04", "Fluxo AS IS"],
-    ["05", "Análise SIPOC"],
-    ["06", "Causas-Raiz e Planos de Ação"],
+    ["04", "Análise SIPOC"],
+    ["05", "Fluxo AS IS"],
+    ["06", "Gaps e Causas-Raiz"],
     ["07", "Próximos Passos"],
     ["08", "Glossário"],
   ].forEach(([num, label]) => parts.push(doc.tocLine(num, label)));
@@ -3688,16 +3702,14 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [
             [
               doc.headerCell("Sistema"),
-              doc.headerCell("Descrição"),
-              doc.headerCell("Uso"),
+              doc.headerCell("Descrição / uso no processo"),
             ],
             ...model.systems.map((system) => [
               doc.bodyCell(system.name),
-              doc.bodyCell(system.description),
               doc.bodyCell(system.items.join("; ") || system.description),
             ]),
           ],
-          [2600, 4200, 3506],
+          [3000, 7306],
           { full: true },
         )
       : doc.p("Nenhum sistema cadastrado."),
@@ -3819,9 +3831,31 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
             doc.bodyCell(`Responsável: ${gap.owner || "-"}`),
             doc.bodyCell(`Prazo: ${formatGapDateRangeBr(gap.due) || "-"}`),
           ],
+          [{ xml: doc.mixedP("Status: ", gap.status || "-", { size: 9 }), gridSpan: 3 }],
           [{ xml: doc.mixedP("Descrição: ", gap.description || "-", { size: 9 }), gridSpan: 3 }],
           [{ xml: doc.mixedP("Impacto esperado: ", gap.impact || "-", { size: 9 }), gridSpan: 3 }],
           [{ xml: doc.mixedP("Ação proposta: ", gap.action || "-", { size: 9 }), gridSpan: 3 }],
+          ...(gap.comments.length
+            ? [
+                [
+                  {
+                    xml: doc.mixedP(
+                      "Comentários: ",
+                      gap.comments
+                        .map((comment) =>
+                          joinClean([
+                            comment.text,
+                            comment.createdAt ? formatDateTimeBr(comment.createdAt) : "",
+                          ]),
+                        )
+                        .join("\n"),
+                      { size: 9 },
+                    ),
+                    gridSpan: 3,
+                  },
+                ],
+              ]
+            : []),
         ],
         [3100, 3100, 4106],
         { full: true },
