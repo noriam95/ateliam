@@ -2183,83 +2183,25 @@ function exportImages(items: unknown[], fallbackTitle = "Imagem") {
 
 function getDdpExportModel(data: DdpState) {
   const legacy = data.legacy ?? {};
-  const legacyCards = arrayAt(legacy, "vgCards").map((item) => {
-    const row = asObject(item);
-    return { title: textAt(row, "title"), text: textAt(row, "text") };
-  });
-  const overviewCards: ExportCard[] = legacyCards.length
-    ? legacyCards
-    : [
-        { title: "Objetivo", text: data.overview.objetivo },
-        { title: "Escopo", text: data.overview.escopo },
-        { title: "Contexto", text: data.overview.kpis },
-      ].filter((item) => item.text);
+  const overviewCards: ExportCard[] = [
+    { title: "Objetivo", text: data.overview.objetivo },
+    { title: "Escopo", text: data.overview.escopo },
+    { title: "Contexto", text: data.overview.kpis },
+  ].filter((item) => item.text);
 
-  const legacySystems = arrayAt(legacy, "sistemas").map((item, index) => {
-    const row = asObject(item);
-    const current = data.systems[index];
-    return {
-      name: current?.nome || textAt(row, "nome"),
-      type: current?.tipo || textAt(row, "badge") || "Sistema",
-      description: current?.descricao || textAt(row, "desc"),
-      items: arrayAt(row, "items").map(textValue).filter(Boolean),
-    };
-  });
-  const systems: ExportSystem[] = legacySystems.length
-    ? legacySystems
-    : data.systems.map((system) => ({
-        name: system.nome,
-        type: system.tipo || system.criticidade,
-        description: system.descricao,
-        items: splitText(system.descricao),
-      }));
+  const systems: ExportSystem[] = data.systems.map((system) => ({
+    name: system.nome,
+    type: system.tipo || system.criticidade,
+    description: system.descricao,
+    items: splitText(system.descricao),
+  }));
 
-  const legacyFlow = arrayAt(legacy, "flowSteps").map((item, index) => {
-    const row = asObject(item);
-    const current = data.steps[index];
-    return {
-      title: current?.etapa || textAt(row, "titulo"),
-      description: current?.atividade || textAt(row, "descricao"),
-      owner: current?.responsavel || textAt(row, "detalheAtores"),
-      system: current?.sistema || textAt(row, "detalheSistemas"),
-      risk: current?.risco || joinClean([textAt(row, "detalheRiscos"), textAt(row, "detalheObs")]),
-      images: current?.images?.length
-        ? current.images.map((image) => ({
-            title: image.titulo,
-            caption: image.legenda,
-            src: image.src,
-          }))
-        : exportImages(arrayAt(row, "imagens"), "Diagrama"),
-      substeps: current?.substeps?.length
-        ? current.substeps.map((substep) => ({
-            code: substep.codigo,
-            title: substep.titulo,
-            description: substep.descricao,
-            images: substep.images.map((image) => ({
-              title: image.titulo,
-              caption: image.legenda,
-              src: image.src,
-            })),
-          }))
-        : arrayAt(row, "substeps").map((substep, subIndex) => {
-            const sub = asObject(substep);
-            return {
-              code: textAt(sub, "codigo") || String(subIndex + 1).padStart(2, "0"),
-              title: textAt(sub, "titulo"),
-              description: textAt(sub, "desc") || textAt(sub, "descricao"),
-              images: exportImages(arrayAt(sub, "imagens"), "Imagem"),
-            };
-          }),
-    };
-  });
-  const flowSteps: ExportFlowStep[] = legacyFlow.length
-    ? legacyFlow
-    : data.steps.map((step) => ({
+  const flowSteps: ExportFlowStep[] = data.steps.map((step) => ({
         title: step.etapa,
-        description: step.atividade,
-        owner: step.responsavel,
-        system: step.sistema,
-        risk: joinClean([step.risco, step.observacoes]),
+        description: "",
+        owner: "",
+        system: "",
+        risk: "",
         images: step.images.map((image) => ({
           title: image.titulo,
           caption: image.legenda,
@@ -2276,42 +2218,10 @@ function getDdpExportModel(data: DdpState) {
                 src: image.src,
               })),
             }))
-          : [
-              {
-                code: "01",
-                title: step.etapa,
-                description: joinClean(
-                  [
-                    step.entrada ? `Entrada: ${step.entrada}` : "",
-                    step.atividade,
-                    step.saida ? `Saída: ${step.saida}` : "",
-                  ],
-                  "\n",
-                ),
-                images: [],
-              },
-            ],
+          : [],
       }));
 
-  const legacyGaps = arrayAt(legacy, "gaps").map((item, index) => {
-    const row = asObject(item);
-    const current = data.gaps[index];
-    return {
-      title: current?.causa || textAt(row, "titulo"),
-      description: current?.descricao || textAt(row, "descricao") || current?.causa || "",
-      impact: current?.impacto || textAt(row, "impacto"),
-      action: current?.acao || textAt(row, "acaoProposta"),
-      owner: current?.responsavel || textAt(row, "responsavel"),
-      due: current?.prazo || textAt(row, "prazo"),
-      priority: current?.prioridade || normalizePriority(textAt(row, "prioridade")),
-      status: current?.status || normalizeCauseStatus(textAt(row, "status")),
-      implementation: textAt(row, "comoImplementar") || current?.acao || "",
-      comments: current?.comentarios ?? [],
-    };
-  });
-  const gaps: ExportGap[] = legacyGaps.length
-    ? legacyGaps
-    : data.gaps.map((gap) => ({
+  const gaps: ExportGap[] = data.gaps.map((gap) => ({
         title: gap.causa,
         description: gap.descricao || gap.causa,
         impact: gap.impacto,
@@ -2324,25 +2234,13 @@ function getDdpExportModel(data: DdpState) {
         comments: gap.comentarios,
       }));
 
-  const legacyNext = arrayAt(legacy, "proxPassos").map((item) => {
-    const row = asObject(item);
-    return {
-      title: textAt(row, "titulo"),
-      description: textAt(row, "desc") || textAt(row, "descricao"),
-      owner: textAt(row, "responsavel"),
-      due: textAt(row, "prazo"),
-    };
-  });
-  const nextSteps: ExportNextStep[] = legacyNext.length
-    ? legacyNext
-    : data.nextSteps.map((item) => ({
+  const nextSteps: ExportNextStep[] = data.nextSteps.map((item) => ({
         title: plain(item.text),
         description: "",
         owner: item.responsavel || "",
         due: item.prazo || "",
       }));
 
-  const macro = objectAt(legacy, "macroprocesso");
   const currentMacro = data.macroprocess;
 
   return {
@@ -2357,22 +2255,19 @@ function getDdpExportModel(data: DdpState) {
     description: data.overview.objetivo,
     scope: data.overview.escopo,
     overview: data.overview.estadoAtual,
-    stats: arrayAt(legacy, "stats").map((item) => {
-      const row = asObject(item);
-      return { num: textAt(row, "num"), label: textAt(row, "label") };
-    }),
+    stats: [],
     cards: overviewCards,
     systems,
     macroprocess: {
-      title: currentMacro.titulo || textAt(macro, "titulo"),
-      caption: currentMacro.legenda || textAt(macro, "legenda"),
-      src: currentMacro.src || textAt(macro, "imagem") || textAt(macro, "src"),
+      title: currentMacro.titulo,
+      caption: currentMacro.legenda,
+      src: currentMacro.src,
     },
     flowSteps,
     sipocRows: data.sipocRows,
     gaps,
     nextSteps,
-    images: exportImages(arrayAt(legacy, "imagens"), "Imagem"),
+    images: [],
     glossary: data.glossary,
   };
 }
@@ -4231,12 +4126,11 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const presentationColor = docxColor(brand?.word_header_color, "1D1F23");
   const assetBase =
     typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
-  const legacy = data.legacy ?? {};
-  const processCode = textAt(legacy, "processCode");
-  const processName = textAt(legacy, "processName") || model.meta.titulo;
-  const processValueChain = textAt(legacy, "processValueChainName") || model.meta.valueChainName;
-  const processArea = textAt(legacy, "processArea") || model.area;
-  const processOwner = textAt(legacy, "processOwner") || model.owner;
+  const processCode = model.processCode;
+  const processName = model.processName || model.meta.titulo;
+  const processValueChain = model.valueChainName;
+  const processArea = model.area;
+  const processOwner = model.owner;
   const code = model.meta.codigo || "MAP";
   const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || processName;
   const description = model.description || data.overview.objetivo;
