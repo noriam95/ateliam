@@ -198,6 +198,18 @@ html[data-theme="dark"] {
   .ateliam-wordmark-hero {
     color: color-mix(in oklab, var(--foreground) 88%, var(--gold));
   }
+  html[data-theme="light"] .bf-flow-logo-color {
+    display: block;
+  }
+  html[data-theme="light"] .bf-flow-logo-white {
+    display: none;
+  }
+  html[data-theme="dark"] .bf-flow-logo-color {
+    display: none;
+  }
+  html[data-theme="dark"] .bf-flow-logo-white {
+    display: block;
+  }
   ::selection {
     background: color-mix(in oklab, var(--gold) 28%, transparent);
     color: var(--forest);
@@ -258,6 +270,22 @@ html[data-theme="dark"] {
 }
 
 @layer utilities {
+  html[data-theme="light"] .bf-flow-logo-color {
+    display: block !important;
+  }
+
+  html[data-theme="light"] .bf-flow-logo-white {
+    display: none !important;
+  }
+
+  html[data-theme="dark"] .bf-flow-logo-color {
+    display: none !important;
+  }
+
+  html[data-theme="dark"] .bf-flow-logo-white {
+    display: block !important;
+  }
+
   html[data-theme="dark"] body {
     background:
       radial-gradient(circle at 8% 0%, color-mix(in oklab, var(--gold) 7%, transparent), transparent 28%),

@@ -29,13 +29,13 @@ export function BFFlowMark({ className, markClassName, variant = "theme" }: BFFl
         src="/brand/bom-futuro-light.png"
         alt=""
         aria-hidden="true"
-        className={cn(colorClass, "h-full w-auto object-contain", markClassName)}
+        className={cn(colorClass, "bf-flow-logo-color h-full w-auto object-contain", markClassName)}
       />
       <img
         src="/brand/bom-futuro-dark.png"
         alt=""
         aria-hidden="true"
-        className={cn(whiteClass, "h-full w-auto object-contain", markClassName)}
+        className={cn(whiteClass, "bf-flow-logo-white h-full w-auto object-contain", markClassName)}
       />
     </span>
   );
