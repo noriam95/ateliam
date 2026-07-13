@@ -446,7 +446,7 @@ function PorterDiagram({
       tone: "from-[#15b889] to-[#007f5f]",
       border: "border-[#009b78]",
       header: "bg-[#009b78]",
-      text: "text-[#00523f]",
+      text: "text-[#00523f] dark:text-[#d7fff5]",
     },
     {
       key: "primary",
@@ -455,7 +455,7 @@ function PorterDiagram({
       tone: "from-[#ffd45c] to-[#f5b51b]",
       border: "border-[#f5b51b]",
       header: "bg-[#f5b51b]",
-      text: "text-[#5f3d00]",
+      text: "text-[#5f3d00] dark:text-[#ffe7a3]",
     },
     {
       key: "support",
@@ -464,7 +464,7 @@ function PorterDiagram({
       tone: "from-[#00a8bc] to-[#007f94]",
       border: "border-[#008da3]",
       header: "bg-[#008da3]",
-      text: "text-[#004c59]",
+      text: "text-[#004c59] dark:text-[#d6fbff]",
     },
   ];
 
@@ -472,10 +472,10 @@ function PorterDiagram({
     <div className="overflow-x-auto">
       <div className={`flex ${large ? "min-w-[1180px]" : "min-w-[860px]"} items-stretch`}>
         <div className="grid flex-1 grid-cols-[148px_minmax(0,1fr)] gap-1">
-          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
+          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-[#555]">
             Categoria
           </div>
-          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white">
+          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-[#555]">
             Macroprocesso
           </div>
           {bands.map((band) => (
@@ -486,7 +486,7 @@ function PorterDiagram({
                 {band.label}
               </div>
               <div
-                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm`}
+                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm dark:bg-slate-950/40 dark:shadow-none`}
               >
                 {band.items.length ? (
                   <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
@@ -503,12 +503,12 @@ function PorterDiagram({
                           className={`grid ${large ? "min-h-24" : "min-h-20"} place-items-center rounded-lg border-2 px-3 py-2 text-center text-sm font-bold leading-tight shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
                             selected
                               ? "border-[var(--gold)] bg-[var(--gold)] text-slate-950 shadow-md ring-2 ring-[var(--gold)]/25"
-                              : `${band.border} bg-white ${band.text}`
+                              : `${band.border} bg-white ${band.text} dark:bg-slate-950/55`
                           } ${
                             onSelectChain
                               ? selected
                                 ? "cursor-pointer hover:-translate-y-0.5 hover:bg-[var(--gold)] hover:shadow-md active:translate-y-0"
-                                : "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0"
+                                : "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0 dark:hover:bg-white/[0.08] dark:hover:shadow-none"
                               : "cursor-default"
                           }`}
                         >
@@ -518,7 +518,7 @@ function PorterDiagram({
                     })}
                   </div>
                 ) : (
-                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border text-xs italic text-muted-foreground">
+                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-4 text-center text-xs italic text-muted-foreground dark:border-white/15 dark:bg-white/[0.03] dark:text-slate-300">
                     Nenhum processo cadastrado
                   </div>
                 )}
@@ -532,7 +532,7 @@ function PorterDiagram({
             style={{ clipPath: "polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%)" }}
           />
           <div className="relative flex h-full items-center justify-center pr-7">
-            <span className={`${large ? "text-4xl" : "text-3xl"} font-black text-[#005f54]`}>
+            <span className={`${large ? "text-4xl" : "text-3xl"} font-black text-[#005f54] drop-shadow-sm dark:text-white`}>
               Missão
             </span>
           </div>
