@@ -285,7 +285,7 @@ export function WorkspaceSystemSettings({
       {
         id: "demo-bfflow-lab",
         name: "BF Flow Lab",
-        slug: "ateliam-lab",
+        slug: "bf-flow-lab",
         logo_data_url: null,
         word_header_color: "1D1F23",
       },

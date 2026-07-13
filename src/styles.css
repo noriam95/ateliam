@@ -50,7 +50,7 @@
 :root {
   --radius: 0.625rem;
 
-  /* Ateliam light workspace: Teams-like neutrals with restrained gold accents. */
+  /* BF Flow light workspace: Teams-like neutrals with restrained gold accents. */
   --cream: oklch(0.975 0.002 265);
   --sage: oklch(0.955 0.018 82);
   --forest: oklch(0.235 0.006 265);

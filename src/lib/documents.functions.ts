@@ -56,7 +56,7 @@ async function saveDocumentSnapshot(data: SaveDocumentInput, context: AuthContex
       const uploaded = await uploadFile({
         siteId: cfg.sharepoint_site_id,
         driveId: cfg.sharepoint_drive_id,
-        folderPath: cfg.sharepoint_folder_path ?? "/Ateliam",
+        folderPath: cfg.sharepoint_folder_path ?? "/BF Flow",
         filename,
         content: data.content,
       });

@@ -290,7 +290,7 @@ function WorkspaceHome() {
       {
         id: "demo-bfflow-lab",
         name: "BF Flow Lab",
-        slug: "ateliam-lab",
+        slug: "bf-flow-lab",
         logo_data_url: null,
       },
     ];

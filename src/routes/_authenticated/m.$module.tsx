@@ -1801,7 +1801,7 @@ function importWorkspaceFromJson(
           : Object.keys(bpmnSource).length
             ? "bpmn"
             : preferredModule,
-      label: "Workspace Ateliam",
+      label: "Workspace BF Flow",
     };
   }
 
@@ -2645,7 +2645,7 @@ function buildDdpImportTemplate(data: DdpState) {
     {
       name: "Instrucoes",
       rows: [
-        ["Uso", "Preencha apenas textos. Imagens devem ser adicionadas diretamente no Ateliam."],
+        ["Uso", "Preencha apenas textos. Imagens devem ser adicionadas diretamente no BF Flow."],
         ["Importacao", "Mantenha os nomes das abas e cabecalhos para o sistema reconhecer."],
         ["Repeticoes", "Adicione novas linhas nas abas de tabelas quando precisar."],
       ],
@@ -2801,7 +2801,7 @@ function buildPopImportTemplate(data: PopState) {
     {
       name: "Instrucoes",
       rows: [
-        ["Uso", "Preencha apenas textos. Imagens devem ser adicionadas diretamente no Ateliam."],
+        ["Uso", "Preencha apenas textos. Imagens devem ser adicionadas diretamente no BF Flow."],
         ["Importacao", "Mantenha os nomes das abas e cabecalhos para o sistema reconhecer."],
         ["Repeticoes", "Adicione novas linhas nas abas de tabelas quando precisar."],
       ],
@@ -3231,7 +3231,7 @@ function createDocxContext(params: {
   const media: DocxMedia[] = [];
   let relCounter = 1;
   let mediaCounter = 1;
-  const organizationName = params.brand?.name || "Ateliam";
+  const organizationName = params.brand?.name || "BF Flow";
   const headerColor = docxColor(params.brand?.word_header_color, "1D1D1F");
   const C = {
     green: headerColor,
@@ -3606,7 +3606,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   const doc = createDocxContext({
     code: model.meta.codigo,
     title,
-    footerLeft: `${model.meta.dataRelatorio || model.meta.data} · por ${model.meta.elaborador || "Ateliam"}`,
+    footerLeft: `${model.meta.dataRelatorio || model.meta.data} · por ${model.meta.elaborador || "BF Flow"}`,
     brand,
   });
   const parts: string[] = [];
@@ -3855,7 +3855,7 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
     code: model.meta.codigo,
     title: model.meta.titulo,
     footerLeft: `${model.meta.publicacao || model.meta.vigencia || today()} · por ${
-      model.meta.elaboracao || "Ateliam"
+      model.meta.elaboracao || "BF Flow"
     }`,
     brand,
   });
@@ -3883,7 +3883,7 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
           { xml: doc.labelValue("Elaborador", model.meta.elaboracao), fill: doc.C.gray50 },
           { xml: doc.labelValue("Revisor", model.meta.revisor), fill: doc.C.gray50 },
           { xml: doc.labelValue("Aprovador", model.meta.aprovacao), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Sistema", "Ateliam"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Sistema", "BF Flow"), fill: doc.C.gray50 },
         ],
       ],
       [2576, 2576, 2576, 2578],
@@ -4035,13 +4035,12 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
   return doc.finish(parts);
 }
 
-function ateliamLogoHtml(brand?: OrganizationBrand) {
+function bfFlowLogoHtml(brand?: OrganizationBrand) {
   if (brand?.logo_data_url) {
-    return `<img src="${html(brand.logo_data_url)}" alt="${html(brand.name || "Organização")}"/><strong>${html(brand.name || "Organização")}</strong>`;
+    return `<img class="brand-logo custom-logo" src="${html(brand.logo_data_url)}" alt="${html(brand.name || "BF Flow")}"/>`;
   }
-  return `<span class="brand-mark"><span></span></span><strong>Ateliam</strong>`;
+  return `<span class="system-logo-pair"><img class="brand-logo logo-light" src="/brand/bom-futuro-light.png" alt="BF Flow"/><img class="brand-logo logo-dark" src="/brand/bom-futuro-dark.png" alt="BF Flow"/></span>`;
 }
-
 // Visualização somente-leitura genérica de um registro da consulta, a partir
 // dos metadados da linha. Usada para registros de demonstração e para a
 // pré-visualização amigável de Documentação/Fluxograma.
@@ -4167,17 +4166,26 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || processName;
   const description = model.scope || model.description || data.overview.objetivo;
   const nav = [
-    ["capa", "Capa"],
-    ["processo", "Dados do processo"],
-    ["mapeamento", "Dados do mapeamento"],
-    ["visao", "Visão geral"],
-    ["sistemas", "Sistemas envolvidos"],
-    ["fluxo", "Fluxo AS IS"],
-    ["sipoc", "SIPOC"],
-    ["gaps", "Gaps e causas-raiz"],
-    ["proximos", "Próximos passos"],
-    ["glossario", "Glossário"],
+    ["capa", "01 Capa"],
+    ["visao", "02 Visão geral"],
+    ["sistemas", "03 Sistemas envolvidos"],
+    ["sipoc", "04 SIPOC"],
+    ["fluxo", "05 Fluxo AS IS"],
+    ["gaps", "06 Gaps e causas-raiz"],
+    ["proximos", "07 Próximos passos"],
+    ["glossario", "08 Glossário"],
   ];
+
+  const coverList = (items: Array<[string, string | undefined | null]>) => {
+    const rows = items
+      .filter(([, value]) => plain(value).trim())
+      .map(
+        ([label, value]) =>
+          `<div class="cover-row"><dt>${html(label)}</dt><dd>${html(value)}</dd></div>`,
+      )
+      .join("");
+    return rows ? `<dl class="cover-list">${rows}</dl>` : "";
+  };
 
   const emptyBlock = (text = "Sem informação preenchida.") =>
     `<div class="empty">${html(text)}</div>`;
@@ -4338,37 +4346,32 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 <style>
 :root{--accent:#${presentationColor};--accent-strong:color-mix(in srgb,var(--accent) 78%,#000);--gold:#d49a21;--bg:#f4f2ea;--surface:#fff;--surface-2:#faf8f1;--text:#17191f;--muted:#626a73;--line:#ddd8ca;--shadow:0 18px 60px rgba(28,28,28,.12);--nav:282px}
 [data-theme="dark"]{--bg:#0f1114;--surface:#171a1f;--surface-2:#1e2329;--text:#f4f6f8;--muted:#aab2bc;--line:#343a42;--shadow:0 18px 70px rgba(0,0,0,.45);--accent-strong:color-mix(in srgb,var(--accent) 66%,#fff)}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",Arial,sans-serif}.shell{display:grid;grid-template-columns:var(--nav) minmax(0,1fr);min-height:100vh}.sidebar{position:sticky;top:0;height:100vh;background:linear-gradient(180deg,var(--accent-strong),color-mix(in srgb,var(--accent) 52%,#111));color:#fff;padding:26px 20px;display:flex;flex-direction:column;gap:26px}.brand{display:flex;align-items:center;gap:12px;min-height:48px}.brand img{max-width:150px;max-height:46px;object-fit:contain;background:rgba(255,255,255,.92);border-radius:8px;padding:5px}.brand strong{font-size:15px;letter-spacing:.08em;text-transform:uppercase}.brand-mark{display:grid;width:36px;height:36px;place-items:center;border-radius:10px;background:rgba(255,255,255,.14);color:var(--gold)}.brand-mark span{width:17px;height:17px;border:2px solid currentColor;border-radius:50%;position:relative}.brand-mark span:after{content:"";position:absolute;inset:4px;border-radius:50%;background:currentColor}.doc-code{border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px;background:rgba(255,255,255,.08)}.doc-code span{display:block;font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.75}.doc-code strong{display:block;margin-top:6px;font-size:24px;letter-spacing:.08em}.nav{display:grid;gap:4px}.nav a{color:rgba(255,255,255,.82);text-decoration:none;border-radius:9px;padding:10px 12px;font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.1em}.nav a:hover{background:rgba(255,255,255,.12);color:#fff}.theme-toggle{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:5px;background:rgba(0,0,0,.12)}.theme-toggle button{border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.72);font-weight:800;padding:9px;cursor:pointer}.theme-toggle button.active{background:#fff;color:#111}.content{min-width:0}.slide{min-height:100vh;padding:56px 72px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}.slide.alt{background:var(--surface-2)}.cover{display:flex;min-height:100vh;flex-direction:column;justify-content:center;background:radial-gradient(circle at 84% 12%,color-mix(in srgb,var(--gold) 30%,transparent),transparent 30%),linear-gradient(135deg,var(--accent-strong),color-mix(in srgb,var(--accent) 48%,#111));color:#fff}.kicker{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:#ffd47a;font-weight:900}.cover h1{max-width:980px;margin:18px 0 22px;font-size:clamp(44px,6vw,82px);line-height:.95;letter-spacing:-.02em}.cover p{max-width:900px;margin:0;color:rgba(255,255,255,.84);font-size:22px;line-height:1.45}.cover-meta{margin-top:38px;display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;max-width:1020px}.cover-meta div{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);border-radius:12px;padding:12px}.cover-meta span,.field span{display:block;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase}.cover-meta span{color:rgba(255,255,255,.68)}.cover-meta strong,.field strong{display:block;margin-top:5px;font-size:14px;line-height:1.35}.section-head{display:flex;gap:22px;align-items:flex-start;margin-bottom:30px}.section-head>span{display:grid;width:64px;height:64px;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-strong);font-size:28px;font-weight:950}.section-head p{margin:0 0 7px;color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.26em;text-transform:uppercase}.section-head h2{margin:0;font-size:clamp(30px,4vw,48px);line-height:1.02}.section-head small{display:block;margin-top:8px;color:var(--muted);font-size:15px;line-height:1.45}.field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.field{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:13px 14px;box-shadow:0 1px 0 rgba(0,0,0,.03)}.field strong{color:var(--text);font-size:15px}.text-stack{display:grid;gap:14px}.text-panel,.list-card,.flow-card,.glossary-card{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);padding:22px}.text-panel{box-shadow:none;background:var(--surface-2)}.text-panel h3,.list-card h3,.flow-card h3,.glossary-card h3{margin:0 0 10px;color:var(--accent-strong);font-size:18px}.text-panel p,.list-card p,.flow-card p,.glossary-card p{margin:0;color:var(--muted);line-height:1.55}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.index{display:inline-grid;place-items:center;min-width:38px;height:30px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:950;margin-bottom:12px}.muted-line{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}.list-card ul{margin:12px 0 0;padding-left:18px;color:var(--muted)}.flow-stack{display:grid;gap:18px}.flow-card{display:grid;grid-template-columns:58px minmax(0,1fr);gap:18px}.flow-card .index{margin:0}.mini-grid .field-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:12px}.mini-grid .field{box-shadow:none;padding:9px 10px}.substep{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.substep h4{margin:0 0 6px;color:var(--text)}.diagram{display:grid;gap:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2);padding:14px;margin:16px 0}.diagram h3{margin:0;color:var(--accent-strong)}.diagram p{margin:4px 0 0;color:var(--muted)}.diagram img{width:100%;max-height:62vh;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:zoom-in}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:14px 16px;text-align:left;vertical-align:top;font-size:14px;line-height:1.45}th{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--accent-strong);font-size:11px;letter-spacing:.14em;text-transform:uppercase}.empty{border:1px dashed var(--line);border-radius:16px;background:var(--surface-2);color:var(--muted);padding:34px;text-align:center;font-style:italic}.zoom-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,7,10,.92);z-index:20;padding:28px}.zoom-modal.open{display:flex}.zoom-modal img{max-width:94vw;max-height:86vh;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55);cursor:zoom-out}.zoom-title{position:fixed;left:28px;top:22px;color:white;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.zoom-close{position:fixed;right:28px;top:20px;border:1px solid rgba(255,255,255,.35);background:transparent;color:white;padding:9px 14px;border-radius:8px;cursor:pointer}@media(max-width:980px){.shell{display:block}.sidebar{position:static;height:auto}.slide{padding:36px 22px}.cover-meta{grid-template-columns:1fr 1fr}.flow-card{grid-template-columns:1fr}.mini-grid .field-grid{grid-template-columns:1fr}}@media print{.sidebar{display:none}.shell{display:block}.slide{break-after:page;min-height:100vh;box-shadow:none}.content{margin:0}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",Arial,sans-serif}.shell{display:grid;grid-template-columns:var(--nav) minmax(0,1fr);min-height:100vh}.sidebar{position:sticky;top:0;height:100vh;background:linear-gradient(180deg,var(--accent-strong),color-mix(in srgb,var(--accent) 52%,#111));color:#fff;padding:26px 20px;display:flex;flex-direction:column;gap:26px}.brand{display:flex;align-items:center;gap:12px;min-height:54px}.brand-logo{max-width:170px;max-height:54px;object-fit:contain}.system-logo-pair{display:inline-flex;align-items:center}.logo-dark{display:none}[data-theme="dark"] .logo-light{display:none}[data-theme="dark"] .logo-dark{display:block}.brand strong{font-size:15px;letter-spacing:.08em;text-transform:uppercase}.brand-mark{display:grid;width:36px;height:36px;place-items:center;border-radius:10px;background:rgba(255,255,255,.14);color:var(--gold)}.brand-mark span{width:17px;height:17px;border:2px solid currentColor;border-radius:50%;position:relative}.brand-mark span:after{content:"";position:absolute;inset:4px;border-radius:50%;background:currentColor}.doc-code{border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px;background:rgba(255,255,255,.08)}.doc-code span{display:block;font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.75}.doc-code strong{display:block;margin-top:6px;font-size:24px;letter-spacing:.08em}.nav{display:grid;gap:4px}.nav a{color:rgba(255,255,255,.82);text-decoration:none;border-radius:9px;padding:10px 12px;font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.1em}.nav a:hover{background:rgba(255,255,255,.12);color:#fff}.theme-toggle{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:5px;background:rgba(0,0,0,.12)}.theme-toggle button{border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.72);font-weight:800;padding:9px;cursor:pointer}.theme-toggle button.active{background:#fff;color:#111}.content{min-width:0}.slide{min-height:100vh;padding:56px 72px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}.slide.alt{background:var(--surface-2)}.cover{display:flex;min-height:100vh;flex-direction:column;justify-content:center;background:radial-gradient(circle at 84% 12%,color-mix(in srgb,var(--gold) 30%,transparent),transparent 30%),linear-gradient(135deg,var(--accent-strong),color-mix(in srgb,var(--accent) 48%,#111));color:#fff}.kicker{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:#ffd47a;font-weight:900}.cover h1{max-width:980px;margin:18px 0 22px;font-size:clamp(44px,6vw,82px);line-height:.95;letter-spacing:-.02em}.cover p{max-width:900px;margin:0;color:rgba(255,255,255,.84);font-size:22px;line-height:1.45}.cover-board{display:grid;grid-template-columns:minmax(260px,.9fr) repeat(2,minmax(260px,1fr));gap:16px;max-width:1180px;margin-top:38px}.cover-panel{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);border-radius:18px;padding:20px 22px;backdrop-filter:blur(8px)}.cover-panel h2{margin:0 0 14px;font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:#ffd47a}.cover-panel.primary{display:flex;flex-direction:column;justify-content:center;background:rgba(255,255,255,.16)}.cover-panel.primary span{font-size:11px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.7)}.cover-panel.primary strong{margin-top:10px;font-size:34px;letter-spacing:.1em}.cover-panel.primary small{margin-top:10px;color:rgba(255,255,255,.78);font-size:14px;line-height:1.4}.cover-list{display:grid;gap:10px;margin:0}.cover-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:baseline}.cover-row dt{color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.cover-row dd{margin:0;color:#fff;font-size:15px;font-weight:750;line-height:1.35}.cover-meta{margin-top:38px;display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;max-width:1020px}.cover-meta div{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);border-radius:12px;padding:12px}.cover-meta span,.field span{display:block;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase}.cover-meta span{color:rgba(255,255,255,.68)}.cover-meta strong,.field strong{display:block;margin-top:5px;font-size:14px;line-height:1.35}.section-head{display:flex;gap:22px;align-items:flex-start;margin-bottom:30px}.section-head>span{display:grid;width:64px;height:64px;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-strong);font-size:28px;font-weight:950}.section-head p{margin:0 0 7px;color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.26em;text-transform:uppercase}.section-head h2{margin:0;font-size:clamp(30px,4vw,48px);line-height:1.02}.section-head small{display:block;margin-top:8px;color:var(--muted);font-size:15px;line-height:1.45}.field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.field{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:13px 14px;box-shadow:0 1px 0 rgba(0,0,0,.03)}.field strong{color:var(--text);font-size:15px}.text-stack{display:grid;gap:14px}.text-panel,.list-card,.flow-card,.glossary-card{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);padding:22px}.text-panel{box-shadow:none;background:var(--surface-2)}.text-panel h3,.list-card h3,.flow-card h3,.glossary-card h3{margin:0 0 10px;color:var(--accent-strong);font-size:18px}.text-panel p,.list-card p,.flow-card p,.glossary-card p{margin:0;color:var(--muted);line-height:1.55}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.index{display:inline-grid;place-items:center;min-width:38px;height:30px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:950;margin-bottom:12px}.muted-line{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}.list-card ul{margin:12px 0 0;padding-left:18px;color:var(--muted)}.flow-stack{display:grid;gap:18px}.flow-card{display:grid;grid-template-columns:58px minmax(0,1fr);gap:18px}.flow-card .index{margin:0}.mini-grid .field-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:12px}.mini-grid .field{box-shadow:none;padding:9px 10px}.substep{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.substep h4{margin:0 0 6px;color:var(--text)}.diagram{display:grid;gap:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2);padding:14px;margin:16px 0}.diagram h3{margin:0;color:var(--accent-strong)}.diagram p{margin:4px 0 0;color:var(--muted)}.diagram img{width:100%;max-height:62vh;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:zoom-in}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:14px 16px;text-align:left;vertical-align:top;font-size:14px;line-height:1.45}th{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--accent-strong);font-size:11px;letter-spacing:.14em;text-transform:uppercase}.empty{border:1px dashed var(--line);border-radius:16px;background:var(--surface-2);color:var(--muted);padding:34px;text-align:center;font-style:italic}.zoom-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,7,10,.92);z-index:20;padding:28px}.zoom-modal.open{display:flex}.zoom-modal img{max-width:94vw;max-height:86vh;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55);cursor:zoom-out}.zoom-title{position:fixed;left:28px;top:22px;color:white;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.zoom-close{position:fixed;right:28px;top:20px;border:1px solid rgba(255,255,255,.35);background:transparent;color:white;padding:9px 14px;border-radius:8px;cursor:pointer}@media(max-width:980px){.shell{display:block}.sidebar{position:static;height:auto}.slide{padding:36px 22px}.cover-board{grid-template-columns:1fr}.cover-row{grid-template-columns:1fr;gap:3px}.cover-meta{grid-template-columns:1fr 1fr}.flow-card{grid-template-columns:1fr}.mini-grid .field-grid{grid-template-columns:1fr}}@media print{.sidebar{display:none}.shell{display:block}.slide{break-after:page;min-height:100vh;box-shadow:none}.content{margin:0}}
 </style>
 </head>
 <body>
 <div class="shell">
 <aside class="sidebar">
-  <div class="brand">${ateliamLogoHtml(brand)}</div>
+  <div class="brand">${bfFlowLogoHtml(brand)}</div>
   <div class="doc-code"><span>Código</span><strong>${html(code)}</strong></div>
   <nav class="nav">${nav.map(([href, label]) => `<a href="#${href}">${html(label)}</a>`).join("")}</nav>
   <div class="theme-toggle" aria-label="Tema da apresentação"><button type="button" data-theme-choice="light" class="active">Claro</button><button type="button" data-theme-choice="dark">Escuro</button></div>
 </aside>
 <main class="content">
-<section class="slide cover" id="capa"><div class="kicker">Apresentação de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "Relatório de mapeamento de processo.")}</p><div class="cover-meta"><div><span>Código</span><strong>${html(code)}</strong></div><div><span>Modalidade</span><strong>${html(model.meta.modalidade)}</strong></div><div><span>Status</span><strong>${html(model.meta.status || "Em andamento")}</strong></div><div><span>Data</span><strong>${html(model.meta.dataRelatorio || model.meta.data)}</strong></div></div></section>
-<section class="slide" id="processo">${sectionHead("01", "Dados do processo", "Informações herdadas do cadastro do processo selecionado.")}${fieldGrid([
-    ["Código do processo", processCode],
+<section class="slide cover" id="capa"><div class="kicker">01 · Apresentação de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "Relatório de mapeamento de processo.")}</p><div class="cover-board"><article class="cover-panel primary"><span>Registro de mapeamento</span><strong>${html(code)}</strong><small>${html(model.meta.titulo || title)}</small></article><article class="cover-panel"><h2>Processo</h2>${coverList([
     ["Processo", processName],
+    ["Código", processCode],
     ["Cadeia de valor", processValueChain],
     ["Área", processArea],
-    ["Dono do processo", processOwner],
-  ])}</section>
-<section class="slide alt" id="mapeamento">${sectionHead("02", "Dados do mapeamento", "Identificação do registro preenchido no formulário.")}${fieldGrid([
-    ["Código gerado", model.meta.codigo],
-    ["Título do mapeamento", model.meta.titulo],
-    ["Tipo", "Relatório de Mapeamento de Processo"],
+    ["Dono", processOwner],
+  ])}</article><article class="cover-panel"><h2>Mapeamento</h2>${coverList([
     ["Modalidade", model.meta.modalidade],
+    ["Status", model.meta.status || "Em andamento"],
+    ["Data", model.meta.dataRelatorio || model.meta.data],
     ["Elaborador", model.meta.elaborador],
     ["Revisor", model.meta.revisor],
-    ["Data", model.meta.data],
-    ["Status", model.meta.status || "Em andamento"],
-  ])}</section>
-<section class="slide" id="visao">${sectionHead("03", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
+  ])}</article></div></section>
+<section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
     textPanel("Objetivo", model.description),
     textPanel("Escopo", model.scope),
     textPanel("Estado atual", data.overview.estadoAtual),
@@ -4378,12 +4381,12 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     textPanel("Dores", data.overview.dores),
     textPanel("Oportunidades", data.overview.oportunidades),
   ].join("") || emptyBlock()}</div></section>
-<section class="slide alt" id="sistemas">${sectionHead("04", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
-<section class="slide" id="fluxo">${sectionHead("05", "Fluxo AS IS", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
-<section class="slide alt" id="sipoc">${sectionHead("06", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
-<section class="slide" id="gaps">${sectionHead("07", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}<div class="card-grid">${gapCards}</div></section>
-<section class="slide alt" id="proximos">${sectionHead("08", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
-<section class="slide" id="glossario">${sectionHead("09", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
+<section class="slide alt" id="sistemas">${sectionHead("03", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
+<section class="slide" id="sipoc">${sectionHead("04", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
+<section class="slide alt" id="fluxo">${sectionHead("05", "Fluxo AS IS", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
+<section class="slide" id="gaps">${sectionHead("06", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}<div class="card-grid">${gapCards}</div></section>
+<section class="slide alt" id="proximos">${sectionHead("07", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
+<section class="slide" id="glossario">${sectionHead("08", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
 </main>
 </div>
 <div class="zoom-modal" id="zoom-modal" onclick="closeImageZoom()"><div class="zoom-title" id="zoom-title"></div><button class="zoom-close" onclick="closeImageZoom();event.stopPropagation()">Fechar</button><img id="zoom-img" alt="Imagem ampliada"/></div>
@@ -4585,7 +4588,7 @@ function ModuleWorkspacePage() {
         word_header_color: "1D1D1F",
         logo_data_url: demoOrganizationLogo,
       }
-    : (selectedOrganization ?? meQ.data?.organization ?? { name: "Ateliam", word_header_color: "1D1D1F" });
+    : (selectedOrganization ?? meQ.data?.organization ?? { name: "BF Flow", word_header_color: "1D1D1F" });
   const elaboratorOptions = useMemo(() => {
     const fromUsers =
       (usersQ.data as Array<{ email?: string | null; display_name?: string | null }> | undefined)
@@ -4835,7 +4838,7 @@ function ModuleWorkspacePage() {
         multiple: false,
         types: [
           {
-            description: "JSON Ateliam",
+            description: "JSON BF Flow",
             accept: { "application/json": [".json"] },
           },
         ],
@@ -4902,7 +4905,7 @@ function ModuleWorkspacePage() {
     const content = buildModuleJson(moduleId, workspace);
     const filename = openedLocalFile.name.endsWith(".json")
       ? openedLocalFile.name
-      : `ateliam-${moduleId}-${today()}.json`;
+      : `bf-flow-${moduleId}-${today()}.json`;
 
     if (!openedLocalFile.handle?.createWritable) {
       downloadText(filename, content, "application/json;charset=utf-8");
@@ -5113,7 +5116,7 @@ function ModuleWorkspacePage() {
     // tiver logo, cai para a logo da organização; por fim, o nome como texto.
     const logo = model?.logo_data_url ?? organizationBrand.logo_data_url ?? null;
     return {
-      name: organizationBrand.name || "Ateliam",
+      name: organizationBrand.name || "BF Flow",
       logo_data_url: logo,
       word_header_color: model?.primary_color ?? organizationBrand.word_header_color ?? "1D1F23",
     };
@@ -5796,8 +5799,8 @@ function ModuleWorkspacePage() {
           </select>
         ) : null}
         <UserProfileMenu
-          email={isDemo ? "analista.local@ateliam" : (meQ.data?.profile?.email ?? "")}
-          organizationName={organizationBrand.name ?? "Ateliam"}
+          email={isDemo ? "analista.local@bfflow.local" : (meQ.data?.profile?.email ?? "")}
+          organizationName={organizationBrand.name ?? "BF Flow"}
           isDemo={isDemo}
           onSignOut={signOut}
         />
@@ -9650,17 +9653,17 @@ function BpmnModule({
 
   function exportSvg() {
     const svg = svgRef.current?.outerHTML ?? "";
-    downloadText(`ateliam-fluxograma-${today()}.svg`, svg, "image/svg+xml");
+    downloadText(`bf-flow-fluxograma-${today()}.svg`, svg, "image/svg+xml");
   }
 
   function exportBpmnXml() {
-    const xml = `<definitions id="Ateliam_Fluxograma" targetNamespace="https://ateliam.local/fluxograma">
+    const xml = `<definitions id="BF_Flow_Fluxograma" targetNamespace="https://bf-flow.local/fluxograma">
   <process id="Process_1" name="${escapeXml(data.poolName)}">
 ${data.nodes.map((node) => `    <${node.type === "start" ? "startEvent" : node.type === "end" ? "endEvent" : node.type === "gateway" ? "exclusiveGateway" : "task"} id="${node.id}" name="${escapeXml(node.label)}" />`).join("\n")}
 ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.from}" targetRef="${flow.to}" name="${escapeXml(flow.label ?? "")}" />`).join("\n")}
   </process>
 </definitions>`;
-    downloadText(`ateliam-fluxograma-${today()}.xml`, xml, "application/xml");
+    downloadText(`bf-flow-fluxograma-${today()}.xml`, xml, "application/xml");
   }
 
   return (
