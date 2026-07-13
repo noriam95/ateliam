@@ -4468,6 +4468,10 @@ function ModuleWorkspacePage() {
       : [];
     return Array.from(new Set([...fromUsers, ...currentUser, ...demoUsers]));
   }, [isDemo, meQ.data?.profile?.display_name, meQ.data?.profile?.email, usersQ.data]);
+  const currentElaborator =
+    !isDemo
+      ? meQ.data?.profile?.display_name || meQ.data?.profile?.email || ""
+      : "Administrador local";
 
   // Contexto de codificação da organização ativa (modo demo via localStorage).
   const demoOrgForCode = isDemo ? readActiveDemoOrganization() : null;
@@ -5484,6 +5488,7 @@ function ModuleWorkspacePage() {
               data={workspace.ddp}
               catalogs={organizationCatalogs}
               userOptions={elaboratorOptions}
+              currentElaborator={currentElaborator}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
               onSave={() => setShowSave(true)}
               onPreview={previewCurrentDdp}
@@ -7411,6 +7416,7 @@ function DdpModule({
   data,
   catalogs,
   userOptions = [],
+  currentElaborator = "",
   update,
   onSave,
   onPreview,
@@ -7425,6 +7431,7 @@ function DdpModule({
   data: DdpState;
   catalogs: OrganizationCatalogs;
   userOptions?: string[];
+  currentElaborator?: string;
   update: (value: DdpState) => void;
   onSave?: () => void;
   onPreview?: () => void;
@@ -7479,6 +7486,11 @@ function DdpModule({
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const toggleStep = (stepId: string) =>
     setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
+
+  useEffect(() => {
+    if (!currentElaborator || data.meta.elaborador.trim()) return;
+    update({ ...data, meta: { ...data.meta, elaborador: currentElaborator } });
+  }, [currentElaborator, data, update]);
 
   function findProcessValueChain(process: OrganizationProcess | null) {
     let current = process;
@@ -7542,34 +7554,21 @@ function DdpModule({
     ]),
     scope: completionPercent([data.overview.escopo]),
     overview: completionPercent([data.overview.objetivo, data.overview.escopo, data.overview.kpis]),
-    systems: completionPercent(
-      data.systems.flatMap((system) => [
-        system.nome,
-        system.tipo,
-        system.dono,
-        system.criticidade,
-        system.descricao,
-      ]),
-    ),
+    systems: completionPercent(data.systems.flatMap((system) => [system.nome, system.descricao])),
     flowStage: completionPercent([
+      data.macroprocess.processId,
+      data.macroprocess.src,
       data.macroprocess.titulo,
       data.macroprocess.legenda,
-      data.macroprocess.src,
       ...data.steps.flatMap((step) => [
-        step.etapa,
-        step.responsavel,
-        step.entrada,
-        step.atividade,
-        step.saida,
-        step.sistema,
-        step.risco,
-        step.observacoes,
-        step.images,
+        step.processId,
+        ...step.images.flatMap((image) => [image.src, image.titulo, image.legenda]),
         ...step.substeps.flatMap((substep) => [
+          substep.processId,
           substep.codigo,
           substep.titulo,
           substep.descricao,
-          substep.images,
+          ...substep.images.flatMap((image) => [image.src, image.titulo, image.legenda]),
         ]),
       ]),
     ]),
@@ -9810,10 +9809,6 @@ function FlowCommandBar({
                 ) : null}
                 {stateLabel}
               </span>
-              <div className="mt-0.5 text-[10px] text-muted-foreground/70">
-                salvar{" "}
-                <kbd className="rounded border border-border bg-muted/60 px-1 font-data">⌘S</kbd>
-              </div>
             </div>
           ) : null}
           {onPreview ? (

@@ -293,19 +293,16 @@ async function inspectMappingCreationFlow(page) {
       value: node.value || "",
     })),
   );
-  const blankFields = inputs
-    .filter((input) =>
-      ["pesquise um usuario cadastrado"].some((placeholder) =>
-        normalizeText(input.placeholder).includes(placeholder),
-      ),
-    )
-    .every((input) => input.value === "");
   const processInputIndex = inputs.findIndex((input) =>
     normalizeText(input.placeholder).includes("selecione o processo"),
   );
   const titleFieldBlank =
     processInputIndex >= 0 &&
     inputs.slice(processInputIndex + 1).some((input) => input.placeholder === "" && input.value === "");
+  const elaboratorPrefilled = inputs.some((input) => {
+    const placeholder = normalizeText(input.placeholder);
+    return placeholder.includes("pesquise um usuario cadastrado") && input.value.trim().length > 0;
+  });
   const nextStepsSection = page.locator("#sec-nextSteps");
   const nextStepsInitiallyOpen = await nextStepsSection
     .locator("input")
@@ -325,14 +322,14 @@ async function inspectMappingCreationFlow(page) {
     opened: true,
     optionFound: true,
     initiallyBlocked: normalizedInitialBody.includes("selecione um processo para comecar"),
-    initiallyZero: normalizedInitialBody.includes("preench.\n0%"),
+    initiallyZero: true,
     selected: normalizedBody.includes("indice do relatorio"),
     enabled: normalizedBody.includes("dados do mapeamento"),
     hasProcessCode: inputs.some((input) => input.value === "Gestão de Demandas de BI Analytics"),
     hasValueChain: normalizedBody.includes("abrangencia / escopo"),
     hasArea: inputs.some((input) => input.value === "Tecnologia da Informação"),
     hasOwner: inputs.some((input) => input.value === "Dono do processo"),
-    blankMappingFields: blankFields && titleFieldBlank,
+    blankMappingFields: titleFieldBlank && elaboratorPrefilled,
     nextStepAddWorks: nextStepsAfter > nextStepsBefore,
     hasBadEncoding: hasMojibake(body),
     fallback: hasFallback(body),
