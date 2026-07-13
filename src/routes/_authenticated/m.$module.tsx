@@ -5832,20 +5832,6 @@ function ModuleWorkspacePage() {
           <BFFlowMark className="h-9" />
         </button>
         <div className="flex-1" />
-        {moduleId === "pop" &&
-        contentMode === "module" &&
-        moduleSurface === "editor" &&
-        moduleEditStarted ? (
-          <button
-            type="button"
-            onClick={() => setShowSave(true)}
-            className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground shadow-sm hover:opacity-90"
-            title={`Salvar ${moduleDocLabel}`}
-            aria-label={`Salvar ${moduleDocLabel}`}
-          >
-            <Save className="h-4 w-4" />
-          </button>
-        ) : null}
         {isDemo && (
           <span className="hidden items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground sm:inline-flex">
             <FlaskConical className="h-3.5 w-3.5" />
@@ -9428,11 +9414,12 @@ function PopModule({
         canSave
         onSave={onSave}
         onPreview={onPreview}
+        eyebrow="Processos · Documentação"
+        title="Preenchimento de documento"
+        saveTitle="Salvar documento"
+        previewTitle="Visualizar documento"
         processControl={
           <div className="grid gap-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Processos · Documentação
-            </div>
             <div className="flex flex-wrap items-center gap-2">
               {DOCUMENTATION_TYPE_OPTIONS.map((tipo) => {
                 const selected = tipo === data.meta.tipo;
@@ -9452,7 +9439,7 @@ function PopModule({
                   </button>
                 );
               })}
-              <span className="text-xs text-muted-foreground">
+              <span className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
                 {documentationTypeDescription(data.meta.tipo)}
               </span>
             </div>
@@ -9462,33 +9449,23 @@ function PopModule({
       <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
         <MappingSectionNav sections={sections} activeKey={activeSection} onSelect={selectSection} />
         <div className="grid gap-5">
-      <Hero title={documentName} eyebrow="Processos · Documentação" progress={completion}>
-        Preencha o documento na sequência do modelo: identificação, finalidade, procedimento,
-        responsabilidades, referências e histórico de alterações.
-      </Hero>
       <Panel
         id="pop-sec-identification"
-        num="01"
+        num="00"
         title="Dados do documento"
         progress={sectionProgress.identification}
         defaultOpen
         openSignal={openSignals.identification}
       >
-        <div className="mb-4 rounded-lg border border-border bg-muted/25 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Tipo selecionado
+        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
+          <div className="md:col-span-3">
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Identificação e governança
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Preencha apenas os dados que serão usados na codificação, apresentação e emissão do documento.
+            </p>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <strong className="text-base text-foreground">{documentName}</strong>
-            <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-              {data.meta.tipo}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {documentationTypeDescription(data.meta.tipo)}
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
           {autoCode ? (
             <ReadOnlyField label="Código gerado do documento" value={visibleCode} />
           ) : (
@@ -10661,6 +10638,10 @@ function FlowCommandBar({
   canSave,
   onSave,
   onPreview,
+  eyebrow = "Processos · Mapeamento",
+  title = "Formulário de Preenchimento",
+  saveTitle = "Salvar o preenchimento do mapeamento",
+  previewTitle = "Visualizar o que está sendo preenchido",
   processControl,
 }: {
   code: string;
@@ -10670,6 +10651,10 @@ function FlowCommandBar({
   canSave: boolean;
   onSave?: () => void;
   onPreview?: () => void;
+  eyebrow?: string;
+  title?: string;
+  saveTitle?: string;
+  previewTitle?: string;
   processControl: ReactNode;
 }) {
   const stateLabel =
@@ -10685,10 +10670,10 @@ function FlowCommandBar({
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0">
           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">
-            Processos · Mapeamento
+            {eyebrow}
           </div>
           <h1 className="mt-0.5 flex items-baseline gap-2.5 font-display text-lg font-bold text-foreground md:text-xl">
-            Formulário de Preenchimento
+            {title}
             {code ? <span className="font-data text-xs font-semibold text-muted-foreground">{code}</span> : null}
           </h1>
         </div>
@@ -10739,7 +10724,7 @@ function FlowCommandBar({
               onClick={onPreview}
               disabled={!canSave}
               className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3.5 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45"
-              title="Visualizar o que está sendo preenchido"
+              title={previewTitle}
             >
               <Eye className="h-4 w-4" />
               Visualizar
@@ -10751,7 +10736,7 @@ function FlowCommandBar({
               onClick={onSave}
               disabled={!canSave}
               className="relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-45"
-              title="Salvar o preenchimento do mapeamento"
+              title={saveTitle}
             >
               {saveState === "dirty" && canSave ? (
                 <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[var(--gold)] ring-2 ring-card" />
