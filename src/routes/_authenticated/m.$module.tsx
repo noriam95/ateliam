@@ -8215,6 +8215,10 @@ function DdpModule({
         canSave={!!selectedProcess}
         onSave={onSave}
         onPreview={onPreview}
+        eyebrow="Processos · Mapeamento"
+        title="Formulário de Preenchimento"
+        saveTitle="Salvar o preenchimento do mapeamento"
+        previewTitle="Visualizar o que está sendo preenchido"
         processControl={
           <RegisteredProcessSelect
             required
@@ -10638,10 +10642,10 @@ function FlowCommandBar({
   canSave,
   onSave,
   onPreview,
-  eyebrow = "Processos · Mapeamento",
-  title = "Formulário de Preenchimento",
-  saveTitle = "Salvar o preenchimento do mapeamento",
-  previewTitle = "Visualizar o que está sendo preenchido",
+  eyebrow = "Processos",
+  title = "Preenchimento",
+  saveTitle = "Salvar preenchimento",
+  previewTitle = "Visualizar preenchimento",
   processControl,
 }: {
   code: string;
