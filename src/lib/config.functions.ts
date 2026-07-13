@@ -117,6 +117,11 @@ const systemRegistrationSchema = organizationScopeSchema.extend({
   name: z.string().trim().min(2).max(180),
   description: z.string().trim().max(2000).optional().nullable(),
 });
+const positionRegistrationSchema = organizationScopeSchema.extend({
+  id: z.string().uuid().optional(),
+  title: z.string().trim().min(2).max(160),
+  description: z.string().trim().max(2000).optional().nullable(),
+});
 const ownerRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   departmentId: z.string().uuid(),
@@ -469,6 +474,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       { data: processes, error: processesError },
       { data: valueChains, error: valueChainsError },
       { data: systems, error: systemsError },
+      { data: positions, error: positionsError },
     ] = await Promise.all([
       context.supabase
         .from("organization_departments")
@@ -507,6 +513,14 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
         data: { id: string; name: string; description: string | null }[] | null;
         error: { message: string } | null;
       }>,
+      (context.supabase as any)
+        .from("organization_positions")
+        .select("id, title, description, organization_id, created_at, updated_at")
+        .eq("organization_id", organizationId)
+        .order("title", { ascending: true }) as Promise<{
+        data: { id: string; title: string; description: string | null }[] | null;
+        error: { message: string } | null;
+      }>,
     ]);
     if (departmentsError) throw new Error(departmentsError.message);
     if (ownersError) throw new Error(ownersError.message);
@@ -516,6 +530,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
     // organization_systems só existe depois que a migração correspondente é
     // aplicada; não deixa a falta dela derrubar o resto dos catálogos.
     if (systemsError) console.error("organization_systems:", systemsError.message);
+    if (positionsError) console.error("organization_positions:", positionsError.message);
     return {
       departments: departments ?? [],
       processOwners: processOwners ?? [],
@@ -523,6 +538,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       processes: (processes ?? []).filter((process) => process.type !== "macroprocess"),
       valueChains: valueChains ?? [],
       systems: systems ?? [],
+      positions: positions ?? [],
     };
   });
 
@@ -532,7 +548,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
     const organizationId = access.organizationId;
-    const [areas, owners, types, valueChains, processes, systems] = await Promise.all([
+    const [areas, owners, types, valueChains, processes, systems, positions] = await Promise.all([
       context.supabase
         .from("organization_departments")
         .select("*")
@@ -566,6 +582,14 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
         data: { id: string; name: string; description: string | null }[] | null;
         error: { message: string } | null;
       }>,
+      (context.supabase as any)
+        .from("organization_positions")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("title") as Promise<{
+        data: { id: string; title: string; description: string | null }[] | null;
+        error: { message: string } | null;
+      }>,
     ]);
     for (const result of [areas, owners, types, valueChains, processes]) {
       if (result.error) throw new Error(result.error.message);
@@ -573,6 +597,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
     // organization_systems só existe depois que a migração correspondente é
     // aplicada; não deixa a falta dela derrubar o resto dos catálogos.
     if (systems.error) console.error("organization_systems:", systems.error.message);
+    if (positions.error) console.error("organization_positions:", positions.error.message);
     return {
       organizationId,
       areas: areas.data ?? [],
@@ -581,6 +606,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
       valueChains: valueChains.data ?? [],
       processes: (processes.data ?? []).filter((process) => process.type !== "macroprocess"),
       systems: systems.data ?? [],
+      positions: positions.data ?? [],
     };
   });
 
@@ -650,6 +676,29 @@ export const saveProcessOwnerRegistration = createServerFn({ method: "POST" })
       ? context.supabase.from("organization_process_owners").update(payload).eq("id", data.id)
       : context.supabase
           .from("organization_process_owners")
+          .insert({ ...payload, created_by: context.userId });
+    const { data: row, error } = await query.select("*").single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const savePositionRegistration = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: z.infer<typeof positionRegistrationSchema>) =>
+    positionRegistrationSchema.parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const payload = {
+      organization_id: access.organizationId,
+      title: data.title,
+      description: data.description ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    const query = data.id
+      ? (context.supabase as any).from("organization_positions").update(payload).eq("id", data.id)
+      : (context.supabase as any)
+          .from("organization_positions")
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
@@ -773,7 +822,7 @@ export const deleteProcessRegistration = createServerFn({ method: "POST" })
   .validator((data: { organizationId?: string | null; kind: string; id: string }) =>
     organizationScopeSchema
       .extend({
-        kind: z.enum(["value-chain", "process", "area", "owner", "system"]),
+        kind: z.enum(["value-chain", "process", "area", "owner", "system", "position"]),
         id: z.string().uuid(),
       })
       .parse(data),
@@ -789,7 +838,9 @@ export const deleteProcessRegistration = createServerFn({ method: "POST" })
             ? "organization_departments"
             : data.kind === "system"
               ? "organization_systems"
-              : "organization_process_owners";
+              : data.kind === "position"
+                ? "organization_positions"
+                : "organization_process_owners";
     const { error } = await context.supabase
       .from(table as any)
       .delete()

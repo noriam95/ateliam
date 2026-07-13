@@ -94,6 +94,8 @@ import {
   listOrganizationCatalogs,
   listOrganizationDocumentModels,
   reserveCode,
+  saveProcessArea,
+  savePositionRegistration,
   saveModuleDocument,
   updateOrganizationCause,
 } from "@/lib/config.functions";
@@ -300,7 +302,7 @@ type PopProcedureClause = {
   alert: string;
   images: ModuleImage[];
 };
-type ResponsibilityItem = { id: string; area: string; responsabilidade: string };
+type ResponsibilityItem = { id: string; area: string; cargo?: string; responsabilidade: string };
 type ReferenceItem = { id: string; codigo: string; titulo: string; aplicabilidade: string };
 type RevisionItem = {
   id: string;
@@ -470,6 +472,10 @@ const DEMO_CATALOGS: OrganizationCatalogs = {
   departments: [
     { id: "demo-dept-processos", name: "Processos", sigla: "PRO" },
     { id: "demo-dept-ti", name: "Tecnologia da Informação", sigla: "TIN" },
+  ],
+  positions: [
+    { id: "demo-position-analista", title: "Analista de Processos", description: "Executa e mantém documentação de processos." },
+    { id: "demo-position-gestor", title: "Gestor da Área", description: "Aprova e responde pela aplicação do documento." },
   ],
   processOwners: [
     { id: "demo-owner-processo", name: "Dono do processo" },
@@ -2187,8 +2193,10 @@ type OrganizationValueChain = {
   organization_id?: string;
 };
 type OrganizationSystem = { id: string; name: string; description: string };
+type OrganizationPosition = { id: string; title: string; description: string | null };
 type OrganizationCatalogs = {
   departments: OrganizationCatalogItem[];
+  positions: OrganizationPosition[];
   processOwners: OrganizationCatalogItem[];
   causes: OrganizationCause[];
   processes: OrganizationProcess[];
@@ -2859,8 +2867,8 @@ function buildPopImportTemplate(data: PopState) {
     {
       name: "Responsabilidades",
       rows: [
-        ["area", "responsabilidade"],
-        ...data.responsibilities.map((item) => [item.area, item.responsabilidade]),
+        ["area", "cargo", "responsabilidade"],
+        ...data.responsibilities.map((item) => [item.area, item.cargo ?? "", item.responsabilidade]),
       ],
     },
     {
@@ -3205,6 +3213,7 @@ function importPopTextWorkbook(sheets: Map<string, string[][]>, current: PopStat
       responsibilities: rowObjects(sheetRows(sheets, "Responsabilidades")).map((row, index) => ({
         id: current.responsibilities[index]?.id || id("resp"),
         area: rowValue(row, "area"),
+        cargo: rowValue(row, "cargo"),
         responsabilidade: rowValue(row, "responsabilidade"),
       })),
       references: rowObjects(sheetRows(sheets, "Referencias")).map((row, index) => ({
@@ -3996,13 +4005,14 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
     model.responsibilities.length
       ? doc.table(
           [
-            [doc.headerCell("Área / Cargo"), doc.headerCell("Responsabilidades")],
+            [doc.headerCell("Área"), doc.headerCell("Cargo"), doc.headerCell("Responsabilidades")],
             ...model.responsibilities.map((item) => [
               doc.bodyCell(item.area),
+              doc.bodyCell(item.cargo || "-"),
               doc.bodyCell(item.responsabilidade),
             ]),
           ],
-          [3000, 7306],
+          [2500, 2500, 5306],
           { full: true },
         )
       : doc.p("Nenhuma responsabilidade cadastrada."),
@@ -4156,7 +4166,7 @@ function buildPopPreviewHtml(pop: PopState, brand?: OrganizationBrand) {
     )
     .join("");
   const resp = pop.responsibilities
-    .map((r) => `<tr><td>${html(r.area)}</td><td>${html(r.responsabilidade)}</td></tr>`)
+    .map((r) => `<tr><td>${html(r.area)}</td><td>${html(r.cargo || "-")}</td><td>${html(r.responsabilidade)}</td></tr>`)
     .join("");
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -4185,7 +4195,7 @@ th{background:var(--accent);color:#fff;text-transform:uppercase;font-size:11px;l
 <div class="head"><div class="kicker">Documentação · Visualização</div><h1>${html(pop.meta.titulo)}</h1><div class="meta">${meta}</div></div>
 ${pop.purpose.objetivo || pop.purpose.abrangencia ? `<div class="card"><h2>Objetivo e abrangência</h2>${pop.purpose.objetivo ? `<p>${html(pop.purpose.objetivo)}</p>` : ""}${pop.purpose.abrangencia ? `<p class="note">${html(pop.purpose.abrangencia)}</p>` : ""}</div>` : ""}
 <div class="card"><h2>Procedimento</h2>${sections}</div>
-${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Área</th><th>Responsabilidade</th></tr></thead><tbody>${resp}</tbody></table></div>` : ""}
+${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Área</th><th>Cargo</th><th>Responsabilidade</th></tr></thead><tbody>${resp}</tbody></table></div>` : ""}
 <p class="note">Visualização somente-leitura — para alterar, use “Editar” na consulta de registros.</p>
 </div></body></html>`;
 }
@@ -4620,6 +4630,7 @@ function ModuleWorkspacePage() {
     : {
         departments: catalogsQ.data?.departments ?? [],
         processOwners: catalogsQ.data?.processOwners ?? [],
+        positions: ((catalogsQ.data as { positions?: OrganizationPosition[] } | undefined)?.positions) ?? [],
         causes: catalogsQ.data?.causes ?? [],
         processes: catalogsQ.data?.processes ?? [],
         valueChains: catalogsQ.data?.valueChains ?? [],
@@ -5774,7 +5785,12 @@ function ModuleWorkspacePage() {
           ) : (
             <PopModule
               data={workspace.pop}
+              catalogs={organizationCatalogs}
+              organizationId={codeOrganizationId}
               update={(pop) => updateWorkspace((current) => ({ ...current, pop }))}
+              onCatalogCreated={async () => {
+                if (!isDemo) await catalogsQ.refetch();
+              }}
               autoCode={isAutoCodeModule}
               codePreview={autoCodePreview}
               onSave={() => setShowSave(true)}
@@ -9091,7 +9107,10 @@ function DdpModule({
 
 function PopModule({
   data,
+  catalogs,
+  organizationId,
   update,
+  onCatalogCreated,
   autoCode = false,
   codePreview = "",
   onSave,
@@ -9100,7 +9119,10 @@ function PopModule({
   savedNonce = 0,
 }: {
   data: PopState;
+  catalogs: OrganizationCatalogs;
+  organizationId?: string | null;
   update: (value: PopState) => void;
+  onCatalogCreated?: () => Promise<void> | void;
   autoCode?: boolean;
   codePreview?: string;
   onSave?: () => void;
@@ -9108,6 +9130,15 @@ function PopModule({
   saving?: boolean;
   savedNonce?: number;
 }) {
+  const saveArea = useServerFn(saveProcessArea);
+  const savePosition = useServerFn(savePositionRegistration);
+  const [quickCatalog, setQuickCatalog] = useState<
+    | { kind: "area"; initial: string }
+    | { kind: "position"; initial: string }
+    | null
+  >(null);
+  const [quickAreaSigla, setQuickAreaSigla] = useState("");
+  const [quickPositionDescription, setQuickPositionDescription] = useState("");
   const [activeSection, setActiveSection] = useState("identification");
   const [openSignals, setOpenSignals] = useState<Record<string, number>>({});
   const documentName = documentationTypeName(data.meta.tipo);
@@ -9146,7 +9177,7 @@ function PopModule({
       ]),
     ),
     responsibilities: completionPercent(
-      data.responsibilities.flatMap((row) => [row.area, row.responsabilidade]),
+      data.responsibilities.flatMap((row) => [row.area, row.cargo, row.responsabilidade]),
     ),
     references: completionPercent(
       data.references.flatMap((row) => [row.codigo, row.titulo, row.aplicabilidade]),
@@ -9172,6 +9203,77 @@ function PopModule({
     { key: "references", num: "05", title: "Referências normativas", pct: sectionProgress.references },
     { key: "history", num: "06", title: "Histórico e alterações", pct: sectionProgress.history },
   ];
+  async function saveQuickCatalog() {
+    if (!quickCatalog) return;
+    try {
+      if (quickCatalog.kind === "area") {
+        const sigla = normalizeSigla(quickAreaSigla || quickCatalog.initial);
+        if (sigla.length !== 3) {
+          toast.error("Informe uma sigla de 3 letras para a área.");
+          return;
+        }
+        await saveArea({
+          data: {
+            organizationId,
+            name: quickCatalog.initial.trim(),
+            sigla,
+          },
+        });
+        toast.success("Área cadastrada.");
+      } else {
+        await savePosition({
+          data: {
+            organizationId,
+            title: quickCatalog.initial.trim(),
+            description: quickPositionDescription.trim() || null,
+          },
+        });
+        toast.success("Cargo cadastrado.");
+      }
+      setQuickCatalog(null);
+      setQuickAreaSigla("");
+      setQuickPositionDescription("");
+      await onCatalogCreated?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível cadastrar.");
+    }
+  }
+  function historyVersion(index: number) {
+    return String(index).padStart(2, "0");
+  }
+  function syncHistoryChanges(history: RevisionItem[], changes: ChangeItem[]) {
+    return history.map((_, index) => {
+      const current = changes[index];
+      const versao = historyVersion(index);
+      return {
+        id: current?.id ?? id("change"),
+        versao,
+        local: current?.local || (index === 0 ? "Documento completo" : ""),
+        descricao: current?.descricao || (index === 0 ? "Elaboração inicial do documento." : ""),
+      };
+    });
+  }
+  function setHistory(history: RevisionItem[], changes = data.changes) {
+    update({
+      ...data,
+      history: history.map((row, index) => ({ ...row, version: historyVersion(index) })),
+      changes: syncHistoryChanges(history, changes),
+    });
+  }
+  useEffect(() => {
+    const normalizedHistory = data.history.map((row, index) => ({
+      ...row,
+      version: historyVersion(index),
+    }));
+    const normalizedChanges = syncHistoryChanges(normalizedHistory, data.changes);
+    const sameHistory = JSON.stringify(normalizedHistory) === JSON.stringify(data.history);
+    const sameChanges = JSON.stringify(normalizedChanges) === JSON.stringify(data.changes);
+    if (!sameHistory || !sameChanges) {
+      update({ ...data, history: normalizedHistory, changes: normalizedChanges });
+    }
+    // Normaliza apenas quando o tamanho/versões mudam para evitar conflito de digitação.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.history.length, data.changes.length]);
   const completion = Math.round(
     sections.reduce((sum, section) => sum + section.pct, 0) / Math.max(1, sections.length),
   );
@@ -9676,25 +9778,46 @@ function PopModule({
         openSignal={openSignals.responsibilities}
       >
         <div className="grid gap-3">
-          <div className="hidden rounded-t-lg border border-border bg-muted/50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground md:grid md:grid-cols-[240px_1fr_44px]">
-            <span>Área/Cargo</span>
+          <div className="hidden rounded-t-lg border border-border bg-muted/50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground md:grid md:grid-cols-[220px_220px_1fr_44px]">
+            <span>Área</span>
+            <span>Cargo</span>
             <span>Responsabilidades</span>
             <span />
           </div>
           {data.responsibilities.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[240px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[220px_220px_1fr_auto]"
             >
-              <Field
-                compact
-                label="Área / cargo"
+              <CatalogSearchField
+                label="Área"
                 value={row.area}
+                options={catalogs.departments.map((department) => department.name)}
+                createLabel="Cadastrar área"
+                onCreate={(initial) => {
+                  setQuickCatalog({ kind: "area", initial });
+                  setQuickAreaSigla(normalizeSigla(initial));
+                }}
                 onChange={(area) =>
                   update({
                     ...data,
                     responsibilities: data.responsibilities.map((item) =>
                       item.id === row.id ? { ...item, area } : item,
+                    ),
+                  })
+                }
+              />
+              <CatalogSearchField
+                label="Cargo"
+                value={row.cargo ?? ""}
+                options={catalogs.positions.map((position) => position.title)}
+                createLabel="Cadastrar cargo"
+                onCreate={(initial) => setQuickCatalog({ kind: "position", initial })}
+                onChange={(cargo) =>
+                  update({
+                    ...data,
+                    responsibilities: data.responsibilities.map((item) =>
+                      item.id === row.id ? { ...item, cargo } : item,
                     ),
                   })
                 }
@@ -9730,7 +9853,7 @@ function PopModule({
                 ...data,
                 responsibilities: [
                   ...data.responsibilities,
-                  { id: id("resp"), area: "", responsabilidade: "" },
+                  { id: id("resp"), area: "", cargo: "", responsabilidade: "" },
                 ],
               })
             }
@@ -9846,39 +9969,25 @@ function PopModule({
                 label="Código"
                 value={row.codigo}
                 onChange={(codigo) =>
-                  update({
-                    ...data,
-                    history: data.history.map((item) =>
+                  setHistory(
+                    data.history.map((item) =>
                       item.id === row.id ? { ...item, codigo } : item,
                     ),
-                  })
+                  )
                 }
               />
-              <Field
-                compact
-                label="Versão"
-                value={row.version}
-                onChange={(version) =>
-                  update({
-                    ...data,
-                    history: data.history.map((item) =>
-                      item.id === row.id ? { ...item, version } : item,
-                    ),
-                  })
-                }
-              />
+              <ReadOnlyField label="Versão" value={historyVersion(data.history.findIndex((item) => item.id === row.id))} />
               <Field
                 compact
                 label="Data"
                 type="date"
                 value={row.date}
                 onChange={(date) =>
-                  update({
-                    ...data,
-                    history: data.history.map((item) =>
+                  setHistory(
+                    data.history.map((item) =>
                       item.id === row.id ? { ...item, date } : item,
                     ),
-                  })
+                  )
                 }
               />
               <Field
@@ -9886,12 +9995,11 @@ function PopModule({
                 label="Elaborador"
                 value={row.elaborador}
                 onChange={(elaborador) =>
-                  update({
-                    ...data,
-                    history: data.history.map((item) =>
+                  setHistory(
+                    data.history.map((item) =>
                       item.id === row.id ? { ...item, elaborador } : item,
                     ),
-                  })
+                  )
                 }
               />
               <Field
@@ -9899,12 +10007,11 @@ function PopModule({
                 label="Revisor"
                 value={row.revisor}
                 onChange={(revisor) =>
-                  update({
-                    ...data,
-                    history: data.history.map((item) =>
+                  setHistory(
+                    data.history.map((item) =>
                       item.id === row.id ? { ...item, revisor } : item,
                     ),
-                  })
+                  )
                 }
               />
               <Field
@@ -9912,18 +10019,17 @@ function PopModule({
                 label="Aprovador"
                 value={row.aprovador}
                 onChange={(aprovador) =>
-                  update({
-                    ...data,
-                    history: data.history.map((item) =>
+                  setHistory(
+                    data.history.map((item) =>
                       item.id === row.id ? { ...item, aprovador } : item,
                     ),
-                  })
+                  )
                 }
               />
               <IconButton
                 label="Excluir"
                 onClick={() =>
-                  update({ ...data, history: data.history.filter((item) => item.id !== row.id) })
+                  setHistory(data.history.filter((item) => item.id !== row.id))
                 }
               >
                 <Trash2 className="h-4 w-4" />
@@ -9932,21 +10038,18 @@ function PopModule({
           ))}
           <button
             onClick={() =>
-              update({
-                ...data,
-                history: [
-                  ...data.history,
-                  {
-                    id: id("rev"),
-                    codigo: "",
-                    version: "",
-                    date: today(),
-                    elaborador: "",
-                    revisor: "",
-                    aprovador: "",
-                  },
-                ],
-              })
+              setHistory([
+                ...data.history,
+                {
+                  id: id("rev"),
+                  codigo: "",
+                  version: historyVersion(data.history.length),
+                  date: today(),
+                  elaborador: "",
+                  revisor: "",
+                  aprovador: "",
+                },
+              ])
             }
             className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
@@ -9959,21 +10062,9 @@ function PopModule({
           {data.changes.map((row) => (
             <div
               key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[120px_220px_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[120px_220px_1fr]"
             >
-              <Field
-                compact
-                label="Versão"
-                value={row.versao}
-                onChange={(versao) =>
-                  update({
-                    ...data,
-                    changes: data.changes.map((item) =>
-                      item.id === row.id ? { ...item, versao } : item,
-                    ),
-                  })
-                }
-              />
+              <ReadOnlyField label="Versão" value={historyVersion(data.changes.findIndex((item) => item.id === row.id))} />
               <Field
                 compact
                 label="Local da revisão"
@@ -10000,36 +10091,67 @@ function PopModule({
                   })
                 }
               />
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  update({ ...data, changes: data.changes.filter((item) => item.id !== row.id) })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
             </div>
           ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                changes: [
-                  ...data.changes,
-                  { id: id("change"), versao: "", local: "", descricao: "" },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar alteração
-          </button>
+          <p className="text-xs text-muted-foreground">
+            As linhas de alteração são geradas automaticamente a partir do histórico.
+          </p>
         </div>
       </Panel>
           <div aria-hidden className="h-[35vh]" />
         </div>
       </div>
+      {quickCatalog ? (
+        <Modal
+          title={quickCatalog.kind === "area" ? "Cadastrar área" : "Cadastrar cargo"}
+          subtitle={
+            quickCatalog.kind === "area"
+              ? "Cadastro utilizado pelos formulários e pela codificação de documentos."
+              : "Cadastro utilizado nas responsabilidades dos documentos."
+          }
+          onClose={() => setQuickCatalog(null)}
+        >
+          <div className="grid gap-4">
+            <Field
+              label={quickCatalog.kind === "area" ? "Nome da área" : "Título do cargo"}
+              value={quickCatalog.initial}
+              onChange={(initial) => setQuickCatalog({ ...quickCatalog, initial })}
+            />
+            {quickCatalog.kind === "area" ? (
+              <Field
+                label="Sigla"
+                value={quickAreaSigla}
+                onChange={(value) =>
+                  setQuickAreaSigla(value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3))
+                }
+              />
+            ) : (
+              <TextArea
+                label="Descrição"
+                value={quickPositionDescription}
+                rows={3}
+                onChange={setQuickPositionDescription}
+              />
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setQuickCatalog(null)}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveQuickCatalog}
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   );
 }
@@ -11071,6 +11193,63 @@ function UserSearchField({
           ))}
         </datalist>
       ) : null}
+    </label>
+  );
+}
+
+function CatalogSearchField({
+  label,
+  value,
+  options,
+  createLabel,
+  onChange,
+  onCreate,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  createLabel: string;
+  onChange: (value: string) => void;
+  onCreate: (initial: string) => void;
+}) {
+  const listId = useRef(`catalog-options-${id("list")}`);
+  const uniqueOptions = useMemo(() => Array.from(new Set(options.filter(Boolean))), [options]);
+  const normalizedValue = normalizeLabel(value);
+  const hasExact = uniqueOptions.some((option) => normalizeLabel(option) === normalizedValue);
+  return (
+    <label className="block">
+      <span className={fieldLabelClass}>{label}</span>
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+          <input
+            list={uniqueOptions.length ? listId.current : undefined}
+            value={value}
+            placeholder={`Pesquisar ${label.toLowerCase()}`}
+            onChange={(event) => onChange(event.target.value)}
+            className={`${fieldInputBase} h-9 pl-9 pr-3`}
+          />
+        </div>
+        <button
+          type="button"
+          disabled={!value.trim() || hasExact}
+          onClick={() => onCreate(value.trim())}
+          className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-card px-2 text-xs font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Novo
+        </button>
+      </div>
+      {uniqueOptions.length ? (
+        <datalist id={listId.current}>
+          {uniqueOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      ) : null}
+      <span className="mt-1 block text-[11px] text-muted-foreground">
+        Pesquise ou informe o texto e use “Novo” para {createLabel.toLowerCase()}.
+      </span>
     </label>
   );
 }

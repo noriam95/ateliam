@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowDownUp,
   ArrowUp,
+  BriefcaseBusiness,
   Database,
   GitBranch,
   Layers3,
@@ -30,6 +31,7 @@ import {
   reserveCode,
   saveProcessArea,
   saveProcessOwnerRegistration,
+  savePositionRegistration,
   saveProcessRegistration,
   saveProcessTypeRegistration,
   saveSystemRegistration,
@@ -54,6 +56,7 @@ export type ProcessRegistrationView =
   | "value-chains"
   | "processes"
   | "areas"
+  | "positions"
   | "owners"
   | "owner-users"
   | "systems"
@@ -61,6 +64,7 @@ export type ProcessRegistrationView =
 
 type OwnerUser = { id: string; owner_id: string; user: string };
 type SystemItem = { id: string; name: string; description: string };
+type Position = { id: string; title: string; description: string | null };
 
 type Area = { id: string; name: string; sigla: string | null };
 type Owner = {
@@ -142,6 +146,7 @@ type Process = {
 };
 type RegistryData = {
   areas: Area[];
+  positions: Position[];
   owners: Owner[];
   types: ProcessType[];
   valueChains: ValueChain[];
@@ -239,6 +244,11 @@ export const DEMO_REGISTRY: RegistryData = {
       department_id: "area-logistica",
       role_title: "Gerente de Logística",
     },
+  ],
+  positions: [
+    { id: "position-gerente-ti", title: "Gerente de TI", description: "Responsável pela gestão da área de Tecnologia da Informação." },
+    { id: "position-coordenador-processos", title: "Coordenador de Processos", description: "Responsável pela governança de processos e padronização documental." },
+    { id: "position-analista-bi", title: "Analista de BI", description: "Responsável por análise, construção e sustentação de relatórios e indicadores." },
   ],
   types: STRUCTURAL_PROCESS_TYPES,
   valueChains: [
@@ -674,6 +684,7 @@ export function WorkspaceProcessRegistrations({
   const listRegistry = useServerFn(listProcessRegistrationData);
   const saveArea = useServerFn(saveProcessArea);
   const saveOwner = useServerFn(saveProcessOwnerRegistration);
+  const savePosition = useServerFn(savePositionRegistration);
   const saveType = useServerFn(saveProcessTypeRegistration);
   const saveValueChain = useServerFn(saveValueChainRegistration);
   const saveProcess = useServerFn(saveProcessRegistration);
@@ -784,6 +795,16 @@ export function WorkspaceProcessRegistrations({
           data: { id: draft.id || undefined, organizationId, name: draft.name, sigla: draft.sigla },
         });
       }
+      if (view === "positions") {
+        return savePosition({
+          data: {
+            id: draft.id || undefined,
+            organizationId,
+            title: draft.roleTitle || draft.name,
+            description: draft.description || null,
+          },
+        });
+      }
       if (view === "owners") {
         return saveOwner({
           data: {
@@ -873,6 +894,8 @@ export function WorkspaceProcessRegistrations({
               ? "area"
               : view === "systems"
                 ? "system"
+                : view === "positions"
+                  ? "position"
                 : "owner";
       await removeRegistration({ data: { organizationId, kind, id } });
     },
@@ -1441,6 +1464,30 @@ function RegistrationFields({
         </Field>
       </>
     );
+  if (view === "positions")
+    return (
+      <>
+        <Field label="Título do cargo">
+          <input
+            value={draft.roleTitle}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, roleTitle: e.target.value, name: e.target.value }))
+            }
+            placeholder="Ex.: Coordenador de Atendimento"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Descrição">
+          <textarea
+            rows={4}
+            value={draft.description}
+            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+            placeholder="Descreva a finalidade ou escopo do cargo"
+            className={`${inputClass} h-auto py-2`}
+          />
+        </Field>
+      </>
+    );
   if (view === "owner-users")
     return (
       <>
@@ -1765,6 +1812,14 @@ function registryCopy(view: ProcessRegistrationView) {
       columns: ["Sigla", "Área"],
       icon: <Layers3 className="h-5 w-5" />,
     };
+  if (view === "positions")
+    return {
+      title: "Cargos",
+      singular: "Cargo",
+      description: "Cadastre cargos para reutilização nas responsabilidades dos documentos.",
+      columns: ["Cargo", "Descrição"],
+      icon: <BriefcaseBusiness className="h-5 w-5" />,
+    };
   if (view === "owners")
     return {
       title: "Donos de Processo",
@@ -1811,6 +1866,11 @@ function registryCopy(view: ProcessRegistrationView) {
 function registryRows(view: ProcessRegistrationView, data: RegistryData) {
   if (view === "areas")
     return data.areas.map((item) => ({ id: item.id, values: [item.sigla || "—", item.name] }));
+  if (view === "positions")
+    return (data.positions ?? []).map((item) => ({
+      id: item.id,
+      values: [item.title, item.description || "-"],
+    }));
   if (view === "owners")
     return data.owners.map((item) => ({
       id: item.id,
@@ -1881,6 +1941,18 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
     const item = data.areas.find((row) => row.id === id);
     return item ? { ...draft, id, name: item.name, sigla: normalizeSigla(item.sigla) } : draft;
   }
+  if (view === "positions") {
+    const item = data.positions.find((row) => row.id === id);
+    return item
+      ? {
+          ...draft,
+          id,
+          name: item.title,
+          roleTitle: item.title,
+          description: item.description || "",
+        }
+      : draft;
+  }
   if (view === "owner-users") {
     const item = data.ownerUsers.find((row) => row.id === id);
     return item ? { ...draft, id, linkOwnerId: item.owner_id, userName: item.user } : draft;
@@ -1948,6 +2020,15 @@ function saveDemoRegistration(
       return {
         ...current,
         areas: upsert(current.areas, { id, name: draft.name, sigla: draft.sigla }),
+      };
+    if (view === "positions")
+      return {
+        ...current,
+        positions: upsert(current.positions, {
+          id,
+          title: draft.roleTitle || draft.name,
+          description: draft.description || null,
+        }),
       };
     if (view === "owners") {
       const areaIds = draft.departmentIds.length
@@ -2038,6 +2119,8 @@ function deleteDemoRegistration(
   setData((current) =>
     view === "areas"
       ? { ...current, areas: current.areas.filter((item) => item.id !== id) }
+      : view === "positions"
+        ? { ...current, positions: current.positions.filter((item) => item.id !== id) }
       : view === "owners"
         ? { ...current, owners: current.owners.filter((item) => item.id !== id) }
         : view === "owner-users"
@@ -2057,6 +2140,7 @@ function upsert<T extends { id: string }>(rows: T[], row: T) {
 function emptyRegistryData(): RegistryData {
   return {
     areas: [],
+    positions: [],
     owners: [],
     types: STRUCTURAL_PROCESS_TYPES,
     valueChains: [],
@@ -2067,6 +2151,7 @@ function emptyRegistryData(): RegistryData {
 }
 function isValidDraft(view: ProcessRegistrationView, draft: Draft) {
   if (view === "areas") return !!draft.name.trim() && /^[A-Z]{3}$/.test(draft.sigla);
+  if (view === "positions") return !!draft.roleTitle.trim();
   if (view === "owners") return draft.departmentIds.length > 0 && !!draft.roleTitle.trim();
   if (view === "owner-users") return !!draft.linkOwnerId && !!draft.userName.trim();
   if (view === "systems") return !!draft.name.trim();
