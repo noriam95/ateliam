@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -445,8 +445,10 @@ function PorterDiagram({
       items: management,
       tone: "from-[#15b889] to-[#007f5f]",
       border: "border-[#009b78]",
+      accent: "#009b78",
       header: "bg-[#009b78]",
       text: "text-[#00523f] dark:text-[#d7fff5]",
+      textDark: "#d7fff5",
     },
     {
       key: "primary",
@@ -454,8 +456,10 @@ function PorterDiagram({
       items: primary,
       tone: "from-[#ffd45c] to-[#f5b51b]",
       border: "border-[#f5b51b]",
+      accent: "#f5b51b",
       header: "bg-[#f5b51b]",
       text: "text-[#5f3d00] dark:text-[#ffe7a3]",
+      textDark: "#ffe7a3",
     },
     {
       key: "support",
@@ -463,8 +467,10 @@ function PorterDiagram({
       items: support,
       tone: "from-[#00a8bc] to-[#007f94]",
       border: "border-[#008da3]",
+      accent: "#008da3",
       header: "bg-[#008da3]",
       text: "text-[#004c59] dark:text-[#d6fbff]",
+      textDark: "#d6fbff",
     },
   ];
 
@@ -472,21 +478,30 @@ function PorterDiagram({
     <div className="overflow-x-auto">
       <div className={`flex ${large ? "min-w-[1180px]" : "min-w-[860px]"} items-stretch`}>
         <div className="grid flex-1 grid-cols-[148px_minmax(0,1fr)] gap-1">
-          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-[#555]">
+          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-slate-700 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             Categoria
           </div>
-          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-[#555]">
+          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-slate-700 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             Macroprocesso
           </div>
           {bands.map((band) => (
-            <div key={band.key} className="contents">
+            <div
+              key={band.key}
+              className="contents"
+              style={
+                {
+                  "--value-chain-accent": band.accent,
+                  "--value-chain-text-dark": band.textDark,
+                } as CSSProperties
+              }
+            >
               <div
-                className={`grid ${large ? "min-h-36" : "min-h-28"} place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-sm`}
+                className={`grid ${large ? "min-h-36" : "min-h-28"} place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-sm dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_24px_rgba(0,0,0,0.22)]`}
               >
                 {band.label}
               </div>
               <div
-                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm dark:bg-slate-950/40 dark:shadow-none`}
+                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm dark:border-[color-mix(in_oklab,var(--value-chain-accent)_86%,transparent)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--value-chain-accent)_16%,#101721),#111827_62%)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]`}
               >
                 {band.items.length ? (
                   <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
@@ -502,8 +517,8 @@ function PorterDiagram({
                           aria-pressed={selected}
                           className={`grid ${large ? "min-h-24" : "min-h-20"} place-items-center rounded-lg border-2 px-3 py-2 text-center text-sm font-bold leading-tight shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
                             selected
-                              ? "border-[var(--gold)] bg-[var(--gold)] text-slate-950 shadow-md ring-2 ring-[var(--gold)]/25"
-                              : `${band.border} bg-white ${band.text} dark:bg-slate-950/55`
+                              ? "border-[var(--gold)] bg-[var(--gold)] text-slate-950 shadow-md ring-2 ring-[var(--gold)]/25 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_14px_28px_rgba(0,0,0,0.28)]"
+                              : `${band.border} bg-white ${band.text} dark:border-[color-mix(in_oklab,var(--value-chain-accent)_82%,transparent)] dark:bg-[linear-gradient(180deg,color-mix(in_oklab,var(--value-chain-accent)_22%,#17202d),#101721)] dark:text-[var(--value-chain-text-dark)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(0,0,0,0.18)]`
                           } ${
                             onSelectChain
                               ? selected
@@ -518,7 +533,7 @@ function PorterDiagram({
                     })}
                   </div>
                 ) : (
-                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-4 text-center text-xs italic text-muted-foreground dark:border-white/15 dark:bg-white/[0.03] dark:text-slate-300">
+                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-4 text-center text-xs italic text-muted-foreground dark:border-[color-mix(in_oklab,var(--value-chain-accent)_45%,transparent)] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] dark:text-slate-200">
                     Nenhum processo cadastrado
                   </div>
                 )}
