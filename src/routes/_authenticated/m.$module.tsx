@@ -3854,8 +3854,8 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
             ],
             ...model.nextSteps.map((step) => [
               doc.bodyCell(step.title),
-              doc.bodyCell(step.owner || "A definir"),
-              doc.bodyCell(formatDateBr(step.due) || "A definir"),
+              doc.bodyCell(step.owner || "-"),
+              doc.bodyCell(formatDateBr(step.due) || "-"),
             ]),
           ],
           [6800, 1900, 1606],
@@ -4225,10 +4225,12 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     }</dd></div>`;
   };
 
-  const overviewIcon = (type: "target" | "metrics") => {
+  const overviewIcon = (type: "target" | "scope" | "metrics") => {
     const icons = {
       target:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+      scope:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h5"/><path d="M6 3v4M18 3v4"/></svg>',
       metrics:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-4"/><path d="M12 16V8"/><path d="M16 16v-6"/><path d="M7 9l4-3 4 2 4-5"/></svg>',
     };
@@ -4335,8 +4337,8 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
             `<tr><td><strong>${html(gap.title || "Gap")}</strong></td><td>${html(
               gap.description,
             )}</td><td>${html(gap.impact)}</td><td>${html(gap.action)}</td><td>${html(
-              gap.owner || "A definir",
-            )}</td><td>${html(formatGapDateRangeBr(gap.due) || "A definir")}</td><td>${html(
+              gap.owner || "-",
+            )}</td><td>${html(formatGapDateRangeBr(gap.due) || "-")}</td><td>${html(
               gap.priority,
             )}</td><td>${html(gap.status)}</td></tr>`,
         )
@@ -4413,7 +4415,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   ]).replace('class="field-grid"', 'class="cover-meta"')}</section>
 <section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
     textPanel("Objetivo", model.description, overviewIcon("target")),
-    textPanel("Escopo", data.overview.escopo),
+    textPanel("Escopo", data.overview.escopo, overviewIcon("scope")),
     textPanel("Estado atual", data.overview.estadoAtual),
     textPanel("Indicadores", data.overview.kpis, overviewIcon("metrics")),
     textPanel("Volume", data.overview.volume),
