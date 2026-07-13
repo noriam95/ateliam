@@ -282,6 +282,17 @@ async function inspectMappingCreationFlow(page) {
   await firstOption.click();
   await page.waitForTimeout(700);
 
+  const overviewSection = page.locator("#sec-overview");
+  const overviewOpen = await overviewSection
+    .locator("textarea")
+    .count()
+    .then((count) => count > 0)
+    .catch(() => false);
+  if (!overviewOpen) {
+    await overviewSection.locator("> button").click();
+    await page.waitForTimeout(200);
+  }
+
   const body = await page
     .locator("body")
     .innerText()
@@ -326,7 +337,8 @@ async function inspectMappingCreationFlow(page) {
     selected: normalizedBody.includes("indice do relatorio"),
     enabled: normalizedBody.includes("dados do mapeamento"),
     hasProcessCode: inputs.some((input) => input.value === "Gestão de Demandas de BI Analytics"),
-    hasValueChain: normalizedBody.includes("abrangencia / escopo"),
+    hasValueChain:
+      normalizedBody.includes("escopo") && !normalizedBody.includes("abrangencia / escopo"),
     hasArea: inputs.some((input) => input.value === "Tecnologia da Informação"),
     hasOwner: inputs.some((input) => input.value === "Dono do processo"),
     blankMappingFields: titleFieldBlank && elaboratorPrefilled,

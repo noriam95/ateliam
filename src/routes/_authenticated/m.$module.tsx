@@ -2150,6 +2150,7 @@ function getDdpExportModel(data: DdpState) {
     ? legacyCards
     : [
         { title: "Objetivo", text: data.overview.objetivo },
+        { title: "Escopo", text: data.overview.escopo },
         { title: "Contexto", text: data.overview.kpis },
       ].filter((item) => item.text);
 
@@ -4373,8 +4374,9 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     ["Elaborador", model.meta.elaborador],
     ["Revisor", model.meta.revisor],
   ]).replace('class="field-grid"', 'class="cover-meta"')}</section>
-<section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo e contexto operacional do mapeamento.")}<div class="text-stack">${[
+<section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
     textPanel("Objetivo", model.description, overviewIcon("target")),
+    textPanel("Escopo", data.overview.escopo),
     textPanel("Estado atual", data.overview.estadoAtual),
     textPanel("Indicadores", data.overview.kpis, overviewIcon("metrics")),
     textPanel("Volume", data.overview.volume),
@@ -7785,7 +7787,7 @@ function DdpModule({
       data.meta.elaborador,
       data.meta.revisor,
     ]),
-    overview: completionPercent([data.overview.objetivo, data.overview.kpis]),
+    overview: completionPercent([data.overview.objetivo, data.overview.escopo, data.overview.kpis]),
     systems: completionPercent(data.systems.flatMap((system) => [system.nome, system.descricao])),
     flowStage: completionPercent([
       data.macroprocess.processId,
@@ -8136,7 +8138,11 @@ function DdpModule({
           <ReadOnlyField label="Código do processo" value={selectedProcess?.code ?? ""} />
           <ReadOnlyField
             label="Cadeia de valor"
-            value={data.legacy?.processValueChainName?.toString() ?? ""}
+            value={
+              data.legacy?.processValueChainName?.toString() ??
+              findProcessValueChain(selectedProcess)?.name ??
+              ""
+            }
           />
           <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
           <ReadOnlyField label="Dono" value={selectedProcess?.owner ?? ""} />
@@ -8189,6 +8195,11 @@ function DdpModule({
             label="Objetivo"
             value={data.overview.objetivo}
             onChange={(objetivo) => update({ ...data, overview: { ...data.overview, objetivo } })}
+          />
+          <TextArea
+            label="Escopo"
+            value={data.overview.escopo}
+            onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
           />
           <div className="md:col-span-2">
             <TextArea
