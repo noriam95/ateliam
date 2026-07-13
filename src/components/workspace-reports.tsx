@@ -447,8 +447,7 @@ function PorterDiagram({
       border: "border-[#009b78]",
       accent: "#009b78",
       header: "bg-[#009b78]",
-      text: "text-[#00523f] dark:text-[#d7fff5]",
-      textDark: "#d7fff5",
+      text: "text-foreground",
     },
     {
       key: "primary",
@@ -458,8 +457,7 @@ function PorterDiagram({
       border: "border-[#f5b51b]",
       accent: "#f5b51b",
       header: "bg-[#f5b51b]",
-      text: "text-[#5f3d00] dark:text-[#ffe7a3]",
-      textDark: "#ffe7a3",
+      text: "text-foreground",
     },
     {
       key: "support",
@@ -469,8 +467,7 @@ function PorterDiagram({
       border: "border-[#008da3]",
       accent: "#008da3",
       header: "bg-[#008da3]",
-      text: "text-[#004c59] dark:text-[#d6fbff]",
-      textDark: "#d6fbff",
+      text: "text-foreground",
     },
   ];
 
@@ -478,10 +475,10 @@ function PorterDiagram({
     <div className="overflow-x-auto">
       <div className={`flex ${large ? "min-w-[1180px]" : "min-w-[860px]"} items-stretch`}>
         <div className="grid flex-1 grid-cols-[148px_minmax(0,1fr)] gap-1">
-          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-slate-700 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <div className="rounded-md border border-border bg-[color-mix(in_oklab,var(--foreground)_24%,var(--card))] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-foreground shadow-sm">
             Categoria
           </div>
-          <div className="rounded-md bg-[#777] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-white shadow-sm dark:bg-slate-700 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <div className="rounded-md border border-border bg-[color-mix(in_oklab,var(--foreground)_24%,var(--card))] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-foreground shadow-sm">
             Macroprocesso
           </div>
           {bands.map((band) => (
@@ -491,17 +488,16 @@ function PorterDiagram({
               style={
                 {
                   "--value-chain-accent": band.accent,
-                  "--value-chain-text-dark": band.textDark,
                 } as CSSProperties
               }
             >
               <div
-                className={`grid ${large ? "min-h-36" : "min-h-28"} place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-sm dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_24px_rgba(0,0,0,0.22)]`}
+                className={`grid ${large ? "min-h-36" : "min-h-28"} place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(0,0,0,0.18)]`}
               >
                 {band.label}
               </div>
               <div
-                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-white p-2.5 shadow-sm dark:border-[color-mix(in_oklab,var(--value-chain-accent)_86%,transparent)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--value-chain-accent)_16%,#101721),#111827_62%)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]`}
+                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-[linear-gradient(135deg,color-mix(in_oklab,var(--value-chain-accent)_14%,var(--card)),var(--card)_66%)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]`}
               >
                 {band.items.length ? (
                   <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
@@ -517,13 +513,13 @@ function PorterDiagram({
                           aria-pressed={selected}
                           className={`grid ${large ? "min-h-24" : "min-h-20"} place-items-center rounded-lg border-2 px-3 py-2 text-center text-sm font-bold leading-tight shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
                             selected
-                              ? "border-[var(--gold)] bg-[var(--gold)] text-slate-950 shadow-md ring-2 ring-[var(--gold)]/25 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_14px_28px_rgba(0,0,0,0.28)]"
-                              : `${band.border} bg-white ${band.text} dark:border-[color-mix(in_oklab,var(--value-chain-accent)_82%,transparent)] dark:bg-[linear-gradient(180deg,color-mix(in_oklab,var(--value-chain-accent)_22%,#17202d),#101721)] dark:text-[var(--value-chain-text-dark)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_18px_rgba(0,0,0,0.18)]`
+                              ? "border-[var(--gold)] bg-[var(--gold)] text-slate-950 shadow-[0_12px_24px_rgba(0,0,0,0.24)] ring-2 ring-[var(--gold)]/25"
+                              : `${band.border} ${band.text} bg-[linear-gradient(180deg,color-mix(in_oklab,var(--value-chain-accent)_22%,var(--card)),color-mix(in_oklab,var(--value-chain-accent)_8%,var(--card)))] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_18px_rgba(0,0,0,0.16)]`
                           } ${
                             onSelectChain
                               ? selected
                                 ? "cursor-pointer hover:-translate-y-0.5 hover:bg-[var(--gold)] hover:shadow-md active:translate-y-0"
-                                : "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/40 hover:shadow-md active:translate-y-0 dark:hover:bg-white/[0.08] dark:hover:shadow-none"
+                                : "cursor-pointer hover:-translate-y-0.5 hover:bg-[color-mix(in_oklab,var(--value-chain-accent)_24%,var(--card))] hover:shadow-[0_12px_24px_rgba(0,0,0,0.2)] active:translate-y-0"
                               : "cursor-default"
                           }`}
                         >
@@ -533,7 +529,7 @@ function PorterDiagram({
                     })}
                   </div>
                 ) : (
-                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-4 text-center text-xs italic text-muted-foreground dark:border-[color-mix(in_oklab,var(--value-chain-accent)_45%,transparent)] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] dark:text-slate-200">
+                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-[color-mix(in_oklab,var(--value-chain-accent)_45%,var(--border))] bg-[color-mix(in_oklab,var(--value-chain-accent)_7%,var(--card))] px-4 text-center text-xs italic text-muted-foreground">
                     Nenhum processo cadastrado
                   </div>
                 )}
@@ -547,7 +543,7 @@ function PorterDiagram({
             style={{ clipPath: "polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%)" }}
           />
           <div className="relative flex h-full items-center justify-center pr-7">
-            <span className={`${large ? "text-4xl" : "text-3xl"} font-black text-[#005f54] drop-shadow-sm dark:text-white`}>
+            <span className={`${large ? "text-4xl" : "text-3xl"} font-black text-foreground drop-shadow-sm`}>
               Missão
             </span>
           </div>
