@@ -139,6 +139,20 @@ function documentDocType(moduleId: AteliamModule, tipo?: string | null): DocType
   }
   return MODULE_BASE_DOC_TYPE[moduleId];
 }
+
+const DOCUMENTATION_TYPE_OPTIONS: PopState["meta"]["tipo"][] = ["Norma", "POP", "IT"];
+
+function documentationTypeName(tipo: PopState["meta"]["tipo"]) {
+  if (tipo === "Norma") return "Norma";
+  if (tipo === "IT") return "Instrução de Trabalho";
+  return "Procedimento Operacional Padrão";
+}
+
+function documentationTypeDescription(tipo: PopState["meta"]["tipo"]) {
+  if (tipo === "Norma") return "Diretrizes, regras e critérios de aplicação obrigatória.";
+  if (tipo === "IT") return "Instruções detalhadas para execução de uma atividade específica.";
+  return "Procedimento operacional padronizado para execução do processo.";
+}
 // Lê a organização demo ativa (id, slug, code_settings) do localStorage.
 function readActiveDemoOrganization(): {
   id: string | null;
@@ -605,20 +619,20 @@ function defaultWorkspace(): WorkspaceState {
     pop: {
       meta: {
         tipo: "POP",
-        codigo: "POP.ADM.001",
-        titulo: "Procedimento Operacional Padrão",
-        publico: "Interno",
-        area: "Administrativo",
+        codigo: "",
+        titulo: "",
+        publico: "Público Interno",
+        area: "",
         processo: "",
-        versao: "01",
-        vigencia: today(),
+        versao: "00",
+        vigencia: "",
         elaboracao: "",
         revisor: "",
         aprovacao: "",
         publicacao: "",
       },
       purpose: {
-        objetivo: "Padronizar a execução do procedimento e reduzir variações.",
+        objetivo: "",
         abrangencia: "",
         premissas: "",
         importante: "",
@@ -626,18 +640,18 @@ function defaultWorkspace(): WorkspaceState {
       sections: [
         {
           id: id("sec"),
-          title: "1. Preparação",
-          description: "Pré-requisitos, documentos e sistemas necessários.",
-          body: "Descreva os pré-requisitos, documentos e sistemas necessários.",
+          title: "3.1 Procedimento principal",
+          description: "Descreva o processo, a rotina ou a diretriz operacional.",
+          body: "",
           records: "",
           risks: "",
           images: [],
         },
         {
           id: id("sec"),
-          title: "2. Execução",
-          description: "Passo a passo principal do procedimento.",
-          body: "Liste o passo a passo em ordem operacional.",
+          title: "3.2 Tratamento de exceções e registros",
+          description: "Registre condições fora do fluxo normal, evidências e controles mínimos.",
+          body: "",
           records: "",
           risks: "",
           images: [],
@@ -646,24 +660,24 @@ function defaultWorkspace(): WorkspaceState {
       responsibilities: [
         {
           id: id("resp"),
-          area: "Dono do processo",
-          responsabilidade: "Aprovar e manter o documento atualizado.",
+          area: "",
+          responsabilidade: "",
         },
       ],
       references: [
         {
           id: id("ref"),
           codigo: "",
-          titulo: "Políticas internas e legislação aplicável",
+          titulo: "",
           aplicabilidade: "",
         },
       ],
       history: [
         {
           id: id("rev"),
-          codigo: "HIS-001",
-          version: "01",
-          date: today(),
+          codigo: "",
+          version: "00",
+          date: "",
           elaborador: "",
           revisor: "",
           aprovador: "",
@@ -672,9 +686,9 @@ function defaultWorkspace(): WorkspaceState {
       changes: [
         {
           id: id("change"),
-          versao: "01",
+          versao: "00",
           local: "Documento completo",
-          descricao: "Criação do documento",
+          descricao: "Elaboração inicial do documento.",
         },
       ],
     },
@@ -5095,7 +5109,7 @@ function ModuleWorkspacePage() {
         window.localStorage.setItem(draftKey, JSON.stringify(workspaceToSave));
       }
       const fullComment = `[${moduleInfo.title}] ${
-        comment || (moduleId === "ddp" ? "Mapeamento salvo" : "Versão salva")
+        comment || (moduleId === "ddp" ? "Mapeamento salvo" : "Documento salvo")
       }`;
       if (isDemo) return saveDemoWorkspaceVersion(JSON.stringify(workspaceToSave), fullComment);
       const payload = currentModuleSavePayload(workspaceToSave);
@@ -5120,7 +5134,9 @@ function ModuleWorkspacePage() {
     },
     onSuccess: (result) => {
       const revisionVersion = Math.max(0, (result.version ?? 1) - 1);
-      toast.success(moduleId === "ddp" ? "Mapeamento salvo." : `Versão v${revisionVersion} salva.`);
+      toast.success(
+        moduleId === "ddp" ? "Mapeamento salvo." : `Documento salvo. Revisão v${revisionVersion}.`,
+      );
       setShowSave(false);
       setComment("");
       setSavedNonce((n) => n + 1);
@@ -5613,6 +5629,14 @@ function ModuleWorkspacePage() {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
+  function previewCurrentPop() {
+    const docHtml = buildPopPreviewHtml(workspace.pop, brandForDocumentModel("pop-word"));
+    const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
+    const opened = window.open(url, "_blank", "noopener");
+    if (!opened) toast.error("Habilite pop-ups para visualizar o preenchimento.");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
   async function exportDocumentRow(
     row: ModuleGridRow,
     format: "ddp-html" | "ddp-docx" | "ddp-presentation-doc" | "pop-docx" | "pop-presentation-doc",
@@ -5788,6 +5812,10 @@ function ModuleWorkspacePage() {
               update={(pop) => updateWorkspace((current) => ({ ...current, pop }))}
               autoCode={isAutoCodeModule}
               codePreview={autoCodePreview}
+              onSave={() => setShowSave(true)}
+              onPreview={previewCurrentPop}
+              saving={saveMut.isPending}
+              savedNonce={savedNonce}
             />
           )
         ) : null}
@@ -6053,11 +6081,11 @@ function ModuleWorkspacePage() {
 
       {showSave && (
         <Modal
-          title={moduleId === "ddp" ? "Salvar mapeamento" : "Salvar versão"}
+          title={moduleId === "ddp" ? "Salvar mapeamento" : "Salvar documento"}
           subtitle={
             moduleId === "ddp"
               ? "Grava o preenchimento como registro de mapeamento."
-              : "Cria um ponto de restauração para este workspace."
+              : "Grava o preenchimento da documentação e mantém o histórico."
           }
           onClose={() => setShowSave(false)}
         >
@@ -6068,7 +6096,7 @@ function ModuleWorkspacePage() {
             placeholder={
               moduleId === "ddp"
                 ? "Observação opcional sobre o registro"
-                : "Descreva rapidamente o que foi alterado"
+                : "Observação opcional sobre o documento"
             }
             className="mb-4 w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3f3f46]"
           />
@@ -9101,26 +9129,24 @@ function PopModule({
   update,
   autoCode = false,
   codePreview = "",
+  onSave,
+  onPreview,
+  saving = false,
+  savedNonce = 0,
 }: {
   data: PopState;
   update: (value: PopState) => void;
   autoCode?: boolean;
   codePreview?: string;
+  onSave?: () => void;
+  onPreview?: () => void;
+  saving?: boolean;
+  savedNonce?: number;
 }) {
-  const completion = useMemo(() => {
-    const fields = [
-      data.meta.codigo,
-      data.meta.titulo,
-      data.meta.area,
-      data.meta.elaboracao,
-      data.meta.revisor,
-      data.meta.aprovacao,
-      data.purpose.objetivo,
-      data.purpose.abrangencia,
-      data.sections[0]?.body,
-    ];
-    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-  }, [data]);
+  const [activeSection, setActiveSection] = useState("identification");
+  const [openSignals, setOpenSignals] = useState<Record<string, number>>({});
+  const documentName = documentationTypeName(data.meta.tipo);
+  const visibleCode = data.meta.codigo || codePreview;
   const sectionProgress = {
     identification: completionPercent([
       data.meta.tipo,
@@ -9170,6 +9196,98 @@ function PopModule({
       ...data.changes.flatMap((row) => [row.versao, row.local, row.descricao]),
     ]),
   };
+  const sections: MappingSectionInfo[] = [
+    { key: "identification", num: "01", title: "Dados do documento", pct: sectionProgress.identification },
+    { key: "purpose", num: "02", title: "Objetivo e abrangência", pct: sectionProgress.purpose },
+    { key: "procedure", num: "03", title: "Procedimento operacional", pct: sectionProgress.sections },
+    { key: "responsibilities", num: "04", title: "Responsabilidades", pct: sectionProgress.responsibilities },
+    { key: "references", num: "05", title: "Referências normativas", pct: sectionProgress.references },
+    { key: "history", num: "06", title: "Histórico e alterações", pct: sectionProgress.history },
+  ];
+  const completion = Math.round(
+    sections.reduce((sum, section) => sum + section.pct, 0) / Math.max(1, sections.length),
+  );
+  const [dirty, setDirty] = useState(false);
+  const dataMounted = useRef(false);
+  const justSaved = useRef(false);
+
+  useEffect(() => {
+    const sectionKeys = sections.map((section) => section.key);
+    function onScroll() {
+      const line = 280;
+      let current = sectionKeys[0];
+      for (const key of sectionKeys) {
+        const el = document.getElementById(`pop-sec-${key}`);
+        if (el && el.getBoundingClientRect().top <= line) current = key;
+      }
+      setActiveSection(current);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!dataMounted.current) {
+      dataMounted.current = true;
+      return;
+    }
+    if (justSaved.current) {
+      justSaved.current = false;
+      return;
+    }
+    setDirty(true);
+  }, [data]);
+
+  useEffect(() => {
+    if (!savedNonce) return;
+    justSaved.current = true;
+    setDirty(false);
+  }, [savedNonce]);
+
+  useEffect(() => {
+    if (!onSave) return;
+    function onKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        onSave?.();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onSave]);
+
+  const saveState: "idle" | "dirty" | "saving" | "saved" = saving
+    ? "saving"
+    : dirty
+      ? "dirty"
+      : savedNonce
+        ? "saved"
+        : "idle";
+
+  function selectSection(key: string) {
+    setActiveSection(key);
+    setOpenSignals((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }));
+    window.setTimeout(() => {
+      document.getElementById(`pop-sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
+  function updateMeta(patch: Partial<PopState["meta"]>, resetCode = false) {
+    update({
+      ...data,
+      meta: {
+        ...data.meta,
+        ...patch,
+        codigo: resetCode ? "" : (patch.codigo ?? data.meta.codigo),
+      },
+    });
+  }
 
   function updateSection(sectionId: string, patch: Partial<PopSection>) {
     update({
@@ -9180,88 +9298,145 @@ function PopModule({
 
   return (
     <div className="grid gap-5">
-      <Hero
-        title="Documento Normativo e Operacional"
-        eyebrow="Processos · Documentação"
-        progress={completion}
-      >
-        Crie Norma, POP ou IT com identificação completa, premissas, conteúdo, responsabilidades,
-        referências, histórico e controle de alterações.
+      <FlowCommandBar
+        code={visibleCode}
+        sections={sections}
+        overallPct={completion}
+        saveState={saveState}
+        canSave
+        onSave={onSave}
+        onPreview={onPreview}
+        processControl={
+          <div className="grid gap-2">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Processos · Documentação
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {DOCUMENTATION_TYPE_OPTIONS.map((tipo) => {
+                const selected = tipo === data.meta.tipo;
+                return (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => updateMeta({ tipo }, tipo !== data.meta.tipo)}
+                    className={[
+                      "rounded-md border px-3 py-1.5 text-xs font-bold transition",
+                      selected
+                        ? "border-[var(--gold)] bg-[var(--gold)] text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ].join(" ")}
+                  >
+                    {tipo}
+                  </button>
+                );
+              })}
+              <span className="text-xs text-muted-foreground">
+                {documentationTypeDescription(data.meta.tipo)}
+              </span>
+            </div>
+          </div>
+        }
+      />
+      <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <MappingSectionNav sections={sections} activeKey={activeSection} onSelect={selectSection} />
+        <div className="grid gap-5">
+      <Hero title={documentName} eyebrow="Processos · Documentação" progress={completion}>
+        Preencha o documento na sequência do modelo: identificação, finalidade, procedimento,
+        responsabilidades, referências e histórico de alterações.
       </Hero>
-      <Panel title="Identificação" progress={sectionProgress.identification}>
+      <Panel
+        id="pop-sec-identification"
+        num="01"
+        title="Dados do documento"
+        progress={sectionProgress.identification}
+        defaultOpen
+        openSignal={openSignals.identification}
+      >
+        <div className="mb-4 rounded-lg border border-border bg-muted/25 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Tipo selecionado
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <strong className="text-base text-foreground">{documentName}</strong>
+            <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+              {data.meta.tipo}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {documentationTypeDescription(data.meta.tipo)}
+          </p>
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
-          <SelectField
-            label="Tipo"
-            value={data.meta.tipo}
-            options={["Norma", "POP", "IT"]}
-            onChange={(tipo) =>
-              update({ ...data, meta: { ...data.meta, tipo: tipo as PopState["meta"]["tipo"] } })
-            }
-          />
           {autoCode ? (
-            <ReadOnlyField label="Código (automático)" value={data.meta.codigo || codePreview} />
+            <ReadOnlyField label="Código gerado do documento" value={visibleCode} />
           ) : (
             <Field
               label="Código"
               value={data.meta.codigo}
-              onChange={(codigo) => update({ ...data, meta: { ...data.meta, codigo } })}
+              onChange={(codigo) => updateMeta({ codigo })}
             />
           )}
           <Field
             label="Versão"
             value={data.meta.versao}
-            onChange={(versao) => update({ ...data, meta: { ...data.meta, versao } })}
+            onChange={(versao) => updateMeta({ versao })}
           />
           <Field
-            label="Título"
+            label={`Título do ${documentName}`}
             value={data.meta.titulo}
-            onChange={(titulo) => update({ ...data, meta: { ...data.meta, titulo } })}
+            onChange={(titulo) => updateMeta({ titulo })}
           />
           <Field
             label="Público / classificação"
             value={data.meta.publico}
-            onChange={(publico) => update({ ...data, meta: { ...data.meta, publico } })}
+            onChange={(publico) => updateMeta({ publico })}
           />
           <Field
             label="Área responsável"
             value={data.meta.area}
-            onChange={(area) => update({ ...data, meta: { ...data.meta, area } })}
+            onChange={(area) => updateMeta({ area }, area !== data.meta.area)}
           />
           <Field
             label="Processo relacionado"
             value={data.meta.processo}
-            onChange={(processo) => update({ ...data, meta: { ...data.meta, processo } })}
+            onChange={(processo) => updateMeta({ processo })}
           />
           <Field
             label="Vigência"
             type="date"
             value={data.meta.vigencia}
-            onChange={(vigencia) => update({ ...data, meta: { ...data.meta, vigencia } })}
+            onChange={(vigencia) => updateMeta({ vigencia })}
           />
           <Field
             label="Elaborador"
             value={data.meta.elaboracao}
-            onChange={(elaboracao) => update({ ...data, meta: { ...data.meta, elaboracao } })}
+            onChange={(elaboracao) => updateMeta({ elaboracao })}
           />
           <Field
             label="Revisor"
             value={data.meta.revisor}
-            onChange={(revisor) => update({ ...data, meta: { ...data.meta, revisor } })}
+            onChange={(revisor) => updateMeta({ revisor })}
           />
           <Field
             label="Aprovador"
             value={data.meta.aprovacao}
-            onChange={(aprovacao) => update({ ...data, meta: { ...data.meta, aprovacao } })}
+            onChange={(aprovacao) => updateMeta({ aprovacao })}
           />
           <Field
             label="Publicação"
             type="date"
             value={data.meta.publicacao}
-            onChange={(publicacao) => update({ ...data, meta: { ...data.meta, publicacao } })}
+            onChange={(publicacao) => updateMeta({ publicacao })}
           />
         </div>
       </Panel>
-      <Panel title="Objetivo e abrangência" progress={sectionProgress.purpose}>
+      <Panel
+        id="pop-sec-purpose"
+        num="02"
+        title="Objetivo e abrangência"
+        progress={sectionProgress.purpose}
+        openSignal={openSignals.purpose}
+      >
         <div className="grid gap-4 md:grid-cols-2">
           <TextArea
             label="1. Objetivo"
@@ -9287,7 +9462,13 @@ function PopModule({
           />
         </div>
       </Panel>
-      <Panel title="Conteúdo do documento" progress={sectionProgress.sections}>
+      <Panel
+        id="pop-sec-procedure"
+        num="03"
+        title="Procedimento operacional"
+        progress={sectionProgress.sections}
+        openSignal={openSignals.procedure}
+      >
         <div className="grid gap-3">
           {data.sections.map((section) => (
             <div key={section.id} className="rounded-lg border border-border bg-muted/20 p-3">
@@ -9330,7 +9511,7 @@ function PopModule({
                   }
                 />
                 <TextArea
-                  label="Procedimento / diretriz"
+                  label={data.meta.tipo === "Norma" ? "Diretriz / regra" : "Procedimento / instrução"}
                   value={section.body}
                   onChange={(body) =>
                     update({
@@ -9400,7 +9581,13 @@ function PopModule({
           </button>
         </div>
       </Panel>
-      <Panel title="Responsabilidades" progress={sectionProgress.responsibilities}>
+      <Panel
+        id="pop-sec-responsibilities"
+        num="04"
+        title="Responsabilidades"
+        progress={sectionProgress.responsibilities}
+        openSignal={openSignals.responsibilities}
+      >
         <div className="grid gap-3">
           {data.responsibilities.map((row) => (
             <div
@@ -9462,7 +9649,13 @@ function PopModule({
           </button>
         </div>
       </Panel>
-      <Panel title="Referências normativas" progress={sectionProgress.references}>
+      <Panel
+        id="pop-sec-references"
+        num="05"
+        title="Referências normativas"
+        progress={sectionProgress.references}
+        openSignal={openSignals.references}
+      >
         <div className="grid gap-3">
           {data.references.map((row) => (
             <div
@@ -9538,7 +9731,13 @@ function PopModule({
           </button>
         </div>
       </Panel>
-      <Panel title="Histórico e controle de alterações" progress={sectionProgress.history}>
+      <Panel
+        id="pop-sec-history"
+        num="06"
+        title="Histórico e controle de alterações"
+        progress={sectionProgress.history}
+        openSignal={openSignals.history}
+      >
         <h3 className="mb-3 text-sm font-semibold text-foreground">Histórico</h3>
         <div className="grid gap-3">
           {data.history.map((row) => (
@@ -9732,6 +9931,9 @@ function PopModule({
           </button>
         </div>
       </Panel>
+          <div aria-hidden className="h-[35vh]" />
+        </div>
+      </div>
     </div>
   );
 }
