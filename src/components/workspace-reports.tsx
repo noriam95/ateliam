@@ -472,12 +472,12 @@ function PorterDiagram({
   };
 
   const renderDiagram = (large = false) => (
-    <div className="overflow-x-auto rounded-lg border border-border bg-[#f7faf6] p-4 shadow-sm dark:bg-[#101714]">
+    <div className="overflow-x-auto rounded-lg border border-border bg-[#f4fbf8] p-4 shadow-sm dark:bg-[#0d1714]">
       <div className={`${large ? "min-w-[1280px]" : "min-w-[1040px]"} space-y-1`}>
-        <div className="rounded-md bg-[#0b3f35] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
+        <div className="rounded-md bg-[#064236] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
           Cadeia de valor
         </div>
-        <div className="rounded-md bg-[#087565] px-4 py-1.5 text-center text-xs font-black text-white">
+        <div className="rounded-md bg-[#007f61] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos de Governança
         </div>
         <div className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1`}>
@@ -485,35 +485,35 @@ function PorterDiagram({
             management.map((item) =>
               chainButton(
                 item,
-                "grid place-items-center rounded-md border border-[#d8e4dc] bg-[#e8eee8] px-3 py-3 text-center text-sm font-semibold text-[#101a17] shadow-sm transition hover:bg-[#dce8df]",
-                "border-[#d49a21] bg-[#f5deb0] ring-2 ring-[#d49a21]/25",
+                "grid place-items-center rounded-md border border-[#ded6ca] bg-[#f6f0e7] px-3 py-3 text-center text-sm font-semibold text-black shadow-sm transition hover:bg-[#fff8ee]",
+                "border-[#007f61] bg-[#e7f5ef] ring-2 ring-[#007f61]/25",
               ),
             )
           ) : (
-            <div className="col-span-full grid min-h-14 place-items-center rounded-md border border-dashed border-[#9bb9ad] bg-white/70 text-xs italic text-[#4f625b]">
+            <div className="col-span-full grid min-h-14 place-items-center rounded-md border border-dashed border-[#8dbdad] bg-white/70 text-xs italic text-[#41665b]">
               Nenhum macroprocesso de governança cadastrado
             </div>
           )}
         </div>
         <div className="grid place-items-center">
-          <div className="h-0 w-0 border-x-[13px] border-t-[16px] border-x-transparent border-t-[#0b3f35]" />
+          <div className="h-0 w-0 border-x-[13px] border-t-[16px] border-x-transparent border-t-[#064236]" />
         </div>
-        <div className="rounded-md bg-[#087565] px-4 py-1.5 text-center text-xs font-black text-white">
+        <div className="rounded-md bg-[#007f61] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos Finalísticos
         </div>
-        <div className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#0b473d] p-5 text-white`}>
+        <div className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#063d33] p-5 text-white`}>
           <div className="grid h-full grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)] items-center gap-3">
             <div className="flex min-w-0 items-stretch">
               {primary.length ? (
                 primary.map((item, index) =>
                   chainButton(
                     item,
-                    `relative grid min-h-16 flex-1 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-[#101a17] transition hover:bg-[#fff8ee] ${
+                    `relative grid min-h-16 flex-1 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] ${
                       index === 0
                         ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
                         : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
                     }`,
-                    "bg-[#d49a21] text-[#111] ring-2 ring-white/40",
+                    "bg-[#e7f5ef] text-black ring-2 ring-white/40",
                   ),
                 )
               ) : (
@@ -527,7 +527,7 @@ function PorterDiagram({
               {shownOutputs.length ? (
                 shownOutputs.map((item) => (
                   <li key={item.id} className="flex gap-2" title={item.description ?? undefined}>
-                    <span className="text-[#74d9c7]">›</span>
+                    <span className="text-[#8debc6]">›</span>
                     <span className="line-clamp-1">{item.name}</span>
                   </li>
                 ))
@@ -542,17 +542,17 @@ function PorterDiagram({
             support.map((item) =>
               chainButton(
                 item,
-                "grid place-items-center rounded-md border border-[#d8e4dc] bg-[#e8eee8] px-3 py-3 text-center text-sm font-semibold text-[#101a17] shadow-sm transition hover:bg-[#dce8df]",
-                "border-[#d49a21] bg-[#f5deb0] ring-2 ring-[#d49a21]/25",
+                "grid place-items-center rounded-md border border-[#ded6ca] bg-[#f6f0e7] px-3 py-3 text-center text-sm font-semibold text-black shadow-sm transition hover:bg-[#fff8ee]",
+                "border-[#007f61] bg-[#e7f5ef] ring-2 ring-[#007f61]/25",
               ),
             )
           ) : (
-            <div className="col-span-full grid min-h-14 place-items-center rounded-md border border-dashed border-[#9bb9ad] bg-white/70 text-xs italic text-[#4f625b]">
+            <div className="col-span-full grid min-h-14 place-items-center rounded-md border border-dashed border-[#8dbdad] bg-white/70 text-xs italic text-[#41665b]">
               Nenhum macroprocesso de suporte cadastrado
             </div>
           )}
         </div>
-        <div className="rounded-md bg-[#087565] px-4 py-1.5 text-center text-xs font-black text-white">
+        <div className="rounded-md bg-[#007f61] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos de Suporte
         </div>
       </div>
@@ -1167,17 +1167,17 @@ function buildDiagramSVG(
   const SUPPORT_TOP_GAP = 14;
   const H = PAD + TOP_H + ROW_GAP + BAND_H + ROW_GAP + CARD_H + ROW_GAP + 16 + ROW_GAP + BAND_H + ROW_GAP + FLOW_H + SUPPORT_TOP_GAP + CARD_H + ROW_GAP + BAND_H + PAD;
   const C = {
-    bg: "#F7FAF6",
-    dark: "#0B3F35",
-    green: "#087565",
-    teal: "#0B473D",
-    card: "#E8EEE8",
+    bg: "#F4FBF8",
+    dark: "#064236",
+    green: "#007f61",
+    teal: "#063D33",
+    card: "#F6F0E7",
     arrow: "#F6F0E7",
-    gold: "#D49A21",
-    text: "#101A17",
-    muted: "#4F625B",
+    gold: "#007F61",
+    text: "#000000",
+    muted: "#41665B",
     white: "#FFFFFF",
-    cyan: "#74D9C7",
+    cyan: "#8DEBC6",
   };
 
   function wrapLabel(value: string, max = 24) {
@@ -1210,7 +1210,7 @@ function buildDiagramSVG(
 
   function renderRow(items: ValueChain[], x: number, y: number, width: number, emptyText: string) {
     if (items.length === 0) {
-      return `<rect x="${x}" y="${y}" width="${width}" height="${CARD_H}" rx="8" fill="${C.white}" stroke="#9BB9AD" stroke-dasharray="5 5"/><text x="${x + width / 2}" y="${y + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="${C.muted}">${escapeSvg(emptyText)}</text>`;
+      return `<rect x="${x}" y="${y}" width="${width}" height="${CARD_H}" rx="8" fill="${C.white}" stroke="#8DBDAD" stroke-dasharray="5 5"/><text x="${x + width / 2}" y="${y + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="${C.muted}">${escapeSvg(emptyText)}</text>`;
     }
     const gap = 3;
     const cardW = (width - gap * (items.length - 1)) / items.length;
@@ -1218,7 +1218,7 @@ function buildDiagramSVG(
       .map((item, i) => {
         const cardX = x + i * (cardW + gap);
         return [
-          `<rect x="${cardX}" y="${y}" width="${cardW}" height="${CARD_H}" rx="8" fill="${C.card}" stroke="#D8E4DC"/>`,
+          `<rect x="${cardX}" y="${y}" width="${cardW}" height="${CARD_H}" rx="8" fill="${C.card}" stroke="#DED6CA"/>`,
           textLines(wrapLabel(item.name, 26), cardX + cardW / 2, y + CARD_H / 2, C.text, 13, 650),
         ].join("");
       })
