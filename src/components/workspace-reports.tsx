@@ -1243,19 +1243,25 @@ function buildDiagramSVG(
   const supportItems = sanitizeValueChains(support);
   const managementItems = sanitizeValueChains(management);
   const outputItems = sanitizeValueChains(outputs);
-  const W = 1400;
-  const PAD = 48;
+  const W = 1600;
+  const PAD = 54;
   const CONTENT_W = W - PAD * 2;
-  const TOP_H = 48;
-  const BAND_H = 28;
-  const CARD_H = 58;
-  const ROW_GAP = 6;
-  const FLOW_H = 104;
-  const OUTPUT_W = 310;
-  const OUTPUT_GAP = 20;
+  const TOP_H = 58;
+  const BAND_H = 32;
+  const CARD_H = 72;
+  const ROW_GAP = 8;
+  const FLOW_ROW_H = 92;
+  const OUTPUT_W = 330;
+  const OUTPUT_GAP = 22;
   const FLOW_W = CONTENT_W - OUTPUT_W - OUTPUT_GAP;
   const SUPPORT_TOP_GAP = 14;
-  const H = PAD + TOP_H + ROW_GAP + BAND_H + ROW_GAP + CARD_H + ROW_GAP + 16 + ROW_GAP + BAND_H + ROW_GAP + FLOW_H + SUPPORT_TOP_GAP + CARD_H + ROW_GAP + BAND_H + PAD;
+  const managementGrid = gridMetrics(managementItems.length, CONTENT_W, 245);
+  const supportGrid = gridMetrics(supportItems.length, CONTENT_W, 215);
+  const flowGrid = gridMetrics(primaryItems.length, FLOW_W - 48, 235, 5);
+  const managementH = managementGrid.rows * CARD_H + Math.max(0, managementGrid.rows - 1) * ROW_GAP;
+  const supportH = supportGrid.rows * CARD_H + Math.max(0, supportGrid.rows - 1) * ROW_GAP;
+  const FLOW_H = Math.max(132, flowGrid.rows * FLOW_ROW_H + 22);
+  const H = PAD + TOP_H + ROW_GAP + BAND_H + ROW_GAP + managementH + ROW_GAP + 16 + ROW_GAP + BAND_H + ROW_GAP + FLOW_H + SUPPORT_TOP_GAP + supportH + ROW_GAP + BAND_H + PAD;
   const C = {
     bg: "#F4FBF8",
     dark: "#005F4B",
@@ -1298,18 +1304,29 @@ function buildDiagramSVG(
       .join("");
   }
 
-  function renderRow(items: ValueChain[], x: number, y: number, width: number, emptyText: string) {
+  function gridMetrics(count: number, width: number, minCardWidth: number, maxCols = 6) {
+    if (count <= 0) return { cols: 1, rows: 1 };
+    const byWidth = Math.max(1, Math.floor(width / minCardWidth));
+    const cols = Math.max(1, Math.min(count, maxCols, byWidth));
+    return { cols, rows: Math.ceil(count / cols) };
+  }
+
+  function renderRow(items: ValueChain[], x: number, y: number, width: number, emptyText: string, minCardWidth = 245) {
     if (items.length === 0) {
       return `<rect x="${x}" y="${y}" width="${width}" height="${CARD_H}" rx="8" fill="${C.white}" stroke="#8DBDAD" stroke-dasharray="5 5"/><text x="${x + width / 2}" y="${y + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="${C.muted}">${escapeSvg(emptyText)}</text>`;
     }
-    const gap = 3;
-    const cardW = (width - gap * (items.length - 1)) / items.length;
+    const gap = 6;
+    const { cols } = gridMetrics(items.length, width, minCardWidth);
+    const cardW = (width - gap * (cols - 1)) / cols;
     return items
       .map((item, i) => {
-        const cardX = x + i * (cardW + gap);
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const cardX = x + col * (cardW + gap);
+        const cardY = y + row * (CARD_H + ROW_GAP);
         return [
-          `<rect x="${cardX}" y="${y}" width="${cardW}" height="${CARD_H}" rx="8" fill="${C.card}" stroke="#DED6CA"/>`,
-          textLines(wrapLabel(item.name, 26), cardX + cardW / 2, y + CARD_H / 2, C.text, 13, 650),
+          `<rect x="${cardX}" y="${cardY}" width="${cardW}" height="${CARD_H}" rx="8" fill="${C.card}" stroke="#DED6CA"/>`,
+          textLines(wrapLabel(item.name, Math.max(18, Math.floor(cardW / 9))), cardX + cardW / 2, cardY + CARD_H / 2, C.text, 13, 650),
         ].join("");
       })
       .join("\n");
@@ -1319,22 +1336,27 @@ function buildDiagramSVG(
     if (!items.length) {
       return `<rect x="${x}" y="${y + 22}" width="${width}" height="${FLOW_H - 44}" rx="8" fill="none" stroke="rgba(255,255,255,.45)" stroke-dasharray="5 5"/><text x="${x + width / 2}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="rgba(255,255,255,.78)">Nenhum macroprocesso finalístico cadastrado</text>`;
     }
-    const itemW = width / items.length;
+    const { cols } = gridMetrics(items.length, width, 235, 5);
+    const gap = 4;
+    const itemW = (width - gap * (cols - 1)) / cols;
     return items
       .map((item, index) => {
-        const left = x + index * itemW;
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        const rowY = y + 16 + row * FLOW_ROW_H;
+        const left = x + col * (itemW + gap);
         const right = left + itemW;
         const points = [
-          `${left + (index === 0 ? 0 : 24)},${y + 22}`,
-          `${right - 30},${y + 22}`,
-          `${right},${y + FLOW_H / 2}`,
-          `${right - 30},${y + FLOW_H - 22}`,
-          `${left + (index === 0 ? 0 : 24)},${y + FLOW_H - 22}`,
-          `${left + 30},${y + FLOW_H / 2}`,
+          `${left + (col === 0 ? 0 : 24)},${rowY}`,
+          `${right - 30},${rowY}`,
+          `${right},${rowY + FLOW_ROW_H / 2 - 6}`,
+          `${right - 30},${rowY + FLOW_ROW_H - 12}`,
+          `${left + (col === 0 ? 0 : 24)},${rowY + FLOW_ROW_H - 12}`,
+          `${left + 30},${rowY + FLOW_ROW_H / 2 - 6}`,
         ].join(" ");
         return [
           `<polygon points="${points}" fill="${C.arrow}" stroke="${C.teal}" stroke-width="4"/>`,
-          textLines(wrapLabel(item.name, 25), left + itemW / 2 + 6, y + FLOW_H / 2, C.text, 13, 700),
+          textLines(wrapLabel(item.name, Math.max(17, Math.floor(itemW / 9))), left + itemW / 2 + 6, rowY + FLOW_ROW_H / 2 - 6, C.text, 12, 700),
         ].join("");
       })
       .join("\n");
@@ -1355,8 +1377,8 @@ function buildDiagramSVG(
     `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Gestão</text>`,
   );
   y += BAND_H + ROW_GAP;
-  parts.push(renderRow(managementItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de gestão cadastrado"));
-  y += CARD_H + ROW_GAP;
+  parts.push(renderRow(managementItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de gestão cadastrado", 245));
+  y += managementH + ROW_GAP;
   parts.push(
     `<polygon points="${W / 2 - 14},${y} ${W / 2 + 14},${y} ${W / 2},${y + 16}" fill="${C.dark}"/>`,
   );
@@ -1376,8 +1398,8 @@ function buildDiagramSVG(
     );
   });
   y += FLOW_H + SUPPORT_TOP_GAP;
-  parts.push(renderRow(supportItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de suporte cadastrado"));
-  y += CARD_H + ROW_GAP;
+  parts.push(renderRow(supportItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de suporte cadastrado", 215));
+  y += supportH + ROW_GAP;
   parts.push(
     `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${BAND_H}" rx="8" fill="${C.green}"/>`,
     `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Suporte</text>`,
