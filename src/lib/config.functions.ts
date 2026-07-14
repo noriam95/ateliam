@@ -108,7 +108,7 @@ const organizationScopeSchema = z.object({
 const valueChainSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(2).max(180),
-  category: z.enum(["primary", "support", "management"]),
+  category: z.enum(["primary", "support", "management", "output"]),
   description: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["Ativa", "Inativa"]).default("Ativa"),
 });

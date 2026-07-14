@@ -2212,7 +2212,7 @@ type OrganizationProcess = {
 type OrganizationValueChain = {
   id: string;
   name: string;
-  category: "primary" | "support" | "management";
+  category: "primary" | "support" | "management" | "output";
   description: string | null;
   status: string;
   organization_id?: string;

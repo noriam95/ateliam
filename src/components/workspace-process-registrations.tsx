@@ -87,7 +87,7 @@ type ProcessType = {
   label: string;
   active: boolean;
 };
-type ValueChainCategory = "primary" | "support" | "management";
+type ValueChainCategory = "primary" | "support" | "management" | "output";
 type ValueChain = {
   id: string;
   name: string;
@@ -115,6 +115,11 @@ const VALUE_CHAIN_CATEGORIES: Array<{
     value: "management",
     label: "Processos de Gestão",
     description: "Direcionam e controlam a gestão do negócio.",
+  },
+  {
+    value: "output",
+    label: "Saídas",
+    description: "Resultados gerados pela cadeia de valor.",
   },
 ];
 
@@ -643,7 +648,9 @@ type RelatedCreateState = {
 function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
   const type = "process";
   const firstActiveValueChain =
-    data.valueChains.find((chain) => chain.status !== "Inativa") ?? data.valueChains[0];
+    data.valueChains.find((chain) => chain.status !== "Inativa" && chain.category !== "output") ??
+    data.valueChains.find((chain) => chain.category !== "output") ??
+    data.valueChains[0];
   return {
     id: "",
     name: "",
@@ -1702,7 +1709,7 @@ function RegistrationFields({
             label="Macroprocesso pai"
             value={draft.valueChainId}
             options={data.valueChains
-              .filter((chain) => chain.status !== "Inativa")
+              .filter((chain) => chain.status !== "Inativa" && chain.category !== "output")
               .map((chain) => ({ value: chain.id, label: chain.name }))}
             createLabel="Cadastrar macroprocesso"
             onChange={(valueChainId) => setDraft((d) => ({ ...d, valueChainId }))}
@@ -2382,7 +2389,9 @@ export function ProcessRegistrationDialog({
   // tinham opção disponível no primeiro render.
   useEffect(() => {
     const firstActiveValueChain =
-      data.valueChains.find((chain) => chain.status !== "Inativa") ?? data.valueChains[0];
+      data.valueChains.find((chain) => chain.status !== "Inativa" && chain.category !== "output") ??
+      data.valueChains.find((chain) => chain.category !== "output") ??
+      data.valueChains[0];
     setDraft((current) => ({
       ...current,
       valueChainId: current.valueChainId || firstActiveValueChain?.id || "",

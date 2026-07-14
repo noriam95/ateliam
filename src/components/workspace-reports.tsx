@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -21,7 +21,7 @@ import {
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
 import { downloadXlsx } from "@/lib/xlsx-export";
 
-type ChainCategory = "primary" | "support" | "management";
+type ChainCategory = "primary" | "support" | "management" | "output";
 
 // Opções completas para o formulário de cadastro (o mesmo texto do cadastro de
 // processos). A tabela continua exibindo o rótulo curto de CATEGORY_LABELS.
@@ -29,6 +29,7 @@ const VALUE_CHAIN_CATEGORY_OPTIONS: Array<{ value: ChainCategory; label: string 
   { value: "primary", label: "Processos Finalísticos" },
   { value: "support", label: "Processos de Suporte" },
   { value: "management", label: "Processos de Gestão" },
+  { value: "output", label: "Saídas" },
 ];
 
 type ChainDraft = {
@@ -42,7 +43,7 @@ type ChainDraft = {
 type ValueChain = {
   id: string;
   name: string;
-  category: "primary" | "support" | "management";
+  category: ChainCategory;
   description: string | null;
   status: string;
 };
@@ -98,10 +99,11 @@ export function ValueChainMacro({
   const primary = chains.filter((c) => c.category === "primary" && c.status === "Ativa");
   const support = chains.filter((c) => c.category === "support" && c.status === "Ativa");
   const management = chains.filter((c) => c.category === "management" && c.status === "Ativa");
+  const outputs = chains.filter((c) => c.category === "output" && c.status === "Ativa");
 
   if (catalogsQ.isLoading && !isDemo) return <LoadingSkeleton />;
   if (chains.length === 0) return <EmptyState />;
-  return <PorterDiagram primary={primary} support={support} management={management} />;
+  return <PorterDiagram primary={primary} support={support} management={management} outputs={outputs} />;
 }
 
 function ValueChainReport({
@@ -259,6 +261,7 @@ function ValueChainReport({
   const primary = filteredChains.filter((c) => c.category === "primary");
   const support = filteredChains.filter((c) => c.category === "support");
   const management = filteredChains.filter((c) => c.category === "management");
+  const outputs = filteredChains.filter((c) => c.category === "output");
 
   return (
     <section className="grid gap-4">
@@ -280,12 +283,13 @@ function ValueChainReport({
             primary={primary}
             support={support}
             management={management}
+            outputs={outputs}
             selectedChainId={selectedChainId}
             onSelectChain={(chain) => {
               setSelectedChainId(chain.id);
               setActiveTab("processes");
             }}
-            onExportPng={() => exportPNG(primary, support, management)}
+            onExportPng={() => exportPNG(primary, support, management, outputs)}
           />
           <ConsultationTable
             chains={chains}
@@ -303,6 +307,7 @@ function ValueChainReport({
                 chains.filter((c) => c.category === "primary"),
                 chains.filter((c) => c.category === "support"),
                 chains.filter((c) => c.category === "management"),
+                chains.filter((c) => c.category === "output"),
               )
             }
             busy={chainBusy}
@@ -426,6 +431,7 @@ function PorterDiagram({
   primary,
   support,
   management,
+  outputs,
   selectedChainId,
   onSelectChain,
   onExportPng,
@@ -433,120 +439,121 @@ function PorterDiagram({
   primary: ValueChain[];
   support: ValueChain[];
   management: ValueChain[];
+  outputs: ValueChain[];
   selectedChainId?: string | null;
   onSelectChain?: (chain: ValueChain) => void;
   onExportPng?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const bands = [
-    {
-      key: "management",
-      label: "Processos de Gestão",
-      items: management,
-      tone: "from-[#15b889] to-[#007f5f]",
-      border: "border-[#009b78]",
-      accent: "#009b78",
-      header: "bg-[#009b78]",
-      text: "text-foreground",
-    },
-    {
-      key: "primary",
-      label: "Processos Finalísticos",
-      items: primary,
-      tone: "from-[#ffd45c] to-[#f5b51b]",
-      border: "border-[#f5b51b]",
-      accent: "#f5b51b",
-      header: "bg-[#f5b51b]",
-      text: "text-foreground",
-    },
-    {
-      key: "support",
-      label: "Processos de Suporte",
-      items: support,
-      tone: "from-[#00a8bc] to-[#007f94]",
-      border: "border-[#008da3]",
-      accent: "#008da3",
-      header: "bg-[#008da3]",
-      text: "text-foreground",
-    },
-  ];
+  const shownOutputs = outputs.slice(0, 5);
+
+  const chainButton = (
+    item: ValueChain,
+    className: string,
+    selectedClassName: string,
+    children?: ReactNode,
+  ) => {
+    const selected = selectedChainId === item.id;
+    return (
+      <button
+        type="button"
+        key={item.id}
+        disabled={!onSelectChain}
+        onClick={() => onSelectChain?.(item)}
+        title={item.description ?? undefined}
+        aria-pressed={selected}
+        className={`${className} ${
+          selected ? selectedClassName : ""
+        } ${onSelectChain ? "cursor-pointer hover:-translate-y-0.5 active:translate-y-0" : "cursor-default"}`}
+      >
+        {children ?? item.name}
+      </button>
+    );
+  };
 
   const renderDiagram = (large = false) => (
-    <div className="overflow-x-auto">
-      <div className={`flex ${large ? "min-w-[1180px]" : "min-w-[860px]"} items-stretch`}>
-        <div className="grid flex-1 grid-cols-[148px_minmax(0,1fr)] gap-1">
-          <div className="rounded-md border border-border bg-[color-mix(in_oklab,var(--foreground)_24%,var(--card))] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-foreground shadow-sm">
-            Categoria
-          </div>
-          <div className="rounded-md border border-border bg-[color-mix(in_oklab,var(--foreground)_24%,var(--card))] px-4 py-2 text-center text-[12px] font-black uppercase tracking-[0.22em] text-foreground shadow-sm">
-            Macroprocesso
-          </div>
-          {bands.map((band) => (
-            <div
-              key={band.key}
-              className="contents"
-              style={
-                {
-                  "--value-chain-accent": band.accent,
-                } as CSSProperties
-              }
-            >
-              <div
-                className={`grid ${large ? "min-h-36" : "min-h-28"} place-items-center rounded-xl bg-gradient-to-b ${band.tone} px-3 py-4 text-center text-base font-black uppercase leading-tight tracking-[0.08em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(0,0,0,0.18)]`}
-              >
-                {band.label}
-              </div>
-              <div
-                className={`${large ? "min-h-36" : "min-h-28"} rounded-xl border-2 ${band.border} bg-[linear-gradient(135deg,color-mix(in_oklab,var(--value-chain-accent)_14%,var(--card)),var(--card)_66%)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]`}
-              >
-                {band.items.length ? (
-                  <div className="grid h-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2">
-                    {band.items.map((item) => {
-                      const selected = selectedChainId === item.id;
-                      return (
-                        <button
-                          type="button"
-                          key={item.id}
-                          disabled={!onSelectChain}
-                          onClick={() => onSelectChain?.(item)}
-                          title={item.description ?? undefined}
-                          aria-pressed={selected}
-                          className={`grid ${large ? "min-h-24" : "min-h-20"} place-items-center rounded-lg border-2 px-3 py-2 text-center text-sm font-bold leading-tight shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/50 ${
-                            selected
-                              ? "border-[var(--gold)] bg-[var(--gold)] text-slate-950 shadow-[0_12px_24px_rgba(0,0,0,0.24)] ring-2 ring-[var(--gold)]/25"
-                              : `${band.border} ${band.text} bg-[linear-gradient(180deg,color-mix(in_oklab,var(--value-chain-accent)_22%,var(--card)),color-mix(in_oklab,var(--value-chain-accent)_8%,var(--card)))] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_18px_rgba(0,0,0,0.16)]`
-                          } ${
-                            onSelectChain
-                              ? selected
-                                ? "cursor-pointer hover:-translate-y-0.5 hover:bg-[var(--gold)] hover:shadow-md active:translate-y-0"
-                                : "cursor-pointer hover:-translate-y-0.5 hover:bg-[color-mix(in_oklab,var(--value-chain-accent)_24%,var(--card))] hover:shadow-[0_12px_24px_rgba(0,0,0,0.2)] active:translate-y-0"
-                              : "cursor-default"
-                          }`}
-                        >
-                          <span>{item.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="grid h-full min-h-16 place-items-center rounded-lg border border-dashed border-[color-mix(in_oklab,var(--value-chain-accent)_45%,var(--border))] bg-[color-mix(in_oklab,var(--value-chain-accent)_7%,var(--card))] px-4 text-center text-xs italic text-muted-foreground">
-                    Nenhum processo cadastrado
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+    <div className="overflow-x-auto rounded-lg border border-border bg-[#f7faf6] p-4 shadow-sm dark:bg-[#101714]">
+      <div className={`${large ? "min-w-[1280px]" : "min-w-[1040px]"} space-y-1`}>
+        <div className="rounded-md bg-[#0b3f35] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
+          Cadeia de valor
         </div>
-        <div className={`${large ? "w-56" : "w-44"} relative ml-2 shrink-0`}>
-          <div
-            className="absolute inset-y-9 left-0 right-0 bg-gradient-to-r from-[#009b78] via-[#00a8bc] to-[#6fded2] shadow-sm"
-            style={{ clipPath: "polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%)" }}
-          />
-          <div className="relative flex h-full items-center justify-center pr-7">
-            <span className={`${large ? "text-4xl" : "text-3xl"} font-black text-foreground drop-shadow-sm`}>
-              Missão
-            </span>
+        <div className="rounded-md bg-[#087565] px-4 py-1.5 text-center text-xs font-black text-white">
+          Macroprocessos de Governança
+        </div>
+        <div className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1`}>
+          {management.length ? (
+            management.map((item) =>
+              chainButton(
+                item,
+                "grid place-items-center rounded-md border border-[#d8e4dc] bg-[#e8eee8] px-3 py-3 text-center text-sm font-semibold text-[#101a17] shadow-sm transition hover:bg-[#dce8df]",
+                "border-[#d49a21] bg-[#f5deb0] ring-2 ring-[#d49a21]/25",
+              ),
+            )
+          ) : (
+            <div className="col-span-full grid min-h-14 place-items-center rounded-md border border-dashed border-[#9bb9ad] bg-white/70 text-xs italic text-[#4f625b]">
+              Nenhum macroprocesso de governança cadastrado
+            </div>
+          )}
+        </div>
+        <div className="grid place-items-center">
+          <div className="h-0 w-0 border-x-[13px] border-t-[16px] border-x-transparent border-t-[#0b3f35]" />
+        </div>
+        <div className="rounded-md bg-[#087565] px-4 py-1.5 text-center text-xs font-black text-white">
+          Macroprocessos Finalísticos
+        </div>
+        <div className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#0b473d] p-5 text-white`}>
+          <div className="grid h-full grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)] items-center gap-3">
+            <div className="flex min-w-0 items-stretch">
+              {primary.length ? (
+                primary.map((item, index) =>
+                  chainButton(
+                    item,
+                    `relative grid min-h-16 flex-1 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-[#101a17] transition hover:bg-[#fff8ee] ${
+                      index === 0
+                        ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
+                        : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
+                    }`,
+                    "bg-[#d49a21] text-[#111] ring-2 ring-white/40",
+                  ),
+                )
+              ) : (
+                <div className="grid min-h-16 flex-1 place-items-center rounded-md border border-dashed border-white/35 text-xs italic text-white/75">
+                  Nenhum macroprocesso finalístico cadastrado
+                </div>
+              )}
+            </div>
+            <div className="text-center text-sm font-black">Saídas</div>
+            <ul className="grid gap-1 text-[11px] font-semibold leading-snug text-white/90">
+              {shownOutputs.length ? (
+                shownOutputs.map((item) => (
+                  <li key={item.id} className="flex gap-2" title={item.description ?? undefined}>
+                    <span className="text-[#74d9c7]">›</span>
+                    <span className="line-clamp-1">{item.name}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="text-white/65">Nenhuma saída cadastrada.</li>
+              )}
+            </ul>
           </div>
+        </div>
+        <div className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1 pt-3`}>
+          {support.length ? (
+            support.map((item) =>
+              chainButton(
+                item,
+                "grid place-items-center rounded-md border border-[#d8e4dc] bg-[#e8eee8] px-3 py-3 text-center text-sm font-semibold text-[#101a17] shadow-sm transition hover:bg-[#dce8df]",
+                "border-[#d49a21] bg-[#f5deb0] ring-2 ring-[#d49a21]/25",
+              ),
+            )
+          ) : (
+            <div className="col-span-full grid min-h-14 place-items-center rounded-md border border-dashed border-[#9bb9ad] bg-white/70 text-xs italic text-[#4f625b]">
+              Nenhum macroprocesso de suporte cadastrado
+            </div>
+          )}
+        </div>
+        <div className="rounded-md bg-[#087565] px-4 py-1.5 text-center text-xs font-black text-white">
+          Macroprocessos de Suporte
         </div>
       </div>
     </div>
@@ -611,6 +618,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   management: "Processos de Gestão",
   primary: "Processos Finalísticos",
   support: "Processos de Suporte",
+  output: "Saídas",
 };
 
 type SortField = "index" | "name" | "category" | "status";
@@ -669,7 +677,7 @@ function ConsultationTable({
   // Ordem base: gestão, finalísticos e suporte (mesma do diagrama),
   // preservando uma numeração estável independente de filtros/ordenação.
   const ordered = useMemo(() => {
-    const rank: Record<string, number> = { management: 0, primary: 1, support: 2 };
+    const rank: Record<string, number> = { management: 0, primary: 1, output: 2, support: 3 };
     return [...chains]
       .map((chain, i) => ({ chain, original: i }))
       .sort((a, b) => {
@@ -1143,45 +1151,34 @@ function buildDiagramSVG(
   primary: ValueChain[],
   support: ValueChain[],
   management: ValueChain[],
+  outputs: ValueChain[],
 ): string {
-  const W = 1180;
-  const NUCLEO_W = 210;
-  const MACRO_W = 710;
-  const GAP = 8;
-  const ARROW_W = 220;
-  const HEADER_H = 44;
-  const PAD = 12;
+  const W = 1400;
+  const PAD = 48;
+  const CONTENT_W = W - PAD * 2;
+  const TOP_H = 48;
+  const BAND_H = 28;
   const CARD_H = 58;
-  const CARD_GAP = 8;
-  const CARD_W = 210;
-
+  const ROW_GAP = 6;
+  const FLOW_H = 104;
+  const OUTPUT_W = 310;
+  const OUTPUT_GAP = 20;
+  const FLOW_W = CONTENT_W - OUTPUT_W - OUTPUT_GAP;
+  const SUPPORT_TOP_GAP = 14;
+  const H = PAD + TOP_H + ROW_GAP + BAND_H + ROW_GAP + CARD_H + ROW_GAP + 16 + ROW_GAP + BAND_H + ROW_GAP + FLOW_H + SUPPORT_TOP_GAP + CARD_H + ROW_GAP + BAND_H + PAD;
   const C = {
-    header: "#777777",
-    white: "#ffffff",
-    grayText: "#404040",
-    primaryA: "#FFD45C",
-    primaryB: "#F5B51B",
-    primaryBorder: "#F5B51B",
-    primaryText: "#5F3D00",
-    supportA: "#00A8BC",
-    supportB: "#007F94",
-    supportBorder: "#008DA3",
-    supportText: "#004C59",
-    managementA: "#15B889",
-    managementB: "#007F5F",
-    managementBorder: "#009B78",
-    managementText: "#00523F",
-    missionA: "#009B78",
-    missionB: "#6FDED2",
-    missionText: "#005F54",
+    bg: "#F7FAF6",
+    dark: "#0B3F35",
+    green: "#087565",
+    teal: "#0B473D",
+    card: "#E8EEE8",
+    arrow: "#F6F0E7",
+    gold: "#D49A21",
+    text: "#101A17",
+    muted: "#4F625B",
+    white: "#FFFFFF",
+    cyan: "#74D9C7",
   };
-
-  function bandHeight(items: ValueChain[]) {
-    const availW = MACRO_W - PAD * 2;
-    const cols = Math.max(1, Math.floor(availW / (CARD_W + CARD_GAP)));
-    const rows = Math.max(1, Math.ceil(items.length / cols));
-    return Math.max(116, PAD * 2 + rows * CARD_H + (rows - 1) * CARD_GAP);
-  }
 
   function wrapLabel(value: string, max = 24) {
     const words = value.split(/\s+/).filter(Boolean);
@@ -1200,105 +1197,100 @@ function buildDiagramSVG(
     return lines.slice(0, 3);
   }
 
-  function textLines(lines: string[], x: number, y: number, color: string, size = 15) {
+  function textLines(lines: string[], x: number, y: number, color: string, size = 15, weight = 700) {
     const lineH = size + 4;
     const startY = y - ((lines.length - 1) * lineH) / 2;
     return lines
       .map(
         (line, index) =>
-          `<text x="${x}" y="${startY + index * lineH}" text-anchor="middle" dominant-baseline="middle" font-size="${size}" font-weight="700" fill="${color}">${escapeSvg(line)}</text>`,
+          `<text x="${x}" y="${startY + index * lineH}" text-anchor="middle" dominant-baseline="middle" font-size="${size}" font-weight="${weight}" fill="${color}">${escapeSvg(line)}</text>`,
       )
       .join("");
   }
 
-  function renderCards(
-    items: ValueChain[],
-    xBase: number,
-    yBase: number,
-    cardStroke: string,
-    textColor: string,
-  ): string {
-    const availW = MACRO_W - PAD * 2;
-    const cols = Math.max(1, Math.floor(availW / (CARD_W + CARD_GAP)));
+  function renderRow(items: ValueChain[], x: number, y: number, width: number, emptyText: string) {
     if (items.length === 0) {
-      return `<rect x="${xBase}" y="${yBase}" width="${availW}" height="${CARD_H}" rx="10" fill="#fff" stroke="#D1D5DB" stroke-dasharray="5 5"/><text x="${xBase + availW / 2}" y="${yBase + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="#6B7280">Nenhum processo cadastrado</text>`;
+      return `<rect x="${x}" y="${y}" width="${width}" height="${CARD_H}" rx="8" fill="${C.white}" stroke="#9BB9AD" stroke-dasharray="5 5"/><text x="${x + width / 2}" y="${y + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="${C.muted}">${escapeSvg(emptyText)}</text>`;
     }
+    const gap = 3;
+    const cardW = (width - gap * (items.length - 1)) / items.length;
     return items
       .map((item, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const x = xBase + col * (CARD_W + CARD_GAP);
-        const y = yBase + row * (CARD_H + CARD_GAP);
-        const lines = wrapLabel(item.name);
+        const cardX = x + i * (cardW + gap);
         return [
-          `<rect x="${x}" y="${y}" width="${CARD_W}" height="${CARD_H}" rx="10" fill="#fff" stroke="${cardStroke}" stroke-width="3"/>`,
-          textLines(lines, x + CARD_W / 2, y + CARD_H / 2, textColor, 13),
+          `<rect x="${cardX}" y="${y}" width="${cardW}" height="${CARD_H}" rx="8" fill="${C.card}" stroke="#D8E4DC"/>`,
+          textLines(wrapLabel(item.name, 26), cardX + cardW / 2, y + CARD_H / 2, C.text, 13, 650),
         ].join("");
       })
       .join("\n");
   }
 
-  const bands = [
-    {
-      label: "Processos Finalísticos",
-      items: primary,
-      a: C.primaryA,
-      b: C.primaryB,
-      stroke: C.primaryBorder,
-      text: C.primaryText,
-    },
-    {
-      items: support,
-      label: "Processos de Suporte",
-      a: C.supportA,
-      b: C.supportB,
-      stroke: C.supportBorder,
-      text: C.supportText,
-    },
-    {
-      items: management,
-      label: "Processos de Gestão",
-      a: C.managementA,
-      b: C.managementB,
-      stroke: C.managementBorder,
-      text: C.managementText,
-    },
-  ].map((band) => ({ ...band, h: bandHeight(band.items) }));
+  function renderFlow(items: ValueChain[], x: number, y: number, width: number) {
+    if (!items.length) {
+      return `<rect x="${x}" y="${y + 22}" width="${width}" height="${FLOW_H - 44}" rx="8" fill="none" stroke="rgba(255,255,255,.45)" stroke-dasharray="5 5"/><text x="${x + width / 2}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="rgba(255,255,255,.78)">Nenhum macroprocesso finalístico cadastrado</text>`;
+    }
+    const itemW = width / items.length;
+    return items
+      .map((item, index) => {
+        const left = x + index * itemW;
+        const right = left + itemW;
+        const points = [
+          `${left + (index === 0 ? 0 : 24)},${y + 22}`,
+          `${right - 30},${y + 22}`,
+          `${right},${y + FLOW_H / 2}`,
+          `${right - 30},${y + FLOW_H - 22}`,
+          `${left + (index === 0 ? 0 : 24)},${y + FLOW_H - 22}`,
+          `${left + 30},${y + FLOW_H / 2}`,
+        ].join(" ");
+        return [
+          `<polygon points="${points}" fill="${C.arrow}" stroke="${C.teal}" stroke-width="4"/>`,
+          textLines(wrapLabel(item.name, 25), left + itemW / 2 + 6, y + FLOW_H / 2, C.text, 13, 700),
+        ].join("");
+      })
+      .join("\n");
+  }
 
-  const totalH = HEADER_H + GAP + bands.reduce((sum, band) => sum + band.h + GAP, 0);
-  const macroX = NUCLEO_W + GAP;
-  const missionX = macroX + MACRO_W + GAP;
-  const diagramBottom = totalH - GAP;
-  let y = HEADER_H + GAP;
+  const shownOutputs = outputs.slice(0, 5);
+  let y = PAD;
 
   const parts: string[] = [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${totalH}" width="${W}" height="${totalH}" font-family="system-ui, sans-serif">`,
-    `<rect width="${W}" height="${totalH}" fill="${C.white}"/>`,
-    `<defs>${bands
-      .map(
-        (band, index) =>
-          `<linearGradient id="band${index}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${band.a}"/><stop offset="100%" stop-color="${band.b}"/></linearGradient>`,
-      )
-      .join("")}<linearGradient id="mission" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="${C.missionA}"/><stop offset="100%" stop-color="${C.missionB}"/></linearGradient></defs>`,
-    `<rect x="0" y="0" width="${NUCLEO_W}" height="${HEADER_H}" rx="7" fill="${C.header}"/>`,
-    `<rect x="${macroX}" y="0" width="${MACRO_W}" height="${HEADER_H}" rx="7" fill="${C.header}"/>`,
-    `<text x="${NUCLEO_W / 2}" y="${HEADER_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="900" fill="#fff" letter-spacing="3">CATEGORIA</text>`,
-    `<text x="${macroX + MACRO_W / 2}" y="${HEADER_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="900" fill="#fff" letter-spacing="3">MACROPROCESSO</text>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="system-ui, sans-serif">`,
+    `<rect width="${W}" height="${H}" fill="${C.bg}"/>`,
+    `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${TOP_H}" rx="8" fill="${C.dark}"/>`,
+    `<text x="${W / 2}" y="${y + TOP_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="19" font-weight="800" fill="${C.white}">Cadeia de valor</text>`,
   ];
-
-  bands.forEach((band, index) => {
-    parts.push(
-      `<rect x="0" y="${y}" width="${NUCLEO_W}" height="${band.h}" rx="18" fill="url(#band${index})"/>`,
-      textLines(wrapLabel(band.label, 18), NUCLEO_W / 2, y + band.h / 2, "#fff", 19),
-      `<rect x="${macroX}" y="${y}" width="${MACRO_W}" height="${band.h}" rx="18" fill="#fff" stroke="${band.stroke}" stroke-width="4"/>`,
-      renderCards(band.items, macroX + PAD, y + PAD, band.stroke, band.text),
-    );
-    y += band.h + GAP;
-  });
-
+  y += TOP_H + ROW_GAP;
   parts.push(
-    `<polygon points="${missionX},${HEADER_H + GAP} ${missionX + ARROW_W * 0.58},${HEADER_H + GAP} ${missionX + ARROW_W},${(HEADER_H + GAP + diagramBottom) / 2} ${missionX + ARROW_W * 0.58},${diagramBottom} ${missionX},${diagramBottom}" fill="url(#mission)"/>`,
-    `<text x="${missionX + ARROW_W * 0.46}" y="${(HEADER_H + GAP + diagramBottom) / 2}" text-anchor="middle" dominant-baseline="middle" font-size="42" font-weight="900" fill="${C.missionText}">Missão</text>`,
+    `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${BAND_H}" rx="8" fill="${C.green}"/>`,
+    `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Governança</text>`,
+  );
+  y += BAND_H + ROW_GAP;
+  parts.push(renderRow(management, PAD, y, CONTENT_W, "Nenhum macroprocesso de governança cadastrado"));
+  y += CARD_H + ROW_GAP;
+  parts.push(
+    `<polygon points="${W / 2 - 14},${y} ${W / 2 + 14},${y} ${W / 2},${y + 16}" fill="${C.dark}"/>`,
+  );
+  y += 16 + ROW_GAP;
+  parts.push(
+    `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${BAND_H}" rx="8" fill="${C.green}"/>`,
+    `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos Finalísticos</text>`,
+  );
+  y += BAND_H + ROW_GAP;
+  parts.push(`<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${FLOW_H}" rx="8" fill="${C.teal}"/>`);
+  parts.push(renderFlow(primary, PAD + 48, y, FLOW_W - 48));
+  parts.push(`<text x="${PAD + FLOW_W + 28}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`);
+  (shownOutputs.length ? shownOutputs : [{ id: "empty-output", name: "Nenhuma saída cadastrada.", category: "output" as ChainCategory, description: null, status: "Ativa" }]).forEach((item, index) => {
+    const lineY = y + 25 + index * 19;
+    parts.push(
+      `<text x="${PAD + FLOW_W + OUTPUT_GAP + 8}" y="${lineY}" font-size="12" font-weight="700" fill="${C.white}"><tspan fill="${C.cyan}">›</tspan> ${escapeSvg(item.name.length > 56 ? `${item.name.slice(0, 53)}...` : item.name)}</text>`,
+    );
+  });
+  y += FLOW_H + SUPPORT_TOP_GAP;
+  parts.push(renderRow(support, PAD, y, CONTENT_W, "Nenhum macroprocesso de suporte cadastrado"));
+  y += CARD_H + ROW_GAP;
+  parts.push(
+    `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${BAND_H}" rx="8" fill="${C.green}"/>`,
+    `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Suporte</text>`,
     `</svg>`,
   );
 
@@ -1318,8 +1310,13 @@ function escapeSvg(value: string) {
   });
 }
 
-function exportPNG(primary: ValueChain[], support: ValueChain[], management: ValueChain[]) {
-  const svg = buildDiagramSVG(primary, support, management);
+function exportPNG(
+  primary: ValueChain[],
+  support: ValueChain[],
+  management: ValueChain[],
+  outputs: ValueChain[],
+) {
+  const svg = buildDiagramSVG(primary, support, management, outputs);
   const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(svgBlob);
   const img = new Image();
@@ -1351,11 +1348,17 @@ function exportPNG(primary: ValueChain[], support: ValueChain[], management: Val
 
 // ─── CSV / Excel export ───────────────────────────────────────────────────────
 
-function exportCSV(primary: ValueChain[], support: ValueChain[], management: ValueChain[]) {
+function exportCSV(
+  primary: ValueChain[],
+  support: ValueChain[],
+  management: ValueChain[],
+  outputs: ValueChain[],
+) {
   // Exporta no formato .xlsx (planilha comum do Excel), uma linha por cadeia.
   const all = [
     ...management.map((c) => ({ c, band: "Processos de Gestão" })),
     ...primary.map((c) => ({ c, band: "Processos Finalísticos" })),
+    ...outputs.map((c) => ({ c, band: "Saídas" })),
     ...support.map((c) => ({ c, band: "Processos de Suporte" })),
   ];
   const rows: (string | number)[][] = [
