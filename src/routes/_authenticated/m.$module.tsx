@@ -3656,7 +3656,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   });
   const parts: string[] = [];
 
-  parts.push(doc.sectionTitle("01 Dados do Mapeamento"));
+  parts.push(doc.sectionTitle("00 Dados do Mapeamento"));
   parts.push(
     doc.table(
       [
@@ -3689,25 +3689,25 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   );
   parts.push(doc.sectionTitle("Índice"));
   [
-    ["01", "Dados do Mapeamento"],
-    ["02", "Visão Geral"],
-    ["03", "Sistemas Envolvidos"],
-    ["04", "Análise SIPOC"],
-    ["05", "Fluxo AS IS"],
-    ["06", "Gaps e Causas-Raiz"],
-    ["07", "Próximos Passos"],
-    ["08", "Glossário"],
+    ["00", "Dados do Mapeamento"],
+    ["01", "Visão Geral"],
+    ["02", "Sistemas Envolvidos"],
+    ["03", "Análise SIPOC"],
+    ["04", "Etapas do Processo"],
+    ["05", "Gaps e Causas-Raiz"],
+    ["06", "Próximos Passos"],
+    ["07", "Glossário"],
   ].forEach(([num, label]) => parts.push(doc.tocLine(num, label)));
   parts.push(doc.sectionBreak());
 
-  parts.push(doc.sectionTitle("02 Visão Geral"));
+  parts.push(doc.sectionTitle("01 Visão Geral"));
   if (model.overview) parts.push(doc.p(model.overview, { align: "both", line: 1.05 }));
   model.cards.forEach((card) => {
     parts.push(doc.subTitle(card.title || "Item"));
     parts.push(doc.p(card.text, { align: "both", line: 1.05 }));
   });
 
-  parts.push(doc.sectionTitle("03 Sistemas Envolvidos"));
+  parts.push(doc.sectionTitle("02 Sistemas Envolvidos"));
   parts.push(
     model.systems.length
       ? doc.table(
@@ -3727,7 +3727,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       : doc.p("Nenhum sistema cadastrado."),
   );
 
-  parts.push(doc.sectionTitle("04 Análise SIPOC do Processo"));
+  parts.push(doc.sectionTitle("03 Análise SIPOC do Processo"));
   parts.push(
     model.sipocRows.length
       ? doc.table(
@@ -3753,7 +3753,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       : doc.p("Nenhuma linha SIPOC cadastrada."),
   );
 
-  parts.push(doc.sectionTitle("05 Fluxo AS IS - Etapas do Processo"));
+  parts.push(doc.sectionTitle("04 Etapas do Processo"));
   if (model.macroprocess.src) {
     parts.push(doc.subTitle(model.macroprocess.title || "Diagrama do Macroprocesso"));
     parts.push(
@@ -3820,7 +3820,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     }
   });
 
-  parts.push(doc.sectionTitle("06 Causas-Raiz e Planos de Ação"));
+  parts.push(doc.sectionTitle("05 Causas-Raiz e Planos de Ação"));
   model.gaps.forEach((gap, index) => {
     parts.push(
       doc.table(
@@ -3876,7 +3876,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   });
   if (!model.gaps.length) parts.push(doc.p("Nenhuma causa-raiz cadastrada."));
 
-  parts.push(doc.sectionTitle("07 Próximos Passos"));
+  parts.push(doc.sectionTitle("06 Próximos Passos"));
   parts.push(
     model.nextSteps.length
       ? doc.table(
@@ -3899,7 +3899,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   );
 
   parts.push(doc.pageBreak());
-  parts.push(doc.sectionTitle("08 Glossário"));
+  parts.push(doc.sectionTitle("07 Glossário"));
   parts.push(
     model.glossary.length
       ? doc.table(
@@ -4239,14 +4239,14 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || processName;
   const description = model.description || data.overview.objetivo;
   const nav = [
-    ["capa", "01 Capa"],
-    ["visao", "02 Visão geral"],
-    ["sistemas", "03 Sistemas envolvidos"],
-    ["sipoc", "04 SIPOC"],
-    ["fluxo", "05 Fluxo AS IS"],
-    ["gaps", "06 Gaps e causas-raiz"],
-    ["proximos", "07 Próximos passos"],
-    ["glossario", "08 Glossário"],
+    ["capa", "00 Capa"],
+    ["visao", "01 Visão geral"],
+    ["sistemas", "02 Sistemas envolvidos"],
+    ["sipoc", "03 SIPOC"],
+    ["fluxo", "04 Etapas do processo"],
+    ["gaps", "05 Gaps e causas-raiz"],
+    ["proximos", "06 Próximos passos"],
+    ["glossario", "07 Glossário"],
   ];
 
   const coverLine = (
@@ -4440,7 +4440,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   <div class="presentation-controls"><div class="theme-toggle" aria-label="Tema da apresentação"><button type="button" data-theme-choice="light" class="active" title="Tema claro" aria-label="Tema claro"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button><button type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A7.5 7.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg></button></div><button type="button" class="fullscreen-button" id="fullscreen-toggle" title="Tela cheia" aria-label="Tela cheia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5"/><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M16 21h5v-5"/></svg></button></div>
 </aside>
 <main class="content">
-<section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">01 · Apresentação de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "Relatório de mapeamento de processo.")}</p></div><div class="cover-code"><span>Código</span><strong>${html(code)}</strong></div></div><dl class="cover-context">${[
+<section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">00 · Apresentação de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "Relatório de mapeamento de processo.")}</p></div><div class="cover-code"><span>Código</span><strong>${html(code)}</strong></div></div><dl class="cover-context">${[
     coverLine("Processo mapeado", processName, processCode),
     coverLine("Cadeia de valor e área", processValueChain, processArea),
     coverLine("Dono do processo", processOwner),
@@ -4451,7 +4451,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     ["Elaborador", model.meta.elaborador],
     ["Revisor", model.meta.revisor],
   ]).replace('class="field-grid"', 'class="cover-meta"')}</section>
-<section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
+<section class="slide" id="visao">${sectionHead("01", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
     textPanel("Objetivo", model.description, overviewIcon("target")),
     textPanel("Escopo", data.overview.escopo, overviewIcon("scope")),
     textPanel("Estado atual", data.overview.estadoAtual),
@@ -4461,12 +4461,12 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     textPanel("Dores", data.overview.dores),
     textPanel("Oportunidades", data.overview.oportunidades),
   ].join("") || emptyBlock()}</div></section>
-<section class="slide alt" id="sistemas">${sectionHead("03", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
-<section class="slide" id="sipoc">${sectionHead("04", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
-<section class="slide alt" id="fluxo">${sectionHead("05", "Fluxo AS IS", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
-<section class="slide" id="gaps">${sectionHead("06", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}${gapTable}</section>
-<section class="slide alt" id="proximos">${sectionHead("07", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
-<section class="slide" id="glossario">${sectionHead("08", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
+<section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
+<section class="slide" id="sipoc">${sectionHead("03", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
+<section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
+<section class="slide" id="gaps">${sectionHead("05", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}${gapTable}</section>
+<section class="slide alt" id="proximos">${sectionHead("06", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
+<section class="slide" id="glossario">${sectionHead("07", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
 </main>
 </div>
 <div class="zoom-modal" id="zoom-modal" onclick="closeImageZoom()"><div class="zoom-title" id="zoom-title"></div><button class="zoom-close" onclick="closeImageZoom();event.stopPropagation()">Fechar</button><img id="zoom-img" alt="Imagem ampliada" onclick="changeImageZoom(0.25);event.stopPropagation()" oncontextmenu="changeImageZoom(-0.25);event.preventDefault();event.stopPropagation()"/><div class="zoom-help">Clique para ampliar. Botão direito para reduzir.</div><div class="zoom-map" id="zoom-map"><img id="zoom-map-img" alt="Miniatura"/><span aria-hidden="true"></span></div></div>
@@ -8022,14 +8022,14 @@ function DdpModule({
   // Seções na ordem exata do relatório em Word — fonte única para o índice
   // lateral e para o medidor segmentado da barra de comando.
   const sections: MappingSectionInfo[] = [
-    { key: "identification", num: "01", title: "Dados do Mapeamento", pct: sectionProgress.identification },
-    { key: "overview", num: "02", title: "Visão geral", pct: sectionProgress.overview },
-    { key: "systems", num: "03", title: "Sistemas envolvidos", pct: sectionProgress.systems },
-    { key: "sipoc", num: "04", title: "Análise SIPOC", pct: sectionProgress.sipoc },
-    { key: "flowStage", num: "05", title: "Fluxo AS IS", pct: sectionProgress.flowStage },
-    { key: "gaps", num: "06", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
-    { key: "nextSteps", num: "07", title: "Próximos passos", pct: sectionProgress.nextSteps },
-    { key: "glossary", num: "08", title: "Glossário", pct: sectionProgress.glossary },
+    { key: "identification", num: "00", title: "Dados do Mapeamento", pct: sectionProgress.identification },
+    { key: "overview", num: "01", title: "Visão geral", pct: sectionProgress.overview },
+    { key: "systems", num: "02", title: "Sistemas envolvidos", pct: sectionProgress.systems },
+    { key: "sipoc", num: "03", title: "Análise SIPOC", pct: sectionProgress.sipoc },
+    { key: "flowStage", num: "04", title: "Etapas do processo", pct: sectionProgress.flowStage },
+    { key: "gaps", num: "05", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
+    { key: "nextSteps", num: "06", title: "Próximos passos", pct: sectionProgress.nextSteps },
+    { key: "glossary", num: "07", title: "Glossário", pct: sectionProgress.glossary },
   ];
   const overallPct = Math.round(
     sections.reduce((sum, section) => sum + section.pct, 0) / sections.length,
@@ -8629,9 +8629,9 @@ function DdpModule({
       </Panel>
       <Panel
         id="sec-flowStage"
-        num="05"
+        num="04"
         openSignal={openTarget === "flowStage" ? openNonce : 0}
-        title="Fluxo AS IS — Etapas do processo"
+        title="Etapas do processo"
         progress={sectionProgress.flowStage}
       >
         <div className="grid gap-5">
