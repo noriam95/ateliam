@@ -125,6 +125,7 @@ const positionRegistrationSchema = organizationScopeSchema.extend({
 const ownerRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   departmentId: z.string().uuid(),
+  departmentIds: z.array(z.string().uuid()).optional().default([]),
   roleTitle: z.string().trim().min(2).max(160),
 });
 const processTypeRegistrationSchema = organizationScopeSchema.extend({
@@ -627,6 +628,17 @@ export const saveProcessArea = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    let previousName: string | null = null;
+    if (data.id) {
+      const { data: previous, error: previousError } = await context.supabase
+        .from("organization_departments")
+        .select("name")
+        .eq("id", data.id)
+        .eq("organization_id", access.organizationId)
+        .maybeSingle();
+      if (previousError) throw new Error(previousError.message);
+      previousName = previous?.name ?? null;
+    }
     // Sigla única por organização garante códigos de documento sem ambiguidade.
     const { data: clash, error: clashError } = await context.supabase
       .from("organization_departments")
@@ -658,18 +670,34 @@ export const saveProcessOwnerRegistration = createServerFn({ method: "POST" })
   .validator((data: z.infer<typeof ownerRegistrationSchema>) => ownerRegistrationSchema.parse(data))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const { data: area, error: areaError } = await context.supabase
+    let previousNames: string[] = [];
+    if (data.id) {
+      const { data: previous, error: previousError } = await context.supabase
+        .from("organization_process_owners")
+        .select("name, role_title")
+        .eq("id", data.id)
+        .eq("organization_id", access.organizationId)
+        .maybeSingle();
+      if (previousError) throw new Error(previousError.message);
+      previousNames = [previous?.name, previous?.role_title].filter(Boolean) as string[];
+    }
+    const requestedAreaIds = data.departmentIds.length ? data.departmentIds : [data.departmentId];
+    const { data: areas, error: areaError } = await context.supabase
       .from("organization_departments")
-      .select("name")
-      .eq("id", data.departmentId)
+      .select("id, name")
+      .in("id", requestedAreaIds)
       .eq("organization_id", access.organizationId)
-      .single();
+      .order("name");
     if (areaError) throw new Error(areaError.message);
+    if (!areas?.length) throw new Error("Selecione ao menos uma área válida.");
+    const areaIds = areas.map((area) => area.id);
+    const areaNames = areas.map((area) => area.name);
     const payload = {
       organization_id: access.organizationId,
-      department_id: data.departmentId,
+      department_id: areaIds[0],
+      department_ids: areaIds,
       role_title: data.roleTitle,
-      name: `${data.roleTitle} · ${area.name}`,
+      name: data.roleTitle,
       updated_at: new Date().toISOString(),
     };
     const query = data.id
@@ -679,6 +707,20 @@ export const saveProcessOwnerRegistration = createServerFn({ method: "POST" })
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
+    const aliases = Array.from(
+      new Set([
+        ...previousNames,
+        ...previousNames.flatMap((name) => areaNames.map((areaName) => `${name} · ${areaName}`)),
+      ]),
+    ).filter((name) => name && name !== data.roleTitle);
+    for (const alias of aliases) {
+      const { error: processError } = await context.supabase
+        .from("organization_processes")
+        .update({ owner: data.roleTitle, updated_at: new Date().toISOString() })
+        .eq("organization_id", access.organizationId)
+        .eq("owner", alias);
+      if (processError) throw new Error(processError.message);
+    }
     return row;
   });
 
@@ -702,6 +744,14 @@ export const savePositionRegistration = createServerFn({ method: "POST" })
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
+    if (data.id && previousName && previousName !== data.name) {
+      const { error: processError } = await context.supabase
+        .from("organization_processes")
+        .update({ department: data.name, updated_at: new Date().toISOString() })
+        .eq("organization_id", access.organizationId)
+        .eq("department", previousName);
+      if (processError) throw new Error(processError.message);
+    }
     return row;
   });
 

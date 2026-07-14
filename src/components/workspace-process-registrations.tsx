@@ -811,6 +811,7 @@ export function WorkspaceProcessRegistrations({
             id: draft.id || undefined,
             organizationId,
             departmentId: draft.departmentId,
+            departmentIds: draft.departmentIds.length ? draft.departmentIds : [draft.departmentId],
             roleTitle: draft.roleTitle,
           },
         });
@@ -902,6 +903,7 @@ export function WorkspaceProcessRegistrations({
     onSuccess: async () => {
       toast.success("Registro excluído.");
       if (!isDemo) await query.refetch();
+      setPendingDeleteRow(null);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -2016,11 +2018,19 @@ function saveDemoRegistration(
 ) {
   const id = draft.id || `demo-${view}-${Date.now()}`;
   setData((current) => {
-    if (view === "areas")
+    if (view === "areas") {
+      const previous = current.areas.find((item) => item.id === id);
       return {
         ...current,
         areas: upsert(current.areas, { id, name: draft.name, sigla: draft.sigla }),
+        processes:
+          previous && previous.name !== draft.name
+            ? current.processes.map((process) =>
+                process.department === previous.name ? { ...process, department: draft.name } : process,
+              )
+            : current.processes,
       };
+    }
     if (view === "positions")
       return {
         ...current,
@@ -2031,14 +2041,13 @@ function saveDemoRegistration(
         }),
       };
     if (view === "owners") {
+      const previous = current.owners.find((item) => item.id === id);
       const areaIds = draft.departmentIds.length
         ? draft.departmentIds
         : draft.departmentId
           ? [draft.departmentId]
           : [];
-      const areaNames = areaIds
-        .map((areaId) => current.areas.find((item) => item.id === areaId)?.name)
-        .filter(Boolean);
+      const previousAliases = [previous?.name, previous?.role_title].filter(Boolean) as string[];
       return {
         ...current,
         owners: upsert(current.owners, {
@@ -2046,8 +2055,15 @@ function saveDemoRegistration(
           department_id: areaIds[0] ?? null,
           department_ids: areaIds,
           role_title: draft.roleTitle,
-          name: `${draft.roleTitle}${areaNames.length ? ` · ${areaNames.join(", ")}` : ""}`,
+          name: draft.roleTitle,
         }),
+        processes: previousAliases.length
+          ? current.processes.map((process) =>
+              process.owner && previousAliases.includes(process.owner)
+                ? { ...process, owner: draft.roleTitle }
+                : process,
+            )
+          : current.processes,
       };
     }
     if (view === "owner-users")
