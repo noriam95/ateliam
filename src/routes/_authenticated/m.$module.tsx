@@ -2306,7 +2306,7 @@ function getDdpExportModel(data: DdpState) {
     name: system.nome,
     type: system.tipo,
     description: system.descricao,
-    items: splitText(system.descricao),
+    items: [],
   }));
 
   const flowSteps: ExportFlowStep[] = data.steps.map((step) => ({
