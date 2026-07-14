@@ -237,16 +237,34 @@ export const getAppConfig = createServerFn({ method: "GET" })
 
 export const updateMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { display_name: string }) =>
-    z.object({ display_name: z.string().trim().min(2).max(120) }).parse(d),
+  .validator((d: { display_name?: string; avatar_data_url?: string | null }) =>
+    z
+      .object({
+        display_name: z.string().trim().min(2).max(120).optional(),
+        avatar_data_url: z
+          .string()
+          .max(1_500_000)
+          .nullable()
+          .optional()
+          .refine((value) => !value || value.startsWith("data:image/"), {
+            message: "A foto precisa ser uma imagem.",
+          }),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
+    const updates: {
+      display_name?: string;
+      avatar_data_url?: string | null;
+      updated_at: string;
+    } = {
+      updated_at: new Date().toISOString(),
+    };
+    if (data.display_name !== undefined) updates.display_name = data.display_name;
+    if (data.avatar_data_url !== undefined) updates.avatar_data_url = data.avatar_data_url;
     const { error } = await context.supabase
       .from("profiles")
-      .update({
-        display_name: data.display_name,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };

@@ -1,7 +1,9 @@
 import { Camera, KeyRound, LogOut, Monitor, Moon, Palette, Sun, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { updateMyProfile } from "@/lib/config.functions";
 
 const PHOTO_PREFIX = "ateliam-profile-photo:";
 const PHOTO_SIZE = 256;
@@ -43,14 +45,19 @@ async function compressProfilePhoto(file: File): Promise<string> {
 export function UserProfileMenu({
   email,
   organizationName,
+  profilePhoto = "",
   isDemo = false,
+  onProfileUpdated,
   onSignOut,
 }: {
   email: string;
   organizationName: string;
+  profilePhoto?: string | null;
   isDemo?: boolean;
+  onProfileUpdated?: () => void | Promise<void>;
   onSignOut: () => void | Promise<void>;
 }) {
+  const updateProfile = useServerFn(updateMyProfile);
   const uploadRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -73,12 +80,16 @@ export function UserProfileMenu({
     .join("");
 
   useEffect(() => {
+    if (!isDemo) {
+      setPhoto(profilePhoto ?? "");
+      return;
+    }
     try {
       setPhoto(window.localStorage.getItem(storageKey) ?? "");
     } catch {
       setPhoto("");
     }
-  }, [storageKey]);
+  }, [isDemo, profilePhoto, storageKey]);
 
   async function addPhoto(file?: File) {
     if (!file) return;
@@ -88,7 +99,12 @@ export function UserProfileMenu({
     }
     try {
       const value = await compressProfilePhoto(file);
-      window.localStorage.setItem(storageKey, value);
+      if (isDemo) {
+        window.localStorage.setItem(storageKey, value);
+      } else {
+        await updateProfile({ data: { avatar_data_url: value } });
+        await onProfileUpdated?.();
+      }
       setPhoto(value);
       setOpen(false);
       toast.success("Foto de perfil atualizada.");

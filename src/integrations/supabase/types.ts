@@ -595,6 +595,7 @@ export type Database = {
       };
       profiles: {
         Row: {
+          avatar_data_url: string | null;
           created_at: string;
           display_name: string | null;
           email: string | null;
@@ -604,6 +605,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          avatar_data_url?: string | null;
           created_at?: string;
           display_name?: string | null;
           email?: string | null;
@@ -613,6 +615,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          avatar_data_url?: string | null;
           created_at?: string;
           display_name?: string | null;
           email?: string | null;

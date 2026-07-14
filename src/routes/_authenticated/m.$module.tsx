@@ -5887,7 +5887,9 @@ function ModuleWorkspacePage() {
         <UserProfileMenu
           email={isDemo ? "analista.local@bfflow.local" : (meQ.data?.profile?.email ?? "")}
           organizationName={organizationBrand.name ?? "BF Flow"}
+          profilePhoto={meQ.data?.profile?.avatar_data_url ?? ""}
           isDemo={isDemo}
+          onProfileUpdated={() => meQ.refetch()}
           onSignOut={signOut}
         />
         <input

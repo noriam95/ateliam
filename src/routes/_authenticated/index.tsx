@@ -855,7 +855,9 @@ function WorkspaceHome() {
         <UserProfileMenu
           email={email}
           organizationName={organizationName}
+          profilePhoto={meQ.data?.profile?.avatar_data_url ?? ""}
           isDemo={isDemo}
+          onProfileUpdated={() => meQ.refetch()}
           onSignOut={signOut}
         />
       </header>
