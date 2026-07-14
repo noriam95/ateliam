@@ -446,13 +446,14 @@ function PorterDiagram({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
-  const shownOutputs = outputs.slice(0, 5);
+  const outputItems = Array.isArray(outputs) ? outputs : [];
+  const shownOutputs = outputItems.slice(0, 5);
   const expandedImageSrc = useMemo(
     () =>
       `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-        buildDiagramSVG(primary, support, management, outputs),
+        buildDiagramSVG(primary, support, management, outputItems),
       )}`,
-    [primary, support, management, outputs],
+    [primary, support, management, outputItems],
   );
 
   function setExpandedZoom(next: number) {
@@ -1238,6 +1239,10 @@ function buildDiagramSVG(
   management: ValueChain[],
   outputs: ValueChain[],
 ): string {
+  const primaryItems = sanitizeValueChains(primary);
+  const supportItems = sanitizeValueChains(support);
+  const managementItems = sanitizeValueChains(management);
+  const outputItems = sanitizeValueChains(outputs);
   const W = 1400;
   const PAD = 48;
   const CONTENT_W = W - PAD * 2;
@@ -1265,8 +1270,8 @@ function buildDiagramSVG(
     cyan: "#8DEBC6",
   };
 
-  function wrapLabel(value: string, max = 24) {
-    const words = value.split(/\s+/).filter(Boolean);
+  function wrapLabel(value: unknown, max = 24) {
+    const words = String(value ?? "").split(/\s+/).filter(Boolean);
     const lines: string[] = [];
     let line = "";
     words.forEach((word) => {
@@ -1335,7 +1340,7 @@ function buildDiagramSVG(
       .join("\n");
   }
 
-  const shownOutputs = outputs.slice(0, 5);
+  const shownOutputs = outputItems.slice(0, 5);
   let y = PAD;
 
   const parts: string[] = [
@@ -1350,7 +1355,7 @@ function buildDiagramSVG(
     `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Gestão</text>`,
   );
   y += BAND_H + ROW_GAP;
-  parts.push(renderRow(management, PAD, y, CONTENT_W, "Nenhum macroprocesso de gestão cadastrado"));
+  parts.push(renderRow(managementItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de gestão cadastrado"));
   y += CARD_H + ROW_GAP;
   parts.push(
     `<polygon points="${W / 2 - 14},${y} ${W / 2 + 14},${y} ${W / 2},${y + 16}" fill="${C.dark}"/>`,
@@ -1362,7 +1367,7 @@ function buildDiagramSVG(
   );
   y += BAND_H + ROW_GAP;
   parts.push(`<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${FLOW_H}" rx="8" fill="${C.teal}"/>`);
-  parts.push(renderFlow(primary, PAD + 48, y, FLOW_W - 48));
+  parts.push(renderFlow(primaryItems, PAD + 48, y, FLOW_W - 48));
   parts.push(`<text x="${PAD + FLOW_W + 28}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`);
   (shownOutputs.length ? shownOutputs : [{ id: "empty-output", name: "Nenhuma saída cadastrada.", category: "output" as ChainCategory, description: null, status: "Ativa" }]).forEach((item, index) => {
     const lineY = y + 25 + index * 19;
@@ -1371,7 +1376,7 @@ function buildDiagramSVG(
     );
   });
   y += FLOW_H + SUPPORT_TOP_GAP;
-  parts.push(renderRow(support, PAD, y, CONTENT_W, "Nenhum macroprocesso de suporte cadastrado"));
+  parts.push(renderRow(supportItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de suporte cadastrado"));
   y += CARD_H + ROW_GAP;
   parts.push(
     `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${BAND_H}" rx="8" fill="${C.green}"/>`,
@@ -1382,8 +1387,8 @@ function buildDiagramSVG(
   return parts.join("\n");
 }
 
-function escapeSvg(value: string) {
-  return value.replace(/[<>&'"]/g, (char) => {
+function escapeSvg(value: unknown) {
+  return String(value ?? "").replace(/[<>&'"]/g, (char) => {
     const map: Record<string, string> = {
       "<": "&lt;",
       ">": "&gt;",
@@ -1393,6 +1398,19 @@ function escapeSvg(value: string) {
     };
     return map[char] ?? char;
   });
+}
+
+function sanitizeValueChains(items: ValueChain[] | null | undefined) {
+  return Array.isArray(items)
+    ? items
+        .filter((item): item is ValueChain => Boolean(item))
+        .map((item) => ({
+          ...item,
+          name: String(item.name ?? "").trim() || "-",
+          description: item.description == null ? null : String(item.description),
+          status: String(item.status ?? "Ativa"),
+        }))
+    : [];
 }
 
 function exportPNG(
