@@ -45,7 +45,7 @@ import {
 } from "@/components/workspace-process-registrations";
 import { WorkspaceReports } from "@/components/workspace-reports";
 import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
-import { getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
+import { getMe, getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
 import type { CodeSettings } from "@/lib/code-generation";
 
@@ -389,6 +389,12 @@ function WorkspaceHome() {
   }, [search.area, search.view]);
   const dashboardFn = useServerFn(getOrganizationDashboard);
   const accessibleOrganizationsFn = useServerFn(listAccessibleOrganizations);
+  const me = useServerFn(getMe);
+  const meQ = useQuery({
+    queryKey: ["home-me"],
+    queryFn: () => me(),
+    enabled: !isDemo,
+  });
   const accessibleOrganizationsQ = useQuery({
     queryKey: ["accessible-organizations", isDemo ? "demo" : "cloud"],
     queryFn: () => accessibleOrganizationsFn(),
