@@ -11148,7 +11148,6 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
       <span className={fieldLabelClass}>
         <Lock className="h-3 w-3" />
         {label}
-        <span className="font-medium normal-case italic opacity-70">· do cadastro</span>
       </span>
       <input
         readOnly
