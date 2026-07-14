@@ -445,7 +445,42 @@ function PorterDiagram({
   onExportPng?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [zoomScale, setZoomScale] = useState(1);
   const shownOutputs = outputs.slice(0, 5);
+  const expandedImageSrc = useMemo(
+    () =>
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+        buildDiagramSVG(primary, support, management, outputs),
+      )}`,
+    [primary, support, management, outputs],
+  );
+
+  function setExpandedZoom(next: number) {
+    setZoomScale(Math.max(1, Math.min(3, next)));
+  }
+
+  function openExpanded() {
+    setExpandedZoom(1);
+    setExpanded(true);
+  }
+
+  function closeExpanded() {
+    setExpanded(false);
+    setExpandedZoom(1);
+  }
+
+  function zoomMapWindowStyle() {
+    const padding = 8;
+    const width = 174;
+    const height = 110;
+    const visible = 1 / zoomScale;
+    return {
+      left: padding + (width - width * visible) / 2,
+      top: padding + (height - height * visible) / 2,
+      width: width * visible,
+      height: height * visible,
+    };
+  }
 
   const chainButton = (
     item: ValueChain,
@@ -564,7 +599,7 @@ function PorterDiagram({
       <div className="flex items-center justify-end gap-2">
         <button
           type="button"
-          onClick={() => setExpanded(true)}
+          onClick={openExpanded}
           title="Expandir desenho"
           className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
         >
@@ -585,6 +620,56 @@ function PorterDiagram({
       </div>
       {renderDiagram(false)}
       {expanded ? (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center overflow-hidden bg-black/90 p-7"
+          onClick={closeExpanded}
+        >
+          <div className="fixed left-7 top-5 z-10 text-sm font-black uppercase tracking-[0.18em] text-white">
+            Cadeia de Valor
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              closeExpanded();
+            }}
+            className="fixed right-7 top-5 z-10 rounded-lg border border-white/35 bg-transparent px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            Fechar
+          </button>
+          <img
+            src={expandedImageSrc}
+            alt="Cadeia de Valor ampliada"
+            className="max-h-[86vh] max-w-[94vw] bg-white shadow-[0_20px_70px_rgba(0,0,0,.55)] transition-transform duration-150"
+            style={{ transform: `scale(${zoomScale})` }}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpandedZoom(zoomScale + 0.25);
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setExpandedZoom(zoomScale - 0.25);
+            }}
+          />
+          <div className="fixed bottom-6 left-7 text-xs text-white/75">
+            Clique para ampliar. Botão direito para reduzir.
+          </div>
+          <div className="fixed bottom-6 right-7 h-[126px] w-[190px] overflow-hidden rounded-xl border border-white/35 bg-white/10 p-2">
+            <img
+              src={expandedImageSrc}
+              alt="Miniatura da Cadeia de Valor"
+              className="h-full w-full rounded-lg bg-white object-contain"
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute rounded-lg border-2 border-[#d49a21] bg-[#d49a21]/15 shadow-[0_0_0_999px_rgba(0,0,0,.18)] transition-all duration-150"
+              style={zoomMapWindowStyle()}
+            />
+          </div>
+        </div>
+      ) : null}
+      {false && expanded ? (
         <div className="fixed inset-0 z-[80] grid bg-slate-950/50 p-4 backdrop-blur-[2px]">
           <div className="grid max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
             <div className="flex items-center gap-3 border-b border-border px-4 py-3">
