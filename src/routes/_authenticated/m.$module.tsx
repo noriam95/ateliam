@@ -315,16 +315,27 @@ type RevisionItem = {
   aprovador: string;
 };
 type ChangeItem = { id: string; versao: string; local: string; descricao: string };
-type BpmnNodeType = "start" | "task" | "gateway" | "end";
+type BpmnNodeType = "start" | "task" | "gateway" | "end" | "annotation";
 type BpmnNode = {
   id: string;
   type: BpmnNodeType;
   label: string;
   x: number;
   y: number;
-  lane: 0 | 1;
+  lane: number;
+  width?: number;
+  height?: number;
+  description?: string;
+  responsible?: string;
+  color?: string;
 };
-type BpmnFlow = { id: string; from: string; to: string; label?: string };
+type BpmnFlow = {
+  id: string;
+  from: string;
+  to: string;
+  label?: string;
+  type?: "sequence" | "message" | "association";
+};
 
 type DdpState = {
   meta: {
@@ -410,7 +421,7 @@ type BpmnState = {
   poolName: string;
   codigo?: string;
   area?: string;
-  lanes: [string, string];
+  lanes: string[];
   nodes: BpmnNode[];
   flows: BpmnFlow[];
 };
@@ -10189,6 +10200,539 @@ function BpmnModule({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
+  const [connectFrom, setConnectFrom] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<{ id: string; dx: number; dy: number } | null>(null);
+  const [zoom, setZoom] = useState(100);
+  const [showGrid, setShowGrid] = useState(true);
+  const [snap, setSnap] = useState(true);
+  const [showPrintArea, setShowPrintArea] = useState(true);
+  const [history, setHistory] = useState<BpmnState[]>([]);
+  const [future, setFuture] = useState<BpmnState[]>([]);
+
+  const lanes = data.lanes.length ? data.lanes : ["Solicitante", "Executor"];
+  const selected = data.nodes.find((node) => node.id === selectedId) ?? null;
+  const selectedFlow = data.flows.find((flow) => flow.id === selectedFlowId) ?? null;
+  const laneHeight = 150;
+  const poolX = 120;
+  const poolY = 90;
+  const laneLabelWidth = 150;
+  const maxNodeX = data.nodes.reduce((max, node) => Math.max(max, node.x + (node.width ?? 140)), 0);
+  const poolWidth = Math.max(1120, maxNodeX + 220);
+  const poolHeight = Math.max(lanes.length * laneHeight, 300);
+  const canvasWidth = poolX + poolWidth + 240;
+  const canvasHeight = poolY + poolHeight + 170;
+  const diagramProgress = completionPercent([data.poolName, lanes, data.nodes, data.flows]);
+  const validation = validateBpmnDiagram(data, lanes, {
+    poolX,
+    poolY,
+    laneLabelWidth,
+    poolWidth,
+    laneHeight,
+  });
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+      }
+      if ((event.key === "Delete" || event.key === "Backspace") && (selectedId || selectedFlowId)) {
+        const target = event.target as HTMLElement | null;
+        if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
+        event.preventDefault();
+        deleteSelected();
+      }
+      if (event.key === "Escape") setConnectFrom(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
+  function commit(next: BpmnState) {
+    setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
+    setFuture([]);
+    update({ ...next, lanes: next.lanes.length ? next.lanes : lanes });
+  }
+
+  function undo() {
+    const previous = history.at(-1);
+    if (!previous) return;
+    setHistory((items) => items.slice(0, -1));
+    setFuture((items) => [{ ...data, lanes }, ...items].slice(0, 24));
+    update(previous);
+  }
+
+  function redo() {
+    const next = future[0];
+    if (!next) return;
+    setFuture((items) => items.slice(1));
+    setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
+    update(next);
+  }
+
+  function point(event: React.PointerEvent<SVGSVGElement>) {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: ((event.clientX - rect.left) * 100) / zoom,
+      y: ((event.clientY - rect.top) * 100) / zoom,
+    };
+  }
+
+  function laneY(index: number) {
+    return poolY + index * laneHeight;
+  }
+
+  function laneIndexFromY(y: number) {
+    return Math.max(0, Math.min(lanes.length - 1, Math.floor((y - poolY) / laneHeight)));
+  }
+
+  function snapValue(value: number) {
+    return snap ? Math.round(value / 10) * 10 : value;
+  }
+
+  function addNode(type: BpmnNodeType) {
+    const lane = Math.min(Math.max(selected?.lane ?? 0, 0), lanes.length - 1);
+    const dimensions =
+      type === "gateway"
+        ? { width: 90, height: 90 }
+        : type === "start" || type === "end"
+          ? { width: 70, height: 70 }
+          : type === "annotation"
+            ? { width: 180, height: 86 }
+            : { width: 140, height: 64 };
+    const next: BpmnNode = {
+      id: id(type),
+      type,
+      label:
+        type === "start"
+          ? "Início"
+          : type === "end"
+            ? "Fim"
+            : type === "gateway"
+              ? "Decisão"
+              : type === "annotation"
+                ? "Anotação"
+                : "Nova atividade",
+      x: poolX + laneLabelWidth + 80 + data.nodes.length * 34,
+      y: laneY(lane) + 42,
+      lane,
+      ...dimensions,
+    };
+    commit({ ...data, lanes, nodes: [...data.nodes, next] });
+    setSelectedId(next.id);
+    setSelectedFlowId(null);
+  }
+
+  function deleteSelected() {
+    if (selectedFlowId) {
+      commit({ ...data, lanes, flows: data.flows.filter((flow) => flow.id !== selectedFlowId) });
+      setSelectedFlowId(null);
+      return;
+    }
+    if (!selectedId) return;
+    commit({
+      ...data,
+      lanes,
+      nodes: data.nodes.filter((node) => node.id !== selectedId),
+      flows: data.flows.filter((flow) => flow.from !== selectedId && flow.to !== selectedId),
+    });
+    setSelectedId(null);
+    setConnectFrom(null);
+  }
+
+  function duplicateSelected() {
+    if (!selected) return;
+    const copyNode = {
+      ...selected,
+      id: id(selected.type),
+      label: `${selected.label} cópia`,
+      x: selected.x + 30,
+      y: selected.y + 30,
+    };
+    commit({ ...data, lanes, nodes: [...data.nodes, copyNode] });
+    setSelectedId(copyNode.id);
+    setSelectedFlowId(null);
+  }
+
+  function handleNodeClick(node: BpmnNode) {
+    if (connectFrom && connectFrom !== node.id) {
+      commit({
+        ...data,
+        lanes,
+        flows: [...data.flows, { id: id("flow"), from: connectFrom, to: node.id, type: "sequence" }],
+      });
+      setConnectFrom(null);
+      setSelectedId(node.id);
+      setSelectedFlowId(null);
+      return;
+    }
+    setSelectedId(node.id);
+    setSelectedFlowId(null);
+  }
+
+  function addLane() {
+    commit({ ...data, lanes: [...lanes, `Nova raia ${lanes.length + 1}`] });
+  }
+
+  function updateLane(index: number, value: string) {
+    commit({ ...data, lanes: lanes.map((lane, laneIndex) => (laneIndex === index ? value : lane)) });
+  }
+
+  function moveLane(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= lanes.length) return;
+    const nextLanes = [...lanes];
+    [nextLanes[index], nextLanes[target]] = [nextLanes[target], nextLanes[index]];
+    const nextNodes = data.nodes.map((node) => {
+      if (node.lane === index) return { ...node, lane: target, y: node.y + direction * laneHeight };
+      if (node.lane === target) return { ...node, lane: index, y: node.y - direction * laneHeight };
+      return node;
+    });
+    commit({ ...data, lanes: nextLanes, nodes: nextNodes });
+  }
+
+  function deleteLane(index: number) {
+    if (lanes.length <= 1) return;
+    if (data.nodes.some((node) => node.lane === index)) {
+      toast.error("Mova ou exclua os elementos da raia antes de removê-la.");
+      return;
+    }
+    commit({
+      ...data,
+      lanes: lanes.filter((_, laneIndex) => laneIndex !== index),
+      nodes: data.nodes.map((node) =>
+        node.lane > index ? { ...node, lane: node.lane - 1, y: node.y - laneHeight } : node,
+      ),
+    });
+  }
+
+  function exportSvg() {
+    const svg = svgRef.current?.outerHTML ?? "";
+    downloadText(`bf-flow-fluxograma-${today()}.svg`, svg, "image/svg+xml");
+  }
+
+  function exportBpmnXml() {
+    const xml = `<definitions id="BF_Flow_Fluxograma" targetNamespace="https://bf-flow.local/fluxograma">
+  <process id="Process_1" name="${escapeXml(data.poolName)}">
+${data.nodes.map((node) => `    <${node.type === "start" ? "startEvent" : node.type === "end" ? "endEvent" : node.type === "gateway" ? "exclusiveGateway" : node.type === "annotation" ? "textAnnotation" : "task"} id="${node.id}" name="${escapeXml(node.label)}" />`).join("\n")}
+${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.from}" targetRef="${flow.to}" name="${escapeXml(flow.label ?? "")}" />`).join("\n")}
+  </process>
+</definitions>`;
+    downloadText(`bf-flow-fluxograma-${today()}.xml`, xml, "application/xml");
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Hero title="Modelador de fluxograma" eyebrow="Processos · Fluxograma" progress={diagramProgress}>
+        Crie piscinas, raias, elementos BPMN e conectores em um canvas livre.
+      </Hero>
+
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/25 px-3 py-2">
+          <ToolbarButton onClick={undo} icon={<RotateCcw className="h-4 w-4" />}>Desfazer</ToolbarButton>
+          <ToolbarButton onClick={redo} icon={<RotateCcw className="h-4 w-4 rotate-180" />}>Refazer</ToolbarButton>
+          <ToolbarButton onClick={duplicateSelected} icon={<Copy className="h-4 w-4" />}>Duplicar</ToolbarButton>
+          <ToolbarButton onClick={deleteSelected} icon={<Trash2 className="h-4 w-4" />}>Excluir</ToolbarButton>
+          <span className="mx-1 h-7 w-px bg-border" />
+          <ToolbarButton onClick={() => selectedId && setConnectFrom(selectedId)} icon={<GitBranch className="h-4 w-4" />}>Conectar</ToolbarButton>
+          <ToolbarButton onClick={() => setZoom(85)} icon={<Eye className="h-4 w-4" />}>Ajustar</ToolbarButton>
+          <span className="mx-1 h-7 w-px bg-border" />
+          <button type="button" onClick={() => setShowGrid((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${showGrid ? "bg-[var(--gold)] text-primary-foreground" : "border border-border bg-card text-foreground"}`}>Grade</button>
+          <button type="button" onClick={() => setSnap((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${snap ? "bg-[var(--gold)] text-primary-foreground" : "border border-border bg-card text-foreground"}`}>Snap</button>
+          <button type="button" onClick={() => setShowPrintArea((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${showPrintArea ? "bg-[var(--gold)] text-primary-foreground" : "border border-border bg-card text-foreground"}`}>Área de impressão</button>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-sm font-bold">-</button>
+            <span className="w-14 text-center font-data text-sm font-bold">{zoom}%</span>
+            <button type="button" onClick={() => setZoom((value) => Math.min(180, value + 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-sm font-bold">+</button>
+          </div>
+          <ToolbarButton onClick={exportBpmnXml} icon={<Download className="h-4 w-4" />}>XML</ToolbarButton>
+          <ToolbarButton onClick={exportSvg} icon={<Download className="h-4 w-4" />}>SVG</ToolbarButton>
+        </div>
+
+        <div className="grid min-h-[680px] xl:grid-cols-[230px_minmax(0,1fr)_330px]">
+          <aside className="border-b border-border bg-muted/20 p-3 xl:border-b-0 xl:border-r">
+            <PaletteGroup title="Piscinas e raias">
+              <PaletteButton icon={<Layers className="h-4 w-4" />} onClick={addLane}>Adicionar raia</PaletteButton>
+            </PaletteGroup>
+            <div className="mt-4" />
+            <PaletteGroup title="Eventos">
+              <PaletteButton icon={<Circle className="h-4 w-4" />} onClick={() => addNode("start")}>Evento inicial</PaletteButton>
+              <PaletteButton icon={<Circle className="h-4 w-4" />} onClick={() => addNode("end")}>Evento final</PaletteButton>
+            </PaletteGroup>
+            <div className="mt-4" />
+            <PaletteGroup title="Fluxo">
+              <PaletteButton icon={<Square className="h-4 w-4" />} onClick={() => addNode("task")}>Atividade</PaletteButton>
+              <PaletteButton icon={<Diamond className="h-4 w-4" />} onClick={() => addNode("gateway")}>Gateway</PaletteButton>
+              <PaletteButton icon={<MessageSquare className="h-4 w-4" />} onClick={() => addNode("annotation")}>Anotação</PaletteButton>
+            </PaletteGroup>
+            <div className="mt-4 rounded-lg border border-border bg-card p-3">
+              <div className="flex items-center justify-between text-sm font-semibold">
+                <span>Validação</span>
+                <span className={validation.length ? "text-amber-600" : "text-emerald-600"}>{validation.length}</span>
+              </div>
+              <div className="mt-3 grid max-h-48 gap-2 overflow-auto text-xs text-muted-foreground">
+                {validation.length ? (
+                  validation.map((item) => (
+                    <button key={item.id} type="button" onClick={() => item.nodeId && setSelectedId(item.nodeId)} className="rounded-md border border-border bg-muted/25 px-2 py-1.5 text-left hover:bg-muted">
+                      <span className="font-semibold text-foreground">{item.kind}</span> · {item.message}
+                    </button>
+                  ))
+                ) : (
+                  <span>Nenhuma pendência básica.</span>
+                )}
+              </div>
+            </div>
+          </aside>
+
+          <main className="min-w-0 bg-[#f3f3f0] dark:bg-[#111418]">
+            {connectFrom ? (
+              <div className="border-b border-[color-mix(in_oklab,var(--gold)_35%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-4 py-2 text-sm font-semibold text-foreground">
+                Modo de conexão ativo. Clique no destino ou pressione Esc.
+              </div>
+            ) : null}
+            <div className="h-[680px] overflow-auto p-5">
+              <svg
+                ref={svgRef}
+                width={(canvasWidth * zoom) / 100}
+                height={(canvasHeight * zoom) / 100}
+                viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+                className="touch-none rounded-xl bg-white shadow-sm dark:bg-[#171b20]"
+                onPointerMove={(event) => {
+                  if (!dragging) return;
+                  const p = point(event);
+                  update({
+                    ...data,
+                    lanes,
+                    nodes: data.nodes.map((node) => {
+                      if (node.id !== dragging.id) return node;
+                      const width = node.width ?? 140;
+                      const height = node.height ?? 64;
+                      const x = Math.max(poolX + laneLabelWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(p.x - dragging.dx)));
+                      const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(p.y - dragging.dy)));
+                      return { ...node, x, y, lane: laneIndexFromY(y + height / 2) };
+                    }),
+                  });
+                }}
+                onPointerUp={() => {
+                  if (dragging) {
+                    setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
+                    setFuture([]);
+                  }
+                  setDragging(null);
+                }}
+                onPointerLeave={() => setDragging(null)}
+                onClick={() => {
+                  setSelectedId(null);
+                  setSelectedFlowId(null);
+                }}
+              >
+                <defs>
+                  <pattern id="bpmn-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d6d6d6" strokeWidth="0.6" />
+                  </pattern>
+                  <marker id="arrow" markerHeight="9" markerWidth="9" orient="auto" refX="8" refY="4.5">
+                    <path d="M0,0 L9,4.5 L0,9 Z" fill="#374151" />
+                  </marker>
+                </defs>
+                {showGrid ? <rect width={canvasWidth} height={canvasHeight} fill="url(#bpmn-grid)" opacity="0.45" /> : null}
+                {showPrintArea ? <rect x={poolX - 14} y={poolY - 14} width={poolWidth + 28} height={poolHeight + 28} rx="20" fill="none" stroke="#d39a20" strokeDasharray="8 8" strokeWidth="2" opacity="0.55" /> : null}
+                <rect x={poolX} y={poolY} width={poolWidth} height={poolHeight} rx="14" fill="#ffffff" stroke="#cfd3d8" />
+                <rect x={poolX} y={poolY} width={laneLabelWidth} height={poolHeight} rx="14" fill="#f4f4f2" stroke="#cfd3d8" />
+                <text x={poolX + 22} y={poolY + 30} fontSize="15" fontWeight="800" fill="#1f2937">{data.poolName || "Processo"}</text>
+                {lanes.map((lane, index) => (
+                  <g key={`${lane}-${index}`}>
+                    <rect x={poolX} y={laneY(index)} width={poolWidth} height={laneHeight} fill={index % 2 === 0 ? "#ffffff" : "#fbfaf7"} stroke="#cfd3d8" />
+                    <rect x={poolX} y={laneY(index)} width={laneLabelWidth} height={laneHeight} fill={index % 2 === 0 ? "#f4f4f2" : "#eceae5"} stroke="#cfd3d8" />
+                    <text x={poolX + 22} y={laneY(index) + 82} fontSize="14" fontWeight="800" fill="#374151">{lane || `Raia ${index + 1}`}</text>
+                  </g>
+                ))}
+                {data.flows.map((flow) => {
+                  const from = data.nodes.find((node) => node.id === flow.from);
+                  const to = data.nodes.find((node) => node.id === flow.to);
+                  if (!from || !to) return null;
+                  return (
+                    <BpmnConnector
+                      key={flow.id}
+                      flow={flow}
+                      from={from}
+                      to={to}
+                      selected={flow.id === selectedFlowId}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedFlowId(flow.id);
+                        setSelectedId(null);
+                      }}
+                    />
+                  );
+                })}
+                {data.nodes.map((node) => (
+                  <BpmnShape
+                    key={node.id}
+                    node={node}
+                    selected={node.id === selectedId}
+                    connecting={node.id === connectFrom}
+                    onPointerDown={(event) => {
+                      event.stopPropagation();
+                      const p = point(event as React.PointerEvent<SVGSVGElement>);
+                      setDragging({ id: node.id, dx: p.x - node.x, dy: p.y - node.y });
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleNodeClick(node);
+                    }}
+                  />
+                ))}
+              </svg>
+            </div>
+          </main>
+
+          <aside className="border-t border-border bg-card p-4 xl:border-l xl:border-t-0">
+            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Propriedades</h3>
+            <div className="grid gap-3">
+              <Field label="Nome da piscina" value={data.poolName} onChange={(poolName) => commit({ ...data, lanes, poolName })} />
+              <Field label="Área responsável" value={data.area ?? ""} onChange={(area) => commit({ ...data, lanes, area })} />
+              {autoCode ? <ReadOnlyField label="Código automático" value={data.codigo || codePreview} /> : <Field label="Código" value={data.codigo ?? ""} onChange={(codigo) => commit({ ...data, lanes, codigo })} />}
+            </div>
+            <div className="mt-5 border-t border-border pt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-sm font-bold text-foreground">Raias</h4>
+                <button type="button" onClick={addLane} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"><Plus className="h-3.5 w-3.5" />Nova</button>
+              </div>
+              <div className="grid gap-2">
+                {lanes.map((lane, index) => (
+                  <div key={`${lane}-${index}`} className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-border bg-muted/20 p-2">
+                    <Field compact label={`Raia ${index + 1}`} value={lane} onChange={(value) => updateLane(index, value)} />
+                    <div className="flex items-end gap-1">
+                      <IconButton label="Subir" onClick={() => moveLane(index, -1)}><ArrowUp className="h-4 w-4" /></IconButton>
+                      <IconButton label="Descer" onClick={() => moveLane(index, 1)}><ArrowDown className="h-4 w-4" /></IconButton>
+                      <IconButton label="Excluir raia" onClick={() => deleteLane(index)}><Trash2 className="h-4 w-4" /></IconButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {selected ? (
+              <div className="mt-5 border-t border-border pt-4">
+                <h4 className="mb-3 text-sm font-bold text-foreground">Elemento selecionado</h4>
+                <div className="grid gap-3">
+                  <Field label="Texto" value={selected.label} onChange={(label) => commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === selected.id ? { ...node, label } : node)) })} />
+                  <TextArea label="Descrição" rows={3} value={selected.description ?? ""} onChange={(description) => commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === selected.id ? { ...node, description } : node)) })} />
+                  <Field label="Responsável" value={selected.responsible ?? ""} onChange={(responsible) => commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === selected.id ? { ...node, responsible } : node)) })} />
+                </div>
+              </div>
+            ) : selectedFlow ? (
+              <div className="mt-5 border-t border-border pt-4">
+                <h4 className="mb-3 text-sm font-bold text-foreground">Conector selecionado</h4>
+                <Field label="Rótulo / condição" value={selectedFlow.label ?? ""} onChange={(label) => commit({ ...data, lanes, flows: data.flows.map((flow) => (flow.id === selectedFlow.id ? { ...flow, label } : flow)) })} />
+              </div>
+            ) : (
+              <div className="mt-5 rounded-lg border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+                Selecione um elemento ou conector para editar propriedades.
+              </div>
+            )}
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaletteGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section>
+      <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</div>
+      <div className="grid gap-1.5">{children}</div>
+    </section>
+  );
+}
+
+function PaletteButton({ icon, onClick, children }: { icon: ReactNode; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm font-semibold text-foreground transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_8%,var(--card))]">
+      <span className="text-[var(--gold)]">{icon}</span>
+      {children}
+    </button>
+  );
+}
+
+function validateBpmnDiagram(
+  data: BpmnState,
+  lanes: string[],
+  bounds: { poolX: number; poolY: number; laneLabelWidth: number; poolWidth: number; laneHeight: number },
+) {
+  const issues: Array<{ id: string; kind: "Erro" | "Alerta" | "Recomendação"; message: string; nodeId?: string }> = [];
+  if (!data.nodes.some((node) => node.type === "start")) issues.push({ id: "missing-start", kind: "Erro", message: "Processo sem evento inicial." });
+  if (!data.nodes.some((node) => node.type === "end")) issues.push({ id: "missing-end", kind: "Erro", message: "Processo sem evento final." });
+  lanes.forEach((lane, index) => {
+    if (!lane.trim()) issues.push({ id: `lane-${index}`, kind: "Alerta", message: `Raia ${index + 1} sem identificação.` });
+  });
+  data.nodes.forEach((node) => {
+    const width = node.width ?? 140;
+    const height = node.height ?? 64;
+    if (!node.label.trim()) issues.push({ id: `${node.id}-label`, kind: "Alerta", message: "Elemento sem nome.", nodeId: node.id });
+    const insideX = node.x >= bounds.poolX + bounds.laneLabelWidth && node.x + width <= bounds.poolX + bounds.poolWidth;
+    const insideY = node.y >= bounds.poolY && node.y + height <= bounds.poolY + lanes.length * bounds.laneHeight;
+    if (node.type !== "annotation" && (!insideX || !insideY)) issues.push({ id: `${node.id}-outside`, kind: "Alerta", message: "Elemento BPMN fora dos limites da piscina.", nodeId: node.id });
+    if (node.type !== "start" && !data.flows.some((flow) => flow.to === node.id)) issues.push({ id: `${node.id}-in`, kind: "Recomendação", message: "Elemento sem entrada.", nodeId: node.id });
+    if (node.type !== "end" && !data.flows.some((flow) => flow.from === node.id)) issues.push({ id: `${node.id}-out`, kind: "Recomendação", message: "Elemento sem saída.", nodeId: node.id });
+  });
+  data.flows.forEach((flow) => {
+    if (!data.nodes.some((node) => node.id === flow.from)) issues.push({ id: `${flow.id}-from`, kind: "Erro", message: "Conector sem origem." });
+    if (!data.nodes.some((node) => node.id === flow.to)) issues.push({ id: `${flow.id}-to`, kind: "Erro", message: "Conector sem destino." });
+  });
+  return issues;
+}
+
+function nodeCenter(node: BpmnNode) {
+  return { x: node.x + (node.width ?? 140) / 2, y: node.y + (node.height ?? 64) / 2 };
+}
+
+function BpmnConnector({
+  flow,
+  from,
+  to,
+  selected,
+  onClick,
+}: {
+  flow: BpmnFlow;
+  from: BpmnNode;
+  to: BpmnNode;
+  selected: boolean;
+  onClick: (event: React.MouseEvent<SVGGElement>) => void;
+}) {
+  const a = nodeCenter(from);
+  const b = nodeCenter(to);
+  const midX = (a.x + b.x) / 2;
+  const path = `M ${a.x} ${a.y} L ${midX} ${a.y} L ${midX} ${b.y} L ${b.x} ${b.y}`;
+  return (
+    <g onClick={onClick} className="cursor-pointer">
+      <path d={path} fill="none" stroke={selected ? "#d39a20" : "#374151"} strokeWidth={selected ? 3 : 2} markerEnd="url(#arrow)" />
+      {flow.label ? <text x={midX + 8} y={(a.y + b.y) / 2 - 8} fontSize="12" fontWeight="700" fill="#374151">{flow.label}</text> : null}
+    </g>
+  );
+}
+
+function BpmnModuleLegacy({
+  data,
+  update,
+  autoCode = false,
+  codePreview = "",
+}: {
+  data: BpmnState;
+  update: (value: BpmnState) => void;
+  autoCode?: boolean;
+  codePreview?: string;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; dx: number; dy: number } | null>(null);
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null;
@@ -10489,41 +11033,62 @@ function BpmnShape({
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
 }) {
   const stroke = connecting ? "#d6a33f" : selected ? "#3f3f46" : "#3f3f46";
-  const common = { fill: "#ffffff", stroke, strokeWidth: selected || connecting ? 3 : 2 };
+  const width =
+    node.width ?? (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 140);
+  const height =
+    node.height ?? (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 64);
+  const common = { fill: node.color ?? "#ffffff", stroke, strokeWidth: selected || connecting ? 3 : 2 };
   return (
     <g onPointerDown={onPointerDown} onClick={onClick} className="cursor-move">
       {node.type === "task" ? (
-        <rect x={node.x} y={node.y} width="120" height="58" rx="10" {...common} />
+        <rect x={node.x} y={node.y} width={width} height={height} rx="10" {...common} />
+      ) : null}
+      {node.type === "annotation" ? (
+        <path
+          d={`M${node.x},${node.y} H${node.x + width - 18} L${node.x + width},${node.y + 18} V${node.y + height} H${node.x} Z`}
+          fill="#fff7df"
+          stroke={stroke}
+          strokeWidth={selected ? 3 : 2}
+          strokeDasharray="6 4"
+        />
       ) : null}
       {node.type === "gateway" ? (
         <path
-          d={`M${node.x + 45},${node.y} L${node.x + 90},${node.y + 45} L${node.x + 45},${node.y + 90} L${node.x},${node.y + 45} Z`}
+          d={`M${node.x + width / 2},${node.y} L${node.x + width},${node.y + height / 2} L${node.x + width / 2},${node.y + height} L${node.x},${node.y + height / 2} Z`}
           {...common}
         />
       ) : null}
       {node.type === "start" ? (
-        <circle cx={node.x + 35} cy={node.y + 35} r="31" {...common} />
+        <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 4} {...common} />
       ) : null}
       {node.type === "end" ? (
         <circle
-          cx={node.x + 35}
-          cy={node.y + 35}
-          r="31"
+          cx={node.x + width / 2}
+          cy={node.y + height / 2}
+          r={Math.min(width, height) / 2 - 4}
           fill="#ffffff"
           stroke={stroke}
           strokeWidth={selected ? 5 : 4}
         />
       ) : null}
       <text
-        x={node.x + (node.type === "task" ? 60 : 35)}
-        y={node.y + (node.type === "gateway" ? 50 : 40)}
+        x={node.x + width / 2}
+        y={node.y + height / 2 + 4}
         textAnchor="middle"
         fontSize="12"
         fontWeight="700"
         fill="#3f3f46"
       >
-        {node.label.length > 18 ? `${node.label.slice(0, 18)}...` : node.label}
+        {node.label.length > 24 ? `${node.label.slice(0, 24)}...` : node.label}
       </text>
+      {selected ? (
+        <>
+          <circle cx={node.x + width / 2} cy={node.y - 7} r="4" fill="#d39a20" />
+          <circle cx={node.x + width + 7} cy={node.y + height / 2} r="4" fill="#d39a20" />
+          <circle cx={node.x + width / 2} cy={node.y + height + 7} r="4" fill="#d39a20" />
+          <circle cx={node.x - 7} cy={node.y + height / 2} r="4" fill="#d39a20" />
+        </>
+      ) : null}
     </g>
   );
 }
