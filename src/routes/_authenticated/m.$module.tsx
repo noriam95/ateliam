@@ -421,6 +421,8 @@ type BpmnState = {
   poolName: string;
   codigo?: string;
   area?: string;
+  poolWidth?: number;
+  laneHeights?: number[];
   lanes: string[];
   nodes: BpmnNode[];
   flows: BpmnFlow[];
@@ -10203,6 +10205,17 @@ function BpmnModule({
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; dx: number; dy: number } | null>(null);
+  const [resizing, setResizing] = useState<
+    | {
+        kind: "pool-width" | "pool-height" | "pool-both" | "lane-height";
+        lane?: number;
+        startX: number;
+        startY: number;
+        poolWidth: number;
+        laneHeights: number[];
+      }
+    | null
+  >(null);
   const [zoom, setZoom] = useState(100);
   const [showGrid, setShowGrid] = useState(true);
   const [snap, setSnap] = useState(true);
@@ -10211,15 +10224,15 @@ function BpmnModule({
   const [future, setFuture] = useState<BpmnState[]>([]);
 
   const lanes = data.lanes.length ? data.lanes : ["Solicitante", "Executor"];
+  const laneHeights = lanes.map((_, index) => data.laneHeights?.[index] ?? 150);
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null;
   const selectedFlow = data.flows.find((flow) => flow.id === selectedFlowId) ?? null;
-  const laneHeight = 150;
   const poolX = 120;
   const poolY = 90;
-  const laneLabelWidth = 150;
+  const laneLabelWidth = 62;
   const maxNodeX = data.nodes.reduce((max, node) => Math.max(max, node.x + (node.width ?? 140)), 0);
-  const poolWidth = Math.max(1120, maxNodeX + 220);
-  const poolHeight = Math.max(lanes.length * laneHeight, 300);
+  const poolWidth = Math.max(data.poolWidth ?? 980, maxNodeX - poolX + 180, 520);
+  const poolHeight = Math.max(laneHeights.reduce((total, height) => total + height, 0), 220);
   const canvasWidth = poolX + poolWidth + 240;
   const canvasHeight = poolY + poolHeight + 170;
   const diagramProgress = completionPercent([data.poolName, lanes, data.nodes, data.flows]);
@@ -10228,7 +10241,7 @@ function BpmnModule({
     poolY,
     laneLabelWidth,
     poolWidth,
-    laneHeight,
+    laneHeights,
   });
 
   useEffect(() => {
@@ -10286,11 +10299,16 @@ function BpmnModule({
   }
 
   function laneY(index: number) {
-    return poolY + index * laneHeight;
+    return poolY + laneHeights.slice(0, index).reduce((total, height) => total + height, 0);
   }
 
   function laneIndexFromY(y: number) {
-    return Math.max(0, Math.min(lanes.length - 1, Math.floor((y - poolY) / laneHeight)));
+    let cursor = poolY;
+    for (let index = 0; index < laneHeights.length; index += 1) {
+      cursor += laneHeights[index];
+      if (y <= cursor) return index;
+    }
+    return Math.max(0, lanes.length - 1);
   }
 
   function snapValue(value: number) {
@@ -10378,7 +10396,12 @@ function BpmnModule({
   }
 
   function addLane() {
-    commit({ ...data, lanes: [...lanes, `Nova raia ${lanes.length + 1}`] });
+    commit({
+      ...data,
+      lanes: [...lanes, `Nova raia ${lanes.length + 1}`],
+      laneHeights: [...laneHeights, 150],
+      poolWidth,
+    });
   }
 
   function updateLane(index: number, value: string) {
@@ -10389,13 +10412,16 @@ function BpmnModule({
     const target = index + direction;
     if (target < 0 || target >= lanes.length) return;
     const nextLanes = [...lanes];
+    const nextLaneHeights = [...laneHeights];
     [nextLanes[index], nextLanes[target]] = [nextLanes[target], nextLanes[index]];
+    [nextLaneHeights[index], nextLaneHeights[target]] = [nextLaneHeights[target], nextLaneHeights[index]];
+    const offset = direction > 0 ? laneHeights[target] : -laneHeights[index];
     const nextNodes = data.nodes.map((node) => {
-      if (node.lane === index) return { ...node, lane: target, y: node.y + direction * laneHeight };
-      if (node.lane === target) return { ...node, lane: index, y: node.y - direction * laneHeight };
+      if (node.lane === index) return { ...node, lane: target, y: node.y + offset };
+      if (node.lane === target) return { ...node, lane: index, y: node.y - offset };
       return node;
     });
-    commit({ ...data, lanes: nextLanes, nodes: nextNodes });
+    commit({ ...data, lanes: nextLanes, laneHeights: nextLaneHeights, poolWidth, nodes: nextNodes });
   }
 
   function deleteLane(index: number) {
@@ -10407,10 +10433,76 @@ function BpmnModule({
     commit({
       ...data,
       lanes: lanes.filter((_, laneIndex) => laneIndex !== index),
+      laneHeights: laneHeights.filter((_, laneIndex) => laneIndex !== index),
+      poolWidth,
       nodes: data.nodes.map((node) =>
-        node.lane > index ? { ...node, lane: node.lane - 1, y: node.y - laneHeight } : node,
+        node.lane > index ? { ...node, lane: node.lane - 1, y: node.y - laneHeights[index] } : node,
       ),
     });
+  }
+
+  function startResize(
+    kind: "pool-width" | "pool-height" | "pool-both" | "lane-height",
+    event: React.PointerEvent,
+    lane?: number,
+  ) {
+    event.stopPropagation();
+    const p = point(event as React.PointerEvent<SVGSVGElement>);
+    setResizing({ kind, lane, startX: p.x, startY: p.y, poolWidth, laneHeights });
+  }
+
+  function resizeDiagram(event: React.PointerEvent<SVGSVGElement>) {
+    if (!resizing) return false;
+    const p = point(event);
+    if (resizing.kind === "pool-width") {
+      update({
+        ...data,
+        lanes,
+        laneHeights,
+        poolWidth: Math.max(520, snapValue(resizing.poolWidth + p.x - resizing.startX)),
+      });
+      return true;
+    }
+    if (resizing.kind === "pool-both") {
+      const deltaX = p.x - resizing.startX;
+      const deltaY = p.y - resizing.startY;
+      const last = laneHeights.length - 1;
+      update({
+        ...data,
+        lanes,
+        poolWidth: Math.max(520, snapValue(resizing.poolWidth + deltaX)),
+        laneHeights: resizing.laneHeights.map((height, index) =>
+          index === last ? Math.max(92, snapValue(height + deltaY)) : height,
+        ),
+      });
+      return true;
+    }
+    if (resizing.kind === "pool-height") {
+      const delta = p.y - resizing.startY;
+      const last = laneHeights.length - 1;
+      update({
+        ...data,
+        lanes,
+        laneHeights: resizing.laneHeights.map((height, index) =>
+          index === last ? Math.max(92, snapValue(height + delta)) : height,
+        ),
+        poolWidth,
+      });
+      return true;
+    }
+    if (typeof resizing.lane === "number") {
+      const delta = p.y - resizing.startY;
+      update({
+        ...data,
+        lanes,
+        poolWidth,
+        laneHeights: resizing.laneHeights.map((height, index) =>
+          index === resizing.lane ? Math.max(92, snapValue(height + delta)) : height,
+        ),
+      });
+      return true;
+    }
+    return false;
   }
 
   function exportSvg() {
@@ -10430,12 +10522,19 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
 
   return (
     <div className="grid gap-4">
-      <Hero title="Modelador de fluxograma" eyebrow="Processos · Fluxograma" progress={diagramProgress}>
-        Crie piscinas, raias, elementos BPMN e conectores em um canvas livre.
-      </Hero>
-
-      <div className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/25 px-3 py-2">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center gap-1 border-b border-[#c65a00] bg-[#d96600] px-2 text-sm font-medium text-white">
+          {["Arquivo", "Início", "Formatar", "Visualizar", "Publicar", "Exportar/importar", "Ferramentas", "Ajuda"].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`px-3 py-2 ${tab === "Início" ? "bg-white text-[#d96600]" : "hover:bg-white/15"}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#d8d8d8] bg-[#f7f7f7] px-3 py-2 text-[#202124] dark:bg-[#f7f7f7] dark:text-[#202124]">
           <ToolbarButton onClick={undo} icon={<RotateCcw className="h-4 w-4" />}>Desfazer</ToolbarButton>
           <ToolbarButton onClick={redo} icon={<RotateCcw className="h-4 w-4 rotate-180" />}>Refazer</ToolbarButton>
           <ToolbarButton onClick={duplicateSelected} icon={<Copy className="h-4 w-4" />}>Duplicar</ToolbarButton>
@@ -10446,7 +10545,7 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
           <span className="mx-1 h-7 w-px bg-border" />
           <button type="button" onClick={() => setShowGrid((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${showGrid ? "bg-[var(--gold)] text-primary-foreground" : "border border-border bg-card text-foreground"}`}>Grade</button>
           <button type="button" onClick={() => setSnap((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${snap ? "bg-[var(--gold)] text-primary-foreground" : "border border-border bg-card text-foreground"}`}>Snap</button>
-          <button type="button" onClick={() => setShowPrintArea((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${showPrintArea ? "bg-[var(--gold)] text-primary-foreground" : "border border-border bg-card text-foreground"}`}>Área de impressão</button>
+          <button type="button" onClick={() => setShowPrintArea((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${showPrintArea ? "bg-[#e56f00] text-white" : "border border-[#cfcfcf] bg-white text-[#202124]"}`}>Área de impressão</button>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-sm font-bold">-</button>
@@ -10457,22 +10556,38 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
           <ToolbarButton onClick={exportSvg} icon={<Download className="h-4 w-4" />}>SVG</ToolbarButton>
         </div>
 
-        <div className="grid min-h-[680px] xl:grid-cols-[230px_minmax(0,1fr)_330px]">
-          <aside className="border-b border-border bg-muted/20 p-3 xl:border-b-0 xl:border-r">
-            <PaletteGroup title="Piscinas e raias">
-              <PaletteButton icon={<Layers className="h-4 w-4" />} onClick={addLane}>Adicionar raia</PaletteButton>
-            </PaletteGroup>
-            <div className="mt-4" />
-            <PaletteGroup title="Eventos">
-              <PaletteButton icon={<Circle className="h-4 w-4" />} onClick={() => addNode("start")}>Evento inicial</PaletteButton>
-              <PaletteButton icon={<Circle className="h-4 w-4" />} onClick={() => addNode("end")}>Evento final</PaletteButton>
-            </PaletteGroup>
-            <div className="mt-4" />
-            <PaletteGroup title="Fluxo">
-              <PaletteButton icon={<Square className="h-4 w-4" />} onClick={() => addNode("task")}>Atividade</PaletteButton>
-              <PaletteButton icon={<Diamond className="h-4 w-4" />} onClick={() => addNode("gateway")}>Gateway</PaletteButton>
-              <PaletteButton icon={<MessageSquare className="h-4 w-4" />} onClick={() => addNode("annotation")}>Anotação</PaletteButton>
-            </PaletteGroup>
+        <div className="grid min-h-[680px] xl:grid-cols-[142px_minmax(0,1fr)_330px]">
+          <aside className="border-b border-[#cfcfcf] bg-[#f7f7f7] p-2 xl:border-b-0 xl:border-r dark:bg-[#f7f7f7]">
+            <div className="mb-2 border-b border-[#dadada] pb-1 text-xs font-semibold text-[#555]">Diagrama 1</div>
+            <div className="grid grid-cols-2 gap-2">
+              <BpmnTool title="Evento inicial" onClick={() => addNode("start")}>
+                <span className="h-9 w-9 rounded-full border-2 border-[#62a500] bg-[#d8ff9f]" />
+              </BpmnTool>
+              <BpmnTool title="Atividade" onClick={() => addNode("task")}>
+                <span className="h-7 w-11 rounded-md border-2 border-[#0070b6] bg-[#e6f5ff]" />
+              </BpmnTool>
+              <BpmnTool title="Subprocesso" onClick={() => addNode("task")}>
+                <span className="relative h-7 w-11 rounded-md border-2 border-[#0070b6] bg-[#dff2ff] after:absolute after:bottom-0.5 after:left-1/2 after:h-2 after:w-2 after:-translate-x-1/2 after:rounded-sm after:border after:border-[#0070b6]" />
+              </BpmnTool>
+              <BpmnTool title="Gateway" onClick={() => addNode("gateway")}>
+                <span className="h-9 w-9 rotate-45 border-2 border-[#b7ae00] bg-[#ffffd0]" />
+              </BpmnTool>
+              <BpmnTool title="Evento intermediário" onClick={() => addNode("start")}>
+                <span className="h-9 w-9 rounded-full border-4 border-double border-[#8d8200] bg-[#fffbe6]" />
+              </BpmnTool>
+              <BpmnTool title="Evento final" onClick={() => addNode("end")}>
+                <span className="h-9 w-9 rounded-full border-4 border-[#a30000] bg-[#ffd8d8]" />
+              </BpmnTool>
+              <BpmnTool title="Conector" onClick={() => selectedId && setConnectFrom(selectedId)}>
+                <span className="relative h-9 w-11 before:absolute before:left-1 before:top-2 before:h-5 before:w-8 before:border-b-2 before:border-l-2 before:border-[#333] after:absolute after:right-1 after:bottom-1 after:h-2 after:w-2 after:rotate-45 after:border-r-2 after:border-t-2 after:border-[#333]" />
+              </BpmnTool>
+              <BpmnTool title="Anotação" onClick={() => addNode("annotation")}>
+                <span className="h-10 w-8 border-2 border-dashed border-[#777] bg-white" />
+              </BpmnTool>
+              <BpmnTool title="Adicionar raia" onClick={addLane}>
+                <span className="grid h-8 w-11 grid-cols-2 border border-[#999] bg-white"><i className="border-r border-[#999]" /><i /></span>
+              </BpmnTool>
+            </div>
             <div className="mt-4 rounded-lg border border-border bg-card p-3">
               <div className="flex items-center justify-between text-sm font-semibold">
                 <span>Validação</span>
@@ -10492,20 +10607,21 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
             </div>
           </aside>
 
-          <main className="min-w-0 bg-[#f3f3f0] dark:bg-[#111418]">
+          <main className="min-w-0 bg-[#eeeeee] dark:bg-[#eeeeee]">
             {connectFrom ? (
               <div className="border-b border-[color-mix(in_oklab,var(--gold)_35%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-4 py-2 text-sm font-semibold text-foreground">
                 Modo de conexão ativo. Clique no destino ou pressione Esc.
               </div>
             ) : null}
-            <div className="h-[680px] overflow-auto p-5">
+            <div className="h-[680px] overflow-auto bg-white p-9">
               <svg
                 ref={svgRef}
                 width={(canvasWidth * zoom) / 100}
                 height={(canvasHeight * zoom) / 100}
                 viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
-                className="touch-none rounded-xl bg-white shadow-sm dark:bg-[#171b20]"
+                className="touch-none bg-white"
                 onPointerMove={(event) => {
+                  if (resizeDiagram(event)) return;
                   if (!dragging) return;
                   const p = point(event);
                   update({
@@ -10522,13 +10638,17 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
                   });
                 }}
                 onPointerUp={() => {
-                  if (dragging) {
+                  if (dragging || resizing) {
                     setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
                     setFuture([]);
                   }
                   setDragging(null);
+                  setResizing(null);
                 }}
-                onPointerLeave={() => setDragging(null)}
+                onPointerLeave={() => {
+                  setDragging(null);
+                  setResizing(null);
+                }}
                 onClick={() => {
                   setSelectedId(null);
                   setSelectedFlowId(null);
@@ -10542,18 +10662,52 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
                     <path d="M0,0 L9,4.5 L0,9 Z" fill="#374151" />
                   </marker>
                 </defs>
-                {showGrid ? <rect width={canvasWidth} height={canvasHeight} fill="url(#bpmn-grid)" opacity="0.45" /> : null}
-                {showPrintArea ? <rect x={poolX - 14} y={poolY - 14} width={poolWidth + 28} height={poolHeight + 28} rx="20" fill="none" stroke="#d39a20" strokeDasharray="8 8" strokeWidth="2" opacity="0.55" /> : null}
-                <rect x={poolX} y={poolY} width={poolWidth} height={poolHeight} rx="14" fill="#ffffff" stroke="#cfd3d8" />
-                <rect x={poolX} y={poolY} width={laneLabelWidth} height={poolHeight} rx="14" fill="#f4f4f2" stroke="#cfd3d8" />
-                <text x={poolX + 22} y={poolY + 30} fontSize="15" fontWeight="800" fill="#1f2937">{data.poolName || "Processo"}</text>
+                {showGrid ? <rect width={canvasWidth} height={canvasHeight} fill="url(#bpmn-grid)" opacity="0.25" /> : null}
+                {showPrintArea ? <rect x={poolX - 10} y={poolY - 10} width={poolWidth + 20} height={poolHeight + 20} fill="none" stroke="#d96a00" strokeDasharray="7 7" strokeWidth="1.5" opacity="0.7" /> : null}
+                <rect x={poolX} y={poolY} width={poolWidth} height={poolHeight} fill="#ffffff" stroke="#111111" strokeWidth="1.7" />
+                <rect x={poolX} y={poolY} width={laneLabelWidth} height={poolHeight} fill="#ffffff" stroke="#111111" strokeWidth="1.7" />
+                <text
+                  x={poolX + laneLabelWidth / 2}
+                  y={poolY + poolHeight / 2}
+                  textAnchor="middle"
+                  fontSize="16"
+                  fontWeight="800"
+                  fill="#000000"
+                  transform={`rotate(-90 ${poolX + laneLabelWidth / 2} ${poolY + poolHeight / 2})`}
+                >
+                  {data.poolName || "Processo 1"}
+                </text>
                 {lanes.map((lane, index) => (
                   <g key={`${lane}-${index}`}>
-                    <rect x={poolX} y={laneY(index)} width={poolWidth} height={laneHeight} fill={index % 2 === 0 ? "#ffffff" : "#fbfaf7"} stroke="#cfd3d8" />
-                    <rect x={poolX} y={laneY(index)} width={laneLabelWidth} height={laneHeight} fill={index % 2 === 0 ? "#f4f4f2" : "#eceae5"} stroke="#cfd3d8" />
-                    <text x={poolX + 22} y={laneY(index) + 82} fontSize="14" fontWeight="800" fill="#374151">{lane || `Raia ${index + 1}`}</text>
+                    <rect x={poolX} y={laneY(index)} width={poolWidth} height={laneHeights[index]} fill="#ffffff" stroke="#111111" strokeWidth="1" />
+                    <rect x={poolX + laneLabelWidth} y={laneY(index)} width={poolWidth - laneLabelWidth} height={laneHeights[index]} fill="#ffffff" stroke="#111111" strokeWidth="1" />
+                    <text
+                      x={poolX + laneLabelWidth + 26}
+                      y={laneY(index) + laneHeights[index] / 2}
+                      textAnchor="middle"
+                      fontSize="13"
+                      fontWeight="800"
+                      fill="#000000"
+                      transform={`rotate(-90 ${poolX + laneLabelWidth + 26} ${laneY(index) + laneHeights[index] / 2})`}
+                    >
+                      {lane || `Raia ${index + 1}`}
+                    </text>
+                    {index < lanes.length - 1 ? (
+                      <rect
+                        x={poolX}
+                        y={laneY(index) + laneHeights[index] - 4}
+                        width={poolWidth}
+                        height="8"
+                        fill="transparent"
+                        className="cursor-row-resize"
+                        onPointerDown={(event) => startResize("lane-height", event, index)}
+                      />
+                    ) : null}
                   </g>
                 ))}
+                <rect x={poolX + poolWidth - 5} y={poolY} width="10" height={poolHeight} fill="transparent" className="cursor-col-resize" onPointerDown={(event) => startResize("pool-width", event)} />
+                <rect x={poolX} y={poolY + poolHeight - 5} width={poolWidth} height="10" fill="transparent" className="cursor-row-resize" onPointerDown={(event) => startResize("pool-height", event)} />
+                <rect x={poolX + poolWidth - 7} y={poolY + poolHeight - 7} width="14" height="14" fill="#d96a00" opacity="0.75" className="cursor-nwse-resize" onPointerDown={(event) => startResize("pool-both", event)} />
                 {data.flows.map((flow) => {
                   const from = data.nodes.find((node) => node.id === flow.from);
                   const to = data.nodes.find((node) => node.id === flow.to);
@@ -10666,9 +10820,10 @@ function PaletteButton({ icon, onClick, children }: { icon: ReactNode; onClick: 
 function validateBpmnDiagram(
   data: BpmnState,
   lanes: string[],
-  bounds: { poolX: number; poolY: number; laneLabelWidth: number; poolWidth: number; laneHeight: number },
+  bounds: { poolX: number; poolY: number; laneLabelWidth: number; poolWidth: number; laneHeights: number[] },
 ) {
   const issues: Array<{ id: string; kind: "Erro" | "Alerta" | "Recomendação"; message: string; nodeId?: string }> = [];
+  const poolHeight = Math.max(bounds.laneHeights.reduce((total, height) => total + height, 0), 220);
   if (!data.nodes.some((node) => node.type === "start")) issues.push({ id: "missing-start", kind: "Erro", message: "Processo sem evento inicial." });
   if (!data.nodes.some((node) => node.type === "end")) issues.push({ id: "missing-end", kind: "Erro", message: "Processo sem evento final." });
   lanes.forEach((lane, index) => {
@@ -10679,7 +10834,7 @@ function validateBpmnDiagram(
     const height = node.height ?? 64;
     if (!node.label.trim()) issues.push({ id: `${node.id}-label`, kind: "Alerta", message: "Elemento sem nome.", nodeId: node.id });
     const insideX = node.x >= bounds.poolX + bounds.laneLabelWidth && node.x + width <= bounds.poolX + bounds.poolWidth;
-    const insideY = node.y >= bounds.poolY && node.y + height <= bounds.poolY + lanes.length * bounds.laneHeight;
+    const insideY = node.y >= bounds.poolY && node.y + height <= bounds.poolY + poolHeight;
     if (node.type !== "annotation" && (!insideX || !insideY)) issues.push({ id: `${node.id}-outside`, kind: "Alerta", message: "Elemento BPMN fora dos limites da piscina.", nodeId: node.id });
     if (node.type !== "start" && !data.flows.some((flow) => flow.to === node.id)) issues.push({ id: `${node.id}-in`, kind: "Recomendação", message: "Elemento sem entrada.", nodeId: node.id });
     if (node.type !== "end" && !data.flows.some((flow) => flow.from === node.id)) issues.push({ id: `${node.id}-out`, kind: "Recomendação", message: "Elemento sem saída.", nodeId: node.id });
@@ -10691,8 +10846,42 @@ function validateBpmnDiagram(
   return issues;
 }
 
-function nodeCenter(node: BpmnNode) {
-  return { x: node.x + (node.width ?? 140) / 2, y: node.y + (node.height ?? 64) / 2 };
+function BpmnTool({ title, onClick, children }: { title: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="grid h-16 place-items-center rounded-md border border-transparent bg-white text-[#202124] transition hover:border-[#d96600] hover:bg-[#fff3e8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d96600]"
+    >
+      {children}
+    </button>
+  );
+}
+
+function nodeBounds(node: BpmnNode) {
+  const width = node.width ?? 140;
+  const height = node.height ?? 64;
+  return {
+    left: node.x,
+    right: node.x + width,
+    top: node.y,
+    bottom: node.y + height,
+    cx: node.x + width / 2,
+    cy: node.y + height / 2,
+  };
+}
+
+function connectorPoint(from: BpmnNode, to: BpmnNode) {
+  const a = nodeBounds(from);
+  const b = nodeBounds(to);
+  const dx = b.cx - a.cx;
+  const dy = b.cy - a.cy;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return { x: dx >= 0 ? a.right : a.left, y: a.cy, orientation: "horizontal" as const };
+  }
+  return { x: a.cx, y: dy >= 0 ? a.bottom : a.top, orientation: "vertical" as const };
 }
 
 function BpmnConnector({
@@ -10708,14 +10897,18 @@ function BpmnConnector({
   selected: boolean;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
 }) {
-  const a = nodeCenter(from);
-  const b = nodeCenter(to);
+  const a = connectorPoint(from, to);
+  const b = connectorPoint(to, from);
+  const horizontal = a.orientation === "horizontal" || b.orientation === "horizontal";
   const midX = (a.x + b.x) / 2;
-  const path = `M ${a.x} ${a.y} L ${midX} ${a.y} L ${midX} ${b.y} L ${b.x} ${b.y}`;
+  const midY = (a.y + b.y) / 2;
+  const path = horizontal
+    ? `M ${a.x} ${a.y} L ${midX} ${a.y} L ${midX} ${b.y} L ${b.x} ${b.y}`
+    : `M ${a.x} ${a.y} L ${a.x} ${midY} L ${b.x} ${midY} L ${b.x} ${b.y}`;
   return (
     <g onClick={onClick} className="cursor-pointer">
       <path d={path} fill="none" stroke={selected ? "#d39a20" : "#374151"} strokeWidth={selected ? 3 : 2} markerEnd="url(#arrow)" />
-      {flow.label ? <text x={midX + 8} y={(a.y + b.y) / 2 - 8} fontSize="12" fontWeight="700" fill="#374151">{flow.label}</text> : null}
+      {flow.label ? <text x={midX + 8} y={midY - 8} fontSize="12" fontWeight="700" fill="#374151">{flow.label}</text> : null}
     </g>
   );
 }
