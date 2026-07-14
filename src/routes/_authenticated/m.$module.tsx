@@ -9133,7 +9133,7 @@ function DdpModule({
         </div>
       </Panel>
       <ListEditor
-        id="sec-nextSteps"
+        anchorId="sec-nextSteps"
         num="07"
         openSignal={openTarget === "nextSteps" ? openNonce : 0}
         title="Próximos passos"
@@ -12602,7 +12602,7 @@ function ListEditor({
   onChange,
   placeholder,
   progress,
-  id: panelId,
+  anchorId,
   num,
   openSignal,
 }: {
@@ -12611,12 +12611,13 @@ function ListEditor({
   onChange: (items: NextStepItem[]) => void;
   placeholder: string;
   progress?: number;
-  id?: string;
+  // Nome distinto de `id` para não sombrear o helper global id() usado abaixo.
+  anchorId?: string;
   num?: string;
   openSignal?: number;
 }) {
   return (
-    <Panel title={title} progress={progress} id={panelId} num={num} openSignal={openSignal}>
+    <Panel title={title} progress={progress} id={anchorId} num={num} openSignal={openSignal}>
       <div className="grid gap-2">
         {items.map((item, index) => (
           <div
