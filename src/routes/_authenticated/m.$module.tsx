@@ -591,6 +591,15 @@ function parseDateBrInput(value: string) {
   return raw;
 }
 
+function dateInputValue(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = parseDateBrInput(raw);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(parsed)) return parsed;
+  return "";
+}
+
 function defaultWorkspace(): WorkspaceState {
   return {
     ddp: {
@@ -1363,10 +1372,11 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
     meta: { ...fallback.meta, ...(input?.meta ?? {}) },
     overview: { ...fallback.overview, ...(input?.overview ?? {}) },
     systems: (input?.systems ?? fallback.systems).map((system) => {
-      const legacy = system as Partial<DdpSystem> & Partial<TextItem>;
+      const legacy = system as Partial<DdpSystem> & Partial<TextItem> & { system_id?: string; name?: string };
       return {
         id: legacy.id || id("sys"),
-        nome: legacy.nome || legacy.text || "",
+        systemId: legacy.systemId || legacy.system_id || "",
+        nome: legacy.nome || legacy.name || legacy.text || "",
         tipo: legacy.tipo || "",
         dono: legacy.dono || "",
         criticidade: legacy.criticidade || "Média",
@@ -8394,6 +8404,7 @@ function DdpModule({
               <RegisteredSystemSelect
                 label="Sistema"
                 value={system.systemId ?? ""}
+                displayValue={system.nome}
                 systems={catalogs.systems}
                 placeholder="Buscar sistema cadastrado..."
                 onSelect={(selectedSystem) =>
@@ -11906,6 +11917,7 @@ function RegisteredProcessSelect({
 function RegisteredSystemSelect({
   label,
   value,
+  displayValue = "",
   systems,
   onSelect,
   placeholder = "Buscar sistema cadastrado...",
@@ -11913,13 +11925,17 @@ function RegisteredSystemSelect({
 }: {
   label: string;
   value: string;
+  displayValue?: string;
   systems: OrganizationSystem[];
   onSelect: (system: OrganizationSystem | null) => void;
   placeholder?: string;
   // Abre o cadastro de um novo sistema (pré-preenchendo o nome pesquisado).
   onRequestCreate?: (query: string) => void;
 }) {
-  const selected = systems.find((system) => system.id === value) ?? null;
+  const selected =
+    systems.find((system) => system.id === value) ??
+    systems.find((system) => normalizeLabel(system.name) === normalizeLabel(displayValue)) ??
+    null;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const normalizedQuery = normalizeLabel(query);
@@ -11947,7 +11963,7 @@ function RegisteredSystemSelect({
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
-          value={open ? query : (selected?.name ?? "")}
+          value={open ? query : (selected?.name ?? displayValue)}
           placeholder={placeholder}
           onFocus={() => {
             setQuery("");
@@ -11960,7 +11976,7 @@ function RegisteredSystemSelect({
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
           className="w-full rounded-md border border-input bg-background py-2.5 pl-9 pr-9 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
         />
-        {value ? (
+        {value || displayValue ? (
           <button
             type="button"
             onMouseDown={(event) => event.preventDefault()}
@@ -12512,16 +12528,14 @@ function ListEditor({
               className="min-w-0 rounded-md border border-transparent bg-transparent px-2 py-2 text-sm text-foreground outline-none transition focus:border-input focus:bg-background"
             />
             <input
-              type="text"
-              inputMode="numeric"
-              placeholder="dd/mm/aaaa"
-              value={formatDateBr(item.prazo ?? "")}
+              type="date"
+              value={dateInputValue(item.prazo)}
               aria-label="Prazo"
               onChange={(event) =>
                 onChange(
                   items.map((current) =>
                     current.id === item.id
-                      ? { ...current, prazo: parseDateBrInput(event.target.value) }
+                      ? { ...current, prazo: event.target.value }
                       : current,
                   ),
                 )
