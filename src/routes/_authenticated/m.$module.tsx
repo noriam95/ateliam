@@ -53,6 +53,7 @@ import {
   type CSSProperties,
   type ChangeEvent,
   type ReactNode,
+  type DragEvent,
   useEffect,
   useMemo,
   useRef,
@@ -7898,6 +7899,11 @@ function DdpModule({
 
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
+  const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
+  const [draggedSubstep, setDraggedSubstep] = useState<{
+    stepId: string;
+    substepId: string;
+  } | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const toggleStep = (stepId: string) =>
     setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
@@ -8125,24 +8131,84 @@ function DdpModule({
   function updateStep(stepId: string, patch: Partial<DdpFlowStep>) {
     update({
       ...data,
-      steps: data.steps.map((item) => (item.id === stepId ? { ...item, ...patch } : item)),
+      steps: renumberFlowSteps(
+        data.steps.map((item) => (item.id === stepId ? { ...item, ...patch } : item)),
+      ),
     });
   }
 
   function updateSubstep(stepId: string, substepId: string, patch: Partial<DdpFlowSubstep>) {
     update({
       ...data,
-      steps: data.steps.map((step) =>
-        step.id === stepId
-          ? {
-              ...step,
-              substeps: step.substeps.map((substep) =>
-                substep.id === substepId ? { ...substep, ...patch } : substep,
-              ),
-            }
-          : step,
+      steps: renumberFlowSteps(
+        data.steps.map((step) =>
+          step.id === stepId
+            ? {
+                ...step,
+                substeps: step.substeps.map((substep) =>
+                  substep.id === substepId ? { ...substep, ...patch } : substep,
+                ),
+              }
+            : step,
+        ),
       ),
     });
+  }
+
+  function renumberFlowSteps(steps: DdpFlowStep[]) {
+    return steps.map((step, stepIndex) => ({
+      ...step,
+      substeps: step.substeps.map((substep, substepIndex) => ({
+        ...substep,
+        codigo: `${stepIndex + 1}.${substepIndex + 1}`,
+      })),
+    }));
+  }
+
+  function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return items;
+    const next = [...items];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+  }
+
+  function reorderSteps(targetStepId: string) {
+    if (!draggedStepId || draggedStepId === targetStepId) return;
+    const fromIndex = data.steps.findIndex((step) => step.id === draggedStepId);
+    const toIndex = data.steps.findIndex((step) => step.id === targetStepId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    update({
+      ...data,
+      steps: renumberFlowSteps(moveItem(data.steps, fromIndex, toIndex)),
+    });
+    setDraggedStepId(null);
+  }
+
+  function reorderSubsteps(targetStepId: string, targetSubstepId: string) {
+    if (
+      !draggedSubstep ||
+      draggedSubstep.stepId !== targetStepId ||
+      draggedSubstep.substepId === targetSubstepId
+    ) {
+      return;
+    }
+    const step = data.steps.find((item) => item.id === targetStepId);
+    if (!step) return;
+    const fromIndex = step.substeps.findIndex((item) => item.id === draggedSubstep.substepId);
+    const toIndex = step.substeps.findIndex((item) => item.id === targetSubstepId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    update({
+      ...data,
+      steps: renumberFlowSteps(
+        data.steps.map((item) =>
+          item.id === targetStepId
+            ? { ...item, substeps: moveItem(item.substeps, fromIndex, toIndex) }
+            : item,
+        ),
+      ),
+    });
+    setDraggedSubstep(null);
   }
 
   function updateGap(gapId: string, patch: Partial<GapItem>) {
@@ -8602,8 +8668,31 @@ function DdpModule({
         </h3>
         <div className="grid gap-3">
           {data.steps.map((step, index) => (
-            <div key={step.id} className="rounded-lg border border-border bg-muted/20 p-3">
+            <div
+              key={step.id}
+              onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                if (draggedStepId && draggedStepId !== step.id) event.preventDefault();
+              }}
+              onDrop={(event: DragEvent<HTMLDivElement>) => {
+                event.preventDefault();
+                reorderSteps(step.id);
+              }}
+              className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
+                draggedStepId === step.id ? "opacity-60 ring-2 ring-[var(--gold)]/40" : ""
+              }`}
+            >
               <div className={`flex items-center gap-3 ${openSteps[step.id] ? "mb-3" : ""}`}>
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={() => setDraggedStepId(step.id)}
+                  onDragEnd={() => setDraggedStepId(null)}
+                  className="grid h-9 w-9 shrink-0 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                  title="Arrastar etapa"
+                  aria-label="Arrastar etapa"
+                >
+                  <ArrowDownUp className="h-4 w-4" />
+                </button>
                 <button
                   type="button"
                   onClick={() => toggleStep(step.id)}
@@ -8640,7 +8729,10 @@ function DdpModule({
                 <IconButton
                   label="Excluir"
                   onClick={() =>
-                    update({ ...data, steps: data.steps.filter((item) => item.id !== step.id) })
+                    update({
+                      ...data,
+                      steps: renumberFlowSteps(data.steps.filter((item) => item.id !== step.id)),
+                    })
                   }
                 >
                   <Trash2 className="h-4 w-4" />
@@ -8666,17 +8758,44 @@ function DdpModule({
                   </div>
                   {step.substeps.length ? (
                     <div className="grid gap-3">
-                      {step.substeps.map((substep) => (
+                      {step.substeps.map((substep, substepIndex) => (
                         <div
                           key={substep.id}
-                          className="rounded-lg border border-border bg-muted/20 p-3"
+                          onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                            if (
+                              draggedSubstep?.stepId === step.id &&
+                              draggedSubstep.substepId !== substep.id
+                            ) {
+                              event.preventDefault();
+                            }
+                          }}
+                          onDrop={(event: DragEvent<HTMLDivElement>) => {
+                            event.preventDefault();
+                            reorderSubsteps(step.id, substep.id);
+                          }}
+                          className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
+                            draggedSubstep?.substepId === substep.id
+                              ? "opacity-60 ring-2 ring-[var(--gold)]/40"
+                              : ""
+                          }`}
                         >
-                          <div className="mb-3 grid gap-3 md:grid-cols-[120px_1fr_auto]">
-                            <Field
-                              compact
+                          <div className="mb-3 grid gap-3 md:grid-cols-[40px_120px_1fr_auto]">
+                            <button
+                              type="button"
+                              draggable
+                              onDragStart={() =>
+                                setDraggedSubstep({ stepId: step.id, substepId: substep.id })
+                              }
+                              onDragEnd={() => setDraggedSubstep(null)}
+                              className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                              title="Arrastar subetapa"
+                              aria-label="Arrastar subetapa"
+                            >
+                              <ArrowDownUp className="h-4 w-4" />
+                            </button>
+                            <ReadOnlyField
                               label="Código"
-                              value={substep.codigo}
-                              onChange={(codigo) => updateSubstep(step.id, substep.id, { codigo })}
+                              value={`${index + 1}.${substepIndex + 1}`}
                             />
                             <Field
                               compact
@@ -8746,24 +8865,24 @@ function DdpModule({
             onClick={() =>
               update({
                 ...data,
-                steps: [
+                steps: renumberFlowSteps([
                   ...data.steps,
                   {
-                    id: id("step"),
-                    processId: "",
-                    processVersion: 1,
-                    etapa: "",
-                    responsavel: "",
-                    entrada: "",
-                    atividade: "",
-                    saida: "",
-                    sistema: "",
-                    risco: "",
-                    observacoes: "",
-                    images: [],
-                    substeps: [],
-                  },
-                ],
+                      id: id("step"),
+                      processId: "",
+                      processVersion: 1,
+                      etapa: "",
+                      responsavel: "",
+                      entrada: "",
+                      atividade: "",
+                      saida: "",
+                      sistema: "",
+                      risco: "",
+                      observacoes: "",
+                      images: [],
+                      substeps: [],
+                    },
+                ]),
               })
             }
             className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
