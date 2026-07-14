@@ -26,9 +26,9 @@ type ChainCategory = "primary" | "support" | "management" | "output";
 // Opções completas para o formulário de cadastro (o mesmo texto do cadastro de
 // processos). A tabela continua exibindo o rótulo curto de CATEGORY_LABELS.
 const VALUE_CHAIN_CATEGORY_OPTIONS: Array<{ value: ChainCategory; label: string }> = [
-  { value: "primary", label: "Processos Finalísticos" },
-  { value: "support", label: "Processos de Suporte" },
-  { value: "management", label: "Processos de Gestão" },
+  { value: "primary", label: "Macroprocessos Finalísticos" },
+  { value: "support", label: "Macroprocessos de Suporte" },
+  { value: "management", label: "Macroprocessos de Gestão" },
   { value: "output", label: "Saídas" },
 ];
 
@@ -474,11 +474,11 @@ function PorterDiagram({
   const renderDiagram = (large = false) => (
     <div className="overflow-x-auto rounded-lg border border-border bg-[#f4fbf8] p-4 shadow-sm dark:bg-[#0d1714]">
       <div className={`${large ? "min-w-[1280px]" : "min-w-[1040px]"} space-y-1`}>
-        <div className="rounded-md bg-[#064236] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
+        <div className="rounded-md bg-[#005f4b] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
           Cadeia de valor
         </div>
-        <div className="rounded-md bg-[#007f61] px-4 py-1.5 text-center text-xs font-black text-white">
-          Macroprocessos de Governança
+        <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
+          Macroprocessos de Gestão
         </div>
         <div className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1`}>
           {management.length ? (
@@ -491,17 +491,17 @@ function PorterDiagram({
             )
           ) : (
             <div className="col-span-full grid min-h-14 place-items-center rounded-md border border-dashed border-[#8dbdad] bg-white/70 text-xs italic text-[#41665b]">
-              Nenhum macroprocesso de governança cadastrado
+              Nenhum macroprocesso de gestão cadastrado
             </div>
           )}
         </div>
         <div className="grid place-items-center">
-          <div className="h-0 w-0 border-x-[13px] border-t-[16px] border-x-transparent border-t-[#064236]" />
+          <div className="h-0 w-0 border-x-[13px] border-t-[16px] border-x-transparent border-t-[#005f4b]" />
         </div>
-        <div className="rounded-md bg-[#007f61] px-4 py-1.5 text-center text-xs font-black text-white">
+        <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos Finalísticos
         </div>
-        <div className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#063d33] p-5 text-white`}>
+        <div className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#004c3e] p-5 text-white`}>
           <div className="grid h-full grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)] items-center gap-3">
             <div className="flex min-w-0 items-stretch">
               {primary.length ? (
@@ -552,7 +552,7 @@ function PorterDiagram({
             </div>
           )}
         </div>
-        <div className="rounded-md bg-[#007f61] px-4 py-1.5 text-center text-xs font-black text-white">
+        <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos de Suporte
         </div>
       </div>
@@ -615,9 +615,9 @@ function PorterDiagram({
 // ─── Consultation table ───────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<string, string> = {
-  management: "Processos de Gestão",
-  primary: "Processos Finalísticos",
-  support: "Processos de Suporte",
+  management: "Macroprocessos de Gestão",
+  primary: "Macroprocessos Finalísticos",
+  support: "Macroprocessos de Suporte",
   output: "Saídas",
 };
 
@@ -1168,12 +1168,12 @@ function buildDiagramSVG(
   const H = PAD + TOP_H + ROW_GAP + BAND_H + ROW_GAP + CARD_H + ROW_GAP + 16 + ROW_GAP + BAND_H + ROW_GAP + FLOW_H + SUPPORT_TOP_GAP + CARD_H + ROW_GAP + BAND_H + PAD;
   const C = {
     bg: "#F4FBF8",
-    dark: "#064236",
-    green: "#007f61",
-    teal: "#063D33",
+    dark: "#005F4B",
+    green: "#009B72",
+    teal: "#004C3E",
     card: "#F6F0E7",
     arrow: "#F6F0E7",
-    gold: "#007F61",
+    gold: "#009B72",
     text: "#000000",
     muted: "#41665B",
     white: "#FFFFFF",
@@ -1262,10 +1262,10 @@ function buildDiagramSVG(
   y += TOP_H + ROW_GAP;
   parts.push(
     `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${BAND_H}" rx="8" fill="${C.green}"/>`,
-    `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Governança</text>`,
+    `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Gestão</text>`,
   );
   y += BAND_H + ROW_GAP;
-  parts.push(renderRow(management, PAD, y, CONTENT_W, "Nenhum macroprocesso de governança cadastrado"));
+  parts.push(renderRow(management, PAD, y, CONTENT_W, "Nenhum macroprocesso de gestão cadastrado"));
   y += CARD_H + ROW_GAP;
   parts.push(
     `<polygon points="${W / 2 - 14},${y} ${W / 2 + 14},${y} ${W / 2},${y + 16}" fill="${C.dark}"/>`,
@@ -1356,10 +1356,10 @@ function exportCSV(
 ) {
   // Exporta no formato .xlsx (planilha comum do Excel), uma linha por cadeia.
   const all = [
-    ...management.map((c) => ({ c, band: "Processos de Gestão" })),
-    ...primary.map((c) => ({ c, band: "Processos Finalísticos" })),
+    ...management.map((c) => ({ c, band: "Macroprocessos de Gestão" })),
+    ...primary.map((c) => ({ c, band: "Macroprocessos Finalísticos" })),
     ...outputs.map((c) => ({ c, band: "Saídas" })),
-    ...support.map((c) => ({ c, band: "Processos de Suporte" })),
+    ...support.map((c) => ({ c, band: "Macroprocessos de Suporte" })),
   ];
   const rows: (string | number)[][] = [
     ["#", "Categoria", "Nome", "Descrição", "Status"],

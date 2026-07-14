@@ -103,17 +103,17 @@ const VALUE_CHAIN_CATEGORIES: Array<{
 }> = [
   {
     value: "primary",
-    label: "Processos Finalísticos",
+    label: "Macroprocessos Finalísticos",
     description: "Entregam valor diretamente ao cliente ou ao negócio.",
   },
   {
     value: "support",
-    label: "Processos de Suporte",
+    label: "Macroprocessos de Suporte",
     description: "Sustentam os processos principais e a operação.",
   },
   {
     value: "management",
-    label: "Processos de Gestão",
+    label: "Macroprocessos de Gestão",
     description: "Direcionam e controlam a gestão do negócio.",
   },
   {
