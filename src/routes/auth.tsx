@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { supabase } from "@/integrations/supabase/client";
 import { isDemoModeAvailable, isDemoSessionActive, startDemoSession } from "@/lib/demo-session";
+import { resolveLoginIdentifier } from "@/lib/config.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Entrar — BF Flow" }] }),
@@ -47,7 +49,8 @@ const LOGIN_MESSAGES = [
 function AuthPage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const resolveLogin = useServerFn(resolveLoginIdentifier);
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
@@ -89,7 +92,15 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const identifier = login.trim();
+      const email = identifier.includes("@")
+        ? identifier
+        : (await resolveLogin({ data: { identifier } })).email;
+      if (!email) throw new Error("Usuário ou senha inválidos.");
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (error) throw error;
       router.invalidate();
       navigate({ to: "/" });
@@ -167,11 +178,12 @@ function AuthPage() {
 
           <form onSubmit={submit} className="space-y-3">
             <input
-              type="email"
-              placeholder="seu@email.com"
+              type="text"
+              placeholder="e-mail ou usuário"
               required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="username"
+              value={login}
+              onChange={(event) => setLogin(event.target.value)}
               className="w-full rounded-md border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:border-[var(--gold)]"
             />
             <input

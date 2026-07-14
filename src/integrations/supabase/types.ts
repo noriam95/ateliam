@@ -600,6 +600,7 @@ export type Database = {
           email: string | null;
           id: string;
           organization_id: string;
+          username: string | null;
           updated_at: string;
         };
         Insert: {
@@ -608,6 +609,7 @@ export type Database = {
           email?: string | null;
           id: string;
           organization_id: string;
+          username?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -616,6 +618,7 @@ export type Database = {
           email?: string | null;
           id?: string;
           organization_id?: string;
+          username?: string | null;
           updated_at?: string;
         };
         Relationships: [];

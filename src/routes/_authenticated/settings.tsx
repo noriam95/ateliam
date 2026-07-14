@@ -83,6 +83,7 @@ function Settings() {
   });
   const [newUser, setNewUser] = useState({
     email: "",
+    username: "",
     password: "",
     displayName: "",
     organizationId: "",
@@ -172,6 +173,7 @@ function Settings() {
         : createAccess({
             data: {
               email: newUser.email,
+              username: newUser.username || null,
               password: newUser.password,
               displayName: newUser.displayName || null,
               organizationId: newUser.organizationId,
@@ -185,6 +187,7 @@ function Settings() {
           {
             id: `demo-${Date.now()}`,
             email: newUser.email,
+            username: newUser.username || null,
             display_name: newUser.displayName || newUser.email.split("@")[0],
             organization_id: newUser.organizationId || demoOrganizations[0].id,
             organization:
@@ -197,6 +200,7 @@ function Settings() {
       toast.success("Usuário cadastrado");
       setNewUser({
         email: "",
+        username: "",
         password: "",
         displayName: "",
         organizationId: activeOrganizationId ?? "",
@@ -363,9 +367,9 @@ function Settings() {
                 </label>
                 <input
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-input rounded-md text-sm"
-                  disabled={isDemo}
+	                  onChange={(e) => setDisplayName(e.target.value)}
+	                  className="w-full mt-1 px-3 py-2 border border-input rounded-md text-sm"
+	                  disabled={isDemo}
                 />
               </div>
               <div>
@@ -530,16 +534,29 @@ function Settings() {
                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Usuário / e-mail
                   </label>
+	                  <input
+	                    value={newUser.email}
+	                    onChange={(e) =>
+	                      setNewUser((current) => ({ ...current, email: e.target.value }))
+	                    }
+	                    placeholder="usuario@empresa.com"
+	                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+	                  />
+	                </div>
+                <div>
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Usuário
+                  </label>
                   <input
-                    value={newUser.email}
+                    value={newUser.username}
                     onChange={(e) =>
-                      setNewUser((current) => ({ ...current, email: e.target.value }))
+                      setNewUser((current) => ({ ...current, username: e.target.value }))
                     }
-                    placeholder="usuario@empresa.com"
+                    placeholder="ex.: mairon.conceicao"
                     className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   />
                 </div>
-                <div>
+	                <div>
                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Organização
                   </label>
@@ -764,6 +781,7 @@ type OrganizationRow = {
 type UserAccessRow = {
   id: string;
   email: string | null;
+  username?: string | null;
   display_name: string | null;
   organization_id: string;
   organization?: Pick<OrganizationRow, "id" | "name" | "slug"> | null;
@@ -793,6 +811,7 @@ const DEMO_USERS: UserAccessRow[] = [
   {
     id: "demo-admin",
     email: "admin.local@bfflow",
+    username: "admin.local",
     display_name: "Administrador local",
     organization_id: "demo-org-bfflow",
     organization: { id: "demo-org-bfflow", name: "BF Flow Demo", slug: "bfflow-demo" },
@@ -801,6 +820,7 @@ const DEMO_USERS: UserAccessRow[] = [
   {
     id: "demo-editor",
     email: "editor.local@bfflow",
+    username: "editor.local",
     display_name: "Analista de processos",
     organization_id: "demo-org-bfflow",
     organization: { id: "demo-org-bfflow", name: "BF Flow Demo", slug: "bfflow-demo" },
@@ -809,6 +829,7 @@ const DEMO_USERS: UserAccessRow[] = [
   {
     id: "demo-viewer",
     email: "consulta.local@bfflow",
+    username: "consulta.local",
     display_name: "Usuário consulta",
     organization_id: "demo-org-bfflow",
     organization: { id: "demo-org-bfflow", name: "BF Flow Demo", slug: "bfflow-demo" },

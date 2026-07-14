@@ -155,6 +155,7 @@ type OrganizationRow = {
 type UserAccessRow = {
   id: string;
   email: string;
+  username: string | null;
   display_name: string | null;
   organization_id: string | null;
   organization: { id: string; name: string; slug?: string } | null;
@@ -302,6 +303,7 @@ export function WorkspaceSystemSettings({
     {
       id: "demo-admin",
       email: "analista.local@bfflow",
+      username: "analista.local",
       display_name: "Administrador local",
       organization_id: "demo-bom-futuro",
       organization: { id: "demo-bom-futuro", name: "Bom Futuro" },
@@ -473,6 +475,7 @@ export function WorkspaceSystemSettings({
           const row: UserAccessRow = {
             id: draft.id || `demo-user-${Date.now()}`,
             email: draft.email,
+            username: draft.username || null,
             display_name: draft.displayName || null,
             organization_id: draft.organizationId || null,
             organization: organization
@@ -492,6 +495,7 @@ export function WorkspaceSystemSettings({
           await updateUser({
             data: {
               userId: draft.id,
+              username: draft.username || null,
               displayName: draft.displayName || null,
               organizationId: draft.organizationId || null,
               organizationIds: draft.organizationIds,
@@ -502,6 +506,7 @@ export function WorkspaceSystemSettings({
           await createUser({
             data: {
               email: draft.email,
+              username: draft.username || null,
               password: draft.password,
               displayName: draft.displayName || null,
               organizationId: draft.organizationId || null,
@@ -1203,6 +1208,7 @@ function OrganizationDocumentModelSettings({
 type UserDraft = {
   id: string;
   email: string;
+  username: string;
   password: string;
   displayName: string;
   organizationId: string;
@@ -1230,6 +1236,7 @@ function UsersSettings({
   const emptyDraft = (): UserDraft => ({
     id: "",
     email: "",
+    username: "",
     password: "",
     displayName: "",
     organizationId: organizations[0]?.id ?? "",
@@ -1250,6 +1257,7 @@ function UsersSettings({
     (row) => [
       row.display_name ?? "",
       row.email,
+      row.username ?? "",
       orgNames(row),
       row.roles.map((r) => roleLabels[r as AppRole] ?? r).join(" "),
     ],
@@ -1274,6 +1282,7 @@ function UsersSettings({
     setDraft({
       id: row.id,
       email: row.email,
+      username: row.username ?? "",
       password: "",
       displayName: row.display_name ?? "",
       organizationId: defaultOrganizationId,
@@ -1369,7 +1378,9 @@ function UsersSettings({
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">{rowIndex + 1}</td>
                   <td className="px-4 py-3">
                     <div className="font-semibold">{row.display_name || row.email}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{row.email}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {row.username ? `${row.username} · ${row.email}` : row.email}
+                    </div>
                   </td>
                   <td className="px-3 py-3 text-muted-foreground">
                     {(row.organization_access ?? [])
@@ -1456,6 +1467,16 @@ function UsersSettings({
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, displayName: event.target.value }))
                   }
+                  className={inputClass}
+                />
+              </FormField>
+              <FormField label="Usuário">
+                <input
+                  value={draft.username}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, username: event.target.value }))
+                  }
+                  placeholder="ex.: mairon.conceicao"
                   className={inputClass}
                 />
               </FormField>

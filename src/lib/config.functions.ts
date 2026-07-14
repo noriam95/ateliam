@@ -15,6 +15,18 @@ type AppRole = "admin" | "editor" | "viewer";
 type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
 
 const appRoleSchema = z.enum(["admin", "editor", "viewer"]);
+const usernameSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(80)
+  .regex(/^[a-zA-Z0-9._-]+$/, "Use apenas letras, números, ponto, hífen ou sublinhado.")
+  .optional()
+  .nullable()
+  .transform((value) => {
+    const normalized = value?.trim().toLowerCase();
+    return normalized ? normalized : null;
+  });
 const orgSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(2).max(120),
@@ -1362,6 +1374,20 @@ function objectAt(value: unknown, key: string): Record<string, unknown> {
   return nested && typeof nested === "object" ? (nested as Record<string, unknown>) : {};
 }
 
+async function assertUsernameAvailable(username: string | null | undefined, exceptUserId?: string) {
+  if (!username) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  let query = supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .ilike("username", username)
+    .limit(1);
+  if (exceptUserId) query = query.neq("id", exceptUserId);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw new Error(error.message);
+  if (data) throw new Error("Usuário de login já está em uso.");
+}
+
 function normalizeDashboardName(value: unknown) {
   return readString(value, "")
     .normalize("NFD")
@@ -1710,7 +1736,7 @@ export const listUserAccess = createServerFn({ method: "GET" })
 
     let profilesQuery = supabaseAdmin
       .from("profiles")
-      .select("id, email, display_name, organization_id, created_at, updated_at")
+      .select("id, email, username, display_name, organization_id, created_at, updated_at")
       .order("created_at", { ascending: true });
     if (!access.isAdmin) {
       const { data: scopedMemberships, error: scopedError } = await supabaseAdmin
@@ -1762,6 +1788,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
   .validator(
     (d: {
       userId: string;
+      username?: string | null;
       displayName?: string | null;
       organizationId?: string | null;
       organizationIds?: string[];
@@ -1770,6 +1797,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
       z
         .object({
           userId: z.string().uuid(),
+          username: usernameSchema,
           displayName: z.string().trim().min(2).max(120).optional().nullable(),
           organizationId: z.string().uuid().optional().nullable(),
           organizationIds: z.array(z.string().uuid()).optional(),
@@ -1782,6 +1810,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
     const targetProfile = await profileFor(context, data.userId);
     const targetOrgId = data.organizationId ?? targetProfile.organization_id;
     await assertOrganizationAdmin(context, targetOrgId);
+    await assertUsernameAvailable(data.username, data.userId);
     const nextRoles = data.roles;
 
     if (
@@ -1794,6 +1823,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .update({
+        username: data.username ?? null,
         display_name: data.displayName ?? targetProfile.display_name,
         organization_id: targetOrgId,
         updated_at: new Date().toISOString(),
@@ -1842,6 +1872,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
   .validator(
     (d: {
       email: string;
+      username?: string | null;
       password: string;
       displayName?: string | null;
       organizationId?: string | null;
@@ -1851,6 +1882,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
       z
         .object({
           email: z.string().trim().email().max(254),
+          username: usernameSchema,
           password: z.string().min(6).max(128),
           displayName: z.string().trim().min(2).max(120).optional().nullable(),
           organizationId: z.string().uuid().optional().nullable(),
@@ -1866,6 +1898,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
       : access.organizationId;
     const roles = data.roles;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertUsernameAvailable(data.username);
 
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
@@ -1873,6 +1906,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
       email_confirm: true,
       user_metadata: {
         full_name: data.displayName || data.email.split("@")[0],
+        username: data.username,
         organization_id: organizationId,
       },
     });
@@ -1884,6 +1918,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: userId,
       email: data.email,
+      username: data.username ?? null,
       display_name: data.displayName || data.email.split("@")[0],
       organization_id: organizationId,
       updated_at: now,
@@ -1932,6 +1967,26 @@ export const deleteUserAccess = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const resolveLoginIdentifier = createServerFn({ method: "POST" })
+  .validator((d: { identifier: string }) =>
+    z.object({ identifier: z.string().trim().min(3).max(254) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const identifier = data.identifier.trim();
+    if (identifier.includes("@")) return { email: identifier };
+    const username = usernameSchema.parse(identifier);
+    if (!username) return { email: null };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: profile, error } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .ilike("username", username)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return { email: profile?.email ?? null };
   });
 
 export const updateAppConfig = createServerFn({ method: "POST" })
