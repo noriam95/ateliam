@@ -1362,6 +1362,70 @@ function objectAt(value: unknown, key: string): Record<string, unknown> {
   return nested && typeof nested === "object" ? (nested as Record<string, unknown>) : {};
 }
 
+function normalizeDashboardName(value: unknown) {
+  return readString(value, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function collectDdpProcessReferences(contentInline: string | null) {
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  const addId = (value: unknown) => {
+    const id = readString(value, "");
+    if (id) ids.add(id);
+  };
+  const addName = (value: unknown) => {
+    const name = normalizeDashboardName(value);
+    if (name) names.add(name);
+  };
+
+  try {
+    const parsed = JSON.parse(contentInline ?? "{}") as Record<string, unknown>;
+    const source =
+      parsed.modules && typeof parsed.modules === "object"
+        ? (parsed.modules as Record<string, unknown>)
+        : parsed;
+    const ddp = objectAt(source, "ddp");
+    const macroprocess = objectAt(ddp, "macroprocess");
+
+    addId(macroprocess.processId);
+    addId(macroprocess.process_id);
+    addName(macroprocess.titulo);
+    addName(macroprocess.title);
+
+    const steps = Array.isArray(ddp.steps) ? ddp.steps : [];
+    for (const stepValue of steps) {
+      const step = stepValue && typeof stepValue === "object" ? (stepValue as Record<string, unknown>) : {};
+      addId(step.processId);
+      addId(step.process_id);
+      addName(step.etapa);
+      addName(step.title);
+      addName(step.name);
+
+      const substeps = Array.isArray(step.substeps) ? step.substeps : [];
+      for (const substepValue of substeps) {
+        const substep =
+          substepValue && typeof substepValue === "object"
+            ? (substepValue as Record<string, unknown>)
+            : {};
+        addId(substep.processId);
+        addId(substep.process_id);
+        addName(substep.titulo);
+        addName(substep.title);
+        addName(substep.name);
+      }
+    }
+  } catch {
+    // Conteúdo inválido não deve quebrar o dashboard.
+  }
+
+  return { ids, names };
+}
+
 function dashboardMappingRowFromDocument(document: {
   id: string;
   name: string;
@@ -1564,19 +1628,38 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       concluido: dashboardMappingRows.filter((row) => row.status === "Concluído").length,
     };
 
-    // Cobertura de mapeamento: um processo é "coberto" se tiver pelo menos um
-    // mapeamento (documento do módulo ddp) vinculado a ele. A quantidade de
-    // mapeamentos não importa — é sim/não por processo.
+    const processIdsByName = new Map<string, string>();
+    for (const process of processes ?? []) {
+      const key = normalizeDashboardName(process.name);
+      if (key && !processIdsByName.has(key)) processIdsByName.set(key, process.id);
+    }
+
+    // Cobertura de mapeamento: um processo é "coberto" se aparecer como processo
+    // principal do mapeamento ou como processo relacionado em macroprocesso,
+    // etapa ou subetapa do fluxo AS IS. A quantidade de mapeamentos não importa:
+    // a cobertura é sim/não por processo cadastrado.
     const mappingsByProcess = new Map<
       string,
       Array<{ name: string; version: number; updatedAt: string }>
     >();
     for (const doc of ddps) {
-      const pid = doc.primary_process_id;
-      if (!pid) continue;
-      const list = mappingsByProcess.get(pid) ?? [];
-      list.push({ name: doc.name, version: doc.current_version, updatedAt: doc.updated_at });
-      mappingsByProcess.set(pid, list);
+      const processIds = new Set<string>();
+      if (doc.primary_process_id) processIds.add(doc.primary_process_id);
+
+      const references = collectDdpProcessReferences(doc.content_inline);
+      references.ids.forEach((id) => processIds.add(id));
+      references.names.forEach((name) => {
+        const id = processIdsByName.get(name);
+        if (id) processIds.add(id);
+      });
+
+      for (const pid of processIds) {
+        const list = mappingsByProcess.get(pid) ?? [];
+        if (!list.some((mapping) => mapping.name === doc.name)) {
+          list.push({ name: doc.name, version: doc.current_version, updatedAt: doc.updated_at });
+        }
+        mappingsByProcess.set(pid, list);
+      }
     }
     const coverageRows = (processes ?? []).map((process) => ({
       id: process.id,
