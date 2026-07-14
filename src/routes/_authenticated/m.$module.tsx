@@ -59,6 +59,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
@@ -6926,17 +6927,54 @@ function RowActions({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<CSSProperties>({});
 
   useEffect(() => {
     if (!menuOpen) return;
+    function updatePosition() {
+      const button = buttonRef.current;
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      const width = 240;
+      const viewportPadding = 12;
+      const topSpace = rect.top - viewportPadding;
+      const bottomSpace = window.innerHeight - rect.bottom - viewportPadding;
+      const estimatedHeight = moduleId === "ddp" ? 264 : 224;
+      const openUp = bottomSpace < estimatedHeight && topSpace > bottomSpace;
+      setMenuPosition({
+        position: "fixed",
+        width,
+        top: openUp ? Math.max(viewportPadding, rect.top - estimatedHeight - 6) : rect.bottom + 6,
+        left: Math.min(
+          Math.max(viewportPadding, rect.right - width),
+          window.innerWidth - width - viewportPadding,
+        ),
+        zIndex: 80,
+      });
+    }
     function onDocClick(event: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        wrapRef.current &&
+        !wrapRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
         setMenuOpen(false);
       }
     }
+    updatePosition();
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [menuOpen]);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [menuOpen, moduleId]);
 
   const reportFormat: ExportFormat = moduleId === "ddp" ? "ddp-docx" : "pop-docx";
   // Apresentação no formato padrão (HTML) — disponível apenas para Mapeamento.
@@ -6953,6 +6991,7 @@ function RowActions({
     <div className="flex items-center justify-end">
       <div ref={wrapRef} className="relative">
         <button
+          ref={buttonRef}
           type="button"
           title="Mais opcoes"
           aria-label="Mais opcoes"
@@ -6963,10 +7002,13 @@ function RowActions({
         >
           <Ellipsis className="h-4 w-4" />
         </button>
-        {menuOpen ? (
+        {menuOpen && typeof document !== "undefined"
+          ? createPortal(
           <div
+            ref={menuRef}
             role="menu"
-            className="absolute right-0 z-20 mt-1 w-60 overflow-hidden rounded-md border border-border bg-popover shadow-lg"
+            style={menuPosition}
+            className="max-h-[min(420px,calc(100vh-24px))] overflow-y-auto rounded-md border border-border bg-popover shadow-xl"
           >
             <button type="button" role="menuitem" className={menuItem} onClick={() => run(onView)}>
               <Eye className="h-4 w-4 shrink-0" /> Visualizar
@@ -7018,8 +7060,10 @@ function RowActions({
             >
               <Trash2 className="h-4 w-4 shrink-0" /> Excluir
             </button>
-          </div>
-        ) : null}
+          </div>,
+          document.body,
+            )
+          : null}
       </div>
     </div>
   );
