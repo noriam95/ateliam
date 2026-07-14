@@ -1,4 +1,4 @@
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -123,7 +123,7 @@ import { toast } from "sonner";
 
 type ModuleRouteView = "new" | "consult" | "cause-new" | "cause-consult" | "cause-edit";
 
-// Tipo de documento (modalidade) associado a cada módulo. O módulo POP é
+// Tipo de documento (modalidade) associado a cada mÃ³dulo. O mÃ³dulo POP Ã©
 // resolvido por subtipo (POP/IT/Norma) em documentDocType().
 const MODULE_BASE_DOC_TYPE: Record<AteliamModule, DocType> = {
   ddp: "mapeamento",
@@ -146,16 +146,16 @@ const DOCUMENTATION_TYPE_OPTIONS: PopState["meta"]["tipo"][] = ["Norma", "POP", 
 
 function documentationTypeName(tipo: PopState["meta"]["tipo"]) {
   if (tipo === "Norma") return "Norma";
-  if (tipo === "IT") return "Instrução de Trabalho";
-  return "Procedimento Operacional Padrão";
+  if (tipo === "IT") return "InstruÃ§Ã£o de Trabalho";
+  return "Procedimento Operacional PadrÃ£o";
 }
 
 function documentationTypeDescription(tipo: PopState["meta"]["tipo"]) {
-  if (tipo === "Norma") return "Diretrizes, regras e critérios de aplicação obrigatória.";
-  if (tipo === "IT") return "Instruções detalhadas para execução de uma atividade específica.";
-  return "Procedimento operacional padronizado para execução do processo.";
+  if (tipo === "Norma") return "Diretrizes, regras e critÃ©rios de aplicaÃ§Ã£o obrigatÃ³ria.";
+  if (tipo === "IT") return "InstruÃ§Ãµes detalhadas para execuÃ§Ã£o de uma atividade especÃ­fica.";
+  return "Procedimento operacional padronizado para execuÃ§Ã£o do processo.";
 }
-// Lê a organização demo ativa (id, slug, code_settings) do localStorage.
+// LÃª a organizaÃ§Ã£o demo ativa (id, slug, code_settings) do localStorage.
 function readActiveDemoOrganization(): {
   id: string | null;
   slug: string | null;
@@ -466,37 +466,37 @@ type ImportResult = {
   moduleId: AteliamModule;
   label: string;
 };
-const CAUSE_STATUS_OPTIONS = ["Pendente", "Em andamento", "Concluída"] as const;
-const CAUSE_PRIORITY_OPTIONS = ["Baixa", "Média", "Alta", "Crítica"] as const;
+const CAUSE_STATUS_OPTIONS = ["Pendente", "Em andamento", "ConcluÃ­da"] as const;
+const CAUSE_PRIORITY_OPTIONS = ["Baixa", "MÃ©dia", "Alta", "CrÃ­tica"] as const;
 const DEMO_CATALOGS: OrganizationCatalogs = {
   departments: [
     { id: "demo-dept-processos", name: "Processos", sigla: "PRO" },
-    { id: "demo-dept-ti", name: "Tecnologia da Informação", sigla: "TIN" },
+    { id: "demo-dept-ti", name: "Tecnologia da InformaÃ§Ã£o", sigla: "TIN" },
   ],
   positions: [
-    { id: "demo-position-analista", title: "Analista de Processos", description: "Executa e mantém documentação de processos." },
-    { id: "demo-position-gestor", title: "Gestor da Área", description: "Aprova e responde pela aplicação do documento." },
+    { id: "demo-position-analista", title: "Analista de Processos", description: "Executa e mantÃ©m documentaÃ§Ã£o de processos." },
+    { id: "demo-position-gestor", title: "Gestor da Ãrea", description: "Aprova e responde pela aplicaÃ§Ã£o do documento." },
   ],
   processOwners: [
     { id: "demo-owner-processo", name: "Dono do processo" },
-    { id: "demo-owner-area", name: "Gestor da área" },
+    { id: "demo-owner-area", name: "Gestor da Ã¡rea" },
   ],
   causes: [
     {
       id: "demo-cause-info",
-      title: "Informação descentralizada",
-      description: "Dados e evidências ficam espalhados em canais diferentes.",
+      title: "InformaÃ§Ã£o descentralizada",
+      description: "Dados e evidÃªncias ficam espalhados em canais diferentes.",
       impact: "Retrabalho e baixa rastreabilidade",
-      action: "Padronizar registro e responsáveis",
+      action: "Padronizar registro e responsÃ¡veis",
       priority: "Alta",
     },
   ],
   valueChains: [
     {
       id: "demo-chain-operacao",
-      name: "Operação e Gestão",
+      name: "OperaÃ§Ã£o e GestÃ£o",
       category: "management",
-      description: "Cadeia de valor principal da organização.",
+      description: "Cadeia de valor principal da organizaÃ§Ã£o.",
       status: "Ativa",
     },
   ],
@@ -504,35 +504,35 @@ const DEMO_CATALOGS: OrganizationCatalogs = {
     {
       id: "demo-process-bi",
       code: "PROC-001",
-      name: "Gestão de Demandas de BI Analytics",
+      name: "GestÃ£o de Demandas de BI Analytics",
       type: "process",
       value_chain_id: "demo-chain-operacao",
       parent_process_id: null,
-      department: "Tecnologia da Informação",
+      department: "Tecnologia da InformaÃ§Ã£o",
       owner: "Dono do processo",
-      description: "Processo corporativo de gestão de demandas.",
+      description: "Processo corporativo de gestÃ£o de demandas.",
       status: "Ativo",
       current_version: 1,
     },
   ],
   systems: [
-    { id: "sys-erp", name: "ERP TOTVS", description: "Sistema transacional de gestão (financeiro, fiscal, estoque)." },
-    { id: "sys-powerbi", name: "Power BI", description: "Plataforma de dashboards e relatórios analíticos." },
-    { id: "sys-crm", name: "HubSpot CRM", description: "Gestão de leads, funil e atividades comerciais." },
-    { id: "sys-ats", name: "Gupy (ATS)", description: "Recrutamento e seleção: publicação de vagas e triagem." },
-    { id: "sys-jira", name: "Jira", description: "Gestão de demandas e projetos de TI." },
-    { id: "sys-workspace", name: "Google Workspace", description: "E-mail, colaboração e agenda corporativa." },
+    { id: "sys-erp", name: "ERP TOTVS", description: "Sistema transacional de gestÃ£o (financeiro, fiscal, estoque)." },
+    { id: "sys-powerbi", name: "Power BI", description: "Plataforma de dashboards e relatÃ³rios analÃ­ticos." },
+    { id: "sys-crm", name: "HubSpot CRM", description: "GestÃ£o de leads, funil e atividades comerciais." },
+    { id: "sys-ats", name: "Gupy (ATS)", description: "Recrutamento e seleÃ§Ã£o: publicaÃ§Ã£o de vagas e triagem." },
+    { id: "sys-jira", name: "Jira", description: "GestÃ£o de demandas e projetos de TI." },
+    { id: "sys-workspace", name: "Google Workspace", description: "E-mail, colaboraÃ§Ã£o e agenda corporativa." },
   ],
 };
 
 function moduleDocumentLabel(moduleId: AteliamModule) {
   if (moduleId === "ddp") return "Mapeamento";
-  if (moduleId === "pop") return "Documentação";
+  if (moduleId === "pop") return "DocumentaÃ§Ã£o";
   return "Fluxograma";
 }
 
 function processDisplayName(process: OrganizationProcess) {
-  return `${process.code ? `${process.code} · ` : ""}${process.name}`;
+  return `${process.code ? `${process.code} Â· ` : ""}${process.name}`;
 }
 
 function processTypeLabel(type: string) {
@@ -642,7 +642,7 @@ function defaultWorkspace(): WorkspaceState {
         tipo: "POP",
         codigo: "",
         titulo: "",
-        publico: "Público Interno",
+        publico: "PÃºblico Interno",
         area: "",
         processo: "",
         versao: "00",
@@ -688,7 +688,7 @@ function defaultWorkspace(): WorkspaceState {
         {
           id: id("sec"),
           code: "3.2",
-          title: "3.2 Tratamento de exceções e registros",
+          title: "3.2 Tratamento de exceÃ§Ãµes e registros",
           description: "",
           body: "",
           records: "",
@@ -728,7 +728,7 @@ function defaultWorkspace(): WorkspaceState {
           id: id("change"),
           versao: "00",
           local: "Documento completo",
-          descricao: "Elaboração inicial do documento.",
+          descricao: "ElaboraÃ§Ã£o inicial do documento.",
         },
       ],
     },
@@ -737,8 +737,8 @@ function defaultWorkspace(): WorkspaceState {
       area: "",
       lanes: ["Solicitante", "Executor"],
       nodes: [
-        { id: "start_1", type: "start", label: "Início", x: 120, y: 135, lane: 0 },
-        { id: "task_1", type: "task", label: "Receber solicitação", x: 260, y: 110, lane: 0 },
+        { id: "start_1", type: "start", label: "InÃ­cio", x: 120, y: 135, lane: 0 },
+        { id: "task_1", type: "task", label: "Receber solicitaÃ§Ã£o", x: 260, y: 110, lane: 0 },
         { id: "gateway_1", type: "gateway", label: "Completo?", x: 470, y: 135, lane: 0 },
         { id: "task_2", type: "task", label: "Executar atividade", x: 610, y: 310, lane: 1 },
         { id: "end_1", type: "end", label: "Fim", x: 825, y: 335, lane: 1 },
@@ -753,11 +753,11 @@ function defaultWorkspace(): WorkspaceState {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Documentos de demonstração REAIS e encadeados com o DEMO_REGISTRY
-// (área → dono → cadeia de valor → processo → mapeamento/documento).
-// Servem para visualizar o preenchimento completo dos formulários.
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Documentos de demonstraÃ§Ã£o REAIS e encadeados com o DEMO_REGISTRY
+// (Ã¡rea â†’ dono â†’ cadeia de valor â†’ processo â†’ mapeamento/documento).
+// Servem para visualizar o preenchimento completo dos formulÃ¡rios.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type DemoDoc = { id: string; status: string; updatedAt: string; workspace: WorkspaceState };
 
@@ -831,7 +831,7 @@ function makeDemoDdpWorkspace(spec: DemoDdpSpec): WorkspaceState {
         criticidade,
         descricao,
       })),
-      macroprocess: { ...base.ddp.macroprocess, legenda: `Macroprocesso AS IS — ${spec.titulo}` },
+      macroprocess: { ...base.ddp.macroprocess, legenda: `Macroprocesso AS IS â€” ${spec.titulo}` },
       steps: spec.steps.map(([etapa, responsavel, entrada, atividade, saida, sistema, risco]) => ({
         id: id("step"),
         etapa,
@@ -877,113 +877,113 @@ const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
     id: "demo-doc:ddp:MAP.TI.002",
     codigo: "MAP.TI.002",
     modalidade: "TO BE",
-    titulo: "Gestão de Demandas de BI & Analytics",
-    area: "Tecnologia da Informação",
-    donoProcesso: "Carlos Menezes · TI",
-    responsavel: "Carlos Menezes · TI",
-    elaborador: "Aline Ferreira · Processos & Qualidade",
-    revisor: "Carlos Menezes · TI",
+    titulo: "GestÃ£o de Demandas de BI & Analytics",
+    area: "Tecnologia da InformaÃ§Ã£o",
+    donoProcesso: "Carlos Menezes Â· TI",
+    responsavel: "Carlos Menezes Â· TI",
+    elaborador: "Aline Ferreira Â· Processos & Qualidade",
+    revisor: "Carlos Menezes Â· TI",
     valueChainId: "chain-gestao-ti",
-    valueChainName: "Gestão de TI & Inovação",
+    valueChainName: "GestÃ£o de TI & InovaÃ§Ã£o",
     versao: "03",
     status: "Aprovado",
     updatedAt: "2026-06-20",
     objetivo:
-      "Mapear o ciclo de atendimento das demandas de BI e Analytics, do pedido do solicitante até a publicação do dashboard, identificando gargalos e retrabalho.",
+      "Mapear o ciclo de atendimento das demandas de BI e Analytics, do pedido do solicitante atÃ© a publicaÃ§Ã£o do dashboard, identificando gargalos e retrabalho.",
     escopo:
-      "Inclui solicitação, priorização, modelagem de dados, construção de dashboards e publicação. Não inclui a infraestrutura do data warehouse.",
+      "Inclui solicitaÃ§Ã£o, priorizaÃ§Ã£o, modelagem de dados, construÃ§Ã£o de dashboards e publicaÃ§Ã£o. NÃ£o inclui a infraestrutura do data warehouse.",
     estadoAtual:
-      "Demandas chegam por e-mail e canais diversos, sem padronização. A priorização é informal e depende da disponibilidade do time.",
-    kpis: "Lead time médio da demanda; % de dashboards publicados no prazo; nº de retrabalhos por demanda.",
-    volume: "~25 demandas/mês",
-    frequencia: "Fluxo contínuo (diário)",
+      "Demandas chegam por e-mail e canais diversos, sem padronizaÃ§Ã£o. A priorizaÃ§Ã£o Ã© informal e depende da disponibilidade do time.",
+    kpis: "Lead time mÃ©dio da demanda; % de dashboards publicados no prazo; nÂº de retrabalhos por demanda.",
+    volume: "~25 demandas/mÃªs",
+    frequencia: "Fluxo contÃ­nuo (diÃ¡rio)",
     dores:
-      "Falta de critério claro de priorização; requisitos incompletos; retrabalho por validação tardia com o solicitante.",
+      "Falta de critÃ©rio claro de priorizaÃ§Ã£o; requisitos incompletos; retrabalho por validaÃ§Ã£o tardia com o solicitante.",
     oportunidades:
-      "Portal único de demandas, template de requisitos e checkpoint de validação intermediária.",
+      "Portal Ãºnico de demandas, template de requisitos e checkpoint de validaÃ§Ã£o intermediÃ¡ria.",
     systems: [
-      ["Power BI", "Plataforma de BI", "Alta", "Construção e publicação de dashboards e relatórios."],
-      ["Azure SQL / DW", "Banco de dados analítico", "Alta", "Camada de dados consolidada para análise."],
-      ["Jira", "Gestão de demandas", "Média", "Registro e acompanhamento das demandas priorizadas."],
+      ["Power BI", "Plataforma de BI", "Alta", "ConstruÃ§Ã£o e publicaÃ§Ã£o de dashboards e relatÃ³rios."],
+      ["Azure SQL / DW", "Banco de dados analÃ­tico", "Alta", "Camada de dados consolidada para anÃ¡lise."],
+      ["Jira", "GestÃ£o de demandas", "MÃ©dia", "Registro e acompanhamento das demandas priorizadas."],
     ],
     steps: [
-      ["Receber e registrar demanda", "Analista de BI", "Pedido do solicitante", "Registrar a demanda e capturar o objetivo de negócio.", "Demanda registrada", "Jira", "Requisito incompleto"],
-      ["Priorizar demanda", "Carlos Menezes · TI", "Backlog de demandas", "Classificar por valor e esforço no comitê semanal.", "Demanda priorizada", "Jira", "Priorização subjetiva"],
-      ["Modelar dados", "Engenheiro de Dados", "Fontes de dados", "Construir/ajustar o modelo de dados necessário.", "Modelo pronto", "Azure SQL / DW", "Qualidade de dados"],
-      ["Construir dashboard", "Analista de BI", "Modelo de dados", "Desenvolver visualizações conforme requisitos.", "Dashboard em homologação", "Power BI", "Divergência de requisito"],
-      ["Validar e publicar", "Solicitante", "Dashboard homologado", "Validar com o solicitante e publicar no workspace.", "Dashboard publicado", "Power BI", "Validação tardia"],
+      ["Receber e registrar demanda", "Analista de BI", "Pedido do solicitante", "Registrar a demanda e capturar o objetivo de negÃ³cio.", "Demanda registrada", "Jira", "Requisito incompleto"],
+      ["Priorizar demanda", "Carlos Menezes Â· TI", "Backlog de demandas", "Classificar por valor e esforÃ§o no comitÃª semanal.", "Demanda priorizada", "Jira", "PriorizaÃ§Ã£o subjetiva"],
+      ["Modelar dados", "Engenheiro de Dados", "Fontes de dados", "Construir/ajustar o modelo de dados necessÃ¡rio.", "Modelo pronto", "Azure SQL / DW", "Qualidade de dados"],
+      ["Construir dashboard", "Analista de BI", "Modelo de dados", "Desenvolver visualizaÃ§Ãµes conforme requisitos.", "Dashboard em homologaÃ§Ã£o", "Power BI", "DivergÃªncia de requisito"],
+      ["Validar e publicar", "Solicitante", "Dashboard homologado", "Validar com o solicitante e publicar no workspace.", "Dashboard publicado", "Power BI", "ValidaÃ§Ã£o tardia"],
     ],
     sipoc: [
-      ["Áreas de negócio", "Pedido e regras de negócio", "Atendimento da demanda de BI", "Dashboard publicado", "Gestores e analistas"],
-      ["Sistemas transacionais", "Dados brutos", "Modelagem e consolidação", "Base analítica confiável", "Time de BI"],
+      ["Ãreas de negÃ³cio", "Pedido e regras de negÃ³cio", "Atendimento da demanda de BI", "Dashboard publicado", "Gestores e analistas"],
+      ["Sistemas transacionais", "Dados brutos", "Modelagem e consolidaÃ§Ã£o", "Base analÃ­tica confiÃ¡vel", "Time de BI"],
     ],
     gaps: [
-      ["Priorização informal", "Não há critério objetivo para priorizar demandas.", "Atrasos e insatisfação das áreas", "Implantar matriz valor × esforço no comitê", "Carlos Menezes · TI", "2026-07-31", "Alta", "Pendente"],
-      ["Requisitos incompletos", "Demandas chegam sem detalhamento suficiente.", "Retrabalho e atraso", "Adotar template de requisitos no portal", "Aline Ferreira · Processos & Qualidade", "2026-07-15", "Alta", "Em andamento"],
+      ["PriorizaÃ§Ã£o informal", "NÃ£o hÃ¡ critÃ©rio objetivo para priorizar demandas.", "Atrasos e insatisfaÃ§Ã£o das Ã¡reas", "Implantar matriz valor Ã— esforÃ§o no comitÃª", "Carlos Menezes Â· TI", "2026-07-31", "Alta", "Pendente"],
+      ["Requisitos incompletos", "Demandas chegam sem detalhamento suficiente.", "Retrabalho e atraso", "Adotar template de requisitos no portal", "Aline Ferreira Â· Processos & Qualidade", "2026-07-15", "Alta", "Em andamento"],
     ],
     nextSteps: [
-      "Implantar portal único de demandas com template de requisitos",
+      "Implantar portal Ãºnico de demandas com template de requisitos",
       "Definir SLA por tipo de demanda",
       "Validar o mapeamento com o dono do processo",
     ],
     glossary: [
-      ["BI", "Business Intelligence — análise de dados para apoio à decisão."],
+      ["BI", "Business Intelligence â€” anÃ¡lise de dados para apoio Ã  decisÃ£o."],
       ["Lead time", "Tempo total entre a abertura e a entrega da demanda."],
-      ["DW", "Data Warehouse — repositório central de dados analíticos."],
+      ["DW", "Data Warehouse â€” repositÃ³rio central de dados analÃ­ticos."],
     ],
   },
   {
     id: "demo-doc:ddp:MAP.RH.001",
     codigo: "MAP.RH.001",
-    titulo: "Recrutamento e Seleção",
+    titulo: "Recrutamento e SeleÃ§Ã£o",
     area: "Recursos Humanos",
-    donoProcesso: "Juliana Castro · RH",
-    responsavel: "Juliana Castro · RH",
-    elaborador: "Juliana Castro · RH",
-    revisor: "Aline Ferreira · Processos & Qualidade",
+    donoProcesso: "Juliana Castro Â· RH",
+    responsavel: "Juliana Castro Â· RH",
+    elaborador: "Juliana Castro Â· RH",
+    revisor: "Aline Ferreira Â· Processos & Qualidade",
     valueChainId: "chain-gestao-pessoas",
-    valueChainName: "Gestão de Pessoas",
+    valueChainName: "GestÃ£o de Pessoas",
     versao: "02",
-    status: "Em revisão",
+    status: "Em revisÃ£o",
     updatedAt: "2026-06-18",
     objetivo:
-      "Mapear o fluxo de recrutamento e seleção, da abertura da vaga à admissão, reduzindo o tempo de contratação.",
+      "Mapear o fluxo de recrutamento e seleÃ§Ã£o, da abertura da vaga Ã  admissÃ£o, reduzindo o tempo de contrataÃ§Ã£o.",
     escopo:
-      "Da requisição de pessoal até a proposta aceita. Não inclui onboarding, tratado em processo próprio.",
+      "Da requisiÃ§Ã£o de pessoal atÃ© a proposta aceita. NÃ£o inclui onboarding, tratado em processo prÃ³prio.",
     estadoAtual:
-      "Triagem manual de currículos e agenda de entrevistas por e-mail, gerando demora e perda de candidatos.",
-    kpis: "Tempo médio de contratação (time-to-hire); taxa de aceitação de propostas; nº de candidatos por vaga.",
-    volume: "~12 vagas/mês",
-    frequencia: "Conforme demanda das áreas",
-    dores: "Triagem demorada; baixa padronização de entrevistas; comunicação lenta com candidatos.",
-    oportunidades: "ATS para triagem; roteiro de entrevista padrão; comunicação automatizada.",
+      "Triagem manual de currÃ­culos e agenda de entrevistas por e-mail, gerando demora e perda de candidatos.",
+    kpis: "Tempo mÃ©dio de contrataÃ§Ã£o (time-to-hire); taxa de aceitaÃ§Ã£o de propostas; nÂº de candidatos por vaga.",
+    volume: "~12 vagas/mÃªs",
+    frequencia: "Conforme demanda das Ã¡reas",
+    dores: "Triagem demorada; baixa padronizaÃ§Ã£o de entrevistas; comunicaÃ§Ã£o lenta com candidatos.",
+    oportunidades: "ATS para triagem; roteiro de entrevista padrÃ£o; comunicaÃ§Ã£o automatizada.",
     systems: [
-      ["Gupy (ATS)", "Recrutamento e seleção", "Alta", "Publicação de vagas e triagem de candidatos."],
-      ["LinkedIn Recruiter", "Sourcing", "Média", "Busca ativa de candidatos."],
-      ["Google Workspace", "Colaboração", "Média", "Agendamento e comunicação."],
+      ["Gupy (ATS)", "Recrutamento e seleÃ§Ã£o", "Alta", "PublicaÃ§Ã£o de vagas e triagem de candidatos."],
+      ["LinkedIn Recruiter", "Sourcing", "MÃ©dia", "Busca ativa de candidatos."],
+      ["Google Workspace", "ColaboraÃ§Ã£o", "MÃ©dia", "Agendamento e comunicaÃ§Ã£o."],
     ],
     steps: [
-      ["Abrir requisição de vaga", "Gestor da área", "Necessidade de contratação", "Registrar a vaga com perfil e justificativa.", "Vaga aprovada", "Gupy (ATS)", "Perfil mal definido"],
+      ["Abrir requisiÃ§Ã£o de vaga", "Gestor da Ã¡rea", "Necessidade de contrataÃ§Ã£o", "Registrar a vaga com perfil e justificativa.", "Vaga aprovada", "Gupy (ATS)", "Perfil mal definido"],
       ["Divulgar e captar", "Analista de R&S", "Vaga aprovada", "Publicar a vaga e fazer sourcing ativo.", "Pipeline de candidatos", "Gupy / LinkedIn", "Poucos candidatos"],
-      ["Triar candidatos", "Analista de R&S", "Currículos recebidos", "Avaliar fit técnico e cultural.", "Shortlist", "Gupy (ATS)", "Triagem subjetiva"],
-      ["Entrevistar", "Gestor da área", "Shortlist", "Conduzir entrevistas conforme roteiro.", "Candidato avaliado", "Google Workspace", "Falta de padronização"],
-      ["Fazer proposta e admitir", "Juliana Castro · RH", "Candidato aprovado", "Negociar proposta e iniciar admissão.", "Colaborador admitido", "Gupy (ATS)", "Recusa de proposta"],
+      ["Triar candidatos", "Analista de R&S", "CurrÃ­culos recebidos", "Avaliar fit tÃ©cnico e cultural.", "Shortlist", "Gupy (ATS)", "Triagem subjetiva"],
+      ["Entrevistar", "Gestor da Ã¡rea", "Shortlist", "Conduzir entrevistas conforme roteiro.", "Candidato avaliado", "Google Workspace", "Falta de padronizaÃ§Ã£o"],
+      ["Fazer proposta e admitir", "Juliana Castro Â· RH", "Candidato aprovado", "Negociar proposta e iniciar admissÃ£o.", "Colaborador admitido", "Gupy (ATS)", "Recusa de proposta"],
     ],
     sipoc: [
-      ["Áreas requisitantes", "Requisição de pessoal", "Recrutamento e seleção", "Profissional contratado", "Área requisitante"],
-      ["Fontes de candidatos", "Currículos", "Triagem e avaliação", "Shortlist qualificada", "Gestores"],
+      ["Ãreas requisitantes", "RequisiÃ§Ã£o de pessoal", "Recrutamento e seleÃ§Ã£o", "Profissional contratado", "Ãrea requisitante"],
+      ["Fontes de candidatos", "CurrÃ­culos", "Triagem e avaliaÃ§Ã£o", "Shortlist qualificada", "Gestores"],
     ],
     gaps: [
-      ["Triagem manual", "Currículos avaliados manualmente um a um.", "Demora e perda de talentos", "Configurar filtros e ranking no ATS", "Juliana Castro · RH", "2026-07-20", "Alta", "Pendente"],
-      ["Entrevistas sem roteiro", "Cada gestor entrevista de forma diferente.", "Decisão inconsistente", "Criar roteiro e ficha de avaliação padrão", "Juliana Castro · RH", "2026-07-10", "Média", "Em andamento"],
+      ["Triagem manual", "CurrÃ­culos avaliados manualmente um a um.", "Demora e perda de talentos", "Configurar filtros e ranking no ATS", "Juliana Castro Â· RH", "2026-07-20", "Alta", "Pendente"],
+      ["Entrevistas sem roteiro", "Cada gestor entrevista de forma diferente.", "DecisÃ£o inconsistente", "Criar roteiro e ficha de avaliaÃ§Ã£o padrÃ£o", "Juliana Castro Â· RH", "2026-07-10", "MÃ©dia", "Em andamento"],
     ],
     nextSteps: [
-      "Padronizar roteiro de entrevista por nível",
-      "Automatizar comunicação com candidatos",
+      "Padronizar roteiro de entrevista por nÃ­vel",
+      "Automatizar comunicaÃ§Ã£o com candidatos",
       "Validar o mapeamento com o dono do processo",
     ],
     glossary: [
-      ["ATS", "Applicant Tracking System — sistema de gestão de candidaturas."],
+      ["ATS", "Applicant Tracking System â€” sistema de gestÃ£o de candidaturas."],
       ["Time-to-hire", "Tempo entre abertura da vaga e aceite da proposta."],
       ["Sourcing", "Busca ativa de candidatos."],
     ],
@@ -993,99 +993,99 @@ const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
     codigo: "MAP.FIN.001",
     titulo: "Contas a Receber",
     area: "Financeiro & Controladoria",
-    donoProcesso: "Bruno Cardoso · Financeiro",
-    responsavel: "Bruno Cardoso · Financeiro",
-    elaborador: "Bruno Cardoso · Financeiro",
-    revisor: "Aline Ferreira · Processos & Qualidade",
+    donoProcesso: "Bruno Cardoso Â· Financeiro",
+    responsavel: "Bruno Cardoso Â· Financeiro",
+    elaborador: "Bruno Cardoso Â· Financeiro",
+    revisor: "Aline Ferreira Â· Processos & Qualidade",
     valueChainId: "chain-financeiro",
-    valueChainName: "Gestão Financeira",
+    valueChainName: "GestÃ£o Financeira",
     versao: "04",
     status: "Aprovado",
     updatedAt: "2026-03-19",
     objetivo:
-      "Mapear o ciclo de contas a receber, da emissão da fatura à baixa, melhorando o índice de inadimplência.",
-    escopo: "Da emissão da fatura à conciliação bancária. Não inclui negociação de crédito.",
+      "Mapear o ciclo de contas a receber, da emissÃ£o da fatura Ã  baixa, melhorando o Ã­ndice de inadimplÃªncia.",
+    escopo: "Da emissÃ£o da fatura Ã  conciliaÃ§Ã£o bancÃ¡ria. NÃ£o inclui negociaÃ§Ã£o de crÃ©dito.",
     estadoAtual:
-      "Cobrança reativa, sem régua definida; conciliação parcialmente manual no fim do mês.",
-    kpis: "DSO (prazo médio de recebimento); % de inadimplência; % de conciliação automática.",
-    volume: "~800 títulos/mês",
-    frequencia: "Diária",
-    dores: "Cobrança tardia; conciliação manual demorada; falta de visão de aging.",
-    oportunidades: "Régua de cobrança automatizada; conciliação via API bancária; painel de aging.",
+      "CobranÃ§a reativa, sem rÃ©gua definida; conciliaÃ§Ã£o parcialmente manual no fim do mÃªs.",
+    kpis: "DSO (prazo mÃ©dio de recebimento); % de inadimplÃªncia; % de conciliaÃ§Ã£o automÃ¡tica.",
+    volume: "~800 tÃ­tulos/mÃªs",
+    frequencia: "DiÃ¡ria",
+    dores: "CobranÃ§a tardia; conciliaÃ§Ã£o manual demorada; falta de visÃ£o de aging.",
+    oportunidades: "RÃ©gua de cobranÃ§a automatizada; conciliaÃ§Ã£o via API bancÃ¡ria; painel de aging.",
     systems: [
-      ["ERP TOTVS", "Sistema transacional", "Alta", "Emissão de faturas, baixa e razão contábil."],
-      ["Portal Bancário / API", "Integração financeira", "Alta", "Recebíveis e retorno bancário."],
-      ["Planilhas de aging", "Controle manual", "Média", "Acompanhamento de vencidos (a ser substituído)."],
+      ["ERP TOTVS", "Sistema transacional", "Alta", "EmissÃ£o de faturas, baixa e razÃ£o contÃ¡bil."],
+      ["Portal BancÃ¡rio / API", "IntegraÃ§Ã£o financeira", "Alta", "RecebÃ­veis e retorno bancÃ¡rio."],
+      ["Planilhas de aging", "Controle manual", "MÃ©dia", "Acompanhamento de vencidos (a ser substituÃ­do)."],
     ],
     steps: [
       ["Emitir fatura", "Analista Financeiro", "Pedido faturado", "Gerar a fatura e a nota fiscal.", "Fatura emitida", "ERP TOTVS", "Erro de dados cadastrais"],
-      ["Enviar cobrança", "Analista Financeiro", "Fatura emitida", "Enviar boleto e lembretes ao cliente.", "Cobrança enviada", "ERP TOTVS", "Cobrança tardia"],
-      ["Receber pagamento", "Cliente", "Boleto", "Cliente efetua o pagamento.", "Pagamento recebido", "Portal Bancário / API", "Pagamento divergente"],
-      ["Conciliar", "Analista Financeiro", "Retorno bancário", "Conciliar recebimentos e dar baixa.", "Título baixado", "ERP TOTVS", "Conciliação manual"],
-      ["Tratar inadimplência", "Bruno Cardoso · Financeiro", "Títulos vencidos", "Acionar régua de cobrança e negociação.", "Título regularizado", "ERP TOTVS", "Perda por inadimplência"],
+      ["Enviar cobranÃ§a", "Analista Financeiro", "Fatura emitida", "Enviar boleto e lembretes ao cliente.", "CobranÃ§a enviada", "ERP TOTVS", "CobranÃ§a tardia"],
+      ["Receber pagamento", "Cliente", "Boleto", "Cliente efetua o pagamento.", "Pagamento recebido", "Portal BancÃ¡rio / API", "Pagamento divergente"],
+      ["Conciliar", "Analista Financeiro", "Retorno bancÃ¡rio", "Conciliar recebimentos e dar baixa.", "TÃ­tulo baixado", "ERP TOTVS", "ConciliaÃ§Ã£o manual"],
+      ["Tratar inadimplÃªncia", "Bruno Cardoso Â· Financeiro", "TÃ­tulos vencidos", "Acionar rÃ©gua de cobranÃ§a e negociaÃ§Ã£o.", "TÃ­tulo regularizado", "ERP TOTVS", "Perda por inadimplÃªncia"],
     ],
     sipoc: [
-      ["Área Comercial", "Pedidos faturados", "Faturamento e cobrança", "Recebimento conciliado", "Tesouraria"],
-      ["Bancos", "Retorno bancário", "Conciliação e baixa", "Razão atualizado", "Controladoria"],
+      ["Ãrea Comercial", "Pedidos faturados", "Faturamento e cobranÃ§a", "Recebimento conciliado", "Tesouraria"],
+      ["Bancos", "Retorno bancÃ¡rio", "ConciliaÃ§Ã£o e baixa", "RazÃ£o atualizado", "Controladoria"],
     ],
     gaps: [
-      ["Cobrança reativa", "Não há régua de cobrança automatizada.", "Aumento da inadimplência", "Implantar régua automática por faixa de atraso", "Bruno Cardoso · Financeiro", "2026-04-30", "Alta", "Concluído"],
-      ["Conciliação manual", "Conciliação feita em planilhas no fim do mês.", "Erros e atraso no fechamento", "Integrar conciliação via API bancária", "Bruno Cardoso · Financeiro", "2026-05-31", "Média", "Em andamento"],
+      ["CobranÃ§a reativa", "NÃ£o hÃ¡ rÃ©gua de cobranÃ§a automatizada.", "Aumento da inadimplÃªncia", "Implantar rÃ©gua automÃ¡tica por faixa de atraso", "Bruno Cardoso Â· Financeiro", "2026-04-30", "Alta", "ConcluÃ­do"],
+      ["ConciliaÃ§Ã£o manual", "ConciliaÃ§Ã£o feita em planilhas no fim do mÃªs.", "Erros e atraso no fechamento", "Integrar conciliaÃ§Ã£o via API bancÃ¡ria", "Bruno Cardoso Â· Financeiro", "2026-05-31", "MÃ©dia", "Em andamento"],
     ],
     nextSteps: [
       "Publicar painel de aging em tempo real",
-      "Automatizar a régua de cobrança",
+      "Automatizar a rÃ©gua de cobranÃ§a",
       "Validar o mapeamento com o dono do processo",
     ],
     glossary: [
-      ["DSO", "Days Sales Outstanding — prazo médio de recebimento."],
-      ["Aging", "Relatório de títulos por faixa de vencimento."],
-      ["Conciliação", "Confronto entre extrato bancário e títulos."],
+      ["DSO", "Days Sales Outstanding â€” prazo mÃ©dio de recebimento."],
+      ["Aging", "RelatÃ³rio de tÃ­tulos por faixa de vencimento."],
+      ["ConciliaÃ§Ã£o", "Confronto entre extrato bancÃ¡rio e tÃ­tulos."],
     ],
   },
   {
     id: "demo-doc:ddp:MAP.COM.001",
     codigo: "MAP.COM.001",
-    titulo: "Prospecção e Geração de Leads",
+    titulo: "ProspecÃ§Ã£o e GeraÃ§Ã£o de Leads",
     area: "Comercial & Vendas",
-    donoProcesso: "Rafael Souza · Comercial",
-    responsavel: "Rafael Souza · Comercial",
-    elaborador: "Rafael Souza · Comercial",
-    revisor: "Aline Ferreira · Processos & Qualidade",
+    donoProcesso: "Rafael Souza Â· Comercial",
+    responsavel: "Rafael Souza Â· Comercial",
+    elaborador: "Rafael Souza Â· Comercial",
+    revisor: "Aline Ferreira Â· Processos & Qualidade",
     valueChainId: "chain-comercial",
-    valueChainName: "Comercialização & Vendas",
+    valueChainName: "ComercializaÃ§Ã£o & Vendas",
     versao: "01",
     status: "Ativo",
     updatedAt: "2026-06-09",
     objetivo:
-      "Mapear a geração e qualificação de leads, do primeiro contato à passagem para vendas, aumentando a taxa de conversão.",
-    escopo: "Da captação do lead à qualificação (MQL→SQL). Não inclui negociação e fechamento.",
+      "Mapear a geraÃ§Ã£o e qualificaÃ§Ã£o de leads, do primeiro contato Ã  passagem para vendas, aumentando a taxa de conversÃ£o.",
+    escopo: "Da captaÃ§Ã£o do lead Ã  qualificaÃ§Ã£o (MQLâ†’SQL). NÃ£o inclui negociaÃ§Ã£o e fechamento.",
     estadoAtual:
-      "Leads dispersos entre planilhas e e-mails; qualificação sem critério único; baixa rastreabilidade.",
-    kpis: "Taxa de conversão lead→SQL; custo por lead; tempo de resposta ao lead.",
-    volume: "~400 leads/mês",
-    frequencia: "Diária",
-    dores: "Leads sem follow-up; qualificação subjetiva; falta de integração marketing-vendas.",
-    oportunidades: "CRM único; critério BANT; automação de nutrição.",
+      "Leads dispersos entre planilhas e e-mails; qualificaÃ§Ã£o sem critÃ©rio Ãºnico; baixa rastreabilidade.",
+    kpis: "Taxa de conversÃ£o leadâ†’SQL; custo por lead; tempo de resposta ao lead.",
+    volume: "~400 leads/mÃªs",
+    frequencia: "DiÃ¡ria",
+    dores: "Leads sem follow-up; qualificaÃ§Ã£o subjetiva; falta de integraÃ§Ã£o marketing-vendas.",
+    oportunidades: "CRM Ãºnico; critÃ©rio BANT; automaÃ§Ã£o de nutriÃ§Ã£o.",
     systems: [
-      ["HubSpot CRM", "CRM", "Alta", "Gestão de leads, funil e atividades comerciais."],
-      ["RD Station", "Automação de marketing", "Média", "Captação e nutrição de leads."],
+      ["HubSpot CRM", "CRM", "Alta", "GestÃ£o de leads, funil e atividades comerciais."],
+      ["RD Station", "AutomaÃ§Ã£o de marketing", "MÃ©dia", "CaptaÃ§Ã£o e nutriÃ§Ã£o de leads."],
       ["Planilhas de apoio", "Controle manual", "Baixa", "Controles paralelos (a eliminar)."],
     ],
     steps: [
-      ["Captar lead", "Marketing", "Campanhas e formulários", "Capturar o lead e registrar a origem.", "Lead registrado", "RD Station", "Lead duplicado"],
-      ["Qualificar (MQL)", "SDR", "Lead registrado", "Avaliar fit com critério BANT.", "Lead qualificado (MQL)", "HubSpot CRM", "Qualificação subjetiva"],
-      ["Abordar e nutrir", "SDR", "MQL", "Realizar abordagem e nutrição até o interesse.", "Lead engajado", "HubSpot CRM", "Falta de follow-up"],
-      ["Converter em SQL", "SDR", "Lead engajado", "Confirmar oportunidade e agendar reunião.", "SQL gerado", "HubSpot CRM", "Passagem incompleta"],
-      ["Passar para vendas", "Rafael Souza · Comercial", "SQL gerado", "Repassar o SQL ao executivo de vendas.", "Oportunidade no funil", "HubSpot CRM", "Perda na passagem"],
+      ["Captar lead", "Marketing", "Campanhas e formulÃ¡rios", "Capturar o lead e registrar a origem.", "Lead registrado", "RD Station", "Lead duplicado"],
+      ["Qualificar (MQL)", "SDR", "Lead registrado", "Avaliar fit com critÃ©rio BANT.", "Lead qualificado (MQL)", "HubSpot CRM", "QualificaÃ§Ã£o subjetiva"],
+      ["Abordar e nutrir", "SDR", "MQL", "Realizar abordagem e nutriÃ§Ã£o atÃ© o interesse.", "Lead engajado", "HubSpot CRM", "Falta de follow-up"],
+      ["Converter em SQL", "SDR", "Lead engajado", "Confirmar oportunidade e agendar reuniÃ£o.", "SQL gerado", "HubSpot CRM", "Passagem incompleta"],
+      ["Passar para vendas", "Rafael Souza Â· Comercial", "SQL gerado", "Repassar o SQL ao executivo de vendas.", "Oportunidade no funil", "HubSpot CRM", "Perda na passagem"],
     ],
     sipoc: [
-      ["Marketing", "Leads captados", "Qualificação de leads", "SQL qualificado", "Time de Vendas"],
-      ["Canais digitais", "Dados de contato", "Nutrição e abordagem", "Lead engajado", "SDRs"],
+      ["Marketing", "Leads captados", "QualificaÃ§Ã£o de leads", "SQL qualificado", "Time de Vendas"],
+      ["Canais digitais", "Dados de contato", "NutriÃ§Ã£o e abordagem", "Lead engajado", "SDRs"],
     ],
     gaps: [
-      ["Sem critério único", "Qualificação varia entre SDRs.", "Conversão baixa e inconsistente", "Adotar critério BANT padronizado", "Rafael Souza · Comercial", "2026-07-15", "Alta", "Pendente"],
-      ["Follow-up manual", "Acompanhamento depende de memória do SDR.", "Leads esfriam", "Automatizar cadência de follow-up no CRM", "Rafael Souza · Comercial", "2026-07-05", "Média", "Pendente"],
+      ["Sem critÃ©rio Ãºnico", "QualificaÃ§Ã£o varia entre SDRs.", "ConversÃ£o baixa e inconsistente", "Adotar critÃ©rio BANT padronizado", "Rafael Souza Â· Comercial", "2026-07-15", "Alta", "Pendente"],
+      ["Follow-up manual", "Acompanhamento depende de memÃ³ria do SDR.", "Leads esfriam", "Automatizar cadÃªncia de follow-up no CRM", "Rafael Souza Â· Comercial", "2026-07-05", "MÃ©dia", "Pendente"],
     ],
     nextSteps: [
       "Unificar a base de leads no CRM",
@@ -1093,9 +1093,9 @@ const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
       "Validar o mapeamento com o dono do processo",
     ],
     glossary: [
-      ["MQL", "Marketing Qualified Lead — lead qualificado pelo marketing."],
-      ["SQL", "Sales Qualified Lead — lead qualificado para vendas."],
-      ["BANT", "Budget, Authority, Need, Timing — critério de qualificação."],
+      ["MQL", "Marketing Qualified Lead â€” lead qualificado pelo marketing."],
+      ["SQL", "Sales Qualified Lead â€” lead qualificado para vendas."],
+      ["BANT", "Budget, Authority, Need, Timing â€” critÃ©rio de qualificaÃ§Ã£o."],
     ],
   },
 ];
@@ -1164,24 +1164,24 @@ const DEMO_POP_SPECS: DemoPopSpec[] = [
     id: "demo-doc:pop:POP.RH.001",
     tipo: "POP",
     codigo: "POP.RH.001",
-    titulo: "Admissão de Colaborador",
+    titulo: "AdmissÃ£o de Colaborador",
     area: "Recursos Humanos",
-    processo: "Recrutamento e Seleção",
-    responsavel: "Juliana Castro · RH",
-    elaboracao: "Juliana Castro · RH",
-    aprovacao: "Aline Ferreira · Processos & Qualidade",
+    processo: "Recrutamento e SeleÃ§Ã£o",
+    responsavel: "Juliana Castro Â· RH",
+    elaboracao: "Juliana Castro Â· RH",
+    aprovacao: "Aline Ferreira Â· Processos & Qualidade",
     versao: "02",
     status: "Aprovado",
     updatedAt: "2026-05-04",
-    objetivo: "Padronizar a admissão de novos colaboradores, garantindo conformidade e prazo.",
-    abrangencia: "Aplica-se a todas as admissões CLT da organização.",
+    objetivo: "Padronizar a admissÃ£o de novos colaboradores, garantindo conformidade e prazo.",
+    abrangencia: "Aplica-se a todas as admissÃµes CLT da organizaÃ§Ã£o.",
     sections: [
-      ["1. Pré-requisitos", "Documentos e aprovações necessárias", "Proposta aceita, documentos pessoais do candidato e exame admissional agendado."],
-      ["2. Registro e contrato", "Cadastro e formalização", "Cadastrar o colaborador no sistema de folha, gerar e colher assinatura do contrato e anexos."],
-      ["3. Integração inicial", "Acessos e boas-vindas", "Solicitar acessos a TI, preparar estação de trabalho e agendar o onboarding."],
+      ["1. PrÃ©-requisitos", "Documentos e aprovaÃ§Ãµes necessÃ¡rias", "Proposta aceita, documentos pessoais do candidato e exame admissional agendado."],
+      ["2. Registro e contrato", "Cadastro e formalizaÃ§Ã£o", "Cadastrar o colaborador no sistema de folha, gerar e colher assinatura do contrato e anexos."],
+      ["3. IntegraÃ§Ã£o inicial", "Acessos e boas-vindas", "Solicitar acessos a TI, preparar estaÃ§Ã£o de trabalho e agendar o onboarding."],
     ],
     responsibilities: [
-      ["RH", "Conduzir a admissão e validar a documentação."],
+      ["RH", "Conduzir a admissÃ£o e validar a documentaÃ§Ã£o."],
       ["TI", "Provisionar acessos e equipamentos."],
       ["Gestor", "Receber e integrar o novo colaborador."],
     ],
@@ -1190,49 +1190,49 @@ const DEMO_POP_SPECS: DemoPopSpec[] = [
     id: "demo-doc:pop:IT.TI.001",
     tipo: "IT",
     codigo: "IT.TI.001",
-    titulo: "Concessão de Acessos",
-    area: "Tecnologia da Informação",
-    processo: "Gestão de Segurança da Informação",
-    responsavel: "Carlos Menezes · TI",
-    elaboracao: "Carlos Menezes · TI",
-    aprovacao: "Carlos Menezes · TI",
+    titulo: "ConcessÃ£o de Acessos",
+    area: "Tecnologia da InformaÃ§Ã£o",
+    processo: "GestÃ£o de SeguranÃ§a da InformaÃ§Ã£o",
+    responsavel: "Carlos Menezes Â· TI",
+    elaboracao: "Carlos Menezes Â· TI",
+    aprovacao: "Carlos Menezes Â· TI",
     versao: "01",
     status: "Aprovado",
     updatedAt: "2026-05-22",
-    objetivo: "Definir as regras para concessão, revisão e revogação de acessos a sistemas.",
-    abrangencia: "Aplica-se a todos os sistemas corporativos e usuários internos.",
+    objetivo: "Definir as regras para concessÃ£o, revisÃ£o e revogaÃ§Ã£o de acessos a sistemas.",
+    abrangencia: "Aplica-se a todos os sistemas corporativos e usuÃ¡rios internos.",
     sections: [
-      ["1. Solicitação", "Abertura do pedido", "Gestor solicita o acesso via chamado, informando sistema, perfil e justificativa."],
-      ["2. Aprovação e provisionamento", "Análise e liberação", "TI valida o perfil mínimo necessário, aprova e provisiona o acesso registrando evidência."],
-      ["3. Revisão periódica", "Recertificação", "Revisar trimestralmente os acessos ativos e revogar os desnecessários."],
+      ["1. SolicitaÃ§Ã£o", "Abertura do pedido", "Gestor solicita o acesso via chamado, informando sistema, perfil e justificativa."],
+      ["2. AprovaÃ§Ã£o e provisionamento", "AnÃ¡lise e liberaÃ§Ã£o", "TI valida o perfil mÃ­nimo necessÃ¡rio, aprova e provisiona o acesso registrando evidÃªncia."],
+      ["3. RevisÃ£o periÃ³dica", "RecertificaÃ§Ã£o", "Revisar trimestralmente os acessos ativos e revogar os desnecessÃ¡rios."],
     ],
     responsibilities: [
       ["Gestor solicitante", "Justificar a necessidade do acesso."],
-      ["TI / Segurança", "Conceder o acesso mínimo necessário e registrar."],
+      ["TI / SeguranÃ§a", "Conceder o acesso mÃ­nimo necessÃ¡rio e registrar."],
     ],
   },
   {
     id: "demo-doc:pop:POP.FIN.001",
     tipo: "POP",
     codigo: "POP.FIN.001",
-    titulo: "Conciliação Bancária",
+    titulo: "ConciliaÃ§Ã£o BancÃ¡ria",
     area: "Financeiro & Controladoria",
     processo: "Contas a Receber",
-    responsavel: "Bruno Cardoso · Financeiro",
-    elaboracao: "Bruno Cardoso · Financeiro",
-    aprovacao: "Aline Ferreira · Processos & Qualidade",
+    responsavel: "Bruno Cardoso Â· Financeiro",
+    elaboracao: "Bruno Cardoso Â· Financeiro",
+    aprovacao: "Aline Ferreira Â· Processos & Qualidade",
     versao: "03",
     status: "Ativo",
     updatedAt: "2026-04-30",
-    objetivo: "Padronizar a conciliação entre extratos bancários e títulos no ERP.",
-    abrangencia: "Aplica-se a todas as contas correntes da organização.",
+    objetivo: "Padronizar a conciliaÃ§Ã£o entre extratos bancÃ¡rios e tÃ­tulos no ERP.",
+    abrangencia: "Aplica-se a todas as contas correntes da organizaÃ§Ã£o.",
     sections: [
-      ["1. Importar retorno bancário", "Coleta dos dados", "Baixar o arquivo de retorno e importar no ERP."],
-      ["2. Conciliar movimentos", "Confronto", "Confrontar recebimentos com títulos em aberto e dar baixa nos correspondentes."],
-      ["3. Tratar divergências", "Exceções", "Investigar divergências, registrar ajustes e escalar quando necessário."],
+      ["1. Importar retorno bancÃ¡rio", "Coleta dos dados", "Baixar o arquivo de retorno e importar no ERP."],
+      ["2. Conciliar movimentos", "Confronto", "Confrontar recebimentos com tÃ­tulos em aberto e dar baixa nos correspondentes."],
+      ["3. Tratar divergÃªncias", "ExceÃ§Ãµes", "Investigar divergÃªncias, registrar ajustes e escalar quando necessÃ¡rio."],
     ],
     responsibilities: [
-      ["Analista Financeiro", "Executar a conciliação diária."],
+      ["Analista Financeiro", "Executar a conciliaÃ§Ã£o diÃ¡ria."],
       ["Controladoria", "Validar o fechamento mensal."],
     ],
   },
@@ -1270,16 +1270,16 @@ function asNextStepItem(value: unknown): NextStepItem {
 function normalizeCauseStatus(value: unknown) {
   const normalized = normalizeLabel(String(value ?? ""));
   if (normalized.includes("andamento")) return "Em andamento";
-  if (normalized.includes("conclu")) return "Concluída";
+  if (normalized.includes("conclu")) return "ConcluÃ­da";
   return "Pendente";
 }
 
 function normalizeCausePriority(value: unknown) {
   const normalized = normalizeLabel(String(value ?? ""));
-  if (normalized.includes("critic")) return "Crítica";
+  if (normalized.includes("critic")) return "CrÃ­tica";
   if (normalized.includes("alta")) return "Alta";
   if (normalized.includes("baixa")) return "Baixa";
-  return "Média";
+  return "MÃ©dia";
 }
 
 function asCauseComment(value: unknown, prefix: string): CauseComment {
@@ -1355,7 +1355,7 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
         nome: legacy.nome || legacy.text || "",
         tipo: legacy.tipo || "",
         dono: legacy.dono || "",
-        criticidade: legacy.criticidade || "Média",
+        criticidade: legacy.criticidade || "MÃ©dia",
         descricao: legacy.descricao || "",
       };
     }),
@@ -1418,7 +1418,7 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
         acao: legacy.acao || "",
         responsavel: legacy.responsavel || "",
         prazo: legacy.prazo || "",
-        prioridade: normalizeCausePriority(legacy.prioridade || "Média"),
+        prioridade: normalizeCausePriority(legacy.prioridade || "MÃ©dia"),
         status: normalizeCauseStatus(legacy.status),
         comentarios: normalizeCauseComments(
           legacy.comentarios ?? legacy.comments ?? legacy.comentario ?? legacy.observacoes,
@@ -1611,7 +1611,7 @@ function normalizePriority(value: string) {
   const normalized = normalizeLabel(value);
   if (normalized.includes("alta")) return "Alta";
   if (normalized.includes("baixa")) return "Baixa";
-  return "Média";
+  return "MÃ©dia";
 }
 
 function normalizePopType(value: string): PopState["meta"]["tipo"] {
@@ -1647,7 +1647,7 @@ function buildLegacyDdp(input: JsonObject, fallback: DdpState): DdpState {
       nome: textAt(row, "nome"),
       tipo: textAt(row, "badge") || "Sistema",
       dono: "",
-      criticidade: textAt(row, "badgeType") || "Média",
+      criticidade: textAt(row, "badgeType") || "MÃ©dia",
       descricao: joinClean([textAt(row, "desc"), details]),
     };
   });
@@ -2041,7 +2041,7 @@ function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(reader.error ?? new Error("Não foi possível ler a imagem."));
+    reader.onerror = () => reject(reader.error ?? new Error("NÃ£o foi possÃ­vel ler a imagem."));
     reader.readAsDataURL(file);
   });
 }
@@ -2334,7 +2334,7 @@ function getDdpExportModel(data: DdpState) {
 
   return {
     meta: data.meta,
-    // Área e Dono do documento vêm do processo vinculado (preenchido no cadastro).
+    // Ãrea e Dono do documento vÃªm do processo vinculado (preenchido no cadastro).
     processName: textAt(legacy, "processName") || currentMacro.titulo,
     processCode: textAt(legacy, "processCode"),
     valueChainName:
@@ -2389,7 +2389,7 @@ function getPopExportModel(data: PopState) {
       ...(section.images.length
         ? [
             {
-              text: "Imagens e evidências",
+              text: "Imagens e evidÃªncias",
               note: "",
               images: section.images.map((image) => ({
                 title: image.titulo,
@@ -2413,13 +2413,13 @@ function getPopExportModel(data: PopState) {
       data.meta.tipo === "Norma"
         ? "Norma"
         : data.meta.tipo === "IT"
-          ? "Instrução de Trabalho - IT"
-          : "Procedimento Operacional Padrão - POP",
+          ? "InstruÃ§Ã£o de Trabalho - IT"
+          : "Procedimento Operacional PadrÃ£o - POP",
     contentTitle:
       data.meta.tipo === "Norma"
         ? "Diretrizes"
         : data.meta.tipo === "IT"
-          ? "Instrução de Trabalho"
+          ? "InstruÃ§Ã£o de Trabalho"
           : "Procedimento Operacional",
     purpose: data.purpose,
     sections,
@@ -3067,7 +3067,7 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
     nome: rowValue(row, "nome"),
     tipo: rowValue(row, "tipo"),
     dono: rowValue(row, "dono"),
-    criticidade: rowValue(row, "criticidade", "Média"),
+    criticidade: rowValue(row, "criticidade", "MÃ©dia"),
     descricao: rowValue(row, "descricao"),
   }));
   const substepRows = rowObjects(sheetRows(sheets, "Subetapas Fluxo"));
@@ -3151,7 +3151,7 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
         acao: rowValue(row, "acao"),
         responsavel: rowValue(row, "responsavel"),
         prazo: rowValue(row, "prazo"),
-        prioridade: normalizeCausePriority(rowValue(row, "prioridade", "Média")),
+        prioridade: normalizeCausePriority(rowValue(row, "prioridade", "MÃ©dia")),
         status: normalizeCauseStatus(rowValue(row, "status", "Pendente")),
         comentarios: normalizeCauseComments(
           rowValue(row, "comentarios"),
@@ -3203,7 +3203,7 @@ function importPopTextWorkbook(sheets: Map<string, string[][]>, current: PopStat
       },
       sections: rowObjects(sheetRows(sheets, "Conteudo")).map((row, index) => ({
         id: current.sections[index]?.id || id("sec"),
-        title: rowValue(row, "title", "Nova seção"),
+        title: rowValue(row, "title", "Nova seÃ§Ã£o"),
         description: rowValue(row, "description"),
         body: rowValue(row, "body"),
         records: rowValue(row, "records"),
@@ -3560,7 +3560,7 @@ function createDocxContext(params: {
       params.footerLeft,
       { size: 8, color: C.gray600, after: 0 },
     )}</w:tc><w:tc><w:tcPr><w:tcW w:w="3306" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr>${run(
-      "Pág ",
+      "PÃ¡g ",
       { size: 8, color: C.gray600 },
     )}${field("PAGE", "1")}${run(" de ", { size: 8, color: C.gray600 })}${field(
       "NUMPAGES",
@@ -3636,24 +3636,24 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     doc.table(
       [
         [
-          { xml: doc.labelValue("Código do mapeamento", model.meta.codigo) },
-          { xml: doc.labelValue("Título do mapeamento", model.meta.titulo), gridSpan: 2 },
+          { xml: doc.labelValue("CÃ³digo do mapeamento", model.meta.codigo) },
+          { xml: doc.labelValue("TÃ­tulo do mapeamento", model.meta.titulo), gridSpan: 2 },
           { xml: doc.labelValue("Modalidade", model.meta.modalidade) },
         ],
         [
-          { xml: doc.labelValue("Tipo", "Relatório de Mapeamento de Processo"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Tipo", "RelatÃ³rio de Mapeamento de Processo"), fill: doc.C.gray50 },
           { xml: doc.labelValue("Status", model.meta.status || "Em andamento"), fill: doc.C.gray50 },
           { xml: doc.labelValue("Data", formatDateBr(model.meta.dataRelatorio || model.meta.data)), fill: doc.C.gray50 },
           { xml: doc.labelValue("Sistema", "BF Flow"), fill: doc.C.gray50 },
         ],
         [
           { xml: doc.labelValue("Processo", model.processName || "-"), gridSpan: 2 },
-          { xml: doc.labelValue("Código do processo", model.processCode || "-") },
+          { xml: doc.labelValue("CÃ³digo do processo", model.processCode || "-") },
           { xml: doc.labelValue("Cadeia de valor", model.valueChainName || "-") },
         ],
         [
           { xml: doc.labelValue("Dono", model.owner || "-"), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Área", model.area || "-"), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Ãrea", model.area || "-"), fill: doc.C.gray50 },
           { xml: doc.labelValue("Elaborador", model.meta.elaborador || "-"), fill: doc.C.gray50 },
           { xml: doc.labelValue("Revisor", model.meta.revisor || "-"), fill: doc.C.gray50 },
         ],
@@ -3662,20 +3662,20 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       { full: true },
     ),
   );
-  parts.push(doc.sectionTitle("Índice"));
+  parts.push(doc.sectionTitle("Ãndice"));
   [
     ["01", "Dados do Mapeamento"],
-    ["02", "Visão Geral"],
+    ["02", "VisÃ£o Geral"],
     ["03", "Sistemas Envolvidos"],
-    ["04", "Análise SIPOC"],
+    ["04", "AnÃ¡lise SIPOC"],
     ["05", "Fluxo AS IS"],
     ["06", "Gaps e Causas-Raiz"],
-    ["07", "Próximos Passos"],
-    ["08", "Glossário"],
+    ["07", "PrÃ³ximos Passos"],
+    ["08", "GlossÃ¡rio"],
   ].forEach(([num, label]) => parts.push(doc.tocLine(num, label)));
   parts.push(doc.sectionBreak());
 
-  parts.push(doc.sectionTitle("02 Visão Geral"));
+  parts.push(doc.sectionTitle("02 VisÃ£o Geral"));
   if (model.overview) parts.push(doc.p(model.overview, { align: "both", line: 1.05 }));
   model.cards.forEach((card) => {
     parts.push(doc.subTitle(card.title || "Item"));
@@ -3689,7 +3689,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [
             [
               doc.headerCell("Sistema"),
-              doc.headerCell("Descrição / uso no processo"),
+              doc.headerCell("DescriÃ§Ã£o / uso no processo"),
             ],
             ...model.systems.map((system) => [
               doc.bodyCell(system.name),
@@ -3702,7 +3702,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       : doc.p("Nenhum sistema cadastrado."),
   );
 
-  parts.push(doc.sectionTitle("04 Análise SIPOC do Processo"));
+  parts.push(doc.sectionTitle("04 AnÃ¡lise SIPOC do Processo"));
   parts.push(
     model.sipocRows.length
       ? doc.table(
@@ -3711,7 +3711,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
               doc.headerCell("Fornecedores"),
               doc.headerCell("Entradas"),
               doc.headerCell("Processo"),
-              doc.headerCell("Saídas"),
+              doc.headerCell("SaÃ­das"),
               doc.headerCell("Clientes"),
             ],
             ...model.sipocRows.map((row) => [
@@ -3741,16 +3741,16 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     }
   }
   model.flowSteps.forEach((step, index) => {
-    parts.push(doc.subTitle(`${String(index + 1).padStart(2, "0")} — ${step.title || "Etapa"}`));
+    parts.push(doc.subTitle(`${String(index + 1).padStart(2, "0")} â€” ${step.title || "Etapa"}`));
     parts.push(doc.p(step.description, { align: "both", line: 1.05 }));
     if (step.owner || step.system || step.risk) {
       parts.push(
         doc.table(
           [
             [
-              doc.headerCell("Responsável"),
+              doc.headerCell("ResponsÃ¡vel"),
               doc.headerCell("Sistema"),
-              doc.headerCell("Risco / Observação"),
+              doc.headerCell("Risco / ObservaÃ§Ã£o"),
             ],
             [
               doc.bodyCell(step.owner || "-"),
@@ -3773,7 +3773,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       parts.push(
         doc.table(
           [
-            [doc.headerCell("ID"), doc.headerCell("Atividade"), doc.headerCell("Descrição")],
+            [doc.headerCell("ID"), doc.headerCell("Atividade"), doc.headerCell("DescriÃ§Ã£o")],
             ...step.substeps.map((substep) => [
               doc.bodyCell(substep.code),
               doc.bodyCell(substep.title),
@@ -3795,14 +3795,14 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     }
   });
 
-  parts.push(doc.sectionTitle("06 Causas-Raiz e Planos de Ação"));
+  parts.push(doc.sectionTitle("06 Causas-Raiz e Planos de AÃ§Ã£o"));
   model.gaps.forEach((gap, index) => {
     parts.push(
       doc.table(
         [
           [
             {
-              xml: doc.p(`${String(index + 1).padStart(2, "0")} — ${gap.title || "Causa-raiz"}`, {
+              xml: doc.p(`${String(index + 1).padStart(2, "0")} â€” ${gap.title || "Causa-raiz"}`, {
                 size: 11.5,
                 bold: true,
                 caps: true,
@@ -3815,19 +3815,19 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           ],
           [
             doc.bodyCell(`Prioridade: ${gap.priority || "-"}`),
-            doc.bodyCell(`Responsável: ${gap.owner || "-"}`),
+            doc.bodyCell(`ResponsÃ¡vel: ${gap.owner || "-"}`),
             doc.bodyCell(`Prazo: ${formatGapDateRangeBr(gap.due) || "-"}`),
           ],
           [{ xml: doc.mixedP("Status: ", gap.status || "-", { size: 9 }), gridSpan: 3 }],
-          [{ xml: doc.mixedP("Descrição: ", gap.description || "-", { size: 9 }), gridSpan: 3 }],
+          [{ xml: doc.mixedP("DescriÃ§Ã£o: ", gap.description || "-", { size: 9 }), gridSpan: 3 }],
           [{ xml: doc.mixedP("Impacto esperado: ", gap.impact || "-", { size: 9 }), gridSpan: 3 }],
-          [{ xml: doc.mixedP("Ação proposta: ", gap.action || "-", { size: 9 }), gridSpan: 3 }],
+          [{ xml: doc.mixedP("AÃ§Ã£o proposta: ", gap.action || "-", { size: 9 }), gridSpan: 3 }],
           ...(gap.comments.length
             ? [
                 [
                   {
                     xml: doc.mixedP(
-                      "Comentários: ",
+                      "ComentÃ¡rios: ",
                       gap.comments
                         .map((comment) =>
                           joinClean([
@@ -3851,14 +3851,14 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   });
   if (!model.gaps.length) parts.push(doc.p("Nenhuma causa-raiz cadastrada."));
 
-  parts.push(doc.sectionTitle("07 Próximos Passos"));
+  parts.push(doc.sectionTitle("07 PrÃ³ximos Passos"));
   parts.push(
     model.nextSteps.length
       ? doc.table(
           [
             [
-              doc.headerCell("Ação"),
-              doc.headerCell("Responsável"),
+              doc.headerCell("AÃ§Ã£o"),
+              doc.headerCell("ResponsÃ¡vel"),
               doc.headerCell("Prazo"),
             ],
             ...model.nextSteps.map((step) => [
@@ -3870,16 +3870,16 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [6800, 1900, 1606],
           { full: true },
         )
-      : doc.p("Nenhum próximo passo cadastrado."),
+      : doc.p("Nenhum prÃ³ximo passo cadastrado."),
   );
 
   parts.push(doc.pageBreak());
-  parts.push(doc.sectionTitle("08 Glossário"));
+  parts.push(doc.sectionTitle("08 GlossÃ¡rio"));
   parts.push(
     model.glossary.length
       ? doc.table(
           [
-            [doc.headerCell("Termo"), doc.headerCell("Definição")],
+            [doc.headerCell("Termo"), doc.headerCell("DefiniÃ§Ã£o")],
             ...model.glossary.map((item) => [
               doc.bodyCell(item.termo),
               doc.bodyCell(item.definicao),
@@ -3911,18 +3911,18 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
       [
         [
           { xml: doc.labelValue("Tipo", model.typeLabel) },
-          { xml: doc.labelValue("Código", model.meta.codigo) },
-          { xml: doc.labelValue("Vigência", formatDateBr(model.meta.vigencia)) },
-          { xml: doc.labelValue("Versão", model.meta.versao) },
+          { xml: doc.labelValue("CÃ³digo", model.meta.codigo) },
+          { xml: doc.labelValue("VigÃªncia", formatDateBr(model.meta.vigencia)) },
+          { xml: doc.labelValue("VersÃ£o", model.meta.versao) },
         ],
         [
           {
-            xml: doc.labelValue("Público / Classificação", model.meta.publico),
+            xml: doc.labelValue("PÃºblico / ClassificaÃ§Ã£o", model.meta.publico),
             fill: doc.C.gray50,
           },
-          { xml: doc.labelValue("Área responsável", model.meta.area), fill: doc.C.gray50 },
+          { xml: doc.labelValue("Ãrea responsÃ¡vel", model.meta.area), fill: doc.C.gray50 },
           { xml: doc.labelValue("Processo relacionado", model.meta.processo), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Publicação", formatDateBr(model.meta.publicacao)), fill: doc.C.gray50 },
+          { xml: doc.labelValue("PublicaÃ§Ã£o", formatDateBr(model.meta.publicacao)), fill: doc.C.gray50 },
         ],
         [
           { xml: doc.labelValue("Elaborador", model.meta.elaboracao), fill: doc.C.gray50 },
@@ -3935,24 +3935,24 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
       { full: true },
     ),
   );
-  parts.push(doc.sectionTitle("Índice"));
+  parts.push(doc.sectionTitle("Ãndice"));
   [
     ["01", "Objetivo"],
-    ["02", "Abrangência"],
+    ["02", "AbrangÃªncia"],
     ["03", model.contentTitle],
     ["04", "Responsabilidades"],
-    ["05", "Referências Normativas"],
-    ["06", "Histórico e Controle de Alterações"],
+    ["05", "ReferÃªncias Normativas"],
+    ["06", "HistÃ³rico e Controle de AlteraÃ§Ãµes"],
   ].forEach(([num, label]) => parts.push(doc.tocLine(num, label)));
   parts.push(doc.sectionBreak());
 
   parts.push(doc.sectionTitle("01 Objetivo"));
   parts.push(
-    doc.p(model.purpose.objetivo || "Objetivo não informado.", { align: "both", line: 1.05 }),
+    doc.p(model.purpose.objetivo || "Objetivo nÃ£o informado.", { align: "both", line: 1.05 }),
   );
-  parts.push(doc.sectionTitle("02 Abrangência"));
+  parts.push(doc.sectionTitle("02 AbrangÃªncia"));
   parts.push(
-    doc.p(model.purpose.abrangencia || "Abrangência não informada.", {
+    doc.p(model.purpose.abrangencia || "AbrangÃªncia nÃ£o informada.", {
       align: "both",
       line: 1.05,
     }),
@@ -3960,19 +3960,19 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
   if (model.purpose.premissas) {
     parts.push(doc.subTitle("Premissas e Regras Gerais"));
     splitText(model.purpose.premissas).forEach((line) =>
-      parts.push(doc.p(`• ${line}`, { left: 360 })),
+      parts.push(doc.p(`â€¢ ${line}`, { left: 360 })),
     );
   }
 
   parts.push(doc.sectionTitle(`03 ${model.contentTitle}`));
   model.sections.forEach((section, sectionIndex) => {
-    parts.push(doc.subTitle(`3.${sectionIndex + 1} - ${section.title || "Seção"}`));
+    parts.push(doc.subTitle(`3.${sectionIndex + 1} - ${section.title || "SeÃ§Ã£o"}`));
     if (section.description) parts.push(doc.p(section.description, { align: "both", line: 1.05 }));
     section.items.forEach((item, itemIndex) => {
       parts.push(doc.mixedP(`${String.fromCharCode(97 + itemIndex)}) `, item.text));
       if (item.note)
         parts.push(
-          doc.p(`Observação: ${item.note}`, { size: 9.5, color: doc.C.gray500, left: 360 }),
+          doc.p(`ObservaÃ§Ã£o: ${item.note}`, { size: 9.5, color: doc.C.gray500, left: 360 }),
         );
       item.images.forEach((image, imageIndex) => {
         if (!image.src) return;
@@ -3992,11 +3992,11 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
       });
     });
   });
-  if (!model.sections.length) parts.push(doc.p("Nenhuma seção preenchida."));
+  if (!model.sections.length) parts.push(doc.p("Nenhuma seÃ§Ã£o preenchida."));
   if (model.purpose.importante) {
     parts.push(doc.subTitle("Importante"));
     splitText(model.purpose.importante).forEach((line) =>
-      parts.push(doc.p(`• ${line}`, { left: 360 })),
+      parts.push(doc.p(`â€¢ ${line}`, { left: 360 })),
     );
   }
 
@@ -4005,7 +4005,7 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
     model.responsibilities.length
       ? doc.table(
           [
-            [doc.headerCell("Área"), doc.headerCell("Cargo"), doc.headerCell("Responsabilidades")],
+            [doc.headerCell("Ãrea"), doc.headerCell("Cargo"), doc.headerCell("Responsabilidades")],
             ...model.responsibilities.map((item) => [
               doc.bodyCell(item.area),
               doc.bodyCell(item.cargo || "-"),
@@ -4018,12 +4018,12 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
       : doc.p("Nenhuma responsabilidade cadastrada."),
   );
 
-  parts.push(doc.sectionTitle("05 Referências Normativas"));
+  parts.push(doc.sectionTitle("05 ReferÃªncias Normativas"));
   parts.push(
     model.references.length
       ? doc.table(
           [
-            [doc.headerCell("Código"), doc.headerCell("Título"), doc.headerCell("Aplicabilidade")],
+            [doc.headerCell("CÃ³digo"), doc.headerCell("TÃ­tulo"), doc.headerCell("Aplicabilidade")],
             ...model.references.map((item) => [
               doc.bodyCell(item.codigo),
               doc.bodyCell(item.titulo),
@@ -4036,14 +4036,14 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
       : doc.p("A definir."),
   );
 
-  parts.push(doc.sectionTitle("06 Histórico e Controle de Alterações"));
-  parts.push(doc.subTitle("Histórico"));
+  parts.push(doc.sectionTitle("06 HistÃ³rico e Controle de AlteraÃ§Ãµes"));
+  parts.push(doc.subTitle("HistÃ³rico"));
   parts.push(
     doc.table(
       [
         [
-          doc.headerCell("Código"),
-          doc.headerCell("Versão"),
+          doc.headerCell("CÃ³digo"),
+          doc.headerCell("VersÃ£o"),
           doc.headerCell("Data"),
           doc.headerCell("Elaborador"),
           doc.headerCell("Revisor"),
@@ -4062,11 +4062,11 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
       { full: true },
     ),
   );
-  parts.push(doc.subTitle("Controle de Alterações"));
+  parts.push(doc.subTitle("Controle de AlteraÃ§Ãµes"));
   parts.push(
     doc.table(
       [
-        [doc.headerCell("Versão"), doc.headerCell("Local da Revisão"), doc.headerCell("Descrição")],
+        [doc.headerCell("VersÃ£o"), doc.headerCell("Local da RevisÃ£o"), doc.headerCell("DescriÃ§Ã£o")],
         ...model.changes.map((item) => [
           doc.bodyCell(item.versao, { align: "center" }),
           doc.bodyCell(item.local),
@@ -4088,9 +4088,9 @@ function bfFlowLogoHtml(brand?: OrganizationBrand, assetBase = "") {
   const prefix = assetBase ? assetBase.replace(/\/$/, "") : "";
   return `<span class="system-logo-pair"><img class="brand-logo logo-light" src="${html(`${prefix}/brand/bom-futuro-light.png`)}" alt="" aria-hidden="true"/><img class="brand-logo logo-dark" src="${html(`${prefix}/brand/bom-futuro-dark.png`)}" alt="" aria-hidden="true"/></span>`;
 }
-// Visualização somente-leitura genérica de um registro da consulta, a partir
-// dos metadados da linha. Usada para registros de demonstração e para a
-// pré-visualização amigável de Documentação/Fluxograma.
+// VisualizaÃ§Ã£o somente-leitura genÃ©rica de um registro da consulta, a partir
+// dos metadados da linha. Usada para registros de demonstraÃ§Ã£o e para a
+// prÃ©-visualizaÃ§Ã£o amigÃ¡vel de DocumentaÃ§Ã£o/Fluxograma.
 function buildReadonlyPreviewHtml(
   moduleId: AteliamModule,
   row: ModuleGridRow,
@@ -4101,14 +4101,14 @@ function buildReadonlyPreviewHtml(
   const processLabel =
     moduleId === "pop" ? "Tipo" : moduleId === "bpmn" ? "Processo vinculado" : "Processo";
   const fields: Array<[string, string]> = [
-    ["Código", row.code],
-    [moduleId === "ddp" ? "Título do mapeamento" : "Nome", row.name],
+    ["CÃ³digo", row.code],
+    [moduleId === "ddp" ? "TÃ­tulo do mapeamento" : "Nome", row.name],
     [processLabel, moduleId === "pop" ? row.type : row.process],
-    ["Área", row.area],
+    ["Ãrea", row.area],
     ...(moduleId === "ddp" ? ([["Dono do processo", row.owner]] as Array<[string, string]>) : []),
-    [moduleId === "ddp" ? "Elaborador" : "Responsável", row.responsible],
+    [moduleId === "ddp" ? "Elaborador" : "ResponsÃ¡vel", row.responsible],
     ["Status", row.status],
-    ["Última atualização", formatDateTimeBr(row.updatedAt)],
+    ["Ãšltima atualizaÃ§Ã£o", formatDateTimeBr(row.updatedAt)],
   ];
   const rows = fields
     .filter(([, value]) => value && value !== "-")
@@ -4135,24 +4135,24 @@ function buildReadonlyPreviewHtml(
 .v{font-size:15px;color:#1f2937}
 .note{margin-top:22px;color:var(--muted);font-size:12.5px;line-height:1.5}
 </style></head><body><div class="wrap">
-<div class="head"><div class="kicker">${html(label)} · Visualização</div><h1>${html(row.name)}</h1><span class="badge">${html(row.status)}</span></div>
+<div class="head"><div class="kicker">${html(label)} Â· VisualizaÃ§Ã£o</div><h1>${html(row.name)}</h1><span class="badge">${html(row.status)}</span></div>
 <div class="card">${rows}</div>
-<p class="note">Visualização somente-leitura — as informações não podem ser editadas nesta tela. Para alterar, use a opção “Editar” na consulta de registros.</p>
+<p class="note">VisualizaÃ§Ã£o somente-leitura â€” as informaÃ§Ãµes nÃ£o podem ser editadas nesta tela. Para alterar, use a opÃ§Ã£o â€œEditarâ€ na consulta de registros.</p>
 </div></body></html>`;
 }
 
-// Visualização somente-leitura de Documentação (POP/IT) com o conteúdo do
-// formulário, seguindo a identidade visual do sistema.
+// VisualizaÃ§Ã£o somente-leitura de DocumentaÃ§Ã£o (POP/IT) com o conteÃºdo do
+// formulÃ¡rio, seguindo a identidade visual do sistema.
 function buildPopPreviewHtml(pop: PopState, brand?: OrganizationBrand) {
   const accent = docxColor(brand?.word_header_color, "1D1F23");
   const meta: Array<[string, string]> = [
-    ["Código", pop.meta.codigo],
+    ["CÃ³digo", pop.meta.codigo],
     ["Tipo", pop.meta.tipo],
-    ["Área", pop.meta.area],
+    ["Ãrea", pop.meta.area],
     ["Processo", pop.meta.processo],
-    ["Versão", pop.meta.versao],
-    ["Elaboração", pop.meta.elaboracao],
-    ["Aprovação", pop.meta.aprovacao],
+    ["VersÃ£o", pop.meta.versao],
+    ["ElaboraÃ§Ã£o", pop.meta.elaboracao],
+    ["AprovaÃ§Ã£o", pop.meta.aprovacao],
   ]
     .filter(([, v]) => v && v !== "-")
     .map(([k, v]) => `<div class="m"><span>${html(k)}</span><b>${html(v)}</b></div>`)
@@ -4192,11 +4192,11 @@ th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-al
 th{background:var(--accent);color:#fff;text-transform:uppercase;font-size:11px;letter-spacing:.1em}
 .note{color:var(--muted);font-size:12.5px;line-height:1.5}
 </style></head><body><div class="wrap">
-<div class="head"><div class="kicker">Documentação · Visualização</div><h1>${html(pop.meta.titulo)}</h1><div class="meta">${meta}</div></div>
-${pop.purpose.objetivo || pop.purpose.abrangencia ? `<div class="card"><h2>Objetivo e abrangência</h2>${pop.purpose.objetivo ? `<p>${html(pop.purpose.objetivo)}</p>` : ""}${pop.purpose.abrangencia ? `<p class="note">${html(pop.purpose.abrangencia)}</p>` : ""}</div>` : ""}
+<div class="head"><div class="kicker">DocumentaÃ§Ã£o Â· VisualizaÃ§Ã£o</div><h1>${html(pop.meta.titulo)}</h1><div class="meta">${meta}</div></div>
+${pop.purpose.objetivo || pop.purpose.abrangencia ? `<div class="card"><h2>Objetivo e abrangÃªncia</h2>${pop.purpose.objetivo ? `<p>${html(pop.purpose.objetivo)}</p>` : ""}${pop.purpose.abrangencia ? `<p class="note">${html(pop.purpose.abrangencia)}</p>` : ""}</div>` : ""}
 <div class="card"><h2>Procedimento</h2>${sections}</div>
-${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Área</th><th>Cargo</th><th>Responsabilidade</th></tr></thead><tbody>${resp}</tbody></table></div>` : ""}
-<p class="note">Visualização somente-leitura — para alterar, use “Editar” na consulta de registros.</p>
+${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Ãrea</th><th>Cargo</th><th>Responsabilidade</th></tr></thead><tbody>${resp}</tbody></table></div>` : ""}
+<p class="note">VisualizaÃ§Ã£o somente-leitura â€” para alterar, use â€œEditarâ€ na consulta de registros.</p>
 </div></body></html>`;
 }
 
@@ -4215,13 +4215,13 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const description = model.description || data.overview.objetivo;
   const nav = [
     ["capa", "01 Capa"],
-    ["visao", "02 Visão geral"],
+    ["visao", "02 VisÃ£o geral"],
     ["sistemas", "03 Sistemas envolvidos"],
     ["sipoc", "04 SIPOC"],
     ["fluxo", "05 Fluxo AS IS"],
     ["gaps", "06 Gaps e causas-raiz"],
-    ["proximos", "07 Próximos passos"],
-    ["glossario", "08 Glossário"],
+    ["proximos", "07 PrÃ³ximos passos"],
+    ["glossario", "08 GlossÃ¡rio"],
   ];
 
   const coverLine = (
@@ -4247,7 +4247,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     return icons[type];
   };
 
-  const emptyBlock = (text = "Sem informação preenchida.") =>
+  const emptyBlock = (text = "Sem informaÃ§Ã£o preenchida.") =>
     `<div class="empty">${html(text)}</div>`;
 
   const fieldGrid = (items: Array<[string, string | undefined | null]>) => {
@@ -4308,7 +4308,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
             )}</div><div class="flow-content"><h3>${html(step.title || "Etapa")}</h3>${
               step.owner || step.system || step.risk
                 ? `<div class="mini-grid">${fieldGrid([
-                    ["Responsável", step.owner],
+                    ["ResponsÃ¡vel", step.owner],
                     ["Sistema", step.system],
                     ["Risco", step.risk],
                   ])}</div>`
@@ -4330,7 +4330,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     : emptyBlock("Nenhuma etapa informada.");
 
   const sipocRows = model.sipocRows.length
-    ? `<div class="table-wrap"><table><thead><tr><th>Fornecedores</th><th>Entradas</th><th>Processo</th><th>Saídas</th><th>Clientes</th></tr></thead><tbody>${model.sipocRows
+    ? `<div class="table-wrap"><table><thead><tr><th>Fornecedores</th><th>Entradas</th><th>Processo</th><th>SaÃ­das</th><th>Clientes</th></tr></thead><tbody>${model.sipocRows
         .map(
           (row) =>
             `<tr><td>${html(row.fornecedores)}</td><td>${html(row.entradas)}</td><td>${html(
@@ -4341,7 +4341,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     : emptyBlock("Nenhuma linha SIPOC informada.");
 
   const gapTable = model.gaps.length
-    ? `<div class="table-wrap gap-table"><table><thead><tr><th>Causa-raiz</th><th>Descrição</th><th>Impacto</th><th>Ação proposta</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Status</th></tr></thead><tbody>${model.gaps
+    ? `<div class="table-wrap gap-table"><table><thead><tr><th>Causa-raiz</th><th>DescriÃ§Ã£o</th><th>Impacto</th><th>AÃ§Ã£o proposta</th><th>ResponsÃ¡vel</th><th>Prazo</th><th>Prioridade</th><th>Status</th></tr></thead><tbody>${model.gaps
         .map(
           (gap) =>
             `<tr><td><strong>${html(gap.title || "Gap")}</strong></td><td>${html(
@@ -4361,15 +4361,15 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
             `<article class="list-card"><div class="index">${String(index + 1).padStart(
               2,
               "0",
-            )}</div><h3>${html(step.title || "Próximo passo")}</h3>${
+            )}</div><h3>${html(step.title || "PrÃ³ximo passo")}</h3>${
               step.description ? `<p>${html(step.description)}</p>` : ""
             }${fieldGrid([
-              ["Responsável", step.owner],
+              ["ResponsÃ¡vel", step.owner],
               ["Prazo", formatDateBr(step.due)],
             ])}</article>`,
         )
         .join("")
-    : emptyBlock("Nenhum próximo passo informado.");
+    : emptyBlock("Nenhum prÃ³ximo passo informado.");
 
   const glossaryCards = model.glossary.length
     ? model.glossary
@@ -4395,7 +4395,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>${html(code)} - Apresentação de Mapeamento</title>
+<title>${html(code)} - ApresentaÃ§Ã£o de Mapeamento</title>
 <style>
 :root{--accent:#${presentationColor};--accent-strong:color-mix(in srgb,var(--accent) 78%,#000);--gold:#d49a21;--bg:#f4f2ea;--surface:#fff;--surface-2:#faf8f1;--text:#17191f;--muted:#626a73;--line:#ddd8ca;--shadow:0 18px 60px rgba(28,28,28,.12);--nav:282px}
 [data-theme="dark"]{--bg:#0f1114;--surface:#171a1f;--surface-2:#1e2329;--text:#f4f6f8;--muted:#aab2bc;--line:#343a42;--shadow:0 18px 70px rgba(0,0,0,.45);--accent-strong:color-mix(in srgb,var(--accent) 66%,#fff)}
@@ -4409,12 +4409,12 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   <div class="brand">${bfFlowLogoHtml(brand, assetBase)}</div>
   <div class="doc-code"><span>${html(code)}</span><strong>${html(model.meta.titulo || title)}</strong></div>
   <nav class="nav">${nav.map(([href, label]) => `<a href="#${href}">${html(label)}</a>`).join("")}</nav>
-  <div class="presentation-controls"><div class="theme-toggle" aria-label="Tema da apresentação"><button type="button" data-theme-choice="light" class="active" title="Tema claro" aria-label="Tema claro"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button><button type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A7.5 7.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg></button></div><button type="button" class="fullscreen-button" id="fullscreen-toggle" title="Tela cheia" aria-label="Tela cheia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5"/><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M16 21h5v-5"/></svg></button></div>
+  <div class="presentation-controls"><div class="theme-toggle" aria-label="Tema da apresentaÃ§Ã£o"><button type="button" data-theme-choice="light" class="active" title="Tema claro" aria-label="Tema claro"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button><button type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A7.5 7.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg></button></div><button type="button" class="fullscreen-button" id="fullscreen-toggle" title="Tela cheia" aria-label="Tela cheia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5"/><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M16 21h5v-5"/></svg></button></div>
 </aside>
 <main class="content">
-<section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">01 · Apresentação de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "Relatório de mapeamento de processo.")}</p></div><div class="cover-code"><span>Código</span><strong>${html(code)}</strong></div></div><dl class="cover-context">${[
+<section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">01 Â· ApresentaÃ§Ã£o de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "RelatÃ³rio de mapeamento de processo.")}</p></div><div class="cover-code"><span>CÃ³digo</span><strong>${html(code)}</strong></div></div><dl class="cover-context">${[
     coverLine("Processo mapeado", processName, processCode),
-    coverLine("Cadeia e área", processValueChain, processArea),
+    coverLine("Cadeia e Ã¡rea", processValueChain, processArea),
     coverLine("Dono do processo", processOwner),
   ].join("")}</dl>${fieldGrid([
     ["Modalidade", model.meta.modalidade],
@@ -4423,22 +4423,22 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     ["Elaborador", model.meta.elaborador],
     ["Revisor", model.meta.revisor],
   ]).replace('class="field-grid"', 'class="cover-meta"')}</section>
-<section class="slide" id="visao">${sectionHead("02", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
+<section class="slide" id="visao">${sectionHead("02", "VisÃ£o geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
     textPanel("Objetivo", model.description, overviewIcon("target")),
     textPanel("Escopo", data.overview.escopo, overviewIcon("scope")),
     textPanel("Estado atual", data.overview.estadoAtual),
     textPanel("Indicadores", data.overview.kpis, overviewIcon("metrics")),
     textPanel("Volume", data.overview.volume),
-    textPanel("Frequência", data.overview.frequencia),
+    textPanel("FrequÃªncia", data.overview.frequencia),
     textPanel("Dores", data.overview.dores),
     textPanel("Oportunidades", data.overview.oportunidades),
   ].join("") || emptyBlock()}</div></section>
 <section class="slide alt" id="sistemas">${sectionHead("03", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
-<section class="slide" id="sipoc">${sectionHead("04", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
-<section class="slide alt" id="fluxo">${sectionHead("05", "Fluxo AS IS", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
-<section class="slide" id="gaps">${sectionHead("06", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}${gapTable}</section>
-<section class="slide alt" id="proximos">${sectionHead("07", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
-<section class="slide" id="glossario">${sectionHead("08", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
+<section class="slide" id="sipoc">${sectionHead("04", "AnÃ¡lise SIPOC", "Fornecedores, entradas, processo, saÃ­das e clientes.")}${sipocRows}</section>
+<section class="slide alt" id="fluxo">${sectionHead("05", "Fluxo AS IS", "RepresentaÃ§Ã£o do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
+<section class="slide" id="gaps">${sectionHead("06", "Gaps e causas-raiz", "Causas, impactos e planos de aÃ§Ã£o relacionados.")}${gapTable}</section>
+<section class="slide alt" id="proximos">${sectionHead("07", "PrÃ³ximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
+<section class="slide" id="glossario">${sectionHead("08", "GlossÃ¡rio", "Termos utilizados no relatÃ³rio.")}<div class="card-grid">${glossaryCards}</div></section>
 </main>
 </div>
 <div class="zoom-modal" id="zoom-modal" onclick="closeImageZoom()"><div class="zoom-title" id="zoom-title"></div><button class="zoom-close" onclick="closeImageZoom();event.stopPropagation()">Fechar</button><img id="zoom-img" alt="Imagem ampliada"/></div>
@@ -4485,8 +4485,8 @@ function ModuleWorkspacePage() {
     home: true,
     modules: true,
     registrations: false,
-    // Expande já o branch do módulo atual, para a barra lateral refletir onde o
-    // usuário está em vez de aparecer recolhida ("menu voltou para versão antiga").
+    // Expande jÃ¡ o branch do mÃ³dulo atual, para a barra lateral refletir onde o
+    // usuÃ¡rio estÃ¡ em vez de aparecer recolhida ("menu voltou para versÃ£o antiga").
     ddp: moduleId === "ddp",
     pop: moduleId === "pop",
     bpmn: moduleId === "bpmn",
@@ -4499,8 +4499,8 @@ function ModuleWorkspacePage() {
   const [showSave, setShowSave] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [comment, setComment] = useState("");
-  // Incrementa a cada salvamento concluído — informa ao formulário de mapeamento
-  // que o estado "não salvo" pode ser limpo.
+  // Incrementa a cada salvamento concluÃ­do â€” informa ao formulÃ¡rio de mapeamento
+  // que o estado "nÃ£o salvo" pode ser limpo.
   const [savedNonce, setSavedNonce] = useState(0);
   const [demoVersion, setDemoVersion] = useState(() => getDemoWorkspaceVersion());
   const [demoOrganizationLogo, setDemoOrganizationLogo] = useState<string | null>(() =>
@@ -4543,7 +4543,7 @@ function ModuleWorkspacePage() {
   const updateSharedCause = useServerFn(updateOrganizationCause);
   const removeSharedCause = useServerFn(deleteOrganizationCause);
   const [demoCatalogs, setDemoCatalogs] = useState<OrganizationCatalogs>(DEMO_CATALOGS);
-  // Alteração de status do documento na tela de consulta (Em andamento, etc.).
+  // AlteraÃ§Ã£o de status do documento na tela de consulta (Em andamento, etc.).
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
 
   const wsQ = useQuery({
@@ -4653,7 +4653,7 @@ function ModuleWorkspacePage() {
       ? [meQ.data?.profile?.display_name || meQ.data?.profile?.email || ""].filter(Boolean)
       : [];
     const demoUsers = isDemo
-      ? ["Administrador local", "Analista de processos", "Usuário consulta"]
+      ? ["Administrador local", "Analista de processos", "UsuÃ¡rio consulta"]
       : [];
     return Array.from(new Set([...fromUsers, ...currentUser, ...demoUsers]));
   }, [isDemo, meQ.data?.profile?.display_name, meQ.data?.profile?.email, usersQ.data]);
@@ -4662,7 +4662,7 @@ function ModuleWorkspacePage() {
       ? meQ.data?.profile?.display_name || meQ.data?.profile?.email || ""
       : "Administrador local";
 
-  // Contexto de codificação da organização ativa (modo demo via localStorage).
+  // Contexto de codificaÃ§Ã£o da organizaÃ§Ã£o ativa (modo demo via localStorage).
   const demoOrgForCode = isDemo ? readActiveDemoOrganization() : null;
   const codeOrganizationId = isDemo ? demoOrgForCode!.id : (selectedOrganizationId ?? null);
   const codeSettings: CodeSettings | null = isDemo
@@ -4671,14 +4671,14 @@ function ModuleWorkspacePage() {
       (meQ.data?.organization?.code_settings as CodeSettings | null | undefined) ??
       null);
 
-  // Resolve a sigla (3 letras) a partir do nome da área: usa a sigla cadastrada
-  // quando há correspondência; caso contrário, deriva do próprio nome.
+  // Resolve a sigla (3 letras) a partir do nome da Ã¡rea: usa a sigla cadastrada
+  // quando hÃ¡ correspondÃªncia; caso contrÃ¡rio, deriva do prÃ³prio nome.
   function resolveAreaSigla(name: string | null | undefined): string {
     const match = organizationCatalogs.departments.find((dept) => dept.name === name);
     return normalizeSigla(match?.sigla ?? name ?? "");
   }
 
-  // Tipo e área do documento ativo (o código depende de ambos).
+  // Tipo e Ã¡rea do documento ativo (o cÃ³digo depende de ambos).
   const currentDocType: DocType = documentDocType(moduleId, workspace.pop.meta.tipo);
   const selectedMappingProcessForCode =
     moduleId === "ddp"
@@ -4708,10 +4708,10 @@ function ModuleWorkspacePage() {
       : "";
 
   const reserveCodeFn = useServerFn(reserveCode);
-  // Reserva o próximo código (consome a sequência) no momento de salvar.
+  // Reserva o prÃ³ximo cÃ³digo (consome a sequÃªncia) no momento de salvar.
   async function reserveModuleCode(): Promise<string> {
     if (currentAreaSigla.length !== 3) {
-      throw new Error("Defina a área responsável (sigla de 3 letras) antes de gerar o código.");
+      throw new Error("Defina a Ã¡rea responsÃ¡vel (sigla de 3 letras) antes de gerar o cÃ³digo.");
     }
     if (isDemo) {
       return reserveDemoDocumentCode(
@@ -4801,8 +4801,8 @@ function ModuleWorkspacePage() {
     setRailArea("modules");
     setContentMode("module");
     setModuleSurface("editor");
-    // Expande o branch do módulo atual (recolhendo os demais), para a barra
-    // lateral refletir onde o usuário está em vez de aparecer toda recolhida.
+    // Expande o branch do mÃ³dulo atual (recolhendo os demais), para a barra
+    // lateral refletir onde o usuÃ¡rio estÃ¡ em vez de aparecer toda recolhida.
     setExpandedTree((current) => ({
       ...current,
       modules: true,
@@ -4838,7 +4838,7 @@ function ModuleWorkspacePage() {
       setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
       return;
     }
-    // No view param — always reset to editor to avoid stale surface from previous navigation
+    // No view param â€” always reset to editor to avoid stale surface from previous navigation
     setModuleSurface("editor");
   }, [moduleId, search.view]);
 
@@ -4931,7 +4931,7 @@ function ModuleWorkspacePage() {
   async function openCloudModuleDocument(document: CloudModuleDocument) {
     try {
       const row = await getCloudDocument({ data: { id: document.id } });
-      if (!row.content_inline) throw new Error("Documento sem conteúdo salvo.");
+      if (!row.content_inline) throw new Error("Documento sem conteÃºdo salvo.");
       const result = importWorkspaceFromJson(row.content_inline, workspace, moduleId);
       setWorkspace(result.workspace);
       setOpenedLocalFile(null);
@@ -4951,7 +4951,7 @@ function ModuleWorkspacePage() {
         navigate({ to: "/m/$module", params: { module: result.moduleId } });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível abrir o documento.");
+      toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel abrir o documento.");
     }
   }
 
@@ -5006,14 +5006,14 @@ function ModuleWorkspacePage() {
     };
   }
 
-  // Devolve o código atual do documento para o tipo do módulo (vazio = sem código).
+  // Devolve o cÃ³digo atual do documento para o tipo do mÃ³dulo (vazio = sem cÃ³digo).
   function currentModuleCode(ws: WorkspaceState = workspace): string {
     if (moduleId === "ddp") return ws.ddp.meta.codigo;
     if (moduleId === "pop") return ws.pop.meta.codigo;
     return ws.bpmn.codigo ?? "";
   }
 
-  // Injeta um código no workspace conforme o tipo do módulo.
+  // Injeta um cÃ³digo no workspace conforme o tipo do mÃ³dulo.
   function withModuleCode(ws: WorkspaceState, code: string): WorkspaceState {
     if (moduleId === "ddp")
       return { ...ws, ddp: { ...ws.ddp, meta: { ...ws.ddp.meta, codigo: code } } };
@@ -5024,7 +5024,7 @@ function ModuleWorkspacePage() {
 
   function downloadImportTemplate() {
     if (moduleId === "bpmn") {
-      toast.info("Modelo Excel textual está disponível para Mapeamento e POP por enquanto.");
+      toast.info("Modelo Excel textual estÃ¡ disponÃ­vel para Mapeamento e POP por enquanto.");
       return;
     }
     const blob =
@@ -5036,7 +5036,7 @@ function ModuleWorkspacePage() {
 
   async function importSpreadsheet(file: File) {
     if (moduleId === "bpmn") {
-      toast.info("Importação textual por Excel está disponível para Mapeamento e POP por enquanto.");
+      toast.info("ImportaÃ§Ã£o textual por Excel estÃ¡ disponÃ­vel para Mapeamento e POP por enquanto.");
       return;
     }
     const sheets = await readXlsxSheets(file);
@@ -5070,8 +5070,8 @@ function ModuleWorkspacePage() {
           "Selecione um processo previamente cadastrado antes de salvar o Mapeamento.",
         );
       }
-      // Geração automática de código: reserva a sequência quando configurado e
-      // o documento ainda não tem código.
+      // GeraÃ§Ã£o automÃ¡tica de cÃ³digo: reserva a sequÃªncia quando configurado e
+      // o documento ainda nÃ£o tem cÃ³digo.
       let workspaceToSave = workspace;
       if (moduleId === "ddp") {
         workspaceToSave = await syncDdpGapsToCatalog(workspaceToSave);
@@ -5111,7 +5111,7 @@ function ModuleWorkspacePage() {
     onSuccess: (result) => {
       const revisionVersion = Math.max(0, (result.version ?? 1) - 1);
       toast.success(
-        moduleId === "ddp" ? "Mapeamento salvo." : `Documento salvo. Revisão v${revisionVersion}.`,
+        moduleId === "ddp" ? "Mapeamento salvo." : `Documento salvo. RevisÃ£o v${revisionVersion}.`,
       );
       setShowSave(false);
       setComment("");
@@ -5150,7 +5150,7 @@ function ModuleWorkspacePage() {
         : activeCloudDocument?.id
           ? (await getCloudDocumentVersion({ data: { versionId } })).content
           : (await getVersion({ data: { versionId } })).content;
-      if (!content) throw new Error("Versão sem conteúdo.");
+      if (!content) throw new Error("VersÃ£o sem conteÃºdo.");
       return content;
     },
     onSuccess: (content) => {
@@ -5159,7 +5159,7 @@ function ModuleWorkspacePage() {
       if (isDemo) restoreDemoWorkspaceState(content);
       window.localStorage.setItem(draftKey, JSON.stringify(result.workspace));
       setShowHistory(false);
-      toast.success("Versão restaurada.");
+      toast.success("VersÃ£o restaurada.");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -5169,8 +5169,8 @@ function ModuleWorkspacePage() {
       ? demoDocumentModels
       : ((documentModelsQ.data as DocumentModelRow[] | undefined) ?? DEFAULT_DOCUMENT_MODELS);
     const model = models.find((item) => item.model_key === modelKey);
-    // A logo do documento usa o que foi configurado no modelo; se o modelo não
-    // tiver logo, cai para a logo da organização; por fim, o nome como texto.
+    // A logo do documento usa o que foi configurado no modelo; se o modelo nÃ£o
+    // tiver logo, cai para a logo da organizaÃ§Ã£o; por fim, o nome como texto.
     const logo = model?.logo_data_url ?? organizationBrand.logo_data_url ?? null;
     return {
       name: organizationBrand.name || "BF Flow",
@@ -5191,7 +5191,7 @@ function ModuleWorkspacePage() {
       description: plain(gap.descricao) || null,
       impact: plain(gap.impacto) || null,
       action: plain(gap.acao) || null,
-      priority: gap.prioridade || "Média",
+      priority: gap.prioridade || "MÃ©dia",
     };
     if (isDemo) {
       const row = { id: id("cause"), ...payload };
@@ -5224,7 +5224,7 @@ function ModuleWorkspacePage() {
         description: plain(gap.descricao) || null,
         impact: plain(gap.impacto) || null,
         action: plain(gap.acao) || null,
-        priority: gap.prioridade || "Média",
+        priority: gap.prioridade || "MÃ©dia",
       };
       const cause = linked
         ? await updateCauseCatalog({ ...linked, ...payload })
@@ -5391,18 +5391,18 @@ function ModuleWorkspacePage() {
 
     if (isDemo || row.id.startsWith("demo-")) {
       setStatusOverrides((current) => ({ ...current, [row.id]: status }));
-      toast.success(`Status atualizado para “${status}”.`);
+      toast.success(`Status atualizado para â€œ${status}â€.`);
       return;
     }
 
     if (moduleId !== "ddp") {
       setStatusOverrides((current) => ({ ...current, [row.id]: status }));
-      toast.success(`Status atualizado para “${status}”.`);
+      toast.success(`Status atualizado para â€œ${status}â€.`);
       return;
     }
 
     if (!selectedOrganizationId) {
-      toast.error("Selecione uma organização antes de alterar o status.");
+      toast.error("Selecione uma organizaÃ§Ã£o antes de alterar o status.");
       return;
     }
 
@@ -5410,13 +5410,13 @@ function ModuleWorkspacePage() {
       (document) => document.id === row.id,
     );
     if (!cloudDocument) {
-      toast.error("Registro não encontrado para atualização.");
+      toast.error("Registro nÃ£o encontrado para atualizaÃ§Ã£o.");
       return;
     }
 
     const document = await getCloudDocument({ data: { id: row.id } });
     if (!document.content_inline) {
-      toast.error("Registro sem conteúdo salvo.");
+      toast.error("Registro sem conteÃºdo salvo.");
       return;
     }
 
@@ -5459,7 +5459,7 @@ function ModuleWorkspacePage() {
       window.localStorage.setItem(draftKey, JSON.stringify(updatedWorkspace));
     }
     await cloudDocsQ.refetch();
-    toast.success(`Status atualizado para “${status}”.`);
+    toast.success(`Status atualizado para â€œ${status}â€.`);
   }
 
   async function editDocumentRow(row: ModuleGridRow) {
@@ -5474,7 +5474,7 @@ function ModuleWorkspacePage() {
       return;
     }
     if (row.id.startsWith("demo-row:")) {
-      toast.info("Registro de demonstração. Use “Novo” para criar um caso editável.");
+      toast.info("Registro de demonstraÃ§Ã£o. Use â€œNovoâ€ para criar um caso editÃ¡vel.");
       return;
     }
     if (row.id.startsWith("demo-saved:") && savedDemoDocument) {
@@ -5558,9 +5558,9 @@ function ModuleWorkspacePage() {
         );
         await cloudDocsQ.refetch();
       }
-      toast.success(ids.length > 1 ? "Registros excluídos." : "Registro excluído.");
+      toast.success(ids.length > 1 ? "Registros excluÃ­dos." : "Registro excluÃ­do.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível excluir o registro.");
+      toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel excluir o registro.");
     }
   }
 
@@ -5577,8 +5577,8 @@ function ModuleWorkspacePage() {
     return cloudDocument?.content_inline ? parseWorkspace(cloudDocument.content_inline) : null;
   }
 
-  // Abre uma visualização somente-leitura amigável do registro em nova aba, com todas
-  // as informações preenchidas no formulário e seguindo a identidade visual.
+  // Abre uma visualizaÃ§Ã£o somente-leitura amigÃ¡vel do registro em nova aba, com todas
+  // as informaÃ§Ãµes preenchidas no formulÃ¡rio e seguindo a identidade visual.
   function viewDocumentRow(row: ModuleGridRow) {
     const snapshot = resolveRowSnapshot(row);
     let docHtml: string;
@@ -5595,8 +5595,8 @@ function ModuleWorkspacePage() {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
-  // Visualiza, em nova aba, o que está sendo preenchido agora no formulário,
-  // na mesma modalidade somente-leitura disponível na consulta.
+  // Visualiza, em nova aba, o que estÃ¡ sendo preenchido agora no formulÃ¡rio,
+  // na mesma modalidade somente-leitura disponÃ­vel na consulta.
   function previewCurrentDdp() {
     const docHtml = buildDdpPresentationHtml(workspace.ddp, brandForDocumentModel("ddp-html"));
     const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
@@ -5618,11 +5618,11 @@ function ModuleWorkspacePage() {
     format: "ddp-html" | "ddp-docx" | "ddp-presentation-doc" | "pop-docx" | "pop-presentation-doc",
   ) {
     if (row.id.startsWith("demo-row:")) {
-      toast.info("Registro de demonstração. Crie um caso real em “Novo” para exportar.");
+      toast.info("Registro de demonstraÃ§Ã£o. Crie um caso real em â€œNovoâ€ para exportar.");
       return;
     }
     const snapshot = resolveRowSnapshot(row);
-    if (!snapshot) throw new Error("Documento salvo não encontrado.");
+    if (!snapshot) throw new Error("Documento salvo nÃ£o encontrado.");
 
     if (format === "ddp-html") {
       const filename = cleanFileName(
@@ -5669,7 +5669,7 @@ function ModuleWorkspacePage() {
     toast.success(
       moduleId === "ddp"
         ? "Mapeamento exportado."
-        : "Documento exportado a partir da versão salva.",
+        : "Documento exportado a partir da versÃ£o salva.",
     );
   }
 
@@ -5818,7 +5818,7 @@ function ModuleWorkspacePage() {
           type="button"
           onClick={() => setTreeOpen((current) => !current)}
           className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          title={treeOpen ? "Ocultar navegação" : "Mostrar navegação"}
+          title={treeOpen ? "Ocultar navegaÃ§Ã£o" : "Mostrar navegaÃ§Ã£o"}
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -5826,8 +5826,8 @@ function ModuleWorkspacePage() {
           type="button"
           onClick={() => navigate({ to: "/" })}
           className="flex h-full items-center rounded-md transition-opacity hover:opacity-80"
-          title="Ir para a página inicial"
-          aria-label="Ir para a página inicial"
+          title="Ir para a pÃ¡gina inicial"
+          aria-label="Ir para a pÃ¡gina inicial"
         >
           <BFFlowMark className="h-9" />
         </button>
@@ -5848,8 +5848,8 @@ function ModuleWorkspacePage() {
               setActiveCloudDocument(null);
             }}
             className="hidden h-9 max-w-[220px] rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 md:block"
-            title="Organização ativa"
-            aria-label="Organização ativa"
+            title="OrganizaÃ§Ã£o ativa"
+            aria-label="OrganizaÃ§Ã£o ativa"
           >
             {accessibleOrganizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
@@ -5891,7 +5891,7 @@ function ModuleWorkspacePage() {
           {treeOpen ? (
             <button
               type="button"
-              aria-label="Fechar navegação"
+              aria-label="Fechar navegaÃ§Ã£o"
               onClick={() => setTreeOpen(false)}
               className="fixed bottom-0 left-[372px] right-0 top-14 z-20 bg-foreground/10 backdrop-blur-[1px] lg:hidden"
             />
@@ -5905,7 +5905,7 @@ function ModuleWorkspacePage() {
               <div className="border-b border-border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                    navegação
+                    navegaÃ§Ã£o
                   </div>
                   <button
                     type="button"
@@ -5929,7 +5929,7 @@ function ModuleWorkspacePage() {
                       ? "Home"
                       : railArea === "modules"
                         ? "Processos"
-                        : "Configurações"}
+                        : "ConfiguraÃ§Ãµes"}
                   </div>
                 </div>
               </div>
@@ -5973,20 +5973,20 @@ function ModuleWorkspacePage() {
 
                 {railArea === "settings" ? (
                   <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                    {/* Mesmos itens/ícones da página inicial (componentes compartilhados). */}
+                    {/* Mesmos itens/Ã­cones da pÃ¡gina inicial (componentes compartilhados). */}
                     <ModuleTreeButton
                       onClick={() =>
                         navigate({ to: "/", search: { area: "settings", view: "users" } })
                       }
                     >
-                      <Users className="h-4 w-4" /> Usuários
+                      <Users className="h-4 w-4" /> UsuÃ¡rios
                     </ModuleTreeButton>
                     <ModuleTreeButton
                       onClick={() =>
                         navigate({ to: "/", search: { area: "settings", view: "organizations" } })
                       }
                     >
-                      <Building2 className="h-4 w-4" /> Organizações
+                      <Building2 className="h-4 w-4" /> OrganizaÃ§Ãµes
                     </ModuleTreeButton>
                     <ModuleTreeButton
                       active={settingsView === "theme"}
@@ -6022,7 +6022,7 @@ function ModuleWorkspacePage() {
             >
               <span>
                 <strong className="block text-sm text-[#1d1d1f]">
-                  Arquivo modelo de importação textual
+                  Arquivo modelo de importaÃ§Ã£o textual
                 </strong>
                 <span className="text-xs text-[#6e6e73]">
                   Baixa um Excel com as abas e colunas corretas para {moduleDocLabel}.
@@ -6037,7 +6037,7 @@ function ModuleWorkspacePage() {
               <span>
                 <strong className="block text-sm text-[#1d1d1f]">Buscar arquivo preenchido</strong>
                 <span className="text-xs text-[#6e6e73]">
-                  Importa o Excel preenchido e atualiza os campos do módulo.
+                  Importa o Excel preenchido e atualiza os campos do mÃ³dulo.
                 </span>
               </span>
               <Upload className="h-4 w-4 text-[#3f3f46]" />
@@ -6052,7 +6052,7 @@ function ModuleWorkspacePage() {
           subtitle={
             moduleId === "ddp"
               ? "Grava o preenchimento como registro de mapeamento."
-              : "Grava o preenchimento da documentação e mantém o histórico."
+              : "Grava o preenchimento da documentaÃ§Ã£o e mantÃ©m o histÃ³rico."
           }
           onClose={() => setShowSave(false)}
         >
@@ -6062,8 +6062,8 @@ function ModuleWorkspacePage() {
             onChange={(event) => setComment(event.target.value)}
             placeholder={
               moduleId === "ddp"
-                ? "Observação opcional sobre o registro"
-                : "Observação opcional sobre o documento"
+                ? "ObservaÃ§Ã£o opcional sobre o registro"
+                : "ObservaÃ§Ã£o opcional sobre o documento"
             }
             className="mb-4 w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3f3f46]"
           />
@@ -6087,8 +6087,8 @@ function ModuleWorkspacePage() {
 
       {showHistory && moduleId !== "ddp" && (
         <Modal
-          title="Histórico"
-          subtitle="Restaure uma versão salva quando precisar."
+          title="HistÃ³rico"
+          subtitle="Restaure uma versÃ£o salva quando precisar."
           onClose={() => setShowHistory(false)}
         >
           {versionsQ.isLoading ? (
@@ -6096,7 +6096,7 @@ function ModuleWorkspacePage() {
           ) : null}
           {!versionsQ.isLoading && !versionsQ.data?.length ? (
             <div className="py-8 text-center text-sm text-[#6e6e73]">
-              Nenhuma versão salva ainda.
+              Nenhuma versÃ£o salva ainda.
             </div>
           ) : null}
           <div className="grid max-h-[55vh] gap-2 overflow-auto">
@@ -6110,7 +6110,7 @@ function ModuleWorkspacePage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">
-                    {version.comment || "Sem comentário"}
+                    {version.comment || "Sem comentÃ¡rio"}
                   </div>
                   <div className="text-xs text-[#6e6e73]">
                     {formatDateTimeBr(version.created_at)}
@@ -6132,13 +6132,13 @@ function ModuleWorkspacePage() {
       {showLibrary && (
         <Modal
           title={`Buscar ${moduleDocLabel}`}
-          subtitle={`Documentos de ${moduleDocLabel} salvos no sistema para esta organização.`}
+          subtitle={`Documentos de ${moduleDocLabel} salvos no sistema para esta organizaÃ§Ã£o.`}
           onClose={() => setShowLibrary(false)}
         >
           {isDemo ? (
             <div className="py-8 text-center text-sm text-[#6e6e73]">
-              No modo de teste local, salve versões locais ou abra um JSON. No ambiente conectado, a
-              busca consulta o Supabase da organização.
+              No modo de teste local, salve versÃµes locais ou abra um JSON. No ambiente conectado, a
+              busca consulta o Supabase da organizaÃ§Ã£o.
             </div>
           ) : null}
           {!isDemo && cloudDocsQ.isLoading ? (
@@ -6188,37 +6188,37 @@ function ModuleSettingsPanel({
 }) {
   const copy: Record<string, { eyebrow: string; title: string; text: string }> = {
     appearance: {
-      eyebrow: "configurações · aparência",
-      title: "Aparência",
-      text: `Ajuste a experiência visual do workspace para a organização ${organizationName}.`,
+      eyebrow: "configuraÃ§Ãµes Â· aparÃªncia",
+      title: "AparÃªncia",
+      text: `Ajuste a experiÃªncia visual do workspace para a organizaÃ§Ã£o ${organizationName}.`,
     },
     theme: {
-      eyebrow: "configurações · aparência",
+      eyebrow: "configuraÃ§Ãµes Â· aparÃªncia",
       title: "Tema",
-      text: "Controle tema claro, escuro e preferência automática do navegador.",
+      text: "Controle tema claro, escuro e preferÃªncia automÃ¡tica do navegador.",
     },
     preferences: {
-      eyebrow: "configurações · aparência",
-      title: "Preferências",
-      text: "Defina comportamento padrão, densidade visual e preferências gerais do workspace.",
+      eyebrow: "configuraÃ§Ãµes Â· aparÃªncia",
+      title: "PreferÃªncias",
+      text: "Defina comportamento padrÃ£o, densidade visual e preferÃªncias gerais do workspace.",
     },
     "visual-identity": {
-      eyebrow: "configurações · identidade visual",
+      eyebrow: "configuraÃ§Ãµes Â· identidade visual",
       title: "Identidade visual",
-      text: "Configure logo, cores institucionais e personalização dos cabeçalhos dos documentos exportados.",
+      text: "Configure logo, cores institucionais e personalizaÃ§Ã£o dos cabeÃ§alhos dos documentos exportados.",
     },
     integrations: {
-      eyebrow: "configurações · integrações",
-      title: "Integrações",
-      text: "Gerencie conexões do sistema, serviços externos e integrações técnicas.",
+      eyebrow: "configuraÃ§Ãµes Â· integraÃ§Ãµes",
+      title: "IntegraÃ§Ãµes",
+      text: "Gerencie conexÃµes do sistema, serviÃ§os externos e integraÃ§Ãµes tÃ©cnicas.",
     },
     "local-environment": {
-      eyebrow: "configurações · ambiente local",
+      eyebrow: "configuraÃ§Ãµes Â· ambiente local",
       title: "Ambiente de teste/local",
-      text: "Controle recursos locais de teste sem expor ações técnicas na navegação dos módulos.",
+      text: "Controle recursos locais de teste sem expor aÃ§Ãµes tÃ©cnicas na navegaÃ§Ã£o dos mÃ³dulos.",
     },
     profile: {
-      eyebrow: "configurações · perfil",
+      eyebrow: "configuraÃ§Ãµes Â· perfil",
       title: "Perfil",
       text: "Use o avatar no canto superior direito para adicionar sua foto, trocar a senha ou sair do sistema.",
     },
@@ -6264,7 +6264,7 @@ function moduleGridRowFromWorkspace(
       ...base,
       status: workspace.ddp.meta.status || base.status,
       code: workspace.ddp.meta.codigo || "-",
-      name: workspace.ddp.meta.titulo || "Mapeamento sem título",
+      name: workspace.ddp.meta.titulo || "Mapeamento sem tÃ­tulo",
       type: "Mapeamento",
       modalidade: workspace.ddp.meta.modalidade || "AS IS",
       process:
@@ -6283,7 +6283,7 @@ function moduleGridRowFromWorkspace(
     return {
       ...base,
       code: workspace.pop.meta.codigo || "-",
-      name: workspace.pop.meta.titulo || "Documento sem título",
+      name: workspace.pop.meta.titulo || "Documento sem tÃ­tulo",
       type: workspace.pop.meta.tipo || "Documento",
       modalidade: "-",
       process: workspace.pop.meta.processo || "-",
@@ -6295,7 +6295,7 @@ function moduleGridRowFromWorkspace(
   return {
     ...base,
     code: "FLX",
-    name: workspace.bpmn.poolName || "Fluxograma sem título",
+    name: workspace.bpmn.poolName || "Fluxograma sem tÃ­tulo",
     type: "Fluxo de atividades",
     modalidade: "-",
     process: workspace.bpmn.poolName || "-",
@@ -6305,38 +6305,38 @@ function moduleGridRowFromWorkspace(
   };
 }
 
-// Casos fictícios pré-preenchidos para o modo demo, para que as telas de
+// Casos fictÃ­cios prÃ©-preenchidos para o modo demo, para que as telas de
 // "Consultar registros" tenham volume suficiente para testes robustos.
 // Tupla: [code, name, process, area, owner, responsible, status, updatedAt]
 type DemoRowTuple = [string, string, string, string, string, string, string, string];
 const DEMO_MODULE_ROW_DATA: Record<AteliamModule, DemoRowTuple[]> = {
   ddp: [
-    ["MAP.PMO.001", "Mapeamento — Planejamento Estratégico", "Planejamento Estratégico", "Processos & Qualidade", "Aline Ferreira", "Aline Ferreira", "Aprovado", "2026-05-12"],
-    ["MAP.PMO.002", "Mapeamento — Gestão de Indicadores", "Gestão de Indicadores e Desempenho", "Processos & Qualidade", "Aline Ferreira", "Bruno Cardoso", "Ativo", "2026-06-02"],
-    ["MAP.RH.001", "Mapeamento — Recrutamento e Seleção", "Recrutamento e Seleção", "Recursos Humanos", "Juliana Castro", "Juliana Castro", "Em revisão", "2026-06-18"],
-    ["MAP.RH.002", "Mapeamento — Integração e Onboarding", "Integração e Onboarding", "Recursos Humanos", "Juliana Castro", "Patrícia Lima", "Ativo", "2026-04-27"],
-    ["MAP.TI.001", "Mapeamento — Gestão de Demandas de TI", "Gestão de Demandas de TI", "Tecnologia da Informação", "Carlos Menezes", "Carlos Menezes", "Aprovado", "2026-05-30"],
-    ["MAP.TI.002", "Mapeamento — Segurança da Informação", "Gestão de Segurança da Informação", "Tecnologia da Informação", "Carlos Menezes", "Carlos Menezes", "Rascunho", "2026-06-21"],
-    ["MAP.COM.001", "Mapeamento — Prospecção e Leads", "Prospecção e Geração de Leads", "Comercial & Vendas", "Rafael Souza", "Rafael Souza", "Ativo", "2026-06-09"],
-    ["MAP.OPE.001", "Mapeamento — Planejamento da Produção", "Planejamento da Produção", "Operações", "Patrícia Lima", "Patrícia Lima", "Em revisão", "2026-06-15"],
-    ["MAP.FIN.001", "Mapeamento — Contas a Receber", "Contas a Receber", "Financeiro & Controladoria", "Bruno Cardoso", "Bruno Cardoso", "Aprovado", "2026-03-19"],
+    ["MAP.PMO.001", "Mapeamento â€” Planejamento EstratÃ©gico", "Planejamento EstratÃ©gico", "Processos & Qualidade", "Aline Ferreira", "Aline Ferreira", "Aprovado", "2026-05-12"],
+    ["MAP.PMO.002", "Mapeamento â€” GestÃ£o de Indicadores", "GestÃ£o de Indicadores e Desempenho", "Processos & Qualidade", "Aline Ferreira", "Bruno Cardoso", "Ativo", "2026-06-02"],
+    ["MAP.RH.001", "Mapeamento â€” Recrutamento e SeleÃ§Ã£o", "Recrutamento e SeleÃ§Ã£o", "Recursos Humanos", "Juliana Castro", "Juliana Castro", "Em revisÃ£o", "2026-06-18"],
+    ["MAP.RH.002", "Mapeamento â€” IntegraÃ§Ã£o e Onboarding", "IntegraÃ§Ã£o e Onboarding", "Recursos Humanos", "Juliana Castro", "PatrÃ­cia Lima", "Ativo", "2026-04-27"],
+    ["MAP.TI.001", "Mapeamento â€” GestÃ£o de Demandas de TI", "GestÃ£o de Demandas de TI", "Tecnologia da InformaÃ§Ã£o", "Carlos Menezes", "Carlos Menezes", "Aprovado", "2026-05-30"],
+    ["MAP.TI.002", "Mapeamento â€” SeguranÃ§a da InformaÃ§Ã£o", "GestÃ£o de SeguranÃ§a da InformaÃ§Ã£o", "Tecnologia da InformaÃ§Ã£o", "Carlos Menezes", "Carlos Menezes", "Rascunho", "2026-06-21"],
+    ["MAP.COM.001", "Mapeamento â€” ProspecÃ§Ã£o e Leads", "ProspecÃ§Ã£o e GeraÃ§Ã£o de Leads", "Comercial & Vendas", "Rafael Souza", "Rafael Souza", "Ativo", "2026-06-09"],
+    ["MAP.OPE.001", "Mapeamento â€” Planejamento da ProduÃ§Ã£o", "Planejamento da ProduÃ§Ã£o", "OperaÃ§Ãµes", "PatrÃ­cia Lima", "PatrÃ­cia Lima", "Em revisÃ£o", "2026-06-15"],
+    ["MAP.FIN.001", "Mapeamento â€” Contas a Receber", "Contas a Receber", "Financeiro & Controladoria", "Bruno Cardoso", "Bruno Cardoso", "Aprovado", "2026-03-19"],
   ],
   pop: [
-    ["POP.RH.001", "POP — Admissão de Colaborador", "Recrutamento e Seleção", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-05-04"],
-    ["POP.RH.002", "POP — Desligamento de Colaborador", "Avaliação de Desempenho", "Recursos Humanos", "-", "Juliana Castro", "Ativo", "2026-06-01"],
-    ["IT.TI.001", "IT — Concessão de Acessos", "Gestão de Segurança da Informação", "Tecnologia da Informação", "-", "Carlos Menezes", "Aprovado", "2026-05-22"],
-    ["IT.TI.002", "IT — Rotina de Backup", "Gestão de Demandas de TI", "Tecnologia da Informação", "-", "Carlos Menezes", "Em revisão", "2026-06-17"],
-    ["POP.FIN.001", "POP — Conciliação Bancária", "Contas a Receber", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Ativo", "2026-04-30"],
-    ["POP.FIN.002", "POP — Aprovação de Pagamentos", "Contas a Pagar", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Rascunho", "2026-06-20"],
-    ["POP.OPE.001", "POP — Inspeção de Qualidade", "Controle de Qualidade na Produção", "Operações", "-", "Patrícia Lima", "Aprovado", "2026-05-15"],
-    ["POP.LOG.001", "POP — Recebimento de Mercadorias", "Logística & Supply Chain", "Logística & Supply Chain", "-", "Marcos Oliveira", "Ativo", "2026-06-07"],
+    ["POP.RH.001", "POP â€” AdmissÃ£o de Colaborador", "Recrutamento e SeleÃ§Ã£o", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-05-04"],
+    ["POP.RH.002", "POP â€” Desligamento de Colaborador", "AvaliaÃ§Ã£o de Desempenho", "Recursos Humanos", "-", "Juliana Castro", "Ativo", "2026-06-01"],
+    ["IT.TI.001", "IT â€” ConcessÃ£o de Acessos", "GestÃ£o de SeguranÃ§a da InformaÃ§Ã£o", "Tecnologia da InformaÃ§Ã£o", "-", "Carlos Menezes", "Aprovado", "2026-05-22"],
+    ["IT.TI.002", "IT â€” Rotina de Backup", "GestÃ£o de Demandas de TI", "Tecnologia da InformaÃ§Ã£o", "-", "Carlos Menezes", "Em revisÃ£o", "2026-06-17"],
+    ["POP.FIN.001", "POP â€” ConciliaÃ§Ã£o BancÃ¡ria", "Contas a Receber", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Ativo", "2026-04-30"],
+    ["POP.FIN.002", "POP â€” AprovaÃ§Ã£o de Pagamentos", "Contas a Pagar", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Rascunho", "2026-06-20"],
+    ["POP.OPE.001", "POP â€” InspeÃ§Ã£o de Qualidade", "Controle de Qualidade na ProduÃ§Ã£o", "OperaÃ§Ãµes", "-", "PatrÃ­cia Lima", "Aprovado", "2026-05-15"],
+    ["POP.LOG.001", "POP â€” Recebimento de Mercadorias", "LogÃ­stica & Supply Chain", "LogÃ­stica & Supply Chain", "-", "Marcos Oliveira", "Ativo", "2026-06-07"],
   ],
   bpmn: [
-    ["FLX.COM.001", "Fluxograma — Ciclo de Vendas", "Comercialização & Vendas", "Comercial & Vendas", "-", "Rafael Souza", "Aprovado", "2026-05-18"],
-    ["FLX.OPE.001", "Fluxograma — Ordem de Produção", "Produção & Entrega", "Operações", "-", "Patrícia Lima", "Ativo", "2026-06-03"],
-    ["FLX.FIN.001", "Fluxograma — Contas a Pagar", "Gestão Financeira", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Em revisão", "2026-06-19"],
-    ["FLX.RH.001", "Fluxograma — Onboarding", "Gestão de Pessoas", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-04-25"],
-    ["FLX.LOG.001", "Fluxograma — Expedição", "Logística & Supply Chain", "Logística & Supply Chain", "-", "Marcos Oliveira", "Rascunho", "2026-06-22"],
+    ["FLX.COM.001", "Fluxograma â€” Ciclo de Vendas", "ComercializaÃ§Ã£o & Vendas", "Comercial & Vendas", "-", "Rafael Souza", "Aprovado", "2026-05-18"],
+    ["FLX.OPE.001", "Fluxograma â€” Ordem de ProduÃ§Ã£o", "ProduÃ§Ã£o & Entrega", "OperaÃ§Ãµes", "-", "PatrÃ­cia Lima", "Ativo", "2026-06-03"],
+    ["FLX.FIN.001", "Fluxograma â€” Contas a Pagar", "GestÃ£o Financeira", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Em revisÃ£o", "2026-06-19"],
+    ["FLX.RH.001", "Fluxograma â€” Onboarding", "GestÃ£o de Pessoas", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-04-25"],
+    ["FLX.LOG.001", "Fluxograma â€” ExpediÃ§Ã£o", "LogÃ­stica & Supply Chain", "LogÃ­stica & Supply Chain", "-", "Marcos Oliveira", "Rascunho", "2026-06-22"],
   ],
 };
 
@@ -6378,7 +6378,7 @@ function buildModuleGridRows(
   });
   if (cloudRows.length) return cloudRows;
   if (isDemo) {
-    // Documentos de demonstração reais (preenchidos e encadeados ao registry).
+    // Documentos de demonstraÃ§Ã£o reais (preenchidos e encadeados ao registry).
     const realDocs = DEMO_DOCUMENTS[moduleId] ?? [];
     const realRows = realDocs.map((doc) =>
       moduleGridRowFromWorkspace(moduleId, doc.workspace, {
@@ -6387,7 +6387,7 @@ function buildModuleGridRows(
         updatedAt: doc.updatedAt,
       }),
     );
-    // Para módulos sem snapshots reais (ex.: fluxograma), mantém os cards de metadados.
+    // Para mÃ³dulos sem snapshots reais (ex.: fluxograma), mantÃ©m os cards de metadados.
     const fallbackRows = realRows.length ? [] : buildDemoModuleRows(moduleId);
     const savedRows = savedDemoDocument
       ? [
@@ -6417,7 +6417,7 @@ type ExportFormat =
   | "pop-docx"
   | "pop-presentation-doc";
 
-const MODULE_STATUS_OPTIONS = ["Em andamento", "Em revisão", "Aprovado", "Concluído"];
+const MODULE_STATUS_OPTIONS = ["Em andamento", "Em revisÃ£o", "Aprovado", "ConcluÃ­do"];
 type ModuleGridSortDir = "asc" | "desc";
 type ModuleGridColumn = keyof Pick<
   ModuleGridRow,
@@ -6550,34 +6550,34 @@ function ModuleDocumentGrid({
   const columns =
     moduleId === "ddp"
       ? [
-          ["code", "Código"],
-          ["name", "Título do mapeamento"],
+          ["code", "CÃ³digo"],
+          ["name", "TÃ­tulo do mapeamento"],
           ["process", "Nome do processo"],
           ["modalidade", "Modalidade"],
-          ["area", "Área"],
+          ["area", "Ãrea"],
           ["owner", "Dono do processo"],
           ["responsible", "Elaborador"],
           ["status", "Status"],
-          ["updatedAt", "Última atualização"],
+          ["updatedAt", "Ãšltima atualizaÃ§Ã£o"],
         ]
       : moduleId === "pop"
         ? [
-            ["code", "Código"],
+            ["code", "CÃ³digo"],
             ["name", "Nome do documento"],
             ["type", "Tipo"],
-            ["area", "Área"],
-            ["responsible", "Responsável"],
+            ["area", "Ãrea"],
+            ["responsible", "ResponsÃ¡vel"],
             ["status", "Status"],
-            ["updatedAt", "Última atualização"],
+            ["updatedAt", "Ãšltima atualizaÃ§Ã£o"],
           ]
         : [
-            ["code", "Código"],
+            ["code", "CÃ³digo"],
             ["name", "Nome do fluxo"],
             ["process", "Processo vinculado"],
-            ["area", "Área"],
-            ["responsible", "Responsável"],
+            ["area", "Ãrea"],
+            ["responsible", "ResponsÃ¡vel"],
             ["status", "Status"],
-            ["updatedAt", "Última atualização"],
+            ["updatedAt", "Ãšltima atualizaÃ§Ã£o"],
           ];
   const sortedRows = useMemo(
     () => [...filtered].sort((a, b) => compareModuleGridRows(a, b, sortField, sortDir)),
@@ -6641,7 +6641,7 @@ function ModuleDocumentGrid({
       setSelected((current) => current.filter((id) => !pendingDelete.ids.includes(id)));
       setPendingDelete(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel excluir o registro.");
+      toast.error(error instanceof Error ? error.message : "NÃƒÂ£o foi possÃƒÂ­vel excluir o registro.");
     } finally {
       setDeleteSaving(false);
     }
@@ -6654,7 +6654,7 @@ function ModuleDocumentGrid({
       await onChangeStatus(pendingStatus.row, pendingStatus.status);
       setPendingStatus(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível alterar o status.");
+      toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel alterar o status.");
     } finally {
       setStatusSaving(false);
     }
@@ -6666,7 +6666,7 @@ function ModuleDocumentGrid({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-              processos · {moduleDocumentLabel(moduleId)}
+              processos Â· {moduleDocumentLabel(moduleId)}
             </div>
             <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
           </div>
@@ -6734,7 +6734,7 @@ function ModuleDocumentGrid({
                 </th>
               ))}
               <th className="w-[160px] whitespace-nowrap px-4 py-3 text-right font-semibold">
-                Ações
+                AÃ§Ãµes
               </th>
             </tr>
           </thead>
@@ -6827,7 +6827,7 @@ function ModuleDocumentGrid({
         </table>
       </div>
       <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
-        {sortedRows.length} registro(s) exibido(s) · {selected.length} selecionado(s)
+        {sortedRows.length} registro(s) exibido(s) Â· {selected.length} selecionado(s)
       </footer>
       {pendingStatus ? (
         <Modal
@@ -6915,7 +6915,7 @@ function RowActions({
   }, [menuOpen]);
 
   const reportFormat: ExportFormat = moduleId === "ddp" ? "ddp-docx" : "pop-docx";
-  // Apresentação no formato padrão (HTML) — disponível apenas para Mapeamento.
+  // ApresentaÃ§Ã£o no formato padrÃ£o (HTML) â€” disponÃ­vel apenas para Mapeamento.
   const hasPresentation = moduleId === "ddp";
   const menuItem =
     "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-muted";
@@ -6970,7 +6970,7 @@ function RowActions({
                 onExport(reportFormat);
               }}
             >
-              <FileText className="h-4 w-4 shrink-0" /> Relatório
+              <FileText className="h-4 w-4 shrink-0" /> RelatÃ³rio
             </button>
             {hasPresentation ? (
               <button
@@ -6982,7 +6982,7 @@ function RowActions({
                   onExport("ddp-html");
                 }}
               >
-                <Presentation className="h-4 w-4 shrink-0" /> Apresentação
+                <Presentation className="h-4 w-4 shrink-0" /> ApresentaÃ§Ã£o
               </button>
             ) : null}
             <div className="border-t border-border" />
@@ -7055,7 +7055,7 @@ function DdpCausesModuleV2({
       initializedNew.current = true;
       openNewCause();
     }
-    // Inicializa o formulário de causa uma única vez ao entrar no modo "new"
+    // Inicializa o formulÃ¡rio de causa uma Ãºnica vez ao entrar no modo "new"
     // (guardado por initializedNew.current); depende apenas de `mode`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -7064,8 +7064,8 @@ function DdpCausesModuleV2({
     if (mode === "edit" && selectedForEdit && !draft) {
       openEditCause(selectedForEdit);
     }
-    // Reage à mudança de modo/seleção; usa selectedForEdit?.id de propósito
-    // (identidade estável) e a guarda !draft evita reabrir sobre a edição em curso.
+    // Reage Ã  mudanÃ§a de modo/seleÃ§Ã£o; usa selectedForEdit?.id de propÃ³sito
+    // (identidade estÃ¡vel) e a guarda !draft evita reabrir sobre a ediÃ§Ã£o em curso.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, selectedForEdit?.id]);
 
@@ -7105,7 +7105,7 @@ function DdpCausesModuleV2({
       acao: "",
       responsavel: "",
       prazo: "",
-      prioridade: "Média",
+      prioridade: "MÃ©dia",
       status: "Pendente",
       comentarios: [],
     };
@@ -7195,17 +7195,17 @@ function DdpCausesModuleV2({
           name: "Causas",
           rows: [
             [
-              "Código",
+              "CÃ³digo",
               "Causa",
-              "Descrição",
+              "DescriÃ§Ã£o",
               "Impacto",
-              "Ação proposta",
-              "Responsável",
+              "AÃ§Ã£o proposta",
+              "ResponsÃ¡vel",
               "Prazo",
               "Prioridade",
               "Status",
-              "Comentários",
-              "Última atualização",
+              "ComentÃ¡rios",
+              "Ãšltima atualizaÃ§Ã£o",
             ],
             ...rows.map((gap, index) => [
               causeCode(index),
@@ -7258,7 +7258,7 @@ function DdpCausesModuleV2({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-                processos · mapeamento · causas
+                processos Â· mapeamento Â· causas
               </div>
               <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
             </div>
@@ -7311,17 +7311,17 @@ function DdpCausesModuleV2({
                   />
                 </th>
                 <th className="px-3 py-3 font-semibold">Origem</th>
-                <th className="px-3 py-3 font-semibold">Causa reutilizável</th>
+                <th className="px-3 py-3 font-semibold">Causa reutilizÃ¡vel</th>
                 <th className="px-3 py-3 font-semibold">Causa</th>
-                <th className="px-3 py-3 font-semibold">Descrição</th>
+                <th className="px-3 py-3 font-semibold">DescriÃ§Ã£o</th>
                 <th className="px-3 py-3 font-semibold">Impacto</th>
-                <th className="px-3 py-3 font-semibold">Ação proposta</th>
-                <th className="px-3 py-3 font-semibold">Responsável</th>
+                <th className="px-3 py-3 font-semibold">AÃ§Ã£o proposta</th>
+                <th className="px-3 py-3 font-semibold">ResponsÃ¡vel</th>
                 <th className="px-3 py-3 font-semibold">Prazo</th>
                 <th className="px-3 py-3 font-semibold">Prioridade</th>
                 <th className="px-3 py-3 font-semibold">Status</th>
                 <th className="w-[160px] whitespace-nowrap px-4 py-3 text-right font-semibold">
-                  Ações
+                  AÃ§Ãµes
                 </th>
               </tr>
             </thead>
@@ -7354,7 +7354,7 @@ function DdpCausesModuleV2({
                       {gap.sharedCauseId ? "Biblioteca" : "Mapeamento"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-foreground">{gap.sharedCauseId ? "Sim" : "Não"}</td>
+                  <td className="px-3 py-3 text-foreground">{gap.sharedCauseId ? "Sim" : "NÃ£o"}</td>
                   <td className="break-words px-3 py-3 font-medium text-foreground">
                     {gap.causa || "Causa sem nome"}
                   </td>
@@ -7439,7 +7439,7 @@ function DdpCausesModuleV2({
           </table>
         </div>
         <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
-          {filtered.length} registro(s) exibido(s) · {selectedIds.length} selecionado(s)
+          {filtered.length} registro(s) exibido(s) Â· {selectedIds.length} selecionado(s)
         </footer>
       </section>
 
@@ -7466,7 +7466,7 @@ function DdpCausesModuleV2({
                 }}
                 className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                 title="Fechar"
-                aria-label="Fechar formulário"
+                aria-label="Fechar formulÃ¡rio"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -7476,7 +7476,7 @@ function DdpCausesModuleV2({
               <div className="grid gap-3 md:col-span-2">
                 <label className="block">
                   <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                    Causa reutilizável da organização
+                    Causa reutilizÃ¡vel da organizaÃ§Ã£o
                   </span>
                   <select
                     value={draft.sharedCauseId ?? ""}
@@ -7494,7 +7494,7 @@ function DdpCausesModuleV2({
               </div>
               <Field label="Causa" value={draft.causa} onChange={(causa) => updateDraft({ causa })} />
               <Field
-                label="Responsável"
+                label="ResponsÃ¡vel"
                 value={draft.responsavel}
                 onChange={(responsavel) => updateDraft({ responsavel })}
               />
@@ -7516,7 +7516,7 @@ function DdpCausesModuleV2({
                 onChange={(prazo) => updateDraft({ prazo })}
               />
               <TextArea
-                label="Descrição"
+                label="DescriÃ§Ã£o"
                 value={draft.descricao}
                 onChange={(descricao) => updateDraft({ descricao })}
               />
@@ -7526,7 +7526,7 @@ function DdpCausesModuleV2({
                 onChange={(impacto) => updateDraft({ impacto })}
               />
               <TextArea
-                label="Ação proposta"
+                label="AÃ§Ã£o proposta"
                 value={draft.acao}
                 onChange={(acao) => updateDraft({ acao })}
               />
@@ -7535,13 +7535,13 @@ function DdpCausesModuleV2({
             <div className="rounded-lg border border-border bg-muted/35 p-4">
               <div className="mb-3 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-foreground" />
-                <h3 className="text-sm font-semibold text-foreground">Comentários</h3>
+                <h3 className="text-sm font-semibold text-foreground">ComentÃ¡rios</h3>
               </div>
               <textarea
                 value={commentDraft}
                 onChange={(event) => setCommentDraft(event.target.value)}
                 rows={4}
-                placeholder="Registre uma atualização, decisão ou pendência da causa."
+                placeholder="Registre uma atualizaÃ§Ã£o, decisÃ£o ou pendÃªncia da causa."
                 className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
               <button
@@ -7550,7 +7550,7 @@ function DdpCausesModuleV2({
                 disabled={!commentDraft.trim()}
                 className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2.5 text-sm font-bold text-background hover:opacity-90 disabled:opacity-45"
               >
-                Inserir comentário
+                Inserir comentÃ¡rio
               </button>
               <div className="mt-4 grid gap-2">
                 {draft.comentarios.map((comment) => (
@@ -7574,7 +7574,7 @@ function DdpCausesModuleV2({
                 ))}
                 {!draft.comentarios.length ? (
                   <div className="rounded-lg border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
-                    Nenhum comentário registrado.
+                    Nenhum comentÃ¡rio registrado.
                   </div>
                 ) : null}
               </div>
@@ -7645,7 +7645,7 @@ function gapPatchFromOrganizationCause(cause: OrganizationCause): Partial<GapIte
 
 function parseGapDateRange(value: string) {
   const parts = value
-    .split(/\s+(?:até|a)\s+|\|/i)
+    .split(/\s+(?:atÃ©|a)\s+|\|/i)
     .map((part) => part.trim())
     .filter(Boolean);
   const isIsoDate = (part: string) => /^\d{4}-\d{2}-\d{2}$/.test(part);
@@ -7656,7 +7656,7 @@ function parseGapDateRange(value: string) {
 }
 
 function formatGapDateRange(start: string, end: string) {
-  if (start && end && start !== end) return `${start} até ${end}`;
+  if (start && end && start !== end) return `${start} atÃ© ${end}`;
   return start || end;
 }
 
@@ -7698,7 +7698,7 @@ function TableDateRange({
       <input
         type="date"
         value={range.start}
-        aria-label="Início do prazo"
+        aria-label="InÃ­cio do prazo"
         onChange={(event) => onChange(formatGapDateRange(event.target.value, range.end))}
         className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
       />
@@ -7820,14 +7820,14 @@ function DdpModule({
   onPreview?: () => void;
   // Salvamento em andamento (do mutation do pai).
   saving?: boolean;
-  // Contador que incrementa a cada salvamento concluído com sucesso.
+  // Contador que incrementa a cada salvamento concluÃ­do com sucesso.
   savedNonce?: number;
   organizationId: string | null;
   isDemo: boolean;
   codeSettings: CodeSettings | null;
-  // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
+  // Persiste (nuvem: refetch; demo: adiciona ao catÃ¡logo) o processo recÃ©m-criado.
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
-  // Idem, para o sistema recém-cadastrado a partir de "Sistemas envolvidos".
+  // Idem, para o sistema recÃ©m-cadastrado a partir de "Sistemas envolvidos".
   onSystemCreated: (system: OrganizationSystem) => Promise<void> | void;
 }) {
   const [createProcessName, setCreateProcessName] = useState<string | null>(null);
@@ -7866,7 +7866,7 @@ function DdpModule({
     return base.filter((process) => branchIds.has(process.id));
   }, [catalogs.processes, selectedProcess]);
 
-  // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
+  // Cada etapa do fluxo AS IS comeÃ§a recolhida; o usuÃ¡rio expande quando precisa.
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const toggleStep = (stepId: string) =>
@@ -7929,9 +7929,9 @@ function DdpModule({
   }
 
   const sectionProgress = {
-    // Não contabilizamos campos preenchidos automaticamente (código, data de
-    // hoje, modalidade e status já vêm com valor padrão) — só os campos que
-    // dependem do usuário entram no cálculo de preenchimento.
+    // NÃ£o contabilizamos campos preenchidos automaticamente (cÃ³digo, data de
+    // hoje, modalidade e status jÃ¡ vÃªm com valor padrÃ£o) â€” sÃ³ os campos que
+    // dependem do usuÃ¡rio entram no cÃ¡lculo de preenchimento.
     identification: completionPercent([
       data.meta.titulo,
       data.meta.elaborador,
@@ -7983,17 +7983,17 @@ function DdpModule({
     glossary: completionPercent(data.glossary.flatMap((item) => [item.termo, item.definicao])),
   };
 
-  // Seções na ordem exata do relatório em Word — fonte única para o índice
+  // SeÃ§Ãµes na ordem exata do relatÃ³rio em Word â€” fonte Ãºnica para o Ã­ndice
   // lateral e para o medidor segmentado da barra de comando.
   const sections: MappingSectionInfo[] = [
     { key: "identification", num: "01", title: "Dados do Mapeamento", pct: sectionProgress.identification },
-    { key: "overview", num: "02", title: "Visão geral", pct: sectionProgress.overview },
+    { key: "overview", num: "02", title: "VisÃ£o geral", pct: sectionProgress.overview },
     { key: "systems", num: "03", title: "Sistemas envolvidos", pct: sectionProgress.systems },
-    { key: "sipoc", num: "04", title: "Análise SIPOC", pct: sectionProgress.sipoc },
+    { key: "sipoc", num: "04", title: "AnÃ¡lise SIPOC", pct: sectionProgress.sipoc },
     { key: "flowStage", num: "05", title: "Fluxo AS IS", pct: sectionProgress.flowStage },
     { key: "gaps", num: "06", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
-    { key: "nextSteps", num: "07", title: "Próximos passos", pct: sectionProgress.nextSteps },
-    { key: "glossary", num: "08", title: "Glossário", pct: sectionProgress.glossary },
+    { key: "nextSteps", num: "07", title: "PrÃ³ximos passos", pct: sectionProgress.nextSteps },
+    { key: "glossary", num: "08", title: "GlossÃ¡rio", pct: sectionProgress.glossary },
   ];
   const overallPct = Math.round(
     sections.reduce((sum, section) => sum + section.pct, 0) / sections.length,
@@ -8012,8 +8012,8 @@ function DdpModule({
     });
   }
 
-  // Scrollspy: destaca no índice a última seção cujo topo já cruzou a linha
-  // logo abaixo da barra de comando fixa (≈ a seção que está sendo lida).
+  // Scrollspy: destaca no Ã­ndice a Ãºltima seÃ§Ã£o cujo topo jÃ¡ cruzou a linha
+  // logo abaixo da barra de comando fixa (â‰ˆ a seÃ§Ã£o que estÃ¡ sendo lida).
   useEffect(() => {
     if (!selectedProcess) return;
     const sectionKeys = [
@@ -8036,7 +8036,7 @@ function DdpModule({
       setActiveSection(current);
     }
     onScroll();
-    // Captura scroll de qualquer contêiner (a página usa scroll na janela, mas
+    // Captura scroll de qualquer contÃªiner (a pÃ¡gina usa scroll na janela, mas
     // capture=true garante que funcione mesmo se houver rolagem aninhada).
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onScroll);
@@ -8047,9 +8047,9 @@ function DdpModule({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProcess]);
 
-  // Estado de salvamento honesto: marca "não salvo" ao editar; limpa quando o
-  // pai sinaliza um salvamento concluído (savedNonce). O salvamento pode alterar
-  // o próprio documento (reserva de código) — a flag ignora essa mudança.
+  // Estado de salvamento honesto: marca "nÃ£o salvo" ao editar; limpa quando o
+  // pai sinaliza um salvamento concluÃ­do (savedNonce). O salvamento pode alterar
+  // o prÃ³prio documento (reserva de cÃ³digo) â€” a flag ignora essa mudanÃ§a.
   const [dirty, setDirty] = useState(false);
   const dataMounted = useRef(false);
   const justSaved = useRef(false);
@@ -8078,7 +8078,7 @@ function DdpModule({
         ? "saved"
         : "idle";
 
-  // Atalho ⌘S / Ctrl+S para salvar o preenchimento.
+  // Atalho âŒ˜S / Ctrl+S para salvar o preenchimento.
   useEffect(() => {
     if (!onSave) return;
     function onKey(event: KeyboardEvent) {
@@ -8215,17 +8215,17 @@ function DdpModule({
         canSave={!!selectedProcess}
         onSave={onSave}
         onPreview={onPreview}
-        eyebrow="Processos · Mapeamento"
-        title="Formulário de Preenchimento"
+        eyebrow="Processos Â· Mapeamento"
+        title="FormulÃ¡rio de Preenchimento"
         saveTitle="Salvar o preenchimento do mapeamento"
-        previewTitle="Visualizar o que está sendo preenchido"
+        previewTitle="Visualizar o que estÃ¡ sendo preenchido"
         processControl={
           <RegisteredProcessSelect
             required
             label="Processo do mapeamento"
             value={data.macroprocess.processId ?? ""}
             processes={primaryProcessOptions}
-            placeholder="Selecione o processo que será mapeado"
+            placeholder="Selecione o processo que serÃ¡ mapeado"
             onSelect={selectPrimaryProcess}
             displayName={(process) => process.name}
             onRequestCreate={(name) => setCreateProcessName(name)}
@@ -8239,11 +8239,11 @@ function DdpModule({
               <Lock className="h-5 w-5" />
             </span>
             <h2 className="font-display text-lg font-bold text-foreground">
-              Selecione um processo para começar
+              Selecione um processo para comeÃ§ar
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Escolha, no campo acima, o processo cadastrado que será mapeado. As seções do
-              relatório serão liberadas em seguida.
+              Escolha, no campo acima, o processo cadastrado que serÃ¡ mapeado. As seÃ§Ãµes do
+              relatÃ³rio serÃ£o liberadas em seguida.
             </p>
           </div>
         </div>
@@ -8269,27 +8269,27 @@ function DdpModule({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
-                    Código gerado do mapeamento
+                    CÃ³digo gerado do mapeamento
                   </span>
                   <strong className="mt-1 block font-data text-2xl font-black tracking-[0.14em] text-foreground">
                     {data.meta.codigo}
                   </strong>
                 </div>
                 <span className="rounded-full border border-border bg-background px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  Registro único
+                  Registro Ãºnico
                 </span>
               </div>
             </div>
           ) : null}
           <Field
-            label="Título do Mapeamento"
+            label="TÃ­tulo do Mapeamento"
             value={data.meta.titulo}
             onChange={(titulo) => update({ ...data, meta: { ...data.meta, titulo } })}
           />
-          {/* Ordem abaixo espelha a tabela de identificação do relatório Word
-              (Tipo/Dono/Área/Modalidade, Elaborador/Revisor/Data). Tipo, Dono e
-              Área são automáticos — não editáveis aqui. */}
-          <ReadOnlyField label="Código do processo" value={selectedProcess?.code ?? ""} />
+          {/* Ordem abaixo espelha a tabela de identificaÃ§Ã£o do relatÃ³rio Word
+              (Tipo/Dono/Ãrea/Modalidade, Elaborador/Revisor/Data). Tipo, Dono e
+              Ãrea sÃ£o automÃ¡ticos â€” nÃ£o editÃ¡veis aqui. */}
+          <ReadOnlyField label="CÃ³digo do processo" value={selectedProcess?.code ?? ""} />
           <ReadOnlyField
             label="Cadeia de valor"
             value={
@@ -8298,9 +8298,9 @@ function DdpModule({
               ""
             }
           />
-          <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
+          <ReadOnlyField label="Tipo" value="RelatÃ³rio de Mapeamento de Processo" />
           <ReadOnlyField label="Dono" value={selectedProcess?.owner ?? ""} />
-          <ReadOnlyField label="Área" value={selectedProcess?.department ?? ""} />
+          <ReadOnlyField label="Ãrea" value={selectedProcess?.department ?? ""} />
           <SelectField
             label="Modalidade"
             value={data.meta.modalidade || "AS IS"}
@@ -8341,7 +8341,7 @@ function DdpModule({
         id="sec-overview"
         num="02"
         openSignal={openTarget === "overview" ? openNonce : 0}
-        title="Visão geral"
+        title="VisÃ£o geral"
         progress={sectionProgress.overview}
       >
         <div className="grid gap-4 md:grid-cols-2">
@@ -8409,7 +8409,7 @@ function DdpModule({
               </IconButton>
               <div className="lg:col-span-2">
                 <TextArea
-                  label="Descrição / uso no processo"
+                  label="DescriÃ§Ã£o / uso no processo"
                   value={system.descricao}
                   onChange={(descricao) =>
                     update({
@@ -8434,7 +8434,7 @@ function DdpModule({
                     nome: "",
                     tipo: "",
                     dono: "",
-                    criticidade: "Média",
+                    criticidade: "MÃ©dia",
                     descricao: "",
                   },
                 ],
@@ -8451,7 +8451,7 @@ function DdpModule({
         id="sec-sipoc"
         num="04"
         openSignal={openTarget === "sipoc" ? openNonce : 0}
-        title="Análise SIPOC do processo"
+        title="AnÃ¡lise SIPOC do processo"
         progress={sectionProgress.sipoc}
       >
         <div className="grid gap-3">
@@ -8464,7 +8464,7 @@ function DdpModule({
                 (field) => (
                   <TextArea
                     key={field}
-                    label={field === "saidas" ? "Saídas" : field}
+                    label={field === "saidas" ? "SaÃ­das" : field}
                     value={row[field]}
                     onChange={(value) =>
                       update({
@@ -8518,7 +8518,7 @@ function DdpModule({
         id="sec-flowStage"
         num="05"
         openSignal={openTarget === "flowStage" ? openNonce : 0}
-        title="Fluxo AS IS — Etapas do processo"
+        title="Fluxo AS IS â€” Etapas do processo"
         progress={sectionProgress.flowStage}
       >
         <div className="grid gap-5">
@@ -8537,7 +8537,7 @@ function DdpModule({
           />
           <ImageManager
             label="Imagem do processo"
-            captionLabel="Descrição"
+            captionLabel="DescriÃ§Ã£o"
             images={
               data.macroprocess.src
                 ? [
@@ -8620,7 +8620,7 @@ function DdpModule({
               <div className="grid gap-3">
                 <ImageManager
                   label="Imagens da etapa"
-                  captionLabel="Descrição"
+                  captionLabel="DescriÃ§Ã£o"
                   images={step.images}
                   onChange={(images) => updateStep(step.id, { images })}
                 />
@@ -8629,7 +8629,7 @@ function DdpModule({
                     <div>
                       <div className="text-[11px] font-semibold text-foreground">Subetapas</div>
                       <div className="mt-0.5 text-xs text-muted-foreground">
-                        Detalhe subprocessos e adicione imagens específicas quando necessário.
+                        Detalhe subprocessos e adicione imagens especÃ­ficas quando necessÃ¡rio.
                       </div>
                     </div>
                     <button
@@ -8666,13 +8666,13 @@ function DdpModule({
                           <div className="mb-3 grid gap-3 md:grid-cols-[120px_1fr_auto]">
                             <Field
                               compact
-                              label="Código"
+                              label="CÃ³digo"
                               value={substep.codigo}
                               onChange={(codigo) => updateSubstep(step.id, substep.id, { codigo })}
                             />
                             <Field
                               compact
-                              label="Título"
+                              label="TÃ­tulo"
                               value={substep.titulo}
                               onChange={(titulo) => updateSubstep(step.id, substep.id, { titulo })}
                             />
@@ -8688,7 +8688,7 @@ function DdpModule({
                             </IconButton>
                           </div>
                           <TextArea
-                            label="Descrição da subetapa"
+                            label="DescriÃ§Ã£o da subetapa"
                             value={substep.descricao}
                             onChange={(descricao) =>
                               updateSubstep(step.id, substep.id, { descricao })
@@ -8760,14 +8760,14 @@ function DdpModule({
                     <th className="px-3 py-3">Usar causa cadastrada?</th>
                     <th className="px-3 py-3">Causa cadastrada</th>
                     <th className="px-3 py-3">Causa</th>
-                    <th className="px-3 py-3">Descrição</th>
+                    <th className="px-3 py-3">DescriÃ§Ã£o</th>
                     <th className="px-3 py-3">Impacto</th>
-                    <th className="px-3 py-3">Ação proposta</th>
-                    <th className="px-3 py-3">Responsável</th>
+                    <th className="px-3 py-3">AÃ§Ã£o proposta</th>
+                    <th className="px-3 py-3">ResponsÃ¡vel</th>
                     <th className="px-3 py-3">Prazo</th>
                     <th className="px-3 py-3">Prioridade</th>
                     <th className="px-3 py-3">Status</th>
-                    <th className="px-3 py-3 text-right">Ações</th>
+                    <th className="px-3 py-3 text-right">AÃ§Ãµes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -8790,7 +8790,7 @@ function DdpModule({
                                     : "text-muted-foreground hover:bg-muted"
                                 }`}
                               >
-                                Não
+                                NÃ£o
                               </button>
                               <button
                                 type="button"
@@ -8880,7 +8880,7 @@ function DdpModule({
                             <TableTextarea
                               value={gap.acao}
                               onChange={(acao) => updateGap(gap.id, { acao })}
-                              placeholder="Ação proposta"
+                              placeholder="AÃ§Ã£o proposta"
                             />
                           )}
                         </td>
@@ -8891,7 +8891,7 @@ function DdpModule({
                             <TableInput
                               value={gap.responsavel}
                               onChange={(responsavel) => updateGap(gap.id, { responsavel })}
-                              placeholder="Responsável"
+                              placeholder="ResponsÃ¡vel"
                             />
                           )}
                         </td>
@@ -8974,7 +8974,7 @@ function DdpModule({
                     acao: "",
                     responsavel: "",
                     prazo: "",
-                    prioridade: "Média",
+                    prioridade: "MÃ©dia",
                     status: "Pendente",
                     comentarios: [],
                   },
@@ -8992,17 +8992,17 @@ function DdpModule({
         id="sec-nextSteps"
         num="07"
         openSignal={openTarget === "nextSteps" ? openNonce : 0}
-        title="Próximos passos"
+        title="PrÃ³ximos passos"
         items={data.nextSteps}
         onChange={(nextSteps) => update({ ...data, nextSteps })}
-        placeholder="Próxima ação recomendada"
+        placeholder="PrÃ³xima aÃ§Ã£o recomendada"
         progress={sectionProgress.nextSteps}
       />
       <Panel
         id="sec-glossary"
         num="08"
         openSignal={openTarget === "glossary" ? openNonce : 0}
-        title="Glossário"
+        title="GlossÃ¡rio"
         progress={sectionProgress.glossary}
       >
         <div className="grid gap-3">
@@ -9026,7 +9026,7 @@ function DdpModule({
               />
               <Field
                 compact
-                label="Definição"
+                label="DefiniÃ§Ã£o"
                 value={item.definicao}
                 onChange={(definicao) =>
                   update({
@@ -9061,8 +9061,8 @@ function DdpModule({
           </button>
         </div>
       </Panel>
-          {/* Folga para que qualquer seção consiga alcançar o topo (abaixo da
-              barra fixa) ao ser aberta pelo índice. */}
+          {/* Folga para que qualquer seÃ§Ã£o consiga alcanÃ§ar o topo (abaixo da
+              barra fixa) ao ser aberta pelo Ã­ndice. */}
           <div aria-hidden className="h-[45vh]" />
           </div>
         </div>
@@ -9070,7 +9070,7 @@ function DdpModule({
       {pendingStatus ? (
         <Modal
           title="Alterar status do mapeamento"
-          subtitle={`Confirma alterar o status de “${data.meta.status || "Em andamento"}” para “${pendingStatus}”?`}
+          subtitle={`Confirma alterar o status de â€œ${data.meta.status || "Em andamento"}â€ para â€œ${pendingStatus}â€?`}
           onClose={() => setPendingStatus(null)}
         >
           <div className="flex justify-end gap-2">
@@ -9133,6 +9133,13 @@ function PopModule({
   const [openSignals, setOpenSignals] = useState<Record<string, number>>({});
   const documentName = documentationTypeName(data.meta.tipo);
   const visibleCode = data.meta.codigo || codePreview;
+  const departmentOptions = catalogs.departments.map((department) => department.name);
+  const processOptions = catalogs.processes.map((process) =>
+    process.code ? `${process.code} Â· ${process.name}` : process.name,
+  );
+  const publicOptions = Array.from(
+    new Set(["PÃºblico interno", "Uso restrito", "Confidencial", data.meta.publico].filter(Boolean)),
+  );
   const sectionProgress = {
     identification: completionPercent([
       data.meta.tipo,
@@ -9187,11 +9194,11 @@ function PopModule({
   const sections: MappingSectionInfo[] = [
     { key: "identification", num: "00", title: "Dados do documento", pct: sectionProgress.identification },
     { key: "objective", num: "01", title: "Objetivo", pct: sectionProgress.objective },
-    { key: "scope", num: "02", title: "Abrangência", pct: sectionProgress.scope },
+    { key: "scope", num: "02", title: "AbrangÃªncia", pct: sectionProgress.scope },
     { key: "procedure", num: "03", title: "Procedimento operacional", pct: sectionProgress.sections },
     { key: "responsibilities", num: "04", title: "Responsabilidades", pct: sectionProgress.responsibilities },
-    { key: "references", num: "05", title: "Referências normativas", pct: sectionProgress.references },
-    { key: "history", num: "06", title: "Histórico e alterações", pct: sectionProgress.history },
+    { key: "references", num: "05", title: "ReferÃªncias normativas", pct: sectionProgress.references },
+    { key: "history", num: "06", title: "HistÃ³rico e alteraÃ§Ãµes", pct: sectionProgress.history },
   ];
   async function saveQuickCatalog() {
     if (!quickCatalog) return;
@@ -9199,7 +9206,7 @@ function PopModule({
       if (quickCatalog.kind === "area") {
         const sigla = normalizeSigla(quickAreaSigla || quickCatalog.initial);
         if (sigla.length !== 3) {
-          toast.error("Informe uma sigla de 3 letras para a área.");
+          toast.error("Informe uma sigla de 3 letras para a Ã¡rea.");
           return;
         }
         await saveArea({
@@ -9209,7 +9216,7 @@ function PopModule({
             sigla,
           },
         });
-        toast.success("Área cadastrada.");
+        toast.success("Ãrea cadastrada.");
       } else {
         await savePosition({
           data: {
@@ -9225,7 +9232,7 @@ function PopModule({
       setQuickPositionDescription("");
       await onCatalogCreated?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível cadastrar.");
+      toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel cadastrar.");
     }
   }
   function historyVersion(index: number) {
@@ -9239,7 +9246,7 @@ function PopModule({
         id: current?.id ?? id("change"),
         versao,
         local: current?.local || (index === 0 ? "Documento completo" : ""),
-        descricao: current?.descricao || (index === 0 ? "Elaboração inicial do documento." : ""),
+        descricao: current?.descricao || (index === 0 ? "ElaboraÃ§Ã£o inicial do documento." : ""),
       };
     });
   }
@@ -9261,7 +9268,7 @@ function PopModule({
     if (!sameHistory || !sameChanges) {
       update({ ...data, history: normalizedHistory, changes: normalizedChanges });
     }
-    // Normaliza apenas quando o tamanho/versões mudam para evitar conflito de digitação.
+    // Normaliza apenas quando o tamanho/versÃµes mudam para evitar conflito de digitaÃ§Ã£o.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.history.length, data.changes.length]);
   const completion = Math.round(
@@ -9418,13 +9425,13 @@ function PopModule({
         canSave
         onSave={onSave}
         onPreview={onPreview}
-        eyebrow="Processos · Documentação"
+        eyebrow="Processos Â· DocumentaÃ§Ã£o"
         title="Preenchimento de documento"
         saveTitle="Salvar documento"
         previewTitle="Visualizar documento"
         processControl={
           <div className="grid gap-2">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid gap-2 sm:grid-cols-3">
               {DOCUMENTATION_TYPE_OPTIONS.map((tipo) => {
                 const selected = tipo === data.meta.tipo;
                 return (
@@ -9433,20 +9440,25 @@ function PopModule({
                     type="button"
                     onClick={() => updateMeta({ tipo }, tipo !== data.meta.tipo)}
                     className={[
-                      "rounded-md border px-3 py-1.5 text-xs font-bold transition",
+                      "rounded-lg border px-3 py-2 text-left transition",
                       selected
-                        ? "border-[var(--gold)] bg-[var(--gold)] text-primary-foreground"
+                        ? "border-[var(--gold)] bg-[color-mix(in_oklab,var(--gold)_18%,var(--card))] text-foreground shadow-sm"
                         : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
                     ].join(" ")}
                   >
-                    {tipo}
+                    <span className="block text-xs font-black uppercase tracking-[0.16em] text-[var(--gold)]">
+                      {tipo}
+                    </span>
+                    <span className="mt-1 block text-[12px] font-semibold leading-snug">
+                      {documentationTypeName(tipo)}
+                    </span>
                   </button>
                 );
               })}
-              <span className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-                {documentationTypeDescription(data.meta.tipo)}
-              </span>
             </div>
+            <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">
+              {documentationTypeDescription(data.meta.tipo)}
+            </p>
           </div>
         }
       />
@@ -9461,76 +9473,105 @@ function PopModule({
         defaultOpen
         openSignal={openSignals.identification}
       >
-        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
-          <div className="md:col-span-3">
-            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Identificação e governança
+        <div className="grid gap-4">
+          <div className="grid gap-4 rounded-xl border border-border bg-card p-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Identificação
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Dados usados no cabeçalho, nome do arquivo e rastreabilidade do documento.
+              </p>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Preencha apenas os dados que serão usados na codificação, apresentação e emissão do documento.
-            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              {autoCode ? (
+                <ReadOnlyField label="Código gerado" value={visibleCode} />
+              ) : (
+                <Field
+                  label="Código"
+                  value={data.meta.codigo}
+                  onChange={(codigo) => updateMeta({ codigo })}
+                />
+              )}
+              <Field
+                label="Versão"
+                value={data.meta.versao}
+                onChange={(versao) => updateMeta({ versao })}
+              />
+              <SelectField
+                label="Classificação"
+                value={data.meta.publico || publicOptions[0] || ""}
+                options={publicOptions}
+                onChange={(publico) => updateMeta({ publico })}
+              />
+              <div className="md:col-span-3">
+                <Field
+                  label={`Título do ${documentName}`}
+                  value={data.meta.titulo}
+                  onChange={(titulo) => updateMeta({ titulo })}
+                />
+              </div>
+              <CatalogSearchField
+                label="Área responsável"
+                value={data.meta.area}
+                options={departmentOptions}
+                createLabel="Cadastrar área"
+                onCreate={(initial) => {
+                  setQuickCatalog({ kind: "area", initial });
+                  setQuickAreaSigla(normalizeSigla(initial));
+                }}
+                onChange={(area) => updateMeta({ area }, area !== data.meta.area)}
+              />
+              <div className="md:col-span-2">
+                <SearchOnlyField
+                  label="Processo relacionado"
+                  value={data.meta.processo}
+                  options={processOptions}
+                  placeholder="Pesquise pelo código ou nome do processo"
+                  onChange={(processo) => updateMeta({ processo })}
+                />
+              </div>
+            </div>
           </div>
-          {autoCode ? (
-            <ReadOnlyField label="Código gerado do documento" value={visibleCode} />
-          ) : (
-            <Field
-              label="Código"
-              value={data.meta.codigo}
-              onChange={(codigo) => updateMeta({ codigo })}
-            />
-          )}
-          <Field
-            label="Versão"
-            value={data.meta.versao}
-            onChange={(versao) => updateMeta({ versao })}
-          />
-          <Field
-            label={`Título do ${documentName}`}
-            value={data.meta.titulo}
-            onChange={(titulo) => updateMeta({ titulo })}
-          />
-          <Field
-            label="Público / classificação"
-            value={data.meta.publico}
-            onChange={(publico) => updateMeta({ publico })}
-          />
-          <Field
-            label="Área responsável"
-            value={data.meta.area}
-            onChange={(area) => updateMeta({ area }, area !== data.meta.area)}
-          />
-          <Field
-            label="Processo relacionado"
-            value={data.meta.processo}
-            onChange={(processo) => updateMeta({ processo })}
-          />
-          <Field
-            label="Vigência"
-            type="date"
-            value={data.meta.vigencia}
-            onChange={(vigencia) => updateMeta({ vigencia })}
-          />
-          <Field
-            label="Elaborador"
-            value={data.meta.elaboracao}
-            onChange={(elaboracao) => updateMeta({ elaboracao })}
-          />
-          <Field
-            label="Revisor"
-            value={data.meta.revisor}
-            onChange={(revisor) => updateMeta({ revisor })}
-          />
-          <Field
-            label="Aprovador"
-            value={data.meta.aprovacao}
-            onChange={(aprovacao) => updateMeta({ aprovacao })}
-          />
-          <Field
-            label="Publicação"
-            type="date"
-            value={data.meta.publicacao}
-            onChange={(publicacao) => updateMeta({ publicacao })}
-          />
+          <div className="grid gap-4 rounded-xl border border-border bg-card p-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Aprovação e vigência
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Responsáveis e datas que controlam emissão, validade e publicação.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Field
+                label="Elaborador"
+                value={data.meta.elaboracao}
+                onChange={(elaboracao) => updateMeta({ elaboracao })}
+              />
+              <Field
+                label="Revisor"
+                value={data.meta.revisor}
+                onChange={(revisor) => updateMeta({ revisor })}
+              />
+              <Field
+                label="Aprovador"
+                value={data.meta.aprovacao}
+                onChange={(aprovacao) => updateMeta({ aprovacao })}
+              />
+              <Field
+                label="Vigência"
+                type="date"
+                value={data.meta.vigencia}
+                onChange={(vigencia) => updateMeta({ vigencia })}
+              />
+              <Field
+                label="Publicação"
+                type="date"
+                value={data.meta.publicacao}
+                onChange={(publicacao) => updateMeta({ publicacao })}
+              />
+            </div>
+          </div>
         </div>
       </Panel>
       <Panel
@@ -9540,10 +9581,19 @@ function PopModule({
         progress={sectionProgress.objective}
         openSignal={openSignals.objective}
       >
-        <div className="grid gap-4">
+        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Finalidade
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Declare o resultado esperado do documento. Evite repetir abrangência ou procedimento.
+            </p>
+          </div>
           <TextArea
             label="Objetivo"
             value={data.purpose.objetivo}
+            rows={7}
             onChange={(objetivo) => update({ ...data, purpose: { ...data.purpose, objetivo } })}
           />
         </div>
@@ -9551,14 +9601,23 @@ function PopModule({
       <Panel
         id="pop-sec-scope"
         num="02"
-        title="Abrangência"
+        title="AbrangÃªncia"
         progress={sectionProgress.scope}
         openSignal={openSignals.scope}
       >
-        <div className="grid gap-4">
+        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Limites de aplicação
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Informe onde o documento se aplica, quem deve segui-lo e quais situações ficam fora.
+            </p>
+          </div>
           <TextArea
-            label="Abrangência"
+            label="AbrangÃªncia"
             value={data.purpose.abrangencia}
+            rows={7}
             onChange={(abrangencia) =>
               update({ ...data, purpose: { ...data.purpose, abrangencia } })
             }
@@ -9573,8 +9632,27 @@ function PopModule({
         openSignal={openSignals.procedure}
       >
         <div className="grid gap-3">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Estrutura do procedimento
+            </div>
+            <div className="mt-3 grid gap-3 text-sm text-muted-foreground md:grid-cols-3">
+              <div className="rounded-lg bg-muted/40 p-3">
+                <strong className="block text-foreground">3.1 Item</strong>
+                Agrupa uma etapa principal do procedimento.
+              </div>
+              <div className="rounded-lg bg-muted/40 p-3">
+                <strong className="block text-foreground">3.1.1 Subitem</strong>
+                Detalha a etapa em ações executáveis.
+              </div>
+              <div className="rounded-lg bg-muted/40 p-3">
+                <strong className="block text-foreground">a) Alínea</strong>
+                Recebe texto, alerta e imagens operacionais.
+              </div>
+            </div>
+          </div>
           {data.sections.map((section) => (
-            <div key={section.id} className="rounded-lg border border-border bg-muted/20 p-3">
+            <div key={section.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="mb-3 grid gap-3 md:grid-cols-[100px_1fr_auto]">
                 <Field
                   compact
@@ -9584,7 +9662,7 @@ function PopModule({
                 />
                 <Field
                   compact
-                  label="Título do item"
+                  label="TÃ­tulo do item"
                   value={section.title.replace(/^3\.\d+\s*/, "")}
                   onChange={(title) => updateSection(section.id, { title })}
                 />
@@ -9612,7 +9690,7 @@ function PopModule({
                       />
                       <Field
                         compact
-                        label="Título do subitem"
+                        label="TÃ­tulo do subitem"
                         value={subitem.title}
                         onChange={(title) => updateProcedureSubitem(section.id, subitem.id, { title })}
                       />
@@ -9633,14 +9711,14 @@ function PopModule({
                           <div className="mb-3 grid gap-3 md:grid-cols-[80px_1fr_auto]">
                             <Field
                               compact
-                              label="Alínea"
+                              label="AlÃ­nea"
                               value={clause.letter}
                               onChange={(letter) =>
                                 updateProcedureClause(section.id, subitem.id, clause.id, { letter })
                               }
                             />
                             <TextArea
-                              label="Texto da alínea"
+                              label="Texto da alÃ­nea"
                               value={clause.text}
                               rows={3}
                               onChange={(text) =>
@@ -9648,7 +9726,7 @@ function PopModule({
                               }
                             />
                             <IconButton
-                              label="Excluir alínea"
+                              label="Excluir alÃ­nea"
                               onClick={() =>
                                 updateProcedureSubitem(section.id, subitem.id, {
                                   clauses: subitem.clauses.filter((item) => item.id !== clause.id),
@@ -9660,7 +9738,7 @@ function PopModule({
                           </div>
                           <div className="grid gap-3">
                             <TextArea
-                              label="Alerta / observação crítica"
+                              label="Alerta / observaÃ§Ã£o crÃ­tica"
                               value={clause.alert}
                               rows={2}
                               onChange={(alert) =>
@@ -9668,7 +9746,7 @@ function PopModule({
                               }
                             />
                             <ImageManager
-                              label="Imagens da alínea"
+                              label="Imagens da alÃ­nea"
                               images={clause.images}
                               onChange={(images) =>
                                 updateProcedureClause(section.id, subitem.id, clause.id, { images })
@@ -9696,11 +9774,17 @@ function PopModule({
                         className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                       >
                         <Plus className="h-4 w-4" />
-                        Adicionar alínea
+                        Adicionar alÃ­nea
                       </button>
                     </div>
                   </div>
                 ))}
+                {!(section.subitems ?? []).length ? (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">
+                    Nenhum subitem criado. Adicione o primeiro subitem para registrar as ações
+                    executáveis deste item.
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   onClick={() =>
@@ -9759,8 +9843,17 @@ function PopModule({
         openSignal={openSignals.responsibilities}
       >
         <div className="grid gap-3">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Matriz de responsabilidade
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Selecione a área, selecione ou cadastre o cargo e descreva somente a responsabilidade
+              daquele papel no documento.
+            </p>
+          </div>
           <div className="hidden rounded-t-lg border border-border bg-muted/50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground md:grid md:grid-cols-[220px_220px_1fr_44px]">
-            <span>Área</span>
+            <span>Ãrea</span>
             <span>Cargo</span>
             <span>Responsabilidades</span>
             <span />
@@ -9771,10 +9864,10 @@ function PopModule({
               className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[220px_220px_1fr_auto]"
             >
               <CatalogSearchField
-                label="Área"
+                label="Ãrea"
                 value={row.area}
                 options={catalogs.departments.map((department) => department.name)}
-                createLabel="Cadastrar área"
+                createLabel="Cadastrar Ã¡rea"
                 onCreate={(initial) => {
                   setQuickCatalog({ kind: "area", initial });
                   setQuickAreaSigla(normalizeSigla(initial));
@@ -9848,11 +9941,20 @@ function PopModule({
       <Panel
         id="pop-sec-references"
         num="05"
-        title="Referências normativas"
+        title="ReferÃªncias normativas"
         progress={sectionProgress.references}
         openSignal={openSignals.references}
       >
         <div className="grid gap-3">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Documentos de apoio
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Informe normas, políticas, legislações ou documentos internos que sustentam este
+              procedimento.
+            </p>
+          </div>
           {data.references.map((row) => (
             <div
               key={row.id}
@@ -9861,7 +9963,7 @@ function PopModule({
               <div className="grid gap-3 md:grid-cols-[160px_1fr]">
                 <Field
                   compact
-                  label="Código"
+                  label="CÃ³digo"
                   value={row.codigo}
                   onChange={(codigo) =>
                     update({
@@ -9874,7 +9976,7 @@ function PopModule({
                 />
                 <Field
                   compact
-                  label="Título"
+                  label="TÃ­tulo"
                   value={row.titulo}
                   onChange={(titulo) =>
                     update({
@@ -9927,18 +10029,27 @@ function PopModule({
             className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
-            Adicionar referência
+            Adicionar referÃªncia
           </button>
         </div>
       </Panel>
       <Panel
         id="pop-sec-history"
         num="06"
-        title="Histórico e controle de alterações"
+        title="HistÃ³rico e controle de alteraÃ§Ãµes"
         progress={sectionProgress.history}
         openSignal={openSignals.history}
       >
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Histórico</h3>
+        <div className="mb-4 rounded-xl border border-border bg-card p-4">
+          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Controle de revisão
+          </div>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            Cada linha do histórico cria automaticamente a versão correspondente em alterações. A
+            numeração começa em 00 e segue a ordem das linhas.
+          </p>
+        </div>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">HistÃ³rico</h3>
         <div className="grid gap-3">
           {data.history.map((row) => (
             <div
@@ -9947,7 +10058,7 @@ function PopModule({
             >
               <Field
                 compact
-                label="Código"
+                label="CÃ³digo"
                 value={row.codigo}
                 onChange={(codigo) =>
                   setHistory(
@@ -9957,7 +10068,7 @@ function PopModule({
                   )
                 }
               />
-              <ReadOnlyField label="Versão" value={historyVersion(data.history.findIndex((item) => item.id === row.id))} />
+              <ReadOnlyField label="VersÃ£o" value={historyVersion(data.history.findIndex((item) => item.id === row.id))} />
               <Field
                 compact
                 label="Data"
@@ -10035,20 +10146,20 @@ function PopModule({
             className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
           >
             <Plus className="h-4 w-4" />
-            Adicionar histórico
+            Adicionar histÃ³rico
           </button>
         </div>
-        <h3 className="mb-3 mt-6 text-sm font-semibold text-foreground">Alterações</h3>
+        <h3 className="mb-3 mt-6 text-sm font-semibold text-foreground">AlteraÃ§Ãµes</h3>
         <div className="grid gap-3">
           {data.changes.map((row) => (
             <div
               key={row.id}
               className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[120px_220px_1fr]"
             >
-              <ReadOnlyField label="Versão" value={historyVersion(data.changes.findIndex((item) => item.id === row.id))} />
+              <ReadOnlyField label="VersÃ£o" value={historyVersion(data.changes.findIndex((item) => item.id === row.id))} />
               <Field
                 compact
-                label="Local da revisão"
+                label="Local da revisÃ£o"
                 value={row.local}
                 onChange={(local) =>
                   update({
@@ -10061,7 +10172,7 @@ function PopModule({
               />
               <Field
                 compact
-                label="Descrição"
+                label="DescriÃ§Ã£o"
                 value={row.descricao}
                 onChange={(descricao) =>
                   update({
@@ -10075,7 +10186,7 @@ function PopModule({
             </div>
           ))}
           <p className="text-xs text-muted-foreground">
-            As linhas de alteração são geradas automaticamente a partir do histórico.
+            As linhas de alteraÃ§Ã£o sÃ£o geradas automaticamente a partir do histÃ³rico.
           </p>
         </div>
       </Panel>
@@ -10084,17 +10195,17 @@ function PopModule({
       </div>
       {quickCatalog ? (
         <Modal
-          title={quickCatalog.kind === "area" ? "Cadastrar área" : "Cadastrar cargo"}
+          title={quickCatalog.kind === "area" ? "Cadastrar Ã¡rea" : "Cadastrar cargo"}
           subtitle={
             quickCatalog.kind === "area"
-              ? "Cadastro utilizado pelos formulários e pela codificação de documentos."
+              ? "Cadastro utilizado pelos formulÃ¡rios e pela codificaÃ§Ã£o de documentos."
               : "Cadastro utilizado nas responsabilidades dos documentos."
           }
           onClose={() => setQuickCatalog(null)}
         >
           <div className="grid gap-4">
             <Field
-              label={quickCatalog.kind === "area" ? "Nome da área" : "Título do cargo"}
+              label={quickCatalog.kind === "area" ? "Nome da Ã¡rea" : "TÃ­tulo do cargo"}
               value={quickCatalog.initial}
               onChange={(initial) => setQuickCatalog({ ...quickCatalog, initial })}
             />
@@ -10108,7 +10219,7 @@ function PopModule({
               />
             ) : (
               <TextArea
-                label="Descrição"
+                label="DescriÃ§Ã£o"
                 value={quickPositionDescription}
                 rows={3}
                 onChange={setQuickPositionDescription}
@@ -10167,11 +10278,11 @@ function BpmnModule({
       type,
       label:
         type === "start"
-          ? "Início"
+          ? "InÃ­cio"
           : type === "end"
             ? "Fim"
             : type === "gateway"
-              ? "Decisão"
+              ? "DecisÃ£o"
               : "Nova tarefa",
       x: 160 + data.nodes.length * 40,
       y: data.nodes.length % 2 === 0 ? 130 : 315,
@@ -10224,12 +10335,12 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
     <div className="grid gap-5">
       <Hero
         title="Editor de fluxograma"
-        eyebrow="Processos · Fluxograma"
+        eyebrow="Processos Â· Fluxograma"
         progress={data.nodes.length ? 100 : 0}
       >
         Um modelador visual leve para desenhar fluxo, movimentar elementos e exportar o diagrama.
       </Hero>
-      <Panel title="Área de desenho" progress={diagramProgress}>
+      <Panel title="Ãrea de desenho" progress={diagramProgress}>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <ToolbarButton onClick={() => addNode("start")} icon={<Circle className="h-4 w-4" />}>
             Evento inicial
@@ -10377,17 +10488,17 @@ ${data.flows.map((flow) => `    <sequenceFlow id="${flow.id}" sourceRef="${flow.
             />
             <div className="mt-3">
               <Field
-                label="Área responsável"
+                label="Ãrea responsÃ¡vel"
                 value={data.area ?? ""}
                 onChange={(area) => update({ ...data, area })}
               />
             </div>
             <div className="mt-3">
               {autoCode ? (
-                <ReadOnlyField label="Código (automático)" value={data.codigo || codePreview} />
+                <ReadOnlyField label="CÃ³digo (automÃ¡tico)" value={data.codigo || codePreview} />
               ) : (
                 <Field
-                  label="Código"
+                  label="CÃ³digo"
                   value={data.codigo ?? ""}
                   onChange={(codigo) => update({ ...data, codigo })}
                 />
@@ -10541,12 +10652,12 @@ function Panel({
   title?: string;
   progress?: number;
   defaultOpen?: boolean;
-  // Âncora para navegação pelo índice do relatório.
+  // Ã‚ncora para navegaÃ§Ã£o pelo Ã­ndice do relatÃ³rio.
   id?: string;
-  // Número da seção (ordem do relatório) — exibido num selo à esquerda.
+  // NÃºmero da seÃ§Ã£o (ordem do relatÃ³rio) â€” exibido num selo Ã  esquerda.
   num?: string;
-  // Sinal externo (número crescente) que força a abertura do painel — usado
-  // quando o usuário clica na seção no índice lateral.
+  // Sinal externo (nÃºmero crescente) que forÃ§a a abertura do painel â€” usado
+  // quando o usuÃ¡rio clica na seÃ§Ã£o no Ã­ndice lateral.
   openSignal?: number;
   children: ReactNode;
 }) {
@@ -10592,7 +10703,7 @@ function Panel({
             </span>
             {typeof progress === "number" ? (
               <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
-                {complete ? "Seção concluída" : progress > 0 ? "Em preenchimento" : "Não iniciada"}
+                {complete ? "SeÃ§Ã£o concluÃ­da" : progress > 0 ? "Em preenchimento" : "NÃ£o iniciada"}
               </span>
             ) : null}
           </span>
@@ -10627,13 +10738,13 @@ function Panel({
   );
 }
 
-// ─── Formulário de Mapeamento: barra de comando fixa + índice do relatório ────
+// â”€â”€â”€ FormulÃ¡rio de Mapeamento: barra de comando fixa + Ã­ndice do relatÃ³rio â”€â”€â”€â”€
 
 type MappingSectionInfo = { key: string; num: string; title: string; pct: number };
 
-// Barra fixa no topo do formulário de mapeamento: identidade do documento,
-// medidor de progresso segmentado (uma marca por seção), estado de salvamento e
-// as ações Salvar / Visualizar sempre acessíveis.
+// Barra fixa no topo do formulÃ¡rio de mapeamento: identidade do documento,
+// medidor de progresso segmentado (uma marca por seÃ§Ã£o), estado de salvamento e
+// as aÃ§Ãµes Salvar / Visualizar sempre acessÃ­veis.
 function FlowCommandBar({
   code,
   sections,
@@ -10663,9 +10774,9 @@ function FlowCommandBar({
 }) {
   const stateLabel =
     saveState === "saving"
-      ? "Salvando…"
+      ? "Salvandoâ€¦"
       : saveState === "dirty"
-        ? "Alterações não salvas"
+        ? "AlteraÃ§Ãµes nÃ£o salvas"
         : saveState === "saved"
           ? "Tudo salvo"
           : "";
@@ -10684,12 +10795,12 @@ function FlowCommandBar({
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-3" title="Preenchimento por seção">
+        <div className="flex items-center gap-3" title="Preenchimento por seÃ§Ã£o">
           <div className="flex gap-[3px]">
             {sections.map((s) => (
               <span
                 key={s.key}
-                title={`${s.num} ${s.title} · ${s.pct}%`}
+                title={`${s.num} ${s.title} Â· ${s.pct}%`}
                 className={[
                   "h-2 w-3.5 rounded-[3px] transition-colors",
                   s.pct >= 100
@@ -10756,7 +10867,7 @@ function FlowCommandBar({
   );
 }
 
-// Índice lateral do relatório: lista as seções na ordem em que aparecem no
+// Ãndice lateral do relatÃ³rio: lista as seÃ§Ãµes na ordem em que aparecem no
 // documento (a mesma do Word), com o estado de preenchimento de cada uma.
 function MappingSectionNav({
   sections,
@@ -10769,9 +10880,9 @@ function MappingSectionNav({
 }) {
   const done = sections.filter((s) => s.pct >= 100).length;
   return (
-    <nav className="sticky top-[16.5rem] hidden lg:block" aria-label="Índice do relatório">
+    <nav className="sticky top-[16.5rem] hidden lg:block" aria-label="Ãndice do relatÃ³rio">
       <div className="mb-3 ml-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
-        Índice do relatório
+        Ãndice do relatÃ³rio
       </div>
       <ul className="grid gap-0.5">
         {sections.map((s) => {
@@ -10803,7 +10914,7 @@ function MappingSectionNav({
         })}
       </ul>
       <div className="mt-3 ml-1 flex items-center justify-between border-t border-border/70 pt-3 text-[11.5px] text-muted-foreground">
-        <span>Seções concluídas</span>
+        <span>SeÃ§Ãµes concluÃ­das</span>
         <b className="font-data text-foreground">
           {done} / {sections.length}
         </b>
@@ -10848,7 +10959,7 @@ function RegisteredProcessSelect({
   required?: boolean;
   placeholder?: string;
   displayName?: (process: OrganizationProcess) => string;
-  // Abre o cadastro de um novo processo (pré-preenchendo o nome pesquisado).
+  // Abre o cadastro de um novo processo (prÃ©-preenchendo o nome pesquisado).
   onRequestCreate?: (query: string) => void;
 }) {
   const selected = processes.find((process) => process.id === value) ?? null;
@@ -10878,7 +10989,7 @@ function RegisteredProcessSelect({
 
   useEffect(() => {
     if (!open) setQuery(selected ? displayName(selected) : "");
-    // Sincroniza o texto ao fechar; usa selected?.id de propósito (identidade estável).
+    // Sincroniza o texto ao fechar; usa selected?.id de propÃ³sito (identidade estÃ¡vel).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selected?.id, displayName]);
 
@@ -10911,7 +11022,7 @@ function RegisteredProcessSelect({
               onSelect(null);
             }}
             className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Limpar seleção"
+            title="Limpar seleÃ§Ã£o"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -10940,8 +11051,8 @@ function RegisteredProcessSelect({
                   </span>
                 </span>
                 <span className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-3">
-                  <span className="truncate">{process.code || "Sem código"}</span>
-                  <span className="truncate">{process.department || "Sem área"}</span>
+                  <span className="truncate">{process.code || "Sem cÃ³digo"}</span>
+                  <span className="truncate">{process.department || "Sem Ã¡rea"}</span>
                   <span className="truncate">{process.owner || "Sem dono"}</span>
                 </span>
               </button>
@@ -10971,8 +11082,8 @@ function RegisteredProcessSelect({
   );
 }
 
-// Mesma lógica de busca + cadastro rápido do RegisteredProcessSelect, aplicada
-// ao catálogo de sistemas (Cadastros → Sistemas).
+// Mesma lÃ³gica de busca + cadastro rÃ¡pido do RegisteredProcessSelect, aplicada
+// ao catÃ¡logo de sistemas (Cadastros â†’ Sistemas).
 function RegisteredSystemSelect({
   label,
   value,
@@ -10986,7 +11097,7 @@ function RegisteredSystemSelect({
   systems: OrganizationSystem[];
   onSelect: (system: OrganizationSystem | null) => void;
   placeholder?: string;
-  // Abre o cadastro de um novo sistema (pré-preenchendo o nome pesquisado).
+  // Abre o cadastro de um novo sistema (prÃ©-preenchendo o nome pesquisado).
   onRequestCreate?: (query: string) => void;
 }) {
   const selected = systems.find((system) => system.id === value) ?? null;
@@ -11039,7 +11150,7 @@ function RegisteredSystemSelect({
               onSelect(null);
             }}
             className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Limpar seleção"
+            title="Limpar seleÃ§Ã£o"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -11092,22 +11203,22 @@ function RegisteredSystemSelect({
   );
 }
 
-// Linguagem visual única dos campos do formulário: mesma altura, foco em
-// dourado, hover discreto no contorno. Mantém o comportamento — só refina a
-// aparência e a consistência entre as seções.
+// Linguagem visual Ãºnica dos campos do formulÃ¡rio: mesma altura, foco em
+// dourado, hover discreto no contorno. MantÃ©m o comportamento â€” sÃ³ refina a
+// aparÃªncia e a consistÃªncia entre as seÃ§Ãµes.
 const fieldLabelClass =
   "mb-1.5 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground/90";
 const fieldInputBase =
   "w-full rounded-lg border border-input bg-background text-sm text-foreground outline-none transition placeholder:text-muted-foreground/50 hover:border-[color-mix(in_oklab,var(--foreground)_22%,var(--input))] focus:border-[var(--gold)] focus:ring-[3px] focus:ring-[var(--gold)]/18";
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
-  // Campo preenchido automaticamente pelo cadastro — visualmente "travado".
+  // Campo preenchido automaticamente pelo cadastro â€” visualmente "travado".
   return (
     <label className="block">
       <span className={fieldLabelClass}>
         <Lock className="h-3 w-3" />
         {label}
-        <span className="font-medium normal-case italic opacity-70">· do cadastro</span>
+        <span className="font-medium normal-case italic opacity-70">Â· do cadastro</span>
       </span>
       <input
         readOnly
@@ -11170,7 +11281,46 @@ function UserSearchField({
         <input
           list={uniqueOptions.length ? listId.current : undefined}
           value={value}
-          placeholder={uniqueOptions.length ? "Pesquise um usuário cadastrado" : "Informe o usuário"}
+          placeholder={uniqueOptions.length ? "Pesquise um usuÃ¡rio cadastrado" : "Informe o usuÃ¡rio"}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${fieldInputBase} h-10 pl-9 pr-3`}
+        />
+      </div>
+      {uniqueOptions.length ? (
+        <datalist id={listId.current}>
+          {uniqueOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      ) : null}
+    </label>
+  );
+}
+
+function SearchOnlyField({
+  label,
+  value,
+  options,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const listId = useRef(`search-options-${id("list")}`);
+  const uniqueOptions = useMemo(() => Array.from(new Set(options.filter(Boolean))), [options]);
+  return (
+    <label className="block">
+      <span className={fieldLabelClass}>{label}</span>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+        <input
+          list={uniqueOptions.length ? listId.current : undefined}
+          value={value}
+          placeholder={placeholder ?? `Pesquisar ${label.toLowerCase()}`}
           onChange={(event) => onChange(event.target.value)}
           className={`${fieldInputBase} h-10 pl-9 pr-3`}
         />
@@ -11237,7 +11387,7 @@ function CatalogSearchField({
         </datalist>
       ) : null}
       <span className="mt-1 block text-[11px] text-muted-foreground">
-        Pesquise ou informe o texto e use “Novo” para {createLabel.toLowerCase()}.
+        Pesquise ou informe o texto e use â€œNovoâ€ para {createLabel.toLowerCase()}.
       </span>
     </label>
   );
@@ -11324,7 +11474,7 @@ function ImageManager({
       onChange([...images, ...next]);
       toast.success(next.length === 1 ? "Imagem adicionada." : "Imagens adicionadas.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível adicionar a imagem.");
+      toast.error(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel adicionar a imagem.");
     }
   }
 
@@ -11365,7 +11515,7 @@ function ImageManager({
               <div className="grid gap-3">
                 <Field
                   compact
-                  label="Título da imagem"
+                  label="TÃ­tulo da imagem"
                   value={image.titulo}
                   onChange={(titulo) =>
                     onChange(
@@ -11442,7 +11592,7 @@ function ListEditor({
             />
             <input
               value={item.responsavel ?? ""}
-              placeholder="Responsável"
+              placeholder="ResponsÃ¡vel"
               onChange={(event) =>
                 onChange(
                   items.map((current) =>
