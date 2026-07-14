@@ -4254,14 +4254,14 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     }</dd></div>`;
   };
 
-  const overviewIcon = (type: "target" | "scope" | "metrics") => {
+  const overviewIcon = (type: "target" | "scope" | "context") => {
     const icons = {
       target:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
       scope:
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h5"/><path d="M6 3v4M18 3v4"/></svg>',
-      metrics:
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-4"/><path d="M12 16V8"/><path d="M16 16v-6"/><path d="M7 9l4-3 4 2 4-5"/></svg>',
+      context:
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/><path d="M17 3v4M7 3v4"/></svg>',
     };
     return icons[type];
   };
@@ -4449,7 +4449,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     textPanel("Objetivo", model.description, overviewIcon("target")),
     textPanel("Escopo", data.overview.escopo, overviewIcon("scope")),
     textPanel("Estado atual", data.overview.estadoAtual),
-    textPanel("Indicadores", data.overview.kpis, overviewIcon("metrics")),
+    textPanel("Contexto", data.overview.kpis, overviewIcon("context")),
     textPanel("Volume", data.overview.volume),
     textPanel("Frequência", data.overview.frequencia),
     textPanel("Dores", data.overview.dores),
