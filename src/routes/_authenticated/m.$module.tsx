@@ -6,6 +6,7 @@ import {
   ArrowDownUp,
   ArrowUp,
   Building2,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -8814,20 +8815,14 @@ function DdpModule({
                         <td className="px-3 py-3">
                           {usesLibraryCause ? (
                             <div className="grid min-w-[230px] gap-2">
-                              <input
-                                list={`gap-cause-options-${gap.id}`}
+                              <DropdownTextField
+                                label="Causa cadastrada"
                                 value={causeSearchValue}
-                                onChange={(event) =>
-                                  selectSharedCauseByTitle(gap.id, event.target.value)
-                                }
+                                options={catalogs.causes.map((cause) => cause.title)}
                                 placeholder="Pesquisar causa cadastrada"
-                                className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+                                onChange={(value) => selectSharedCauseByTitle(gap.id, value)}
+                                compact
                               />
-                              <datalist id={`gap-cause-options-${gap.id}`}>
-                                {catalogs.causes.map((cause) => (
-                                  <option key={cause.id} value={cause.title} />
-                                ))}
-                              </datalist>
                               {!selectedCause ? (
                                 <span className="text-[11px] text-muted-foreground">
                                   Selecione uma causa da lista para preencher os campos.
@@ -11180,17 +11175,95 @@ function Field({
   compact?: boolean;
 }) {
   const isDate = type === "date";
+  if (isDate) {
+    return <DateField label={label} value={value} onChange={onChange} compact={compact} />;
+  }
   return (
     <label className="block">
       <span className={fieldLabelClass}>{label}</span>
       <input
-        type={isDate ? "text" : type}
-        inputMode={isDate ? "numeric" : undefined}
-        placeholder={isDate ? "dd/mm/aaaa" : undefined}
-        value={isDate ? formatDateBr(value) : value}
-        onChange={(event) => onChange(isDate ? parseDateBrInput(event.target.value) : event.target.value)}
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className={`${fieldInputBase} px-3 ${compact ? "h-9" : "h-10"}`}
       />
+    </label>
+  );
+}
+
+function maskDateInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function DateField({
+  label,
+  value,
+  onChange,
+  compact,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  compact?: boolean;
+}) {
+  const pickerRef = useRef<HTMLInputElement | null>(null);
+  const displayValue = /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatDateBr(value) : value;
+  function commitMasked(raw: string) {
+    const masked = maskDateInput(raw);
+    onChange(masked.length === 10 ? parseDateBrInput(masked) : masked);
+  }
+  return (
+    <label className="block">
+      <span className={fieldLabelClass}>{label}</span>
+      <div className="relative">
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={10}
+          placeholder="dd/mm/aaaa"
+          value={displayValue}
+          onChange={(event) => commitMasked(event.target.value)}
+          onKeyDown={(event) => {
+            const allowed = [
+              "Backspace",
+              "Delete",
+              "ArrowLeft",
+              "ArrowRight",
+              "Tab",
+              "Home",
+              "End",
+            ];
+            if (allowed.includes(event.key) || event.ctrlKey || event.metaKey) return;
+            if (!/^\d$/.test(event.key)) event.preventDefault();
+          }}
+          className={`${fieldInputBase} ${compact ? "h-9" : "h-10"} px-3 pr-10`}
+        />
+        <button
+          type="button"
+          className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          title="Selecionar data"
+          onClick={() => {
+            const input = pickerRef.current;
+            if (!input) return;
+            if (typeof input.showPicker === "function") input.showPicker();
+            else input.click();
+          }}
+        >
+          <CalendarDays className="h-4 w-4" />
+        </button>
+        <input
+          ref={pickerRef}
+          type="date"
+          value={/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ""}
+          onChange={(event) => onChange(event.target.value)}
+          className="pointer-events-none absolute right-0 top-0 h-0 w-0 opacity-0"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      </div>
     </label>
   );
 }
@@ -11206,29 +11279,14 @@ function UserSearchField({
   options: string[];
   onChange: (value: string) => void;
 }) {
-  const listId = useRef(`user-options-${id("list")}`);
-  const uniqueOptions = useMemo(() => Array.from(new Set(options.filter(Boolean))), [options]);
   return (
-    <label className="block">
-      <span className={fieldLabelClass}>{label}</span>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-        <input
-          list={uniqueOptions.length ? listId.current : undefined}
-          value={value}
-          placeholder={uniqueOptions.length ? "Pesquise um usuário cadastrado" : "Informe o usuário"}
-          onChange={(event) => onChange(event.target.value)}
-          className={`${fieldInputBase} h-10 pl-9 pr-3`}
-        />
-      </div>
-      {uniqueOptions.length ? (
-        <datalist id={listId.current}>
-          {uniqueOptions.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
-      ) : null}
-    </label>
+    <DropdownTextField
+      label={label}
+      value={value}
+      options={options}
+      placeholder={options.length ? "Pesquise um usuário cadastrado" : "Informe o usuário"}
+      onChange={onChange}
+    />
   );
 }
 
@@ -11247,44 +11305,109 @@ function CatalogSearchField({
   onChange: (value: string) => void;
   onCreate: (initial: string) => void;
 }) {
-  const listId = useRef(`catalog-options-${id("list")}`);
+  return (
+    <DropdownTextField
+      label={label}
+      value={value}
+      options={options}
+      placeholder={`Pesquisar ${label.toLowerCase()}`}
+      onChange={onChange}
+      createLabel={createLabel}
+      onCreate={onCreate}
+      compact
+    />
+  );
+}
+
+function DropdownTextField({
+  label,
+  value,
+  options,
+  placeholder,
+  onChange,
+  createLabel,
+  onCreate,
+  compact,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  placeholder: string;
+  onChange: (value: string) => void;
+  createLabel?: string;
+  onCreate?: (initial: string) => void;
+  compact?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
   const uniqueOptions = useMemo(() => Array.from(new Set(options.filter(Boolean))), [options]);
   const normalizedValue = normalizeLabel(value);
+  const filteredOptions = useMemo(() => {
+    if (!normalizedValue) return uniqueOptions.slice(0, 10);
+    return uniqueOptions
+      .filter((option) => normalizeLabel(option).includes(normalizedValue))
+      .slice(0, 10);
+  }, [normalizedValue, uniqueOptions]);
   const hasExact = uniqueOptions.some((option) => normalizeLabel(option) === normalizedValue);
+  const canCreate = Boolean(onCreate && createLabel && value.trim() && !hasExact);
+
   return (
-    <label className="block">
+    <label className="relative block">
       <span className={fieldLabelClass}>{label}</span>
-      <div className="flex gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-          <input
-            list={uniqueOptions.length ? listId.current : undefined}
-            value={value}
-            placeholder={`Pesquisar ${label.toLowerCase()}`}
-            onChange={(event) => onChange(event.target.value)}
-            className={`${fieldInputBase} h-9 pl-9 pr-3`}
-          />
-        </div>
-        <button
-          type="button"
-          disabled={!value.trim() || hasExact}
-          onClick={() => onCreate(value.trim())}
-          className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-card px-2 text-xs font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Novo
-        </button>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+        <input
+          value={value}
+          placeholder={placeholder}
+          autoComplete="off"
+          onFocus={() => setOpen(true)}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setOpen(true);
+          }}
+          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          className={`${fieldInputBase} ${compact ? "h-9" : "h-10"} pl-9 pr-9`}
+        />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
       </div>
-      {uniqueOptions.length ? (
-        <datalist id={listId.current}>
-          {uniqueOptions.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
+      {open ? (
+        <div className="absolute z-40 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg">
+          {filteredOptions.length ? (
+            filteredOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option);
+                  setOpen(false);
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
+              >
+                <span className="truncate">{option}</span>
+                {normalizeLabel(option) === normalizedValue ? (
+                  <Check className="h-4 w-4 shrink-0 text-[var(--gold)]" />
+                ) : null}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma opção encontrada.</div>
+          )}
+          {canCreate ? (
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onCreate?.(value.trim());
+                setOpen(false);
+              }}
+              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] transition hover:bg-muted"
+            >
+              <Plus className="h-4 w-4" />
+              {createLabel}
+            </button>
+          ) : null}
+        </div>
       ) : null}
-      <span className="mt-1 block text-[11px] text-muted-foreground">
-        Pesquise ou informe o texto e use “Novo” para {createLabel.toLowerCase()}.
-      </span>
     </label>
   );
 }
