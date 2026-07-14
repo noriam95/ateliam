@@ -4330,7 +4330,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
             `<article class="flow-card"><div class="index">${String(index + 1).padStart(
               2,
               "0",
-            )}</div><details class="flow-details" open><summary><h3>${html(step.title || "Etapa")}</h3></summary><div class="flow-content">${
+            )}</div><details class="flow-details"><summary><h3>${html(step.title || "Etapa")}</h3></summary><div class="flow-content">${
               step.owner || step.system || step.risk
                 ? `<div class="mini-grid">${fieldGrid([
                     ["Responsável", step.owner],
@@ -4343,7 +4343,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
               .join("")}${step.substeps
               .map(
                 (substep) =>
-                  `<details class="substep" open><summary><h4>${html(
+                  `<details class="substep"><summary><h4>${html(
                     joinClean([substep.code, substep.title], " - ") || "Subetapa",
                   )}</h4></summary><div class="substep-body">${substep.description ? `<p>${html(substep.description)}</p>` : ""}${substep.images
                     .map(zoomImage)
@@ -4442,7 +4442,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 <main class="content">
 <section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">01 · Apresentação de Mapeamento</div><h1>${html(title)}</h1><p>${html(description || "Relatório de mapeamento de processo.")}</p></div><div class="cover-code"><span>Código</span><strong>${html(code)}</strong></div></div><dl class="cover-context">${[
     coverLine("Processo mapeado", processName, processCode),
-    coverLine("Cadeia e área", processValueChain, processArea),
+    coverLine("Cadeia de valor e área", processValueChain, processArea),
     coverLine("Dono do processo", processOwner),
   ].join("")}</dl>${fieldGrid([
     ["Modalidade", model.meta.modalidade],
