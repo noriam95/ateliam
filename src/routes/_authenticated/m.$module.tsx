@@ -8035,6 +8035,16 @@ function DdpModule({
     sections.reduce((sum, section) => sum + section.pct, 0) / sections.length,
   );
 
+  // O formulário está pronto para exibir as seções quando há um processo
+  // selecionado OU quando já existe conteúdo salvo (documento aberto para
+  // edição — mesmo que o processo vinculado não esteja no catálogo atual). O
+  // estado vazio ("Selecione um processo") só vale para um mapeamento novo.
+  const mappingReady =
+    !!selectedProcess ||
+    !!data.macroprocess.processId ||
+    !!data.meta.codigo ||
+    !!data.meta.titulo;
+
   const [activeSection, setActiveSection] = useState("identification");
   const [openNonce, setOpenNonce] = useState(0);
   const [openTarget, setOpenTarget] = useState<string | null>(null);
@@ -8051,7 +8061,7 @@ function DdpModule({
   // Scrollspy: destaca no índice a última seção cujo topo já cruzou a linha
   // logo abaixo da barra de comando fixa (≈ a seção que está sendo lida).
   useEffect(() => {
-    if (!selectedProcess) return;
+    if (!mappingReady) return;
     const sectionKeys = [
       "identification",
       "overview",
@@ -8081,7 +8091,7 @@ function DdpModule({
       window.removeEventListener("resize", onScroll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProcess]);
+  }, [mappingReady]);
 
   // Estado de salvamento honesto: marca "não salvo" ao editar; limpa quando o
   // pai sinaliza um salvamento concluído (savedNonce). O salvamento pode alterar
@@ -8120,13 +8130,13 @@ function DdpModule({
     function onKey(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        if (selectedProcess) onSave?.();
+        if (mappingReady) onSave?.();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onSave, selectedProcess]);
+  }, [onSave, mappingReady]);
 
   function updateStep(stepId: string, patch: Partial<DdpFlowStep>) {
     update({
@@ -8308,7 +8318,7 @@ function DdpModule({
         sections={sections}
         overallPct={overallPct}
         saveState={saveState}
-        canSave={!!selectedProcess}
+        canSave={mappingReady}
         onSave={onSave}
         onPreview={onPreview}
         eyebrow="Processos · Mapeamento"
@@ -8328,7 +8338,7 @@ function DdpModule({
           />
         }
       />
-      {!selectedProcess ? (
+      {!mappingReady ? (
         <div className="mt-2 grid place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
           <div className="grid max-w-sm gap-2">
             <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-accent text-[var(--gold)]">
@@ -8357,7 +8367,7 @@ function DdpModule({
         openSignal={openTarget === "identification" ? openNonce : 0}
         title="Dados do Mapeamento"
         progress={sectionProgress.identification}
-        defaultOpen={!!selectedProcess}
+        defaultOpen={mappingReady}
       >
         <div className="grid gap-4 md:grid-cols-3">
           {data.meta.codigo ? (
@@ -8395,8 +8405,14 @@ function DdpModule({
             }
           />
           <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
-          <ReadOnlyField label="Dono" value={selectedProcess?.owner ?? ""} />
-          <ReadOnlyField label="Área" value={selectedProcess?.department ?? ""} />
+          <ReadOnlyField
+            label="Dono"
+            value={selectedProcess?.owner ?? data.overview.donoProcesso ?? data.meta.responsavel ?? ""}
+          />
+          <ReadOnlyField
+            label="Área"
+            value={selectedProcess?.department ?? data.meta.area ?? ""}
+          />
           <SelectField
             label="Modalidade"
             value={data.meta.modalidade || "AS IS"}
