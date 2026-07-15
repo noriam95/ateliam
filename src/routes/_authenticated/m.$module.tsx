@@ -10561,8 +10561,10 @@ function BpmnModuleV2({
   const svgRef = useRef<SVGSVGElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const ignoreCanvasClickRef = useRef(false);
+  const ignoreNodeClickRef = useRef(false);
   const [tool, setTool] = useState<"select" | "connect">("select");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [connectFromAnchor, setConnectFromAnchor] = useState<BpmnEdgeAnchor | null>(null);
@@ -10579,7 +10581,8 @@ function BpmnModuleV2({
   const [history, setHistory] = useState<BpmnState[]>([]);
   const [future, setFuture] = useState<BpmnState[]>([]);
   const [drag, setDrag] = useState<
-    | { kind: "node"; id: string; dx: number; dy: number; start: { x: number; y: number }; moved: boolean }
+    | { kind: "node"; id: string; ids: string[]; dx: number; dy: number; start: { x: number; y: number }; moved: boolean }
+    | { kind: "selection-box"; start: { x: number; y: number }; current: { x: number; y: number } }
     | { kind: "node-size"; id: string; startX: number; startY: number; x: number; y: number; width: number; height: number; handle: BpmnResizeHandle }
     | { kind: "pool-width"; startX: number; width: number }
     | { kind: "pool-height"; startY: number; laneHeights: number[] }
@@ -10606,6 +10609,10 @@ function BpmnModuleV2({
   const poolHeight = Math.max(laneHeights.reduce((total, height) => total + height, 0), 260);
   const canvasWidth = Math.max(poolX + poolWidth + 180, 1280);
   const canvasHeight = Math.max(poolY + poolHeight + 160, 760);
+
+  useEffect(() => {
+    setSelectedNodeIds((current) => current.filter((nodeId) => data.nodes.some((node) => node.id === nodeId)));
+  }, [data.nodes]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -10666,6 +10673,26 @@ function BpmnModuleV2({
     return pointFromClient(event.clientX, event.clientY);
   }
 
+  function startSelectionBox(event: React.PointerEvent<SVGSVGElement>) {
+    if (tool !== "select" || editingNodeId || editingPool || editingLaneIndex !== null) return;
+    const start = point(event);
+    svgRef.current?.setPointerCapture?.(event.pointerId);
+    setSelectedId(null);
+    setSelectedNodeIds([]);
+    setSelectedFlowId(null);
+    setConnectFrom(null);
+    setDrag({ kind: "selection-box", start, current: start });
+  }
+
+  function selectionRect(start: { x: number; y: number }, current: { x: number; y: number }) {
+    return {
+      x: Math.min(start.x, current.x),
+      y: Math.min(start.y, current.y),
+      width: Math.abs(current.x - start.x),
+      height: Math.abs(current.y - start.y),
+    };
+  }
+
   function snapValue(value: number) {
     return snap ? Math.round(value / 10) * 10 : value;
   }
@@ -10721,6 +10748,7 @@ function BpmnModuleV2({
     commit({ ...data, lanes, flows: [...data.flows, next] });
     setSelectedFlowId(next.id);
     setSelectedId(null);
+    setSelectedNodeIds([]);
   }
 
   function startNodeConnector(event: React.PointerEvent<SVGCircleElement>, node: BpmnNode, anchor: BpmnEdgeAnchor) {
@@ -10729,6 +10757,7 @@ function BpmnModuleV2({
     ignoreCanvasClickRef.current = true;
     setTool("select");
     setSelectedId(node.id);
+    setSelectedNodeIds([node.id]);
     setSelectedFlowId(null);
     setDrag({ kind: "new-flow", fromId: node.id, fromAnchor: anchor, current: start });
   }
@@ -10792,6 +10821,7 @@ function BpmnModuleV2({
     const next: BpmnNode = { id: id(type), type, label: defaults.label, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + defaults.height / 2), width: defaults.width, height: defaults.height };
     commit({ ...data, lanes, nodes: [...data.nodes, next] });
     setSelectedId(next.id);
+    setSelectedNodeIds([next.id]);
     setSelectedFlowId(null);
   }
 
@@ -10813,14 +10843,16 @@ function BpmnModuleV2({
       setSelectedFlowId(null);
       return;
     }
-    if (!selectedId) return;
+    const idsToDelete = selectedNodeIds.length ? selectedNodeIds : selectedId ? [selectedId] : [];
+    if (!idsToDelete.length) return;
     commit({
       ...data,
       lanes,
-      nodes: data.nodes.filter((node) => node.id !== selectedId),
-      flows: data.flows.filter((flow) => flow.from !== selectedId && flow.to !== selectedId),
+      nodes: data.nodes.filter((node) => !idsToDelete.includes(node.id)),
+      flows: data.flows.filter((flow) => !idsToDelete.includes(flow.from ?? "") && !idsToDelete.includes(flow.to ?? "")),
     });
     setSelectedId(null);
+    setSelectedNodeIds([]);
     setConnectFrom(null);
   }
 
@@ -10893,6 +10925,7 @@ function BpmnModuleV2({
     };
     commit({ ...data, lanes, nodes: [...data.nodes, nextNode], flows: [...data.flows, nextFlow] });
     setSelectedId(nextNode.id);
+    setSelectedNodeIds([nextNode.id]);
     setSelectedFlowId(null);
   }
 
@@ -10932,6 +10965,7 @@ function BpmnModuleV2({
   function selectFlow(flow: BpmnFlow) {
     setSelectedFlowId(flow.id);
     setSelectedId(null);
+    setSelectedNodeIds([]);
   }
 
   function handleNodeClick(node: BpmnNode, pointer?: { x: number; y: number }) {
@@ -10941,6 +10975,7 @@ function BpmnModuleV2({
         setConnectFrom(node.id);
         setConnectFromAnchor(targetAnchor);
         setSelectedId(node.id);
+        setSelectedNodeIds([node.id]);
         setSelectedFlowId(null);
         return;
       }
@@ -10970,9 +11005,11 @@ function BpmnModuleV2({
       setConnectFromAnchor(null);
       setTool("select");
       setSelectedId(node.id);
+      setSelectedNodeIds([node.id]);
       return;
     }
     setSelectedId(node.id);
+    setSelectedNodeIds([node.id]);
     setSelectedFlowId(null);
   }
 
@@ -11025,7 +11062,10 @@ function BpmnModuleV2({
     const p = point(event);
     if (drag.kind === "node") {
       if (!drag.moved && Math.hypot(p.x - drag.start.x, p.y - drag.start.y) < 4) return;
-      if (!drag.moved) setDrag({ ...drag, moved: true });
+      if (!drag.moved) {
+        ignoreNodeClickRef.current = true;
+        setDrag({ ...drag, moved: true });
+      }
       const currentNode = data.nodes.find((node) => node.id === drag.id);
       if (!currentNode) return;
       const width = currentNode.width ?? 140;
@@ -11035,13 +11075,27 @@ function BpmnModuleV2({
       const aligned = alignNodePosition(x, y, width, height, currentNode.id);
       const nextNode = { ...currentNode, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + height / 2) };
       const delta = { x: nextNode.x - currentNode.x, y: nextNode.y - currentNode.y };
-      const nextNodes = data.nodes.map((node) => node.id === drag.id ? nextNode : node);
+      const nextNodes = data.nodes.map((node) => {
+        if (!drag.ids.includes(node.id)) return node;
+        if (node.id === drag.id) return nextNode;
+        const nodeWidth = node.width ?? 140;
+        const nodeHeight = node.height ?? 64;
+        const nextX = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - nodeWidth - 16, node.x + delta.x));
+        const nextY = Math.max(poolY + 12, Math.min(poolY + poolHeight - nodeHeight - 12, node.y + delta.y));
+        return { ...node, x: nextX, y: nextY, lane: laneIndexFromY(nextY + nodeHeight / 2) };
+      });
       update({
         ...data,
         lanes,
         nodes: nextNodes,
-        flows: data.flows.map((flow) => refreshConnectorAfterNodeMove(moveConnectorWithNode(flow, drag.id, delta), nextNodes, drag.id)),
+        flows: data.flows.map((flow) => drag.ids.reduce(
+          (nextFlow, nodeId) => refreshConnectorAfterNodeMove(moveConnectorWithNode(nextFlow, nodeId, delta), nextNodes, nodeId),
+          flow,
+        )),
       });
+    }
+    if (drag.kind === "selection-box") {
+      setDrag({ ...drag, current: p });
     }
     if (drag.kind === "node-size") {
       update({
@@ -11146,6 +11200,24 @@ function BpmnModuleV2({
 
   function finishDrag(event?: React.PointerEvent<SVGSVGElement>) {
     const releasePoint = event ? point(event) : drag?.kind === "new-flow" ? drag.current : null;
+    if (drag?.kind === "selection-box") {
+      const box = selectionRect(drag.start, releasePoint ?? drag.current);
+      const ids = box.width < 5 && box.height < 5
+        ? []
+        : data.nodes
+          .filter((node) => {
+            const bounds = nodeBounds(node);
+            return bounds.left >= box.x && bounds.right <= box.x + box.width && bounds.top >= box.y && bounds.bottom <= box.y + box.height;
+          })
+          .map((node) => node.id);
+      setSelectedNodeIds(ids);
+      setSelectedId(ids.at(-1) ?? null);
+      setSelectedFlowId(null);
+    }
+    if (drag?.kind === "node" && !drag.moved) {
+      setSelectedNodeIds([drag.id]);
+      setSelectedId(drag.id);
+    }
     if (drag?.kind === "new-flow") {
       const fromNode = data.nodes.find((node) => node.id === drag.fromId);
       const endPoint = releasePoint ?? drag.current;
@@ -11279,6 +11351,7 @@ function BpmnModuleV2({
                 height={(canvasHeight * zoom) / 100}
                 viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
                 className="touch-none rounded-lg bg-white shadow-sm"
+                onPointerDown={startSelectionBox}
                 onPointerMove={handlePointerMove}
                 onPointerUp={finishDrag}
                 onClick={(event) => {
@@ -11288,6 +11361,7 @@ function BpmnModuleV2({
                   }
                   if (event.target !== event.currentTarget) return;
                   setSelectedId(null);
+                  setSelectedNodeIds([]);
                   setSelectedFlowId(null);
                   if (tool !== "connect") setConnectFrom(null);
                 }}
@@ -11477,6 +11551,10 @@ function BpmnModuleV2({
                     />
                   );
                 }) : null}
+                {drag?.kind === "selection-box" ? (() => {
+                  const box = selectionRect(drag.start, drag.current);
+                  return <rect x={box.x} y={box.y} width={box.width} height={box.height} fill="#009b7420" stroke="#008c68" strokeWidth="1.5" strokeDasharray="5 4" pointerEvents="none" />;
+                })() : null}
                 {hasPool && drag?.kind === "new-flow" ? (() => {
                   const from = data.nodes.find((node) => node.id === drag.fromId);
                   if (!from) return null;
@@ -11538,19 +11616,23 @@ function BpmnModuleV2({
                   <BpmnShapeV2
                     key={node.id}
                     node={node}
-                    selected={node.id === selectedId}
+                    selected={selectedNodeIds.includes(node.id)}
+                    primarySelected={node.id === selectedId}
                     connecting={node.id === connectFrom || node.id === connectionTarget?.nodeId}
                     canvasRight={poolX + poolWidth}
                     onPointerDown={(event) => {
                       event.stopPropagation();
                       if (editingNodeId === node.id) return;
                       if (tool === "connect") return;
+                      ignoreNodeClickRef.current = false;
                       svgRef.current?.setPointerCapture?.(event.pointerId);
                       ignoreCanvasClickRef.current = true;
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
+                      const ids = selectedNodeIds.includes(node.id) ? selectedNodeIds : [node.id];
                       setSelectedId(node.id);
+                      setSelectedNodeIds(ids);
                       setSelectedFlowId(null);
-                      setDrag({ kind: "node", id: node.id, dx: p.x - node.x, dy: p.y - node.y, start: p, moved: false });
+                      setDrag({ kind: "node", id: node.id, ids, dx: p.x - node.x, dy: p.y - node.y, start: p, moved: false });
                     }}
                     onResizePointerDown={(event, handle) => {
                       event.stopPropagation();
@@ -11565,6 +11647,10 @@ function BpmnModuleV2({
                     }}
                     onClick={(event) => {
                       event.stopPropagation();
+                      if (ignoreNodeClickRef.current) {
+                        ignoreNodeClickRef.current = false;
+                        return;
+                      }
                       handleNodeClick(node, pointFromClient(event.clientX, event.clientY));
                     }}
                     onDoubleClick={(event) => {
@@ -11677,7 +11763,7 @@ function BpmnConnectorV2({
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   const controlSegment = connectorControlSegment(defaultPoints);
   return (
-    <g onClick={onClick} className={preview ? "pointer-events-none" : "cursor-pointer"}>
+    <g onPointerDown={(event) => event.stopPropagation()} onClick={onClick} className={preview ? "pointer-events-none" : "cursor-pointer"}>
       {!preview ? <path d={path} fill="none" stroke="transparent" strokeWidth="14" /> : null}
       <path d={path} fill="none" stroke={preview ? "#06966f" : selected ? "#d39a20" : "#26352f"} strokeWidth={preview ? 3.4 : selected ? 3 : 2.2} strokeDasharray={preview ? "8 6" : undefined} markerEnd="url(#arrow-v2)" pointerEvents="none" />
       {flow.label ? <text x={labelPoint.x + 8} y={labelPoint.y - 8} fontSize="12" fontWeight="800" fill="#26352f">{flow.label}</text> : null}
@@ -11720,6 +11806,7 @@ function BpmnConnectorV2({
 function BpmnShapeV2({
   node,
   selected,
+  primarySelected,
   connecting,
   canvasRight,
   onPointerDown,
@@ -11736,6 +11823,7 @@ function BpmnShapeV2({
 }: {
   node: BpmnNode;
   selected: boolean;
+  primarySelected: boolean;
   connecting: boolean;
   canvasRight: number;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
@@ -11825,6 +11913,7 @@ function BpmnShapeV2({
       {selected ? (
         <>
           <rect x={node.x - 4} y={node.y - 4} width={width + 8} height={height + 8} rx="12" fill="none" stroke="#d39a20" strokeDasharray="5 5" strokeWidth="1.5" pointerEvents="none" />
+          {primarySelected ? <>
           {resizeHandles.map((handle) => (
             <circle
               key={`${node.id}-resize-${handle.handle}`}
@@ -11889,6 +11978,7 @@ function BpmnShapeV2({
               </g>
             </g>
           ) : null}
+          </> : null}
         </>
       ) : null}
     </g>
