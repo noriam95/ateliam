@@ -18,7 +18,6 @@ import {
   Download,
   Ellipsis,
   Eye,
-  FileSpreadsheet,
   Database,
   FileText,
   Presentation,
@@ -406,6 +405,7 @@ type PopState = {
     revisor: string;
     aprovacao: string;
     publicacao: string;
+    status: string;
   };
   purpose: {
     objetivo: string;
@@ -425,6 +425,7 @@ type BpmnState = {
   poolName: string;
   codigo?: string;
   area?: string;
+  status?: string;
   poolWidth?: number;
   laneHeights?: number[];
   lanes: string[];
@@ -678,6 +679,7 @@ function defaultWorkspace(): WorkspaceState {
         revisor: "",
         aprovacao: "",
         publicacao: "",
+        status: "Em andamento",
       },
       purpose: {
         objetivo: "",
@@ -762,6 +764,7 @@ function defaultWorkspace(): WorkspaceState {
     bpmn: {
       poolName: "Processo principal",
       area: "",
+      status: "Em andamento",
       lanes: ["Solicitante", "Executor"],
       nodes: [
         { id: "start_1", type: "start", label: "Início", x: 120, y: 135, lane: 0 },
@@ -1162,6 +1165,7 @@ function makeDemoPopWorkspace(spec: DemoPopSpec): WorkspaceState {
         versao: spec.versao,
         elaboracao: spec.elaboracao,
         aprovacao: spec.aprovacao,
+        status: spec.status,
       },
       purpose: {
         ...base.pop.purpose,
@@ -1249,7 +1253,7 @@ const DEMO_POP_SPECS: DemoPopSpec[] = [
     elaboracao: "Bruno Cardoso · Financeiro",
     aprovacao: "Aline Ferreira · Processos & Qualidade",
     versao: "03",
-    status: "Ativo",
+    status: "Concluído",
     updatedAt: "2026-04-30",
     objetivo: "Padronizar a conciliação entre extratos bancários e títulos no ERP.",
     abrangencia: "Aplica-se a todas as contas correntes da organização.",
@@ -1853,6 +1857,7 @@ function buildLegacyPop(input: JsonObject, fallback: PopState): PopState {
         revisor: textAt(meta, "revisor") || textAt(input, "revisor"),
         aprovacao: textAt(meta, "aprovacao") || textAt(input, "aprovador"),
         publicacao: textAt(meta, "publicacao"),
+        status: textAt(meta, "status") || fallback.meta.status,
       },
       purpose: {
         objetivo: textAt(snapshot, "objetivo") || fallback.purpose.objetivo,
@@ -5423,12 +5428,6 @@ function ModuleWorkspacePage() {
       return;
     }
 
-    if (moduleId !== "ddp") {
-      setStatusOverrides((current) => ({ ...current, [row.id]: status }));
-      toast.success(`Status atualizado para “${status}”.`);
-      return;
-    }
-
     if (!selectedOrganizationId) {
       toast.error("Selecione uma organização antes de alterar o status.");
       return;
@@ -5449,34 +5448,24 @@ function ModuleWorkspacePage() {
     }
 
     const snapshot = parseWorkspace(document.content_inline);
-    const updatedWorkspace: WorkspaceState = {
-      ...snapshot,
-      ddp: {
-        ...snapshot.ddp,
-        meta: {
-          ...snapshot.ddp.meta,
-          status,
-        },
-      },
-    };
-    const payload = {
-      code: updatedWorkspace.ddp.meta.codigo,
-      title: updatedWorkspace.ddp.meta.titulo,
-      description: updatedWorkspace.ddp.overview.objetivo || updatedWorkspace.ddp.overview.escopo,
-      primaryProcessId: updatedWorkspace.ddp.macroprocess.processId || null,
-      primaryProcessVersion: null,
-    };
+    const updatedWorkspace: WorkspaceState =
+      moduleId === "ddp"
+        ? { ...snapshot, ddp: { ...snapshot.ddp, meta: { ...snapshot.ddp.meta, status } } }
+        : moduleId === "pop"
+          ? { ...snapshot, pop: { ...snapshot.pop, meta: { ...snapshot.pop.meta, status } } }
+          : { ...snapshot, bpmn: { ...snapshot.bpmn, status } };
+    const payload = currentModuleSavePayload(updatedWorkspace);
 
     await saveCloudDocument({
       data: {
         organizationId: selectedOrganizationId,
         id: row.id,
-        moduleId: "ddp",
+        moduleId,
         code: payload.code,
         title: payload.title,
         description: payload.description,
-        content: buildModuleJson("ddp", updatedWorkspace),
-        comment: `[Mapeamento] Status alterado para ${status}`,
+        content: buildModuleJson(moduleId, updatedWorkspace),
+        comment: `[${moduleInfo.title}] Status alterado para ${status}`,
         primaryProcessId: payload.primaryProcessId,
         primaryProcessVersion: payload.primaryProcessVersion,
       },
@@ -6312,6 +6301,7 @@ function moduleGridRowFromWorkspace(
   if (moduleId === "pop") {
     return {
       ...base,
+      status: workspace.pop.meta.status || base.status,
       code: workspace.pop.meta.codigo || "-",
       name: workspace.pop.meta.titulo || "Documento sem título",
       type: workspace.pop.meta.tipo || "Documento",
@@ -6324,6 +6314,7 @@ function moduleGridRowFromWorkspace(
   }
   return {
     ...base,
+    status: workspace.bpmn.status || base.status,
     code: "FLX",
     name: workspace.bpmn.poolName || "Fluxograma sem título",
     type: "Fluxo de atividades",
@@ -6629,23 +6620,6 @@ function ModuleDocumentGrid({
     );
   }
 
-  function exportVisibleRows() {
-    const workbookRows = [
-      columns.map(([, label]) => label),
-      ...sortedRows.map((row) =>
-        columns.map(([key]) => {
-          const value = row[key as keyof ModuleGridRow];
-          return key === "updatedAt" ? formatDateTimeBr(value) : value;
-        }),
-      ),
-    ];
-    downloadBlob(
-      `${moduleId}-consulta-${today()}.xlsx`,
-      buildXlsxWorkbook([{ name: moduleDocumentLabel(moduleId), rows: workbookRows }]),
-    );
-    toast.success("Excel gerado com os registros exibidos.");
-  }
-
   async function removeSelected() {
     if (!selected.length) return;
     setPendingDelete({
@@ -6711,14 +6685,6 @@ function ModuleDocumentGrid({
                 Excluir selecionados ({selected.length})
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={exportVisibleRows}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Exportar para Excel
-            </button>
           </div>
         </div>
         <div className="relative mt-4 max-w-md">
@@ -6808,7 +6774,7 @@ function ModuleDocumentGrid({
                     </td>
                     {columns.map(([key]) => {
                       const value = row[key as keyof ModuleGridRow];
-                      if (key === "status" && (moduleId === "ddp" || moduleId === "pop")) {
+                      if (key === "status") {
                         const options = MODULE_STATUS_OPTIONS.includes(value)
                           ? MODULE_STATUS_OPTIONS
                           : [value, ...MODULE_STATUS_OPTIONS];
@@ -7260,46 +7226,6 @@ function DdpCausesModuleV2({
     }
   }
 
-  function exportRows(rows: GapItem[], fileName = `causas-${today()}.xlsx`) {
-    downloadBlob(
-      fileName,
-      buildXlsxWorkbook([
-        {
-          name: "Causas",
-          rows: [
-            [
-              "Código",
-              "Causa",
-              "Descrição",
-              "Impacto",
-              "Ação proposta",
-              "Responsável",
-              "Prazo",
-              "Prioridade",
-              "Status",
-              "Comentários",
-              "Última atualização",
-            ],
-            ...rows.map((gap, index) => [
-              causeCode(index),
-              gap.causa,
-              gap.descricao,
-              gap.impacto,
-              gap.acao,
-              gap.responsavel || "-",
-              formatGapDateRangeBr(gap.prazo) || "-",
-              gap.prioridade,
-              gap.status,
-              gap.comentarios.length,
-              lastUpdated(gap),
-            ]),
-          ],
-        },
-      ]),
-    );
-    toast.success("Excel gerado com os registros exibidos.");
-  }
-
   function addComment() {
     if (!draft || !commentDraft.trim()) return;
     setDraft({
@@ -7346,14 +7272,6 @@ function DdpCausesModuleV2({
                   Excluir selecionados ({selectedIds.length})
                 </button>
               ) : null}
-              <button
-                type="button"
-                onClick={() => exportRows(filtered)}
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Exportar para Excel
-              </button>
             </div>
           </div>
           <div className="relative mt-4 max-w-md">
@@ -7487,14 +7405,6 @@ function DdpCausesModuleV2({
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
                       >
                         <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Exportar"
-                        onClick={() => exportRows([gap], `causa-${causeCode(index)}-${today()}.xlsx`)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
-                      >
-                        <Download className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
@@ -9776,6 +9686,12 @@ function PopModule({
             value={data.meta.publicacao}
             onChange={(publicacao) => updateMeta({ publicacao })}
           />
+          <SelectField
+            label="Status"
+            value={data.meta.status || "Em andamento"}
+            options={MODULE_STATUS_OPTIONS}
+            onChange={(status) => updateMeta({ status })}
+          />
         </div>
       </Panel>
       <Panel
@@ -11196,6 +11112,12 @@ function BpmnModuleV2({
               <Field label="Nome da pool" value={data.poolName} onChange={(poolName) => commit({ ...data, lanes, poolName })} />
               <Field label="Área responsável" value={data.area ?? ""} onChange={(area) => commit({ ...data, lanes, area })} />
               {autoCode ? <ReadOnlyField label="Código automático" value={data.codigo || codePreview} /> : <Field label="Código" value={data.codigo ?? ""} onChange={(codigo) => commit({ ...data, lanes, codigo })} />}
+              <SelectField
+                label="Status"
+                value={data.status || "Em andamento"}
+                options={MODULE_STATUS_OPTIONS}
+                onChange={(status) => commit({ ...data, lanes, status })}
+              />
             </div>
             <div className="mt-5 border-t border-border pt-4">
               <div className="mb-2 flex items-center justify-between">

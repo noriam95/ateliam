@@ -2,7 +2,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  FileSpreadsheet,
   ImageDown,
   Maximize2,
   Network,
@@ -19,7 +18,6 @@ import {
   saveValueChainRegistration,
 } from "@/lib/config.functions";
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
-import { downloadXlsx } from "@/lib/xlsx-export";
 
 type ChainCategory = "primary" | "support" | "management" | "output";
 
@@ -302,14 +300,6 @@ function ValueChainReport({
             setActiveTab={setActiveTab}
             selectedChainId={selectedChainId}
             setSelectedChainId={setSelectedChainId}
-            onExportExcel={() =>
-              exportCSV(
-                chains.filter((c) => c.category === "primary"),
-                chains.filter((c) => c.category === "support"),
-                chains.filter((c) => c.category === "management"),
-                chains.filter((c) => c.category === "output"),
-              )
-            }
             busy={chainBusy}
             onNewChain={() =>
               setEditingChain({
@@ -736,7 +726,6 @@ function ConsultationTable({
   setActiveTab,
   selectedChainId,
   setSelectedChainId,
-  onExportExcel,
   busy,
   onNewChain,
   onEditChain,
@@ -753,7 +742,6 @@ function ConsultationTable({
   setActiveTab: (value: "value-chain" | "processes") => void;
   selectedChainId: string | null;
   setSelectedChainId: (value: string | null) => void;
-  onExportExcel: () => void;
   busy: boolean;
   onNewChain: () => void;
   onEditChain: (chain: ValueChain) => void;
@@ -959,17 +947,6 @@ function ConsultationTable({
     );
   }
 
-  function handleExportExcel() {
-    if (activeTab === "value-chain") {
-      onExportExcel();
-      return;
-    }
-    exportProcessesCSV(
-      processRows.map(({ process }) => process),
-      chainById,
-    );
-  }
-
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
@@ -1070,15 +1047,6 @@ function ConsultationTable({
               </select>
             </>
           )}
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            title="Exportar todos os registros para Excel"
-            aria-label="Exportar para Excel"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-          </button>
           {activeTab === "value-chain" ? (
             <button
               type="button"
@@ -1469,51 +1437,6 @@ function exportPNG(
     URL.revokeObjectURL(url);
   };
   img.src = url;
-}
-
-// ─── CSV / Excel export ───────────────────────────────────────────────────────
-
-function exportCSV(
-  primary: ValueChain[],
-  support: ValueChain[],
-  management: ValueChain[],
-  outputs: ValueChain[],
-) {
-  // Exporta no formato .xlsx (planilha comum do Excel), uma linha por cadeia.
-  const all = [
-    ...management.map((c) => ({ c, band: "Macroprocessos de Gestão" })),
-    ...primary.map((c) => ({ c, band: "Macroprocessos Finalísticos" })),
-    ...outputs.map((c) => ({ c, band: "Saídas" })),
-    ...support.map((c) => ({ c, band: "Macroprocessos de Suporte" })),
-  ];
-  const rows: (string | number)[][] = [
-    ["#", "Categoria", "Nome", "Descrição", "Status"],
-    ...all.map(({ c, band }, i) => [i + 1, band, c.name, c.description ?? "", c.status]),
-  ];
-  downloadXlsx("cadeia-de-valor", "Cadeia de Valor", rows);
-}
-
-function exportProcessesCSV(
-  processes: ProcessRecord[],
-  chainById: Map<string, ValueChain>,
-) {
-  const rows = [
-    ["#", "Código", "Processo", "Tipo", "Cadeia de Valor", "Área", "Dono", "Status"],
-    ...processes.map((process, i) => {
-      const chain = process.value_chain_id ? chainById.get(process.value_chain_id) : null;
-      return [
-        i + 1,
-        process.code ?? "",
-        process.name,
-        PROCESS_TYPE_LABELS[process.type] ?? process.type,
-        chain?.name ?? "",
-        process.department ?? "",
-        process.owner ?? "",
-        process.status,
-      ];
-    }),
-  ];
-  downloadXlsx("processos-cadeia-de-valor", "Processos", rows);
 }
 
 // Chave de ativar/desativar a cadeia de valor (mesmo padrão do cadastro de
