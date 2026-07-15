@@ -337,13 +337,15 @@ type BpmnEdgeAnchor = { side: BpmnEdgeSide; offset: number };
 
 type BpmnFlow = {
   id: string;
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
   label?: string;
   type?: "sequence" | "message" | "association";
   points?: Array<{ x: number; y: number }>;
   fromAnchor?: BpmnEdgeAnchor;
   toAnchor?: BpmnEdgeAnchor;
+  freeFrom?: { x: number; y: number };
+  freeTo?: { x: number; y: number };
 };
 
 type DdpState = {
@@ -10542,8 +10544,6 @@ function parseBpmnXmlDiagram(xml: string): BpmnState {
 function BpmnModuleV2({
   data,
   update,
-  autoCode = false,
-  codePreview = "",
 }: {
   data: BpmnState;
   update: (value: BpmnState) => void;
@@ -10559,9 +10559,13 @@ function BpmnModuleV2({
   const [connectFromAnchor, setConnectFromAnchor] = useState<BpmnEdgeAnchor | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
+  const [editingPool, setEditingPool] = useState(false);
+  const [editingLaneIndex, setEditingLaneIndex] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [showInspector, setShowInspector] = useState(true);
   const [zoom, setZoom] = useState(100);
-  const [showGrid, setShowGrid] = useState(true);
-  const [snap, setSnap] = useState(true);
+  const [showGrid] = useState(true);
+  const [snap] = useState(true);
   const [history, setHistory] = useState<BpmnState[]>([]);
   const [future, setFuture] = useState<BpmnState[]>([]);
   const [drag, setDrag] = useState<
@@ -10572,6 +10576,7 @@ function BpmnModuleV2({
     | { kind: "lane-height"; lane: number; startY: number; laneHeights: number[] }
     | { kind: "flow-point"; flowId: string; pointIndex: number }
     | { kind: "flow-anchor"; flowId: string; end: "from" | "to" }
+    | { kind: "free-flow-end"; flowId: string; end: "from" | "to" }
     | null
   >(null);
 
@@ -10667,6 +10672,30 @@ function BpmnModuleV2({
     return Math.max(0, lanes.length - 1);
   }
 
+  function isInsidePool(position: { x: number; y: number }) {
+    return hasPool && position.x >= poolX && position.x <= poolX + poolWidth && position.y >= poolY && position.y <= poolY + poolHeight;
+  }
+
+  function nodeAtPoint(position: { x: number; y: number }) {
+    return data.nodes.find((node) => {
+      const bounds = nodeBounds(node);
+      return position.x >= bounds.left && position.x <= bounds.right && position.y >= bounds.top && position.y <= bounds.bottom;
+    });
+  }
+
+  function createFreeConnector(position: { x: number; y: number }) {
+    if (!hasPool) {
+      toast.error("Crie uma pool antes de adicionar conectores.");
+      return;
+    }
+    const from = { x: snapValue(position.x - 80), y: snapValue(position.y) };
+    const to = { x: snapValue(position.x + 80), y: snapValue(position.y) };
+    const next: BpmnFlow = { id: id("flow"), type: "sequence", freeFrom: from, freeTo: to, points: [] };
+    commit({ ...data, lanes, flows: [...data.flows, next] });
+    setSelectedFlowId(next.id);
+    setSelectedId(null);
+  }
+
   function defaultNode(type: BpmnNodeType) {
     if (type === "gateway") return { width: 64, height: 64, label: "Decisao" };
     if (type === "start") return { width: 44, height: 44, label: "Inicio" };
@@ -10676,7 +10705,10 @@ function BpmnModuleV2({
   }
 
   function createPool() {
-    if (hasPool) return;
+    if (hasPool) {
+      toast.message("Cada desenho possui apenas uma pool.");
+      return;
+    }
     commit({
       ...data,
       poolName: "Processo 1",
@@ -10777,9 +10809,34 @@ function BpmnModuleV2({
     setEditingNodeId(null);
   }
 
+  function startPoolEdit() {
+    setEditingPool(true);
+    setEditingLaneIndex(null);
+    setEditingText(data.poolName);
+  }
+
+  function commitPoolEdit() {
+    const value = editingText.trim();
+    if (value) commit({ ...data, lanes, poolName: value });
+    setEditingPool(false);
+  }
+
+  function startLaneEdit(index: number) {
+    setEditingPool(false);
+    setEditingLaneIndex(index);
+    setEditingText(lanes[index] ?? `Raia ${index + 1}`);
+  }
+
+  function commitLaneEdit() {
+    if (editingLaneIndex == null) return;
+    const value = editingText.trim();
+    if (value) updateLane(editingLaneIndex, value);
+    setEditingLaneIndex(null);
+  }
+
   function selectFlow(flow: BpmnFlow) {
-    const from = data.nodes.find((node) => node.id === flow.from);
-    const to = data.nodes.find((node) => node.id === flow.to);
+    const from = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
+    const to = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
     if (from && to && !(flow.points?.length)) {
       const a = resolveConnectorPoint(from, to, flow.fromAnchor);
       const b = resolveConnectorPoint(to, from, flow.toAnchor);
@@ -10836,9 +10893,27 @@ function BpmnModuleV2({
 
   function handleDrop(event: React.DragEvent<SVGSVGElement>) {
     event.preventDefault();
+    const dropPoint = pointFromClient(event.clientX, event.clientY);
+    const draggedTool = event.dataTransfer.getData("application/x-bf-bpmn-tool");
+    if (draggedTool === "connector") {
+      createFreeConnector(dropPoint);
+      return;
+    }
+    if (draggedTool === "pool") {
+      createPool();
+      return;
+    }
+    if (draggedTool === "lane") {
+      if (!isInsidePool(dropPoint)) {
+        toast.error("Solte a raia dentro da pool.");
+        return;
+      }
+      addLane();
+      return;
+    }
     const type = event.dataTransfer.getData("application/x-bf-bpmn-node") as BpmnNodeType;
     if (!type) return;
-    addNode(type, pointFromClient(event.clientX, event.clientY));
+    addNode(type, dropPoint);
   }
 
   async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
@@ -10938,6 +11013,7 @@ function BpmnModuleV2({
         lanes,
         flows: data.flows.map((flow) => {
           if (flow.id !== drag.flowId) return flow;
+          if (!flow.from || !flow.to) return flow;
           const from = data.nodes.find((node) => node.id === flow.from);
           const to = data.nodes.find((node) => node.id === flow.to);
           if (!from || !to) return flow;
@@ -10950,9 +11026,37 @@ function BpmnModuleV2({
         }),
       });
     }
+    if (drag.kind === "free-flow-end") {
+      update({
+        ...data,
+        lanes,
+        flows: data.flows.map((flow) => {
+          if (flow.id !== drag.flowId) return flow;
+          const snapped = { x: snapValue(p.x), y: snapValue(p.y) };
+          return drag.end === "from" ? { ...flow, freeFrom: snapped } : { ...flow, freeTo: snapped };
+        }),
+      });
+    }
   }
 
   function finishDrag() {
+    if (drag?.kind === "free-flow-end") {
+      const current = data.flows.find((flow) => flow.id === drag.flowId);
+      const position = drag.end === "from" ? current?.freeFrom : current?.freeTo;
+      const target = position ? nodeAtPoint(position) : null;
+      if (current && position && target) {
+        const anchor = edgeAnchorFromPoint(target, position);
+        update({
+          ...data,
+          lanes,
+          flows: data.flows.map((flow) => {
+            if (flow.id !== drag.flowId) return flow;
+            if (drag.end === "from") return { ...flow, from: target.id, fromAnchor: anchor, freeFrom: undefined };
+            return { ...flow, to: target.id, toAnchor: anchor, freeTo: undefined };
+          }),
+        });
+      }
+    }
     if (drag) {
       setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
       setFuture([]);
@@ -10993,28 +11097,45 @@ function BpmnModuleV2({
           <div className="flex flex-wrap items-center gap-2">
             <input ref={importInputRef} type="file" accept=".bpm,.bpmn,.xml,.xpdl" className="hidden" onChange={handleImportFile} />
             <ToolbarButton onClick={() => importInputRef.current?.click()} icon={<Upload className="h-4 w-4" />}>Importar</ToolbarButton>
-            <ToolbarButton onClick={createPool} icon={<Layers className="h-4 w-4" />}>Criar pool</ToolbarButton>
-            <ToolbarButton onClick={addLane} icon={<Plus className="h-4 w-4" />}>Raia</ToolbarButton>
             <ToolbarButton onClick={undo} icon={<RotateCcw className="h-4 w-4" />}>Desfazer</ToolbarButton>
             <ToolbarButton onClick={redo} icon={<RotateCcw className="h-4 w-4 rotate-180" />}>Refazer</ToolbarButton>
             <ToolbarButton onClick={duplicateSelected} icon={<Copy className="h-4 w-4" />}>Duplicar</ToolbarButton>
             <ToolbarButton onClick={deleteSelected} icon={<Trash2 className="h-4 w-4" />}>Excluir</ToolbarButton>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setShowGrid((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${showGrid ? "bg-[#06966f] text-white" : "border border-border bg-card text-foreground"}`}>Grade</button>
-            <button type="button" onClick={() => setSnap((value) => !value)} className={`rounded-md px-3 py-2 text-sm font-semibold ${snap ? "bg-[#06966f] text-white" : "border border-border bg-card text-foreground"}`}>Snap</button>
             <button type="button" onClick={() => setZoom((value) => Math.max(60, value - 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">-</button>
             <span className="w-14 text-center font-data text-sm font-bold">{zoom}%</span>
             <button type="button" onClick={() => setZoom((value) => Math.min(160, value + 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">+</button>
+            <button type="button" onClick={() => setShowInspector((value) => !value)} className="rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold">
+              {showInspector ? "Ocultar painel" : "Mostrar painel"}
+            </button>
           </div>
         </div>
 
-        <div className="grid min-h-[calc(100vh-170px)] xl:grid-cols-[190px_minmax(0,1fr)_280px]">
+        <div className={`grid min-h-[calc(100vh-170px)] ${showInspector ? "xl:grid-cols-[190px_minmax(0,1fr)_280px]" : "xl:grid-cols-[190px_minmax(0,1fr)]"}`}>
           <aside className="border-b border-border bg-[#f8f8f5] p-4 dark:bg-[#111512] xl:border-b-0 xl:border-r">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Ferramentas</h3>
             <div className="mt-3 grid gap-2">
               {toolButton("select", "Selecionar", <CheckCircle2 className="h-4 w-4" />)}
               {toolButton("connect", "Conectar", <GitBranch className="h-4 w-4" />)}
+            </div>
+            <div className="mt-5 grid gap-3 border-t border-border pt-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Estrutura</h3>
+              <BpmnTool title="Pool" toolType="pool" disabled={false} onClick={createPool}>
+                <span className="grid h-12 w-20 grid-cols-[16px_1fr] overflow-hidden rounded-sm border-2 border-[#10251d] bg-white">
+                  <span className="border-r border-[#10251d] bg-[#f8f3ea]" />
+                  <span />
+                </span>
+              </BpmnTool>
+              <BpmnTool title="Raia" toolType="lane" disabled={!hasPool} onClick={addLane}>
+                <span className="h-8 w-20 rounded-sm border-2 border-[#06966f] bg-[#edf7f2]" />
+              </BpmnTool>
+              <BpmnTool title="Conector" toolType="connector" disabled={!hasPool} onClick={() => setTool("connect")}>
+                <span className="relative h-8 w-20">
+                  <span className="absolute left-1 top-1/2 h-0.5 w-16 -translate-y-1/2 bg-[#26352f]" />
+                  <span className="absolute right-1 top-1/2 h-0 w-0 -translate-y-1/2 border-y-[6px] border-l-[9px] border-y-transparent border-l-[#26352f]" />
+                </span>
+              </BpmnTool>
             </div>
             <div className="mt-5 grid gap-3 border-t border-border pt-4">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Elementos BPMN</h3>
@@ -11049,7 +11170,6 @@ function BpmnModuleV2({
                   if (tool !== "connect") setConnectFrom(null);
                 }}
                 onDragOver={(event) => {
-                  if (!hasPool) return;
                   event.preventDefault();
                   event.dataTransfer.dropEffect = "copy";
                 }}
@@ -11074,17 +11194,83 @@ function BpmnModuleV2({
                 {hasPool ? <rect x={poolX} y={poolY} width={poolWidth} height={poolHeight} fill="#ffffff" stroke="#10251d" strokeWidth="1.7" /> : null}
                 {hasPool ? <rect x={poolX} y={poolY} width={poolLabelWidth} height={poolHeight} fill="#f8f3ea" stroke="#10251d" strokeWidth="1.7" /> : null}
                 {hasPool ? (
-                  <text x={poolX + poolLabelWidth / 2} y={poolY + poolHeight / 2} textAnchor="middle" fontSize="16" fontWeight="800" fill="#10251d" transform={`rotate(-90 ${poolX + poolLabelWidth / 2} ${poolY + poolHeight / 2})`}>
-                    {data.poolName}
-                  </text>
+                  editingPool ? (
+                    <foreignObject x={poolX + 6} y={poolY + poolHeight / 2 - 55} width={poolLabelWidth - 12} height={110}>
+                      <textarea
+                        autoFocus
+                        value={editingText}
+                        onChange={(event) => setEditingText(event.target.value)}
+                        onBlur={commitPoolEdit}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            commitPoolEdit();
+                          }
+                          if (event.key === "Escape") setEditingPool(false);
+                        }}
+                        className="h-full w-full resize-none rounded-md border border-[#d39a20] bg-white px-2 py-1 text-center text-xs font-bold text-[#10251d] outline-none"
+                      />
+                    </foreignObject>
+                  ) : (
+                    <text
+                      x={poolX + poolLabelWidth / 2}
+                      y={poolY + poolHeight / 2}
+                      textAnchor="middle"
+                      fontSize="16"
+                      fontWeight="800"
+                      fill="#10251d"
+                      transform={`rotate(-90 ${poolX + poolLabelWidth / 2} ${poolY + poolHeight / 2})`}
+                      className="cursor-text"
+                      onDoubleClick={(event) => {
+                        event.stopPropagation();
+                        startPoolEdit();
+                      }}
+                    >
+                      {data.poolName}
+                    </text>
+                  )
                 ) : null}
                 {hasPool ? lanes.map((lane, index) => (
                   <g key={`${lane}-${index}`}>
                     <rect x={poolX + poolLabelWidth} y={laneY(index)} width={laneLabelWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
                     <rect x={poolX + leftHeaderWidth} y={laneY(index)} width={poolWidth - leftHeaderWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
-                    <text x={poolX + poolLabelWidth + laneLabelWidth / 2} y={laneY(index) + laneHeights[index] / 2} textAnchor="middle" fontSize="13" fontWeight="800" fill="#10251d" transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}>
-                      {lane || `Raia ${index + 1}`}
-                    </text>
+                    {editingLaneIndex === index ? (
+                      <foreignObject x={poolX + poolLabelWidth + 5} y={laneY(index) + laneHeights[index] / 2 - 42} width={laneLabelWidth - 10} height={84}>
+                        <textarea
+                          autoFocus
+                          value={editingText}
+                          onChange={(event) => setEditingText(event.target.value)}
+                          onBlur={commitLaneEdit}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" && !event.shiftKey) {
+                              event.preventDefault();
+                              commitLaneEdit();
+                            }
+                            if (event.key === "Escape") setEditingLaneIndex(null);
+                          }}
+                          className="h-full w-full resize-none rounded-md border border-[#d39a20] bg-white px-2 py-1 text-center text-xs font-bold text-[#10251d] outline-none"
+                        />
+                      </foreignObject>
+                    ) : (
+                      <text
+                        x={poolX + poolLabelWidth + laneLabelWidth / 2}
+                        y={laneY(index) + laneHeights[index] / 2}
+                        textAnchor="middle"
+                        fontSize="13"
+                        fontWeight="800"
+                        fill="#10251d"
+                        transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}
+                        className="cursor-text"
+                        onDoubleClick={(event) => {
+                          event.stopPropagation();
+                          startLaneEdit(index);
+                        }}
+                      >
+                        {lane || `Raia ${index + 1}`}
+                      </text>
+                    )}
                     {index < lanes.length - 1 ? (
                       <rect x={poolX} y={laneY(index) + laneHeights[index] - 4} width={poolWidth} height="8" fill="transparent" className="cursor-row-resize" onPointerDown={(event) => {
                         event.stopPropagation();
@@ -11106,9 +11292,9 @@ function BpmnModuleV2({
                   setDrag({ kind: "pool-width", startX: point(event as React.PointerEvent<SVGSVGElement>).x, width: poolWidth });
                 }} /> : null}
                 {hasPool ? data.flows.map((flow) => {
-                  const from = data.nodes.find((node) => node.id === flow.from);
-                  const to = data.nodes.find((node) => node.id === flow.to);
-                  if (!from || !to) return null;
+                  const from = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
+                  const to = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
+                  if ((!from && !flow.freeFrom) || (!to && !flow.freeTo)) return null;
                   return (
                     <BpmnConnectorV2
                       key={flow.id}
@@ -11132,7 +11318,32 @@ function BpmnModuleV2({
                       }}
                       onAnchorPointerDown={(event, end) => {
                         event.stopPropagation();
-                        setDrag({ kind: "flow-anchor", flowId: flow.id, end });
+                        if (flow.from && flow.to) {
+                          setDrag({ kind: "flow-anchor", flowId: flow.id, end });
+                        } else {
+                          const endpointNode = end === "from" ? from : to;
+                          const oppositeNode = end === "from" ? to : from;
+                          const fallback = end === "from" ? flow.freeFrom : flow.freeTo;
+                          const endpoint =
+                            endpointNode && oppositeNode
+                              ? resolveConnectorPoint(endpointNode, oppositeNode, end === "from" ? flow.fromAnchor : flow.toAnchor)
+                              : endpointNode
+                                ? anchorPoint(endpointNode, { side: "right", offset: 0.5 })
+                                : fallback;
+                          if (endpoint) {
+                            update({
+                              ...data,
+                              lanes,
+                              flows: data.flows.map((item) => {
+                                if (item.id !== flow.id) return item;
+                                return end === "from"
+                                  ? { ...item, from: undefined, fromAnchor: undefined, freeFrom: endpoint }
+                                  : { ...item, to: undefined, toAnchor: undefined, freeTo: endpoint };
+                              }),
+                            });
+                          }
+                          setDrag({ kind: "free-flow-end", flowId: flow.id, end });
+                        }
                         setSelectedFlowId(flow.id);
                         setSelectedId(null);
                       }}
@@ -11180,18 +11391,10 @@ function BpmnModuleV2({
             </div>
           </main>
 
-          <aside className="border-t border-border bg-card p-4 xl:border-l xl:border-t-0">
+          {showInspector ? <aside className="border-t border-border bg-card p-4 xl:border-l xl:border-t-0">
             <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Propriedades</h3>
             <div className="grid gap-3">
               <Field label="Nome da pool" value={data.poolName} onChange={(poolName) => commit({ ...data, lanes, poolName })} />
-              <Field label="Área responsável" value={data.area ?? ""} onChange={(area) => commit({ ...data, lanes, area })} />
-              {autoCode ? <ReadOnlyField label="Código automático" value={data.codigo || codePreview} /> : <Field label="Código" value={data.codigo ?? ""} onChange={(codigo) => commit({ ...data, lanes, codigo })} />}
-              <SelectField
-                label="Status"
-                value={data.status || "Em andamento"}
-                options={MODULE_STATUS_OPTIONS}
-                onChange={(status) => commit({ ...data, lanes, status })}
-              />
             </div>
             <div className="mt-5 border-t border-border pt-4">
               <div className="mb-2 flex items-center justify-between">
@@ -11233,7 +11436,7 @@ function BpmnModuleV2({
                 Selecione um elemento ou conector.
               </div>
             )}
-          </aside>
+          </aside> : null}
         </div>
       </div>
     </div>
@@ -11251,16 +11454,22 @@ function BpmnConnectorV2({
   onAnchorPointerDown,
 }: {
   flow: BpmnFlow;
-  from: BpmnNode;
-  to: BpmnNode;
+  from?: BpmnNode;
+  to?: BpmnNode;
   selected: boolean;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
   onAddPoint: (event: React.PointerEvent<SVGPathElement>) => void;
   onHandlePointerDown: (event: React.PointerEvent<SVGCircleElement>, pointIndex: number) => void;
   onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
 }) {
-  const a = resolveConnectorPoint(from, to, flow.fromAnchor);
-  const b = resolveConnectorPoint(to, from, flow.toAnchor);
+  const freeA = flow.freeFrom ?? { x: 0, y: 0 };
+  const freeB = flow.freeTo ?? { x: freeA.x + 120, y: freeA.y };
+  const a = from
+    ? anchorPoint(from, flow.fromAnchor ?? edgeAnchorFromPoint(from, to ? nodeCenter(to) : freeB))
+    : freeA;
+  const b = to
+    ? anchorPoint(to, flow.toAnchor ?? edgeAnchorFromPoint(to, from ? nodeCenter(from) : a))
+    : freeB;
   const points = flow.points ?? [];
   const defaultPoints = points.length > 0 ? points : orthogonalPoints(a, b);
   const route = [a, ...defaultPoints, b];
@@ -11409,8 +11618,8 @@ function validateBpmnDiagram(
     if (node.type !== "end" && !data.flows.some((flow) => flow.from === node.id)) issues.push({ id: `${node.id}-out`, kind: "Recomendação", message: "Elemento sem saída.", nodeId: node.id });
   });
   data.flows.forEach((flow) => {
-    if (!data.nodes.some((node) => node.id === flow.from)) issues.push({ id: `${flow.id}-from`, kind: "Erro", message: "Conector sem origem." });
-    if (!data.nodes.some((node) => node.id === flow.to)) issues.push({ id: `${flow.id}-to`, kind: "Erro", message: "Conector sem destino." });
+    if (flow.from && !data.nodes.some((node) => node.id === flow.from)) issues.push({ id: `${flow.id}-from`, kind: "Erro", message: "Conector sem origem." });
+    if (flow.to && !data.nodes.some((node) => node.id === flow.to)) issues.push({ id: `${flow.id}-to`, kind: "Erro", message: "Conector sem destino." });
   });
   return issues;
 }
@@ -11420,12 +11629,14 @@ function BpmnTool({
   onClick,
   children,
   nodeType,
+  toolType,
   disabled = false,
 }: {
   title: string;
   onClick: () => void;
   children: ReactNode;
   nodeType?: BpmnNodeType;
+  toolType?: "pool" | "lane" | "connector";
   disabled?: boolean;
 }) {
   return (
@@ -11433,11 +11644,11 @@ function BpmnTool({
       type="button"
       title={title}
       aria-label={title}
-      draggable={Boolean(nodeType) && !disabled}
+      draggable={Boolean(nodeType || toolType) && !disabled}
       disabled={disabled}
       onDragStart={(event) => {
-        if (!nodeType) return;
-        event.dataTransfer.setData("application/x-bf-bpmn-node", nodeType);
+        if (nodeType) event.dataTransfer.setData("application/x-bf-bpmn-node", nodeType);
+        if (toolType) event.dataTransfer.setData("application/x-bf-bpmn-tool", toolType);
         event.dataTransfer.effectAllowed = "copy";
       }}
       onClick={onClick}
@@ -11459,6 +11670,11 @@ function nodeBounds(node: BpmnNode) {
     cx: node.x + width / 2,
     cy: node.y + height / 2,
   };
+}
+
+function nodeCenter(node: BpmnNode) {
+  const bounds = nodeBounds(node);
+  return { x: bounds.cx, y: bounds.cy };
 }
 
 function clampRatio(value: number) {
