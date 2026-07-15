@@ -11122,11 +11122,11 @@ function BpmnModuleV2({
           if (drag.end === "from") {
             const target = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
             const opposite = target ? anchorPoint(target, flow.toAnchor ?? { side: "left", offset: 0.5 }) : flow.freeTo ?? snapped;
-            return { ...flow, from: undefined, fromAnchor: undefined, freeFrom: snapped, points: orthogonalPoints(snapped, opposite) };
+            return { ...flow, from: undefined, fromAnchor: undefined, freeFrom: snapped, points: editableConnectorPoints(snapped, opposite) };
           }
           const source = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
           const opposite = source ? anchorPoint(source, flow.fromAnchor ?? { side: "right", offset: 0.5 }) : flow.freeFrom ?? snapped;
-          return { ...flow, to: undefined, toAnchor: undefined, freeTo: snapped, points: orthogonalPoints(opposite, snapped) };
+          return { ...flow, to: undefined, toAnchor: undefined, freeTo: snapped, points: editableConnectorPoints(opposite, snapped) };
         }),
       });
     }
@@ -11165,7 +11165,7 @@ function BpmnModuleV2({
             type: "sequence",
             fromAnchor: drag.fromAnchor,
             freeTo: endPoint,
-            points: connectorRoutePoints(anchorPoint(fromNode, drag.fromAnchor), endPoint, drag.fromAnchor),
+            points: editableConnectorPoints(anchorPoint(fromNode, drag.fromAnchor), endPoint, drag.fromAnchor),
           };
           update({ ...data, lanes, flows: [...data.flows, next] });
           setSelectedFlowId(next.id);
@@ -11631,7 +11631,7 @@ function BpmnConnectorV2({
   to?: BpmnNode;
   selected: boolean;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
-  onSegmentPointerDown: (event: React.PointerEvent<SVGRectElement>, routePoints: Array<{ x: number; y: number }>, firstPoint: number, secondPoint: number, axis: "x" | "y") => void;
+  onSegmentPointerDown: (event: React.PointerEvent<SVGGElement>, routePoints: Array<{ x: number; y: number }>, firstPoint: number, secondPoint: number, axis: "x" | "y") => void;
   onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
   preview?: boolean;
 }) {
@@ -11646,10 +11646,13 @@ function BpmnConnectorV2({
     ? anchorPoint(to, toAnchor ?? { side: "left", offset: 0.5 })
     : freeB;
   const points = flow.points ?? [];
-  const defaultPoints = points.length > 0 ? points : connectorRoutePoints(a, b, fromAnchor, toAnchor);
+  // A rota automatica tambem nasce com uma alca central. Assim, ao puxar a
+  // alca o usuario passa a controlar a mesma linha que ja estava vendo.
+  const defaultPoints = points.length > 0 ? points : editableConnectorPoints(a, b, fromAnchor, toAnchor);
   const route = [a, ...defaultPoints, b];
   const path = route.map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`).join(" ");
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const controlSegment = connectorControlSegment(defaultPoints);
   return (
     <g onClick={onClick} className={preview ? "pointer-events-none" : "cursor-pointer"}>
       {!preview ? <path d={path} fill="none" stroke="transparent" strokeWidth="14" /> : null}
@@ -11661,27 +11664,32 @@ function BpmnConnectorV2({
           <circle cx={b.x} cy={b.y} r="7.5" fill="#ffe4e6" stroke="#d24a5a" strokeWidth="2.2" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
         </>
       ) : null}
-      {selected && !preview ? defaultPoints.slice(0, -1).map((pointItem, index) => {
-        const nextPoint = defaultPoints[index + 1];
-        const horizontal = Math.abs(pointItem.y - nextPoint.y) < 1;
-        const x = (pointItem.x + nextPoint.x) / 2;
-        const y = (pointItem.y + nextPoint.y) / 2;
+      {selected && !preview && controlSegment ? (() => {
+        const first = defaultPoints[controlSegment.firstPoint];
+        const second = defaultPoints[controlSegment.secondPoint];
+        const x = (first.x + second.x) / 2;
+        const y = (first.y + second.y) / 2;
+        const horizontal = controlSegment.axis === "y";
         return (
-          <rect
-            key={`${flow.id}-segment-${index}`}
-            x={x - (horizontal ? 4 : 7)}
-            y={y - (horizontal ? 7 : 4)}
-            width={horizontal ? "8" : "14"}
-            height={horizontal ? "14" : "8"}
-            rx="4"
-            fill="#ffffff"
-            stroke="#2583ab"
-            strokeWidth="1.7"
+          <g
             className={horizontal ? "cursor-ns-resize" : "cursor-ew-resize"}
-            onPointerDown={(event) => onSegmentPointerDown(event, defaultPoints, index, index + 1, horizontal ? "y" : "x")}
-          />
+            onPointerDown={(event) => onSegmentPointerDown(event, defaultPoints, controlSegment.firstPoint, controlSegment.secondPoint, controlSegment.axis)}
+          >
+            <rect
+              x={x - (horizontal ? 13 : 6)}
+              y={y - (horizontal ? 6 : 13)}
+              width={horizontal ? "26" : "12"}
+              height={horizontal ? "12" : "26"}
+              rx="6"
+              fill="#ffffff"
+              stroke="#2583ab"
+              strokeWidth="2"
+              filter="url(#bpmn-tool-shadow)"
+            />
+            {horizontal ? [x - 5, x, x + 5].map((dot) => <circle key={dot} cx={dot} cy={y} r="1.25" fill="#2583ab" pointerEvents="none" />) : [y - 5, y, y + 5].map((dot) => <circle key={dot} cx={x} cy={dot} r="1.25" fill="#2583ab" pointerEvents="none" />)}
+          </g>
         );
-      }) : null}
+      })() : null}
     </g>
   );
 }
@@ -11987,6 +11995,84 @@ function orthogonalPoints(a: { x: number; y: number }, b: { x: number; y: number
     { x: a.x, y: midY },
     { x: b.x, y: midY },
   ];
+}
+
+function edgeVector(side?: BpmnEdgeSide) {
+  if (side === "top") return { x: 0, y: -1 };
+  if (side === "bottom") return { x: 0, y: 1 };
+  if (side === "left") return { x: -1, y: 0 };
+  return { x: 1, y: 0 };
+}
+
+function editableConnectorPoints(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  fromAnchor?: BpmnEdgeAnchor,
+  toAnchor?: BpmnEdgeAnchor,
+) {
+  if (!fromAnchor) return orthogonalPoints(a, b);
+  const fromVector = edgeVector(fromAnchor.side);
+  const toVector = edgeVector(toAnchor?.side);
+  const distance = 30;
+  const exit = { x: a.x + fromVector.x * distance, y: a.y + fromVector.y * distance };
+  const entry = toAnchor
+    ? { x: b.x + toVector.x * distance, y: b.y + toVector.y * distance }
+    : b;
+  const horizontal = fromVector.x !== 0;
+
+  // The two middle points form one explicit, draggable bend. Keeping them even
+  // when aligned makes a straight connection become an orthogonal one smoothly.
+  if (horizontal) {
+    const y = Math.abs(exit.y - entry.y) < 1 ? exit.y : (exit.y + entry.y) / 2;
+    return [
+      exit,
+      { x: exit.x, y },
+      { x: entry.x, y },
+      entry,
+    ];
+  }
+  const x = Math.abs(exit.x - entry.x) < 1 ? exit.x : (exit.x + entry.x) / 2;
+  return [
+    exit,
+    { x, y: exit.y },
+    { x, y: entry.y },
+    entry,
+  ];
+}
+
+function connectorControlSegment(points: Array<{ x: number; y: number }>) {
+  if (points.length >= 4) {
+    const firstPoint = 1;
+    const secondPoint = 2;
+    const first = points[firstPoint];
+    const second = points[secondPoint];
+    return {
+      firstPoint,
+      secondPoint,
+      axis: Math.abs(first.y - second.y) < 1 ? "y" as const : "x" as const,
+    };
+  }
+  if (points.length < 2) return null;
+  let firstPoint = 0;
+  let secondPoint = 1;
+  let longest = -1;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const first = points[index];
+    const second = points[index + 1];
+    const length = Math.abs(first.x - second.x) + Math.abs(first.y - second.y);
+    if (length > longest) {
+      longest = length;
+      firstPoint = index;
+      secondPoint = index + 1;
+    }
+  }
+  const first = points[firstPoint];
+  const second = points[secondPoint];
+  return {
+    firstPoint,
+    secondPoint,
+    axis: Math.abs(first.y - second.y) < 1 ? "y" as const : "x" as const,
+  };
 }
 
 function connectorRoutePoints(
