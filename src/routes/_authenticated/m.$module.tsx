@@ -11173,28 +11173,6 @@ function BpmnModuleV2({
     setDrag(null);
   }
 
-  function toolButton(value: "select" | "connect", label: string, icon: ReactNode) {
-    const active = tool === value;
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          setTool(value);
-          if (value !== "connect") {
-            setConnectFrom(null);
-            setConnectFromAnchor(null);
-          }
-        }}
-        className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition ${
-          active ? "border-[#06966f] bg-[#06966f] text-white" : "border-border bg-card text-foreground hover:border-[#06966f] hover:bg-[#edf7f2]"
-        }`}
-      >
-        {icon}
-        {label}
-      </button>
-    );
-  }
-
   return (
     <div className="grid gap-3">
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -11205,30 +11183,25 @@ function BpmnModuleV2({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <input ref={importInputRef} type="file" accept=".bpm,.bpmn,.xml,.xpdl" className="hidden" onChange={handleImportFile} />
-            <ToolbarButton onClick={() => importInputRef.current?.click()} icon={<Upload className="h-4 w-4" />}>Importar</ToolbarButton>
-            <ToolbarButton onClick={undo} icon={<RotateCcw className="h-4 w-4" />}>Desfazer</ToolbarButton>
-            <ToolbarButton onClick={redo} icon={<RotateCcw className="h-4 w-4 rotate-180" />}>Refazer</ToolbarButton>
-            <ToolbarButton onClick={duplicateSelected} icon={<Copy className="h-4 w-4" />}>Duplicar</ToolbarButton>
-            <ToolbarButton onClick={deleteSelected} icon={<Trash2 className="h-4 w-4" />}>Excluir</ToolbarButton>
+            <ToolbarButton label="Importar" onClick={() => importInputRef.current?.click()} icon={<Upload className="h-4 w-4" />} />
+            <ToolbarButton label="Desfazer" onClick={undo} icon={<RotateCcw className="h-4 w-4" />} />
+            <ToolbarButton label="Refazer" onClick={redo} icon={<RotateCcw className="h-4 w-4 rotate-180" />} />
+            <ToolbarButton label="Duplicar" onClick={duplicateSelected} icon={<Copy className="h-4 w-4" />} />
+            <ToolbarButton label="Excluir" onClick={deleteSelected} icon={<Trash2 className="h-4 w-4" />} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setZoom((value) => Math.max(60, value - 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">-</button>
+            <button type="button" title="Reduzir zoom" aria-label="Reduzir zoom" onClick={() => setZoom((value) => Math.max(60, value - 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">-</button>
             <span className="w-14 text-center font-data text-sm font-bold">{zoom}%</span>
-            <button type="button" onClick={() => setZoom((value) => Math.min(160, value + 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">+</button>
-            <button type="button" onClick={() => setShowInspector((value) => !value)} className="rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold">
-              {showInspector ? "Ocultar painel" : "Mostrar painel"}
+            <button type="button" title="Aumentar zoom" aria-label="Aumentar zoom" onClick={() => setZoom((value) => Math.min(160, value + 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">+</button>
+            <button type="button" title={showInspector ? "Ocultar painel de propriedades" : "Mostrar painel de propriedades"} aria-label={showInspector ? "Ocultar painel de propriedades" : "Mostrar painel de propriedades"} onClick={() => setShowInspector((value) => !value)} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-foreground">
+              {showInspector ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
         </div>
 
         <div className={`grid min-h-[calc(100vh-170px)] ${showInspector ? "xl:grid-cols-[190px_minmax(0,1fr)_280px]" : "xl:grid-cols-[190px_minmax(0,1fr)]"}`}>
           <aside className="border-b border-border bg-[#f8f8f5] p-4 dark:bg-[#111512] xl:border-b-0 xl:border-r">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Ferramentas</h3>
-            <div className="mt-3 grid gap-2">
-              {toolButton("select", "Selecionar", <CheckCircle2 className="h-4 w-4" />)}
-              {toolButton("connect", "Conectar", <GitBranch className="h-4 w-4" />)}
-            </div>
-            <div className="mt-5 grid gap-3 border-t border-border pt-4">
+            <div className="grid gap-3">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Estrutura</h3>
               <BpmnTool title="Pool" toolType="pool" disabled={false} onClick={createPool}>
                 <span className="grid h-12 w-20 grid-cols-[16px_1fr] overflow-hidden rounded-sm border-2 border-[#10251d] bg-white">
@@ -11247,7 +11220,7 @@ function BpmnModuleV2({
               </BpmnTool>
             </div>
             <div className="mt-5 grid gap-3 border-t border-border pt-4">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Elementos BPMN</h3>
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Elementos</h3>
               <BpmnTool title="Evento inicial" nodeType="start" disabled={!hasPool} onClick={() => addNode("start")}><span className="h-9 w-9 rounded-full border-2 border-[#06966f] bg-[#d8f3e8]" /></BpmnTool>
               <BpmnTool title="Atividade" nodeType="task" disabled={!hasPool} onClick={() => addNode("task")}><span className="h-9 w-14 rounded-md border-2 border-[#008c95] bg-[#e6f5f3]" /></BpmnTool>
               <BpmnTool title="Gateway" nodeType="gateway" disabled={!hasPool} onClick={() => addNode("gateway")}><span className="h-10 w-10 rotate-45 border-2 border-[#d39a20] bg-[#fff5d8]" /></BpmnTool>
@@ -13097,21 +13070,23 @@ function ListEditor({
 }
 
 function ToolbarButton({
-  children,
   icon,
+  label,
   onClick,
 }: {
-  children: ReactNode;
   icon: ReactNode;
+  label: string;
   onClick: () => void;
 }) {
   return (
     <button
+      type="button"
+      title={label}
+      aria-label={label}
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+      className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-foreground transition hover:bg-muted"
     >
       {icon}
-      {children}
     </button>
   );
 }
