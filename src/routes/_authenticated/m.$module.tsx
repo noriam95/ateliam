@@ -5455,6 +5455,15 @@ function ModuleWorkspacePage() {
     };
   }
 
+  function brandForDocumentPresentation(): OrganizationBrand {
+    const documentBrand = brandForDocumentModel("pop-word");
+    const mappingPresentationBrand = brandForDocumentModel("ddp-html");
+    return {
+      ...documentBrand,
+      word_header_color: mappingPresentationBrand.word_header_color,
+    };
+  }
+
   async function addCauseToCatalog(gap: GapItem) {
     const title = plain(gap.causa);
     if (!title) throw new Error("Informe o nome da causa antes de cadastrar na biblioteca.");
@@ -5845,7 +5854,7 @@ function ModuleWorkspacePage() {
     if (snapshot && moduleId === "ddp") {
       docHtml = buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html"));
     } else if (snapshot && moduleId === "pop") {
-      docHtml = buildPopPresentationHtml(snapshot.pop, brandForDocumentModel("pop-word"));
+      docHtml = buildPopPresentationHtml(snapshot.pop, brandForDocumentPresentation());
     } else {
       docHtml = buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
     }
@@ -5866,7 +5875,7 @@ function ModuleWorkspacePage() {
   }
 
   function previewCurrentPop() {
-    const docHtml = buildPopPresentationHtml(workspace.pop, brandForDocumentModel("pop-word"));
+    const docHtml = buildPopPresentationHtml(workspace.pop, brandForDocumentPresentation());
     const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
     const opened = window.open(url, "_blank", "noopener");
     if (!opened) toast.error("Habilite pop-ups para visualizar o preenchimento.");
