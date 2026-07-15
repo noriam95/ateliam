@@ -1,7 +1,6 @@
 const DEMO_SESSION_KEY = "atelier_demo_session";
 const DEMO_WORKSPACE_STATE_KEY = "atelier_demo_workspace_state";
 const DEMO_WORKSPACE_VERSIONS_KEY = "atelier_demo_workspace_versions";
-const PRODUCTION_HOSTS = new Set(["bf-flow-2026.vercel.app"]);
 
 let storageAvailable: boolean | null = null;
 
@@ -30,11 +29,21 @@ function canUseStorage() {
   return storageAvailable;
 }
 
-function isDemoAllowedHost() {
-  if (typeof window === "undefined") return false;
-  const hostname = window.location.hostname;
-  if (["localhost", "127.0.0.1", "::1"].includes(hostname)) return true;
-  return hostname.endsWith(".vercel.app") && !PRODUCTION_HOSTS.has(hostname);
+export function clearLegacyDemoData() {
+  if (!canUseStorage()) return;
+
+  try {
+    const keysToRemove = Object.keys(window.localStorage).filter(
+      (key) =>
+        key.startsWith("atelier_demo_") ||
+        key.startsWith("ateliam-demo-") ||
+        key.startsWith("bf-flow-demo-") ||
+        key === "ateliam_modern_workspace_v2",
+    );
+    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // A indisponibilidade do armazenamento apenas impede a limpeza local.
+  }
 }
 
 function isWorkspaceState(value: unknown): value is Record<string, string> {
@@ -63,34 +72,21 @@ function createId() {
 }
 
 export function isDemoModeAvailable() {
-  return isDemoAllowedHost() && canUseStorage();
+  return false;
 }
 
 export function isDemoSessionActive() {
-  try {
-    return isDemoModeAvailable() && window.localStorage.getItem(DEMO_SESSION_KEY) === "1";
-  } catch {
-    return false;
-  }
+  clearLegacyDemoData();
+  return false;
 }
 
 export function startDemoSession() {
-  if (!isDemoModeAvailable()) return false;
-  try {
-    window.localStorage.setItem(DEMO_SESSION_KEY, "1");
-    return true;
-  } catch {
-    return false;
-  }
+  clearLegacyDemoData();
+  return false;
 }
 
 export function endDemoSession() {
-  if (!canUseStorage()) return;
-  try {
-    window.localStorage.removeItem(DEMO_SESSION_KEY);
-  } catch {
-    // Ignore storage cleanup failures. The next availability check will disable demo mode.
-  }
+  clearLegacyDemoData();
 }
 
 export function getDemoWorkspaceState() {

@@ -5,7 +5,7 @@ import { PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { supabase } from "@/integrations/supabase/client";
-import { isDemoModeAvailable, isDemoSessionActive, startDemoSession } from "@/lib/demo-session";
+import { clearLegacyDemoData, startDemoSession } from "@/lib/demo-session";
 import { resolveLoginIdentifier } from "@/lib/config.functions";
 
 export const Route = createFileRoute("/auth")({
@@ -54,10 +54,9 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
-  const [demoModeAvailable, setDemoModeAvailable] = useState(false);
 
   useEffect(() => {
-    setDemoModeAvailable(isDemoModeAvailable());
+    clearLegacyDemoData();
     const timer = window.setInterval(() => {
       setMessageIndex((current) => (current + 1) % LOGIN_MESSAGES.length);
     }, 7200);
@@ -72,15 +71,12 @@ function AuthPage() {
         .getSession()
         .then(({ data }) => {
           if (!cancelled && data.session) navigate({ to: "/" });
-          if (!cancelled && !data.session && isDemoSessionActive()) navigate({ to: "/" });
         })
         .catch(() => {
-          if (!cancelled && isDemoSessionActive()) navigate({ to: "/" });
           // Keep the auth screen available even when Supabase is not configured locally.
         });
     } catch {
-      if (isDemoSessionActive()) navigate({ to: "/" });
-      // Keep the local demo entry available.
+      // Keep the auth screen available even when Supabase is not configured locally.
     }
 
     return () => {
@@ -204,7 +200,7 @@ function AuthPage() {
             </button>
           </form>
 
-          {demoModeAvailable && (
+          {false && (
             <button
               type="button"
               onClick={enterDemoMode}

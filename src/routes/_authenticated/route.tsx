@@ -1,10 +1,11 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { isDemoSessionActive } from "@/lib/demo-session";
+import { clearLegacyDemoData, isDemoSessionActive } from "@/lib/demo-session";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
+    clearLegacyDemoData();
     try {
       const { data, error } = await supabase.auth.getUser();
       if (!error && data.user) return { isDemo: false, user: data.user };
