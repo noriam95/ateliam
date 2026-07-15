@@ -11031,11 +11031,12 @@ function BpmnModuleV2({
       const aligned = alignNodePosition(x, y, width, height, currentNode.id);
       const nextNode = { ...currentNode, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + height / 2) };
       const delta = { x: nextNode.x - currentNode.x, y: nextNode.y - currentNode.y };
+      const nextNodes = data.nodes.map((node) => node.id === drag.id ? nextNode : node);
       update({
         ...data,
         lanes,
-        nodes: data.nodes.map((node) => node.id === drag.id ? nextNode : node),
-        flows: data.flows.map((flow) => moveConnectorWithNode(flow, drag.id, delta)),
+        nodes: nextNodes,
+        flows: data.flows.map((flow) => refreshConnectorAfterNodeMove(moveConnectorWithNode(flow, drag.id, delta), nextNodes, drag.id)),
       });
     }
     if (drag.kind === "node-size") {
@@ -12103,6 +12104,38 @@ function moveConnectorWithNode(flow: BpmnFlow, nodeId: string, delta: { x: numbe
     }
   }
   return { ...flow, points };
+}
+
+function smartConnectorAnchors(from: BpmnNode, to: BpmnNode): { fromAnchor: BpmnEdgeAnchor; toAnchor: BpmnEdgeAnchor } {
+  const source = nodeBounds(from);
+  const target = nodeBounds(to);
+  const dx = target.cx - source.cx;
+  const dy = target.cy - source.cy;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  if (horizontal) {
+    return {
+      fromAnchor: { side: dx >= 0 ? "right" : "left", offset: 0.5 },
+      // With an appreciable vertical displacement, approach the target from
+      // above or below. This keeps the last segment perpendicular to the node.
+      toAnchor: Math.abs(dy) > 24
+        ? { side: dy >= 0 ? "top" : "bottom", offset: 0.5 }
+        : { side: dx >= 0 ? "left" : "right", offset: 0.5 },
+    };
+  }
+  return {
+    fromAnchor: { side: dy >= 0 ? "bottom" : "top", offset: 0.5 },
+    toAnchor: Math.abs(dx) > 24
+      ? { side: dx >= 0 ? "left" : "right", offset: 0.5 }
+      : { side: dy >= 0 ? "top" : "bottom", offset: 0.5 },
+  };
+}
+
+function refreshConnectorAfterNodeMove(flow: BpmnFlow, nodes: BpmnNode[], movedNodeId: string) {
+  if (flow.points?.length || (flow.from !== movedNodeId && flow.to !== movedNodeId) || !flow.from || !flow.to) return flow;
+  const from = nodes.find((node) => node.id === flow.from);
+  const to = nodes.find((node) => node.id === flow.to);
+  if (!from || !to) return flow;
+  return { ...flow, ...smartConnectorAnchors(from, to) };
 }
 
 function connectorRoutePoints(
