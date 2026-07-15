@@ -10560,6 +10560,7 @@ function BpmnModuleV2({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const ignoreCanvasClickRef = useRef(false);
   const [tool, setTool] = useState<"select" | "connect">("select");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
@@ -10725,6 +10726,7 @@ function BpmnModuleV2({
   function startNodeConnector(event: React.PointerEvent<SVGCircleElement>, node: BpmnNode, anchor: BpmnEdgeAnchor) {
     const start = anchorPoint(node, anchor);
     svgRef.current?.setPointerCapture?.(event.pointerId);
+    ignoreCanvasClickRef.current = true;
     setTool("select");
     setSelectedId(node.id);
     setSelectedFlowId(null);
@@ -11279,7 +11281,12 @@ function BpmnModuleV2({
                 className="touch-none rounded-lg bg-white shadow-sm"
                 onPointerMove={handlePointerMove}
                 onPointerUp={finishDrag}
-                onClick={() => {
+                onClick={(event) => {
+                  if (ignoreCanvasClickRef.current) {
+                    ignoreCanvasClickRef.current = false;
+                    return;
+                  }
+                  if (event.target !== event.currentTarget) return;
                   setSelectedId(null);
                   setSelectedFlowId(null);
                   if (tool !== "connect") setConnectFrom(null);
@@ -11427,6 +11434,7 @@ function BpmnModuleV2({
                       onSegmentPointerDown={(event, routePoints, firstPoint, secondPoint, axis) => {
                         event.stopPropagation();
                         svgRef.current?.setPointerCapture?.(event.pointerId);
+                        ignoreCanvasClickRef.current = true;
                         if (!(flow.points?.length)) {
                           update({
                             ...data,
@@ -11538,6 +11546,7 @@ function BpmnModuleV2({
                       if (editingNodeId === node.id) return;
                       if (tool === "connect") return;
                       svgRef.current?.setPointerCapture?.(event.pointerId);
+                      ignoreCanvasClickRef.current = true;
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
                       setSelectedId(node.id);
                       setSelectedFlowId(null);
@@ -11546,6 +11555,7 @@ function BpmnModuleV2({
                     onResizePointerDown={(event, handle) => {
                       event.stopPropagation();
                       svgRef.current?.setPointerCapture?.(event.pointerId);
+                      ignoreCanvasClickRef.current = true;
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
                       setDrag({ kind: "node-size", id: node.id, startX: p.x, startY: p.y, x: node.x, y: node.y, width: node.width ?? 140, height: node.height ?? 64, handle });
                     }}
