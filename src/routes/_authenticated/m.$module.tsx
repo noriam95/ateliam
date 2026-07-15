@@ -4177,7 +4177,7 @@ function buildReadonlyPreviewHtml(
 </style></head><body><div class="wrap">
 <div class="head"><div class="kicker">${html(label)} · Visualização</div><h1>${html(row.name)}</h1><span class="badge">${html(row.status)}</span></div>
 <div class="card">${rows}</div>
-<p class="note">Visualização somente-leitura — as informações não podem ser editadas nesta tela. Para alterar, use a opção “Editar” na consulta de registros.</p>
+<p class="note">Visualização somente-leitura — as informações não podem ser editadas nesta tela. Para alterar, use a opção "Editar" na consulta de registros.</p>
 </div></body></html>`;
 }
 
@@ -4236,8 +4236,235 @@ th{background:var(--accent);color:#fff;text-transform:uppercase;font-size:11px;l
 ${pop.purpose.objetivo || pop.purpose.abrangencia ? `<div class="card"><h2>Objetivo e abrangência</h2>${pop.purpose.objetivo ? `<p>${html(pop.purpose.objetivo)}</p>` : ""}${pop.purpose.abrangencia ? `<p class="note">${html(pop.purpose.abrangencia)}</p>` : ""}</div>` : ""}
 <div class="card"><h2>Procedimento</h2>${sections}</div>
 ${resp ? `<div class="card"><h2>Responsabilidades</h2><table><thead><tr><th>Área</th><th>Cargo</th><th>Responsabilidade</th></tr></thead><tbody>${resp}</tbody></table></div>` : ""}
-<p class="note">Visualização somente-leitura — para alterar, use “Editar” na consulta de registros.</p>
+<p class="note">Visualização somente-leitura — para alterar, use "Editar" na consulta de registros.</p>
 </div></body></html>`;
+}
+
+function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
+  const accent = docxColor(brand?.word_header_color, "1D1F23");
+  const assetBase =
+    typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
+  const title = pop.meta.titulo || documentationTypeName(pop.meta.tipo);
+  const code = pop.meta.codigo || pop.meta.tipo;
+  const nav = [
+    ["capa", "00 Capa"],
+    ["objetivo", "01 Objetivo"],
+    ["abrangencia", "02 Abrangência"],
+    ["procedimento", "03 Procedimento operacional"],
+    ["responsabilidades", "04 Responsabilidades"],
+    ["referencias", "05 Referências normativas"],
+    ["historico", "06 Histórico e alterações"],
+  ];
+  const block = (label: string, value: string) =>
+    '<div class="cover-field"><span>' + html(label) + '</span><strong>' + html(value || "-") + "</strong></div>";
+  const imageCards = (images: ModuleImage[]) =>
+    images
+      .filter((item) => item.src)
+      .map(
+        (item) =>
+          '<figure class="image-card"><figcaption><strong>' +
+          html(item.titulo || "Imagem") +
+          "</strong>" +
+          (item.legenda ? "<span>" + html(item.legenda) + "</span>" : "") +
+          '</figcaption><img src="' +
+          html(item.src) +
+          '" alt="' +
+          html(item.titulo || "Imagem") +
+          '" data-title="' +
+          html(item.titulo || "Imagem") +
+          '" onclick="openImageZoom(this,event)"/></figure>',
+      )
+      .join("");
+  const procedure = pop.sections.length
+    ? pop.sections
+        .map((section, index) => {
+          const subitems = (section.subitems ?? [])
+            .map((subitem) => {
+              const clauses = subitem.clauses
+                .map(
+                  (clause) =>
+                    '<article class="clause"><span>' +
+                    html((clause.letter || "a") + ")") +
+                    "</span><div>" +
+                    (clause.text ? "<p>" + html(clause.text) + "</p>" : "") +
+                    (clause.alert ? '<aside>' + html(clause.alert) + "</aside>" : "") +
+                    imageCards(clause.images) +
+                    "</div></article>",
+                )
+                .join("");
+              return (
+                '<details class="subitem"><summary><b>' +
+                html(subitem.code || String(index + 1)) +
+                "</b><strong>" +
+                html(subitem.title || "Subitem") +
+                '</strong></summary><div class="subitem-content">' +
+                (clauses || '<p class="empty-inline">Sem instruções detalhadas.</p>') +
+                "</div></details>"
+              );
+            })
+            .join("");
+          return (
+            '<article class="procedure-card"><header><span>' +
+            html(section.code || String(index + 1).padStart(2, "0")) +
+            "</span><div><h3>" +
+            html(section.title || "Procedimento") +
+            "</h3>" +
+            (section.description ? "<p>" + html(section.description) + "</p>" : "") +
+            "</div></header>" +
+            (section.body ? '<div class="procedure-body">' + html(section.body) + "</div>" : "") +
+            (section.records || section.risks
+              ? '<dl class="procedure-info">' +
+                (section.records
+                  ? "<div><dt>Registros</dt><dd>" + html(section.records) + "</dd></div>"
+                  : "") +
+                (section.risks
+                  ? "<div><dt>Riscos e controles</dt><dd>" + html(section.risks) + "</dd></div>"
+                  : "") +
+                "</dl>"
+              : "") +
+            imageCards(section.images) +
+            subitems +
+            "</article>"
+          );
+        })
+        .join("")
+    : '<div class="empty">Nenhum procedimento informado.</div>';
+  const responsibilities = pop.responsibilities.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Área</th><th>Cargo</th><th>Responsabilidades</th></tr></thead><tbody>' +
+      pop.responsibilities
+        .map(
+          (item) =>
+            "<tr><td>" +
+            html(item.area || "-") +
+            "</td><td>" +
+            html(item.cargo || "-") +
+            "</td><td>" +
+            html(item.responsabilidade || "-") +
+            "</td></tr>",
+        )
+        .join("") +
+      "</tbody></table></div>"
+    : '<div class="empty">Nenhuma responsabilidade informada.</div>';
+  const references = pop.references.length
+    ? '<div class="reference-grid">' +
+      pop.references
+        .map(
+          (item) =>
+            '<article><span>' +
+            html(item.codigo || "Referência") +
+            "</span><h3>" +
+            html(item.titulo || "Sem título") +
+            "</h3><p>" +
+            html(item.aplicabilidade || "") +
+            "</p></article>",
+        )
+        .join("") +
+      "</div>"
+    : '<div class="empty">Nenhuma referência normativa informada.</div>';
+  const history = pop.history.length
+    ? '<div class="table-wrap"><table><thead><tr><th>Versão</th><th>Data</th><th>Elaborador</th><th>Revisor</th><th>Aprovador</th></tr></thead><tbody>' +
+      pop.history
+        .map(
+          (item) =>
+            "<tr><td>" +
+            html(item.version || "-") +
+            "</td><td>" +
+            html(formatDateBr(item.date) || "-") +
+            "</td><td>" +
+            html(item.elaborador || "-") +
+            "</td><td>" +
+            html(item.revisor || "-") +
+            "</td><td>" +
+            html(item.aprovador || "-") +
+            "</td></tr>",
+        )
+        .join("") +
+      "</tbody></table></div>"
+    : '<div class="empty">Nenhum histórico informado.</div>';
+  const changes = pop.changes.length
+    ? '<div class="changes">' +
+      pop.changes
+        .map(
+          (item) =>
+            '<article><span>' +
+            html(item.versao || "-") +
+            "</span><div><strong>" +
+            html(item.local || "Alteração") +
+            "</strong><p>" +
+            html(item.descricao || "") +
+            "</p></div></article>",
+        )
+        .join("") +
+      "</div>"
+    : "";
+  const sectionHead = (num: string, heading: string, subtitle: string) =>
+    '<header class="section-head"><span>' +
+    num +
+    "</span><div><p>Documento controlado</p><h2>" +
+    heading +
+    "</h2><small>" +
+    subtitle +
+    "</small></div></header>";
+  return (
+    '<!doctype html><html lang="pt-BR" data-theme="light"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>' +
+    html(code) +
+    " - " +
+    html(title) +
+    '</title><style>:root{--accent:#' +
+    accent +
+    ";--accent-strong:color-mix(in srgb,var(--accent) 78%,#000);--gold:#d49a21;--bg:#f4f2ea;--surface:#fff;--surface-2:#faf8f1;--text:#17191f;--muted:#626a73;--line:#ddd8ca;--nav:282px;--shadow:0 18px 60px rgba(28,28,28,.12)}[data-theme=dark]{--bg:#101418;--surface:#171c22;--surface-2:#1d232a;--text:#f7f9fb;--muted:#c8d0da;--line:#3f4853;--shadow:0 20px 80px rgba(0,0,0,.58);--accent-strong:color-mix(in srgb,var(--accent) 28%,#f4f8fb)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}.shell{display:grid;grid-template-columns:var(--nav) minmax(0,1fr);min-height:100vh}.sidebar{position:sticky;top:0;display:flex;flex-direction:column;gap:26px;height:100vh;padding:26px 20px;background:linear-gradient(180deg,var(--accent-strong),color-mix(in srgb,var(--accent) 52%,#111));color:#fff}.brand-logo{max-width:170px;max-height:54px;object-fit:contain}.system-logo-pair{display:inline-flex;align-items:center}.logo-dark{display:none}[data-theme=dark] .logo-light{display:none}[data-theme=dark] .logo-dark{display:block}.doc-code{border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px;background:rgba(255,255,255,.08)}.doc-code span{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.75}.doc-code strong{display:block;margin-top:8px;font-size:16px;line-height:1.28}.nav{display:grid;gap:4px}.nav a{border-radius:9px;padding:10px 12px;color:rgba(255,255,255,.84);font-size:12px;font-weight:750;letter-spacing:.1em;text-decoration:none;text-transform:uppercase}.nav a:hover{background:rgba(255,255,255,.12);color:#fff}.presentation-controls{display:grid;grid-template-columns:1fr 40px;gap:8px;margin-top:auto}.theme-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:5px;background:rgba(0,0,0,.12)}.theme-toggle button,.fullscreen-button{display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.76);cursor:pointer}.theme-toggle button{padding:9px}.theme-toggle button svg,.fullscreen-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.theme-toggle button.active{background:#fff;color:#111}.fullscreen-button{height:40px;width:40px;border:1px solid rgba(255,255,255,.28);border-radius:12px;background:rgba(255,255,255,.08)}.slide{min-height:100vh;padding:56px 72px;border-bottom:1px solid var(--line);background:var(--surface)}.slide.alt{background:var(--surface-2)}.cover{display:flex;flex-direction:column;justify-content:center;background:radial-gradient(circle at 84% 12%,color-mix(in srgb,var(--gold) 30%,transparent),transparent 30%),linear-gradient(135deg,var(--accent-strong),color-mix(in srgb,var(--accent) 48%,#111));color:#fff}.kicker{color:#ffd47a;font-size:12px;font-weight:900;letter-spacing:.34em;text-transform:uppercase}.cover h1{max-width:980px;margin:18px 0 22px;font-size:clamp(44px,6vw,82px);line-height:.95;letter-spacing:-.02em}.cover-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:44px;align-items:end;max-width:1180px}.cover-code{min-width:190px;border-left:4px solid #ffd47a;padding:0 0 3px 18px}.cover-code span{display:block;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase}.cover-code strong{display:block;margin-top:10px;font-size:28px;letter-spacing:.08em}.cover-context{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:1px;max-width:1180px;margin:52px 0 0;border-top:1px solid rgba(255,255,255,.24);border-bottom:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.18)}.cover-line{display:grid;gap:10px;margin:0;padding:22px 24px;background:rgba(0,0,0,.16)}.cover-line dt{color:#ffd47a;font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}.cover-line dd{margin:0;color:#fff;font-size:18px;font-weight:800;line-height:1.25}.cover-meta{display:flex;flex-wrap:wrap;gap:10px;max-width:1180px;margin-top:28px}.cover-field{border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 13px;background:rgba(255,255,255,.08)}.cover-field span{margin-right:7px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.cover-field strong{color:#fff;font-size:13px}.section-head{display:flex;align-items:flex-start;gap:22px;margin-bottom:30px}.section-head>span{display:grid;width:64px;height:64px;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-strong);font-size:28px;font-weight:950}.section-head p{margin:0 0 7px;color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.26em;text-transform:uppercase}.section-head h2{margin:0;font-size:clamp(30px,4vw,48px);line-height:1.02}.section-head small{display:block;margin-top:8px;color:var(--muted);font-size:15px}.text-panel,.procedure-card,.reference-grid article,.changes article{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}.text-panel{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;padding:24px}.text-panel .icon{display:grid;width:44px;height:44px;place-items:center;border-radius:14px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:950}.text-panel h3,.procedure-card h3,.reference-grid h3{margin:0 0 9px;color:var(--accent-strong);font-size:18px}.text-panel p,.procedure-card p,.reference-grid p,.changes p{margin:0;color:var(--muted);line-height:1.6}.procedure-stack{display:grid;gap:16px}.procedure-card{padding:22px}.procedure-card>header{display:grid;grid-template-columns:42px minmax(0,1fr);gap:14px;align-items:start}.procedure-card>header>span{display:grid;place-items:center;width:38px;height:30px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:950}.procedure-body{margin:17px 0 0;padding:16px 0;border-top:1px solid var(--line);white-space:pre-line;line-height:1.65}.procedure-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:16px 0 0}.procedure-info div{padding:12px;border-radius:10px;background:var(--surface-2)}.procedure-info dt{color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.procedure-info dd{margin:5px 0 0;font-size:14px;line-height:1.45}.subitem{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.subitem summary{display:flex;gap:10px;align-items:center;cursor:pointer;list-style:none}.subitem summary::-webkit-details-marker{display:none}.subitem summary:before{content:'';width:8px;height:8px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg)}.subitem summary b{color:var(--gold)}.subitem-content{display:grid;gap:12px;margin-top:14px;padding-left:18px}.clause{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;border-left:2px solid color-mix(in srgb,var(--gold) 45%,var(--line));padding:12px 0 12px 13px}.clause>span{color:var(--gold);font-weight:950}.clause aside{margin-top:10px;border-left:3px solid var(--gold);padding:10px 12px;background:color-mix(in srgb,var(--gold) 10%,transparent);color:var(--text);font-size:14px;line-height:1.45}.image-card{display:grid;gap:10px;margin:16px 0 0;border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--surface-2)}.image-card figcaption{display:grid;gap:3px}.image-card figcaption strong{font-size:14px;color:var(--accent-strong)}.image-card figcaption span{color:var(--muted);font-size:13px}.image-card img{width:100%;max-height:62vh;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:zoom-in}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}table{width:100%;border-collapse:collapse}th,td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 16px;text-align:left;vertical-align:top;font-size:14px;line-height:1.45}th{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--accent-strong);font-size:11px;letter-spacing:.14em;text-transform:uppercase}.reference-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.reference-grid article{padding:22px}.reference-grid article>span{color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}.changes{display:grid;gap:10px;margin-top:18px}.changes article{display:grid;grid-template-columns:56px minmax(0,1fr);gap:14px;padding:16px 18px;box-shadow:none}.changes article>span{display:grid;place-items:center;height:30px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:900}.changes strong{display:block;margin-bottom:5px}.empty{border:1px dashed var(--line);border-radius:16px;padding:34px;background:var(--surface-2);color:var(--muted);font-style:italic;text-align:center}.empty-inline{color:var(--muted);font-style:italic}.zoom-modal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;overflow:hidden;padding:28px;background:rgba(5,7,10,.92)}.zoom-modal.open{display:flex}.zoom-modal>img{max-width:94vw;max-height:86vh;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55);cursor:zoom-out;transition:transform .16s ease;transform:scale(var(--zoom-scale,1));transform-origin:center center}.zoom-title{position:fixed;top:22px;left:28px;color:#fff;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.zoom-close{position:fixed;top:20px;right:28px;border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:9px 14px;background:transparent;color:#fff;cursor:pointer}.zoom-help{position:fixed;bottom:24px;left:28px;color:rgba(255,255,255,.74);font-size:12px}.zoom-map{position:fixed;right:28px;bottom:24px;display:none;overflow:hidden;width:190px;height:126px;border:1px solid rgba(255,255,255,.32);border-radius:12px;padding:8px;background:rgba(255,255,255,.08)}.zoom-modal.open .zoom-map{display:block}.zoom-map img{width:100%;height:100%;border-radius:8px;background:#fff;object-fit:contain}.zoom-map span{position:absolute;border:2px solid #d49a21;border-radius:8px;background:rgba(212,154,33,.14);box-shadow:0 0 0 999px rgba(0,0,0,.18)}[data-theme=dark] .sidebar{background:linear-gradient(180deg,#111820,#0b0f13);border-right:1px solid #303943}[data-theme=dark] .doc-code{border-color:#66717d;background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.07))}[data-theme=dark] .slide{background:#151a20}[data-theme=dark] .slide.alt{background:#11161b}[data-theme=dark] .section-head>span{border:1px solid rgba(242,188,75,.3);background:rgba(212,154,33,.16);color:#f2bc4b}[data-theme=dark] .text-panel,.procedure-card,.reference-grid article,.changes article{background:#1b2128;border-color:#46505b}[data-theme=dark] .text-panel h3,[data-theme=dark] .procedure-card h3,[data-theme=dark] .reference-grid h3,[data-theme=dark] .image-card figcaption strong{color:#f2bc4b}[data-theme=dark] .text-panel p,[data-theme=dark] .procedure-card p,[data-theme=dark] .reference-grid p,[data-theme=dark] .changes p{color:#d5dce4}[data-theme=dark] .table-wrap{background:#171d24;border-color:#505a66}[data-theme=dark] th{background:#232b34;color:#dfe6ee;border-color:#505a66}[data-theme=dark] td{border-color:#404a55;color:#eef2f6}[data-theme=dark] .image-card{background:#1b2128;border-color:#46505b}@media(max-width:980px){.shell{display:block}.sidebar{position:static;height:auto}.slide{padding:36px 22px}.cover-hero,.cover-context{grid-template-columns:1fr;gap:24px}.cover-context{margin-top:32px}.cover-meta{margin-top:20px}.zoom-map{display:none!important}}@media print{.sidebar{display:none}.shell{display:block}.slide{break-after:page;min-height:100vh}}</style></head><body><div class='shell'><aside class='sidebar'><div class='brand'>" +
+    bfFlowLogoHtml(brand, assetBase) +
+    '</div><div class="doc-code"><span>' +
+    html(code) +
+    "</span><strong>" +
+    html(title) +
+    '</strong></div><nav class="nav">' +
+    nav.map((item) => '<a href="#' + item[0] + '">' + html(item[1]) + "</a>").join("") +
+    '</nav><div class="presentation-controls"><div class="theme-toggle"><button type="button" data-theme-choice="light" class="active" title="Tema claro" aria-label="Tema claro">☀</button><button type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">◐</button></div><button type="button" class="fullscreen-button" id="fullscreen-toggle" title="Tela cheia" aria-label="Tela cheia">⛶</button></div></aside><main class="content"><section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">00 · Documento controlado</div><h1>' +
+    html(title) +
+    '</h1></div><div class="cover-code"><span>Código</span><strong>' +
+    html(code) +
+    '</strong></div></div><dl class="cover-context"><div class="cover-line"><dt>Tipo de documento</dt><dd>' +
+    html(documentationTypeName(pop.meta.tipo)) +
+    '</dd></div><div class="cover-line"><dt>Processo relacionado</dt><dd>' +
+    html(pop.meta.processo || "Não informado") +
+    '</dd></div><div class="cover-line"><dt>Área responsável</dt><dd>' +
+    html(pop.meta.area || "Não informada") +
+    '</dd></div></dl><div class="cover-meta">' +
+    [
+      ["Versão", pop.meta.versao],
+      ["Status", pop.meta.status],
+      ["Vigência", formatDateBr(pop.meta.vigencia)],
+      ["Elaborador", pop.meta.elaboracao],
+      ["Revisor", pop.meta.revisor],
+    ]
+      .filter((item) => plain(item[1]).trim())
+      .map((item) => block(item[0], item[1]))
+      .join("") +
+    '</div></section><section class="slide" id="objetivo">' +
+    sectionHead("01", "Objetivo", "Finalidade definida para este documento.") +
+    '<article class="text-panel"><span class="icon">01</span><div><h3>Objetivo</h3><p>' +
+    html(pop.purpose.objetivo || "Não informado.") +
+    '</p></div></article></section><section class="slide alt" id="abrangencia">' +
+    sectionHead("02", "Abrangência", "Limites e aplicação do procedimento.") +
+    '<article class="text-panel"><span class="icon">02</span><div><h3>Abrangência</h3><p>' +
+    html(pop.purpose.abrangencia || "Não informada.") +
+    '</p></div></article></section><section class="slide" id="procedimento">' +
+    sectionHead("03", "Procedimento operacional", "Sequência de atividades, subitens e orientações.") +
+    '<div class="procedure-stack">' +
+    procedure +
+    '</div></section><section class="slide alt" id="responsabilidades">' +
+    sectionHead("04", "Responsabilidades", "Áreas, cargos e atribuições relacionadas.") +
+    responsibilities +
+    '</section><section class="slide" id="referencias">' +
+    sectionHead("05", "Referências normativas", "Materiais utilizados como referência.") +
+    references +
+    '</section><section class="slide alt" id="historico">' +
+    sectionHead("06", "Histórico e alterações", "Rastreabilidade das revisões do documento.") +
+    history +
+    changes +
+    '</section></main></div><div class="zoom-modal" id="zoom-modal" onclick="closeImageZoom()"><div class="zoom-title" id="zoom-title"></div><button class="zoom-close" onclick="closeImageZoom();event.stopPropagation()">Fechar</button><img id="zoom-img" alt="Imagem ampliada" onclick="changeImageZoom(.25,event);event.stopPropagation()" oncontextmenu="changeImageZoom(-.25,event);event.preventDefault();event.stopPropagation()"/><div class="zoom-help">Clique para ampliar. Botão direito para reduzir.</div><div class="zoom-map" id="zoom-map"><img id="zoom-map-img" alt="Miniatura"/><span id="zoom-map-window"></span></div></div><script>(function(){var r=document.documentElement,b=[].slice.call(document.querySelectorAll("[data-theme-choice]"));function a(t){r.setAttribute("data-theme",t);try{localStorage.setItem("bf-flow-document-preview-theme",t)}catch(e){}b.forEach(function(x){x.classList.toggle("active",x.getAttribute("data-theme-choice")===t)})}var s="light";try{s=localStorage.getItem("bf-flow-document-preview-theme")||"light"}catch(e){}a(s);b.forEach(function(x){x.addEventListener("click",function(){a(x.getAttribute("data-theme-choice")||"light")})});var f=document.getElementById("fullscreen-toggle");if(f)f.addEventListener("click",function(){if(!document.fullscreenElement){document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()}else{document.exitFullscreen&&document.exitFullscreen()}})})();var imageZoomScale=1,imageZoomOrigin={x:50,y:50};function setZoomOrigin(e,t){if(!e||!t)return;var r=t.getBoundingClientRect();imageZoomOrigin={x:Math.max(0,Math.min(100,(e.clientX-r.left)*100/r.width)),y:Math.max(0,Math.min(100,(e.clientY-r.top)*100/r.height))}}function updateZoomMap(){var w=document.getElementById("zoom-map-window"),m=document.getElementById("zoom-map");if(!w||!m)return;var p=8,x=m.clientWidth-p*2,y=m.clientHeight-p*2,v=1/imageZoomScale,l=p+imageZoomOrigin.x*x/100-x*v/2,t=p+imageZoomOrigin.y*y/100-y*v/2;l=Math.max(p,Math.min(p+x-x*v,l));t=Math.max(p,Math.min(p+y-y*v,t));w.style.left=l+"px";w.style.top=t+"px";w.style.width=x*v+"px";w.style.height=y*v+"px"}function setImageZoom(s){imageZoomScale=Math.max(1,Math.min(3,s));var t=document.getElementById("zoom-img");if(t){t.style.setProperty("--zoom-scale",String(imageZoomScale));t.style.transformOrigin=imageZoomOrigin.x+"% "+imageZoomOrigin.y+"%"}updateZoomMap()}function changeImageZoom(d,e){var t=document.getElementById("zoom-img");setZoomOrigin(e,t);setImageZoom(imageZoomScale+d)}function openImageZoom(i,e){var m=document.getElementById("zoom-modal"),t=document.getElementById("zoom-img"),n=document.getElementById("zoom-map-img"),h=document.getElementById("zoom-title");setZoomOrigin(e,i);t.src=i.src;if(n)n.src=i.src;h.textContent=i.dataset.title||i.alt||"Imagem";setImageZoom(1);m.classList.add("open");setTimeout(updateZoomMap,0)}function closeImageZoom(){document.getElementById("zoom-modal").classList.remove("open")}</script></body></html>'
+  );
 }
 
 function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
@@ -5440,7 +5667,7 @@ function ModuleWorkspacePage() {
 
     if (isDemo || row.id.startsWith("demo-")) {
       setStatusOverrides((current) => ({ ...current, [row.id]: status }));
-      toast.success(`Status atualizado para “${status}”.`);
+      toast.success(`Status atualizado para "${status}".`);
       return;
     }
 
@@ -5492,7 +5719,7 @@ function ModuleWorkspacePage() {
       window.localStorage.setItem(draftKey, JSON.stringify(updatedWorkspace));
     }
     await cloudDocsQ.refetch();
-    toast.success(`Status atualizado para “${status}”.`);
+    toast.success(`Status atualizado para "${status}".`);
   }
 
   async function editDocumentRow(row: ModuleGridRow) {
@@ -5507,7 +5734,7 @@ function ModuleWorkspacePage() {
       return;
     }
     if (row.id.startsWith("demo-row:")) {
-      toast.info("Registro de demonstração. Use “Novo” para criar um caso editável.");
+      toast.info('Registro de demonstração. Use "Novo" para criar um caso editável.');
       return;
     }
     if (row.id.startsWith("demo-saved:") && savedDemoDocument) {
@@ -5618,7 +5845,7 @@ function ModuleWorkspacePage() {
     if (snapshot && moduleId === "ddp") {
       docHtml = buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html"));
     } else if (snapshot && moduleId === "pop") {
-      docHtml = buildPopPreviewHtml(snapshot.pop, brandForDocumentModel("pop-word"));
+      docHtml = buildPopPresentationHtml(snapshot.pop, brandForDocumentModel("pop-word"));
     } else {
       docHtml = buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
     }
@@ -5639,7 +5866,7 @@ function ModuleWorkspacePage() {
   }
 
   function previewCurrentPop() {
-    const docHtml = buildPopPreviewHtml(workspace.pop, brandForDocumentModel("pop-word"));
+    const docHtml = buildPopPresentationHtml(workspace.pop, brandForDocumentModel("pop-word"));
     const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
     const opened = window.open(url, "_blank", "noopener");
     if (!opened) toast.error("Habilite pop-ups para visualizar o preenchimento.");
@@ -5651,7 +5878,7 @@ function ModuleWorkspacePage() {
     format: "ddp-html" | "ddp-docx" | "ddp-presentation-doc" | "pop-docx" | "pop-presentation-doc",
   ) {
     if (row.id.startsWith("demo-row:")) {
-      toast.info("Registro de demonstração. Crie um caso real em “Novo” para exportar.");
+      toast.info('Registro de demonstração. Crie um caso real em "Novo" para exportar.');
       return;
     }
     const snapshot = resolveRowSnapshot(row);
@@ -9210,7 +9437,7 @@ function DdpModule({
       {pendingStatus ? (
         <Modal
           title="Alterar status do mapeamento"
-          subtitle={`Confirma alterar o status de “${data.meta.status || "Em andamento"}” para “${pendingStatus}”?`}
+          subtitle={`Confirma alterar o status de "${data.meta.status || "Em andamento"}" para "${pendingStatus}"?`}
           onClose={() => setPendingStatus(null)}
         >
           <div className="flex justify-end gap-2">
