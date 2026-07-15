@@ -11199,6 +11199,9 @@ function BpmnModuleV2({
       setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
       setFuture([]);
     }
+    if (event && svgRef.current?.hasPointerCapture(event.pointerId)) {
+      svgRef.current.releasePointerCapture(event.pointerId);
+    }
     setConnectionTarget(null);
     setDrag(null);
   }
@@ -11274,7 +11277,6 @@ function BpmnModuleV2({
                 className="touch-none rounded-lg bg-white shadow-sm"
                 onPointerMove={handlePointerMove}
                 onPointerUp={finishDrag}
-                onPointerLeave={finishDrag}
                 onClick={() => {
                   setSelectedId(null);
                   setSelectedFlowId(null);
@@ -11422,6 +11424,7 @@ function BpmnModuleV2({
                       }}
                       onSegmentPointerDown={(event, routePoints, firstPoint, secondPoint, axis) => {
                         event.stopPropagation();
+                        svgRef.current?.setPointerCapture?.(event.pointerId);
                         if (!(flow.points?.length)) {
                           update({
                             ...data,
@@ -11531,11 +11534,13 @@ function BpmnModuleV2({
                       event.stopPropagation();
                       if (editingNodeId === node.id) return;
                       if (tool === "connect") return;
+                      svgRef.current?.setPointerCapture?.(event.pointerId);
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
                       setDrag({ kind: "node", id: node.id, dx: p.x - node.x, dy: p.y - node.y });
                     }}
                     onResizePointerDown={(event, handle) => {
                       event.stopPropagation();
+                      svgRef.current?.setPointerCapture?.(event.pointerId);
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
                       setDrag({ kind: "node-size", id: node.id, startX: p.x, startY: p.y, x: node.x, y: node.y, width: node.width ?? 140, height: node.height ?? 64, handle });
                     }}
@@ -11652,7 +11657,7 @@ function BpmnConnectorV2({
   // A rota automatica tambem nasce com uma alca central. Assim, ao puxar a
   // alca o usuario passa a controlar a mesma linha que ja estava vendo.
   const defaultPoints = points.length > 0 ? points : editableConnectorPoints(a, b, fromAnchor, toAnchor);
-  const route = [a, ...defaultPoints, b];
+  const route = orthogonalRoute(a, defaultPoints, b, fromAnchor?.side, toAnchor?.side);
   const path = route.map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`).join(" ");
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   const controlSegment = connectorControlSegment(defaultPoints);
@@ -11998,6 +12003,39 @@ function orthogonalPoints(a: { x: number; y: number }, b: { x: number; y: number
     { x: a.x, y: midY },
     { x: b.x, y: midY },
   ];
+}
+
+function orthogonalRoute(
+  start: { x: number; y: number },
+  points: Array<{ x: number; y: number }>,
+  end: { x: number; y: number },
+  fromSide?: BpmnEdgeSide,
+  toSide?: BpmnEdgeSide,
+) {
+  const raw = [start, ...points, end];
+  const route: Array<{ x: number; y: number }> = [raw[0]];
+  const horizontalSide = (side?: BpmnEdgeSide) => side === "left" || side === "right";
+
+  for (let index = 1; index < raw.length; index += 1) {
+    const previous = route.at(-1)!;
+    const target = raw[index];
+    if (previous.x !== target.x && previous.y !== target.y) {
+      const firstSegment = index === 1;
+      const lastSegment = index === raw.length - 1;
+      const firstMustBeHorizontal = firstSegment && horizontalSide(fromSide);
+      const firstMustBeVertical = firstSegment && fromSide && !horizontalSide(fromSide);
+      const lastMustBeHorizontal = lastSegment && horizontalSide(toSide);
+      const lastMustBeVertical = lastSegment && toSide && !horizontalSide(toSide);
+      const preferHorizontal = firstMustBeHorizontal || lastMustBeVertical
+        ? true
+        : firstMustBeVertical || lastMustBeHorizontal
+          ? false
+          : Math.abs(target.x - previous.x) >= Math.abs(target.y - previous.y);
+      route.push(preferHorizontal ? { x: target.x, y: previous.y } : { x: previous.x, y: target.y });
+    }
+    route.push(target);
+  }
+  return route;
 }
 
 function edgeVector(side?: BpmnEdgeSide) {
