@@ -436,6 +436,7 @@ function PorterDiagram({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const outputItems = Array.isArray(outputs) ? outputs : [];
   const shownOutputs = outputItems.slice(0, 5);
   const expandedImageSrc = useMemo(
@@ -452,12 +453,14 @@ function PorterDiagram({
 
   function openExpanded() {
     setExpandedZoom(1);
+    setZoomOrigin({ x: 50, y: 50 });
     setExpanded(true);
   }
 
   function closeExpanded() {
     setExpanded(false);
     setExpandedZoom(1);
+    setZoomOrigin({ x: 50, y: 50 });
   }
 
   function zoomMapWindowStyle() {
@@ -466,8 +469,8 @@ function PorterDiagram({
     const height = 110;
     const visible = 1 / zoomScale;
     return {
-      left: padding + (width - width * visible) / 2,
-      top: padding + (height - height * visible) / 2,
+      left: Math.max(padding, Math.min(padding + width - width * visible, padding + (zoomOrigin.x / 100) * width - (width * visible) / 2)),
+      top: Math.max(padding, Math.min(padding + height - height * visible, padding + (zoomOrigin.y / 100) * height - (height * visible) / 2)),
       width: width * visible,
       height: height * visible,
     };
@@ -632,14 +635,24 @@ function PorterDiagram({
             src={expandedImageSrc}
             alt="Cadeia de Valor ampliada"
             className="max-h-[86vh] max-w-[94vw] bg-white shadow-[0_20px_70px_rgba(0,0,0,.55)] transition-transform duration-150"
-            style={{ transform: `scale(${zoomScale})` }}
+            style={{ transform: `scale(${zoomScale})`, transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` }}
             onClick={(event) => {
               event.stopPropagation();
+              const rect = event.currentTarget.getBoundingClientRect();
+              setZoomOrigin({
+                x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
+                y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
+              });
               setExpandedZoom(zoomScale + 0.25);
             }}
             onContextMenu={(event) => {
               event.preventDefault();
               event.stopPropagation();
+              const rect = event.currentTarget.getBoundingClientRect();
+              setZoomOrigin({
+                x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
+                y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
+              });
               setExpandedZoom(zoomScale - 0.25);
             }}
           />

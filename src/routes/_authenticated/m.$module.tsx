@@ -4317,7 +4317,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
           image.caption ? `<p>${html(image.caption)}</p>` : ""
         }</div><img class="zoomable" src="${html(image.src)}" alt="${html(
           image.title || "Imagem",
-        )}" data-title="${html(image.title || "Imagem")}" onclick="openImageZoom(this)"/></figure>`
+        )}" data-title="${html(image.title || "Imagem")}" onclick="openImageZoom(this,event)"/></figure>`
       : "";
 
   const systemCards = model.systems.length
@@ -4497,11 +4497,13 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   if(fullscreenButton){fullscreenButton.addEventListener('click',function(){if(!document.fullscreenElement){document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();}else{document.exitFullscreen&&document.exitFullscreen();}});}
 })();
 var imageZoomScale=1;
-function updateZoomMap(){var win=document.getElementById('zoom-map-window');if(!win)return;var map=document.getElementById('zoom-map');var padding=8;var w=map?map.clientWidth-padding*2:174;var h=map?map.clientHeight-padding*2:110;var visible=1/imageZoomScale;var left=padding+(w-w*visible)/2;var top=padding+(h-h*visible)/2;win.style.left=left+'px';win.style.top=top+'px';win.style.width=(w*visible)+'px';win.style.height=(h*visible)+'px';}
-function setImageZoom(scale){imageZoomScale=Math.max(1,Math.min(3,scale));var target=document.getElementById('zoom-img');if(target)target.style.setProperty('--zoom-scale',String(imageZoomScale));updateZoomMap();}
-function changeImageZoom(delta){setImageZoom(imageZoomScale+delta);}
-function openImageZoom(img){var modal=document.getElementById('zoom-modal');var target=document.getElementById('zoom-img');var map=document.getElementById('zoom-map-img');var title=document.getElementById('zoom-title');target.src=img.src;if(map)map.src=img.src;title.textContent=img.dataset.title||img.alt||'Imagem';setImageZoom(1);modal.classList.add('open');setTimeout(updateZoomMap,0);}
-function closeImageZoom(){var modal=document.getElementById('zoom-modal');var target=document.getElementById('zoom-img');var map=document.getElementById('zoom-map-img');modal.classList.remove('open');target.src='';if(map)map.src='';setImageZoom(1);}
+var imageZoomOrigin={x:50,y:50};
+function setZoomOrigin(event,target){if(!event||!target)return;var rect=target.getBoundingClientRect();if(!rect.width||!rect.height)return;imageZoomOrigin={x:Math.max(0,Math.min(100,(event.clientX-rect.left)*100/rect.width)),y:Math.max(0,Math.min(100,(event.clientY-rect.top)*100/rect.height))};}
+function updateZoomMap(){var win=document.getElementById('zoom-map-window');if(!win)return;var map=document.getElementById('zoom-map');var padding=8;var w=map?map.clientWidth-padding*2:174;var h=map?map.clientHeight-padding*2:110;var visible=1/imageZoomScale;var left=padding+imageZoomOrigin.x*w/100-w*visible/2;var top=padding+imageZoomOrigin.y*h/100-h*visible/2;left=Math.max(padding,Math.min(padding+w-w*visible,left));top=Math.max(padding,Math.min(padding+h-h*visible,top));win.style.left=left+'px';win.style.top=top+'px';win.style.width=(w*visible)+'px';win.style.height=(h*visible)+'px';}
+function setImageZoom(scale){imageZoomScale=Math.max(1,Math.min(3,scale));var target=document.getElementById('zoom-img');if(target){target.style.setProperty('--zoom-scale',String(imageZoomScale));target.style.transformOrigin=imageZoomOrigin.x+'% '+imageZoomOrigin.y+'%';}updateZoomMap();}
+function changeImageZoom(delta){var target=document.getElementById('zoom-img');setZoomOrigin(window.event,target);setImageZoom(imageZoomScale+delta);}
+function openImageZoom(img){var modal=document.getElementById('zoom-modal');var target=document.getElementById('zoom-img');var map=document.getElementById('zoom-map-img');var title=document.getElementById('zoom-title');imageZoomOrigin={x:50,y:50};target.src=img.src;if(map)map.src=img.src;title.textContent=img.dataset.title||img.alt||'Imagem';setImageZoom(1);modal.classList.add('open');setTimeout(updateZoomMap,0);}
+function closeImageZoom(){var modal=document.getElementById('zoom-modal');var target=document.getElementById('zoom-img');var map=document.getElementById('zoom-map-img');modal.classList.remove('open');target.src='';if(map)map.src='';imageZoomOrigin={x:50,y:50};setImageZoom(1);}
 document.addEventListener('keydown',function(event){if(event.key==='Escape')closeImageZoom();});
 </script>
 </body>
