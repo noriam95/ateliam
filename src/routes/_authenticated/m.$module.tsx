@@ -10699,7 +10699,7 @@ function BpmnModuleV2({
     const candidate = data.nodes.find((node) => {
       if (node.id === ignoreId) return false;
       const bounds = nodeBounds(node);
-      return Math.abs(bounds.cy - centerY) <= 12 || Math.abs(bounds.cx - centerX) <= 12;
+      return Math.abs(bounds.cy - centerY) <= 18 || Math.abs(bounds.cx - centerX) <= 18;
     });
     if (!candidate) return { x, y };
     const bounds = nodeBounds(candidate);
@@ -10729,6 +10729,24 @@ function BpmnModuleV2({
     setSelectedId(node.id);
     setSelectedFlowId(null);
     setDrag({ kind: "new-flow", fromId: node.id, fromAnchor: anchor, current: start });
+  }
+
+  function alignConnectedNodes(from: BpmnNode, to: BpmnNode, fromAnchor: BpmnEdgeAnchor, toAnchor: BpmnEdgeAnchor) {
+    const fromBounds = nodeBounds(from);
+    const toBounds = nodeBounds(to);
+    const horizontal = (fromAnchor.side === "left" || fromAnchor.side === "right") && (toAnchor.side === "left" || toAnchor.side === "right");
+    const vertical = (fromAnchor.side === "top" || fromAnchor.side === "bottom") && (toAnchor.side === "top" || toAnchor.side === "bottom");
+    if (horizontal && from.lane === to.lane && Math.abs(fromBounds.cy - toBounds.cy) <= 48) {
+      const height = to.height ?? 72;
+      const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(fromBounds.cy - height / 2)));
+      return data.nodes.map((node) => node.id === to.id ? { ...node, y, lane: laneIndexFromY(y + height / 2) } : node);
+    }
+    if (vertical && Math.abs(fromBounds.cx - toBounds.cx) <= 48) {
+      const width = to.width ?? 140;
+      const x = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(fromBounds.cx - width / 2)));
+      return data.nodes.map((node) => node.id === to.id ? { ...node, x } : node);
+    }
+    return data.nodes;
   }
 
   function defaultNode(type: BpmnNodeType) {
@@ -10926,11 +10944,12 @@ function BpmnModuleV2({
       }
       if (connectFrom !== node.id) {
         const from = data.nodes.find((item) => item.id === connectFrom);
-        const a = from ? resolveConnectorPoint(from, node, connectFromAnchor ?? undefined) : { x: node.x, y: node.y };
-        const b = from ? resolveConnectorPoint(node, from, targetAnchor ?? undefined) : { x: node.x, y: node.y };
+        const fromAnchor = connectFromAnchor ?? (from ? edgeAnchorFromPoint(from, nodeCenter(node)) : { side: "right", offset: 0.5 });
+        const toAnchor = targetAnchor ?? edgeAnchorFromPoint(node, from ? nodeCenter(from) : pointer ?? nodeCenter(node));
         commit({
           ...data,
           lanes,
+          nodes: from ? alignConnectedNodes(from, node, fromAnchor, toAnchor) : data.nodes,
           flows: [
             ...data.flows,
             {
@@ -10938,8 +10957,8 @@ function BpmnModuleV2({
               from: connectFrom,
               to: node.id,
               type: "sequence",
-              fromAnchor: connectFromAnchor ?? undefined,
-              toAnchor: targetAnchor ?? undefined,
+              fromAnchor,
+              toAnchor,
               points: [],
             },
           ],
@@ -11136,7 +11155,7 @@ function BpmnModuleV2({
             toAnchor: targetAnchor,
             points: [],
           };
-          update({ ...data, lanes, flows: [...data.flows, next] });
+          update({ ...data, lanes, nodes: alignConnectedNodes(fromNode, target, drag.fromAnchor, targetAnchor), flows: [...data.flows, next] });
           setSelectedFlowId(next.id);
           setSelectedId(null);
         } else {
@@ -11638,8 +11657,8 @@ function BpmnConnectorV2({
       {flow.label ? <text x={labelPoint.x + 8} y={labelPoint.y - 8} fontSize="12" fontWeight="800" fill="#26352f">{flow.label}</text> : null}
       {selected && !preview ? (
         <>
-          <circle cx={a.x} cy={a.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "from")} />
-          <circle cx={b.x} cy={b.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
+          <circle cx={a.x} cy={a.y} r="7.5" fill="#dcfce7" stroke="#4f9d1a" strokeWidth="2.2" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "from")} />
+          <circle cx={b.x} cy={b.y} r="7.5" fill="#ffe4e6" stroke="#d24a5a" strokeWidth="2.2" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
         </>
       ) : null}
       {selected && !preview ? defaultPoints.slice(0, -1).map((pointItem, index) => {
@@ -11650,11 +11669,11 @@ function BpmnConnectorV2({
         return (
           <rect
             key={`${flow.id}-segment-${index}`}
-            x={x - 7}
-            y={y - 4}
-            width="14"
-            height="8"
-            rx="3"
+            x={x - (horizontal ? 4 : 7)}
+            y={y - (horizontal ? 7 : 4)}
+            width={horizontal ? "8" : "14"}
+            height={horizontal ? "14" : "8"}
+            rx="4"
             fill="#ffffff"
             stroke="#2583ab"
             strokeWidth="1.7"
