@@ -1650,6 +1650,20 @@ function documentTypeCount(rows: DashboardDocumentCatalogRow[], type: DashboardD
   return rows.filter((row) => row.documentType === type).length;
 }
 
+// Status de andamento (Em andamento / Em revisão / Aprovado / Concluído) do
+// documento mais recente do tipo — mesmo modelo já usado no preenchimento de
+// Mapeamento. Sem documentos do tipo, não há status a exibir.
+function latestStatusForDocumentType(
+  rows: DashboardDocumentCatalogRow[],
+  type: DashboardDocumentType,
+) {
+  const typeRows = rows.filter((row) => row.documentType === type);
+  if (!typeRows.length) return "-";
+  return [...typeRows].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  )[0].status || "-";
+}
+
 function topAreasForDocumentType(rows: DashboardDocumentCatalogRow[], type: DashboardDocumentType) {
   const counts = new Map<string, number>();
   rows
@@ -2262,7 +2276,7 @@ function WorkspaceContent({
                         <td className="py-1.5 font-medium text-foreground">{type}</td>
                         <td className="py-1.5 text-right font-data text-foreground">{count}</td>
                         <td className="py-1.5 text-right">
-                          <StatusBadge status={count > 0 ? "Ativo" : "-"} />
+                          <StatusBadge status={latestStatusForDocumentType(documentCatalogRows, type)} />
                         </td>
                       </tr>
                     );

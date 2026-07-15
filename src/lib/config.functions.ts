@@ -1516,7 +1516,7 @@ function dashboardDocumentCatalogRowFromDocument(document: {
         area: "-",
         process: readString(bpmn.poolName),
         responsible: "-",
-        status: "Em andamento",
+        status: readString(bpmn.status, "Em andamento"),
         updatedAt: document.updated_at,
       };
     }
