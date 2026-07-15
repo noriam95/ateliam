@@ -5820,9 +5820,21 @@ function ModuleWorkspacePage() {
               data={workspace.pop}
               catalogs={organizationCatalogs}
               organizationId={codeOrganizationId}
+              isDemo={isDemo}
+              codeSettings={codeSettings}
               update={(pop) => updateWorkspace((current) => ({ ...current, pop }))}
               onCatalogCreated={async () => {
                 if (!isDemo) await catalogsQ.refetch();
+              }}
+              onProcessCreated={async (process) => {
+                if (isDemo) {
+                  setDemoCatalogs((current) => ({
+                    ...current,
+                    processes: [...current.processes, process as unknown as OrganizationProcess],
+                  }));
+                } else {
+                  await catalogsQ.refetch();
+                }
               }}
               autoCode={isAutoCodeModule}
               codePreview={autoCodePreview}
@@ -9227,8 +9239,11 @@ function PopModule({
   data,
   catalogs,
   organizationId,
+  isDemo,
+  codeSettings,
   update,
   onCatalogCreated,
+  onProcessCreated,
   autoCode = false,
   codePreview = "",
   onSave,
@@ -9239,8 +9254,11 @@ function PopModule({
   data: PopState;
   catalogs: OrganizationCatalogs;
   organizationId?: string | null;
+  isDemo: boolean;
+  codeSettings: CodeSettings | null;
   update: (value: PopState) => void;
   onCatalogCreated?: () => Promise<void> | void;
+  onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
   autoCode?: boolean;
   codePreview?: string;
   onSave?: () => void;
@@ -9250,6 +9268,7 @@ function PopModule({
 }) {
   const saveArea = useServerFn(saveProcessArea);
   const savePosition = useServerFn(savePositionRegistration);
+  const [createProcessName, setCreateProcessName] = useState<string | null>(null);
   const [quickCatalog, setQuickCatalog] = useState<
     | { kind: "area"; initial: string }
     | { kind: "position"; initial: string }
@@ -9561,6 +9580,22 @@ function PopModule({
 
   return (
     <div className="grid gap-5">
+      {createProcessName !== null ? (
+        <ProcessRegistrationDialog
+          organizationId={organizationId ?? null}
+          isDemo={isDemo}
+          codeSettings={codeSettings}
+          initialName={createProcessName}
+          onClose={() => setCreateProcessName(null)}
+          onCreated={async (process) => {
+            await onProcessCreated(process);
+            updateMeta({
+              processo: process.name,
+              area: process.department ?? "",
+            });
+          }}
+        />
+      ) : null}
       <FlowCommandBar
         code={visibleCode}
         sections={sections}
@@ -9607,6 +9642,8 @@ function PopModule({
               onSelect={(process) =>
                 selectDocumentProcess(process ? (process.code ? `${process.code} - ${process.name}` : process.name) : "")
               }
+              displayName={(process) => process.name}
+              onRequestCreate={(name) => setCreateProcessName(name)}
             />
           </div>
         }
