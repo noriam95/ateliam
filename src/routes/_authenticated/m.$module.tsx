@@ -10565,6 +10565,7 @@ function BpmnModuleV2({
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [connectFromAnchor, setConnectFromAnchor] = useState<BpmnEdgeAnchor | null>(null);
+  const [connectionTarget, setConnectionTarget] = useState<{ nodeId: string; anchor: BpmnEdgeAnchor } | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
   const [editingPool, setEditingPool] = useState(false);
@@ -10692,6 +10693,22 @@ function BpmnModuleV2({
     });
   }
 
+  function alignNodePosition(x: number, y: number, width: number, height: number, ignoreId?: string) {
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const candidate = data.nodes.find((node) => {
+      if (node.id === ignoreId) return false;
+      const bounds = nodeBounds(node);
+      return Math.abs(bounds.cy - centerY) <= 12 || Math.abs(bounds.cx - centerX) <= 12;
+    });
+    if (!candidate) return { x, y };
+    const bounds = nodeBounds(candidate);
+    return {
+      x: Math.abs(bounds.cx - centerX) <= 12 ? bounds.cx - width / 2 : x,
+      y: Math.abs(bounds.cy - centerY) <= 12 ? bounds.cy - height / 2 : y,
+    };
+  }
+
   function createFreeConnector(position: { x: number; y: number }) {
     if (!hasPool) {
       toast.error("Crie uma pool antes de adicionar conectores.");
@@ -10730,8 +10747,8 @@ function BpmnModuleV2({
     commit({
       ...data,
       poolName: "Processo 1",
-      lanes: ["Raia 1", "Raia 2"],
-      laneHeights: [170, 170],
+      lanes: ["Raia 1"],
+      laneHeights: [260],
       poolWidth: 1100,
       nodes: [],
       flows: [],
@@ -10751,7 +10768,8 @@ function BpmnModuleV2({
     const y = position
       ? Math.max(poolY + 16, Math.min(poolY + poolHeight - defaults.height - 16, snapValue(position.y - defaults.height / 2)))
       : snapValue(laneY(targetLane) + Math.max(16, (laneHeights[targetLane] - defaults.height) / 2));
-    const next: BpmnNode = { id: id(type), type, label: defaults.label, x, y, lane: targetLane, width: defaults.width, height: defaults.height };
+    const aligned = alignNodePosition(x, y, defaults.width, defaults.height);
+    const next: BpmnNode = { id: id(type), type, label: defaults.label, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + defaults.height / 2), width: defaults.width, height: defaults.height };
     commit({ ...data, lanes, nodes: [...data.nodes, next] });
     setSelectedId(next.id);
     setSelectedFlowId(null);
@@ -10994,7 +11012,8 @@ function BpmnModuleV2({
           const height = node.height ?? 64;
           const x = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(p.x - drag.dx)));
           const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(p.y - drag.dy)));
-          return { ...node, x, y, lane: laneIndexFromY(y + height / 2) };
+          const aligned = alignNodePosition(x, y, width, height, node.id);
+          return { ...node, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + height / 2) };
         }),
       });
     }
@@ -11072,6 +11091,8 @@ function BpmnModuleV2({
       });
     }
     if (drag.kind === "free-flow-end") {
+      const candidate = nodeAtPoint(p);
+      setConnectionTarget(candidate ? { nodeId: candidate.id, anchor: edgeAnchorFromPoint(candidate, p) } : null);
       update({
         ...data,
         lanes,
@@ -11091,6 +11112,8 @@ function BpmnModuleV2({
       });
     }
     if (drag.kind === "new-flow") {
+      const candidate = nodeAtPoint(p);
+      setConnectionTarget(candidate && candidate.id !== drag.fromId ? { nodeId: candidate.id, anchor: edgeAnchorFromPoint(candidate, p) } : null);
       setDrag({ ...drag, current: { x: snapValue(p.x), y: snapValue(p.y) } });
     }
   }
@@ -11154,6 +11177,7 @@ function BpmnModuleV2({
       setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
       setFuture([]);
     }
+    setConnectionTarget(null);
     setDrag(null);
   }
 
@@ -11449,12 +11473,38 @@ function BpmnModuleV2({
                     />
                   );
                 })() : null}
+                {hasPool && drag?.kind === "free-flow-end" && connectionTarget ? (() => {
+                  const original = data.flows.find((flow) => flow.id === drag.flowId);
+                  const candidate = data.nodes.find((node) => node.id === connectionTarget.nodeId);
+                  if (!original || !candidate) return null;
+                  const from = drag.end === "from"
+                    ? candidate
+                    : original.from ? data.nodes.find((node) => node.id === original.from) : undefined;
+                  const to = drag.end === "to"
+                    ? candidate
+                    : original.to ? data.nodes.find((node) => node.id === original.to) : undefined;
+                  const previewFlow = drag.end === "from"
+                    ? { ...original, from: candidate.id, fromAnchor: connectionTarget.anchor, freeFrom: undefined, points: [] }
+                    : { ...original, to: candidate.id, toAnchor: connectionTarget.anchor, freeTo: undefined, points: [] };
+                  return (
+                    <BpmnConnectorV2
+                      flow={previewFlow}
+                      from={from}
+                      to={to}
+                      selected
+                      preview
+                      onClick={(event) => event.stopPropagation()}
+                      onSegmentPointerDown={(event) => event.stopPropagation()}
+                      onAnchorPointerDown={(event) => event.stopPropagation()}
+                    />
+                  );
+                })() : null}
                 {hasPool ? data.nodes.map((node) => (
                   <BpmnShapeV2
                     key={node.id}
                     node={node}
                     selected={node.id === selectedId}
-                    connecting={node.id === connectFrom}
+                    connecting={node.id === connectFrom || node.id === connectionTarget?.nodeId}
                     onPointerDown={(event) => {
                       event.stopPropagation();
                       if (editingNodeId === node.id) return;
@@ -11584,7 +11634,7 @@ function BpmnConnectorV2({
   return (
     <g onClick={onClick} className={preview ? "pointer-events-none" : "cursor-pointer"}>
       {!preview ? <path d={path} fill="none" stroke="transparent" strokeWidth="14" /> : null}
-      <path d={path} fill="none" stroke={selected ? "#d39a20" : "#26352f"} strokeWidth={selected ? 3 : 2.2} strokeDasharray={preview ? "8 6" : undefined} markerEnd="url(#arrow-v2)" pointerEvents="none" />
+      <path d={path} fill="none" stroke={preview ? "#06966f" : selected ? "#d39a20" : "#26352f"} strokeWidth={preview ? 3.4 : selected ? 3 : 2.2} strokeDasharray={preview ? "8 6" : undefined} markerEnd="url(#arrow-v2)" pointerEvents="none" />
       {flow.label ? <text x={labelPoint.x + 8} y={labelPoint.y - 8} fontSize="12" fontWeight="800" fill="#26352f">{flow.label}</text> : null}
       {selected && !preview ? (
         <>
