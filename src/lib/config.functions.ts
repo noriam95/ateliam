@@ -1598,6 +1598,19 @@ function dashboardDocumentCatalogRowFromDocument(document: {
   }
 }
 
+export const listSystemReleaseNotes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("system_release_notes")
+      .select("id, title, description, category, published_at")
+      .eq("published", true)
+      .order("published_at", { ascending: false })
+      .limit(20);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
 export const getOrganizationDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))

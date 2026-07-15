@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -9,6 +9,7 @@ import {
   ArrowDownUp,
   ArrowUp,
   BarChart2,
+  Bell,
   Building2,
   CheckCircle2,
   ChevronDown,
@@ -45,7 +46,12 @@ import {
 } from "@/components/workspace-process-registrations";
 import { WorkspaceReports } from "@/components/workspace-reports";
 import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
-import { getMe, getOrganizationDashboard, listAccessibleOrganizations } from "@/lib/config.functions";
+import {
+  getMe,
+  getOrganizationDashboard,
+  listAccessibleOrganizations,
+  listSystemReleaseNotes,
+} from "@/lib/config.functions";
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
 import type { CodeSettings } from "@/lib/code-generation";
 
@@ -389,6 +395,7 @@ function WorkspaceHome() {
   }, [search.area, search.view]);
   const dashboardFn = useServerFn(getOrganizationDashboard);
   const accessibleOrganizationsFn = useServerFn(listAccessibleOrganizations);
+  const listReleaseNotes = useServerFn(listSystemReleaseNotes);
   const me = useServerFn(getMe);
   const meQ = useQuery({
     queryKey: ["home-me"],
@@ -419,6 +426,12 @@ function WorkspaceHome() {
     queryKey: ["organization-dashboard", isDemo ? "demo" : "cloud", selectedOrganizationId],
     queryFn: () => dashboardFn({ data: { organizationId: selectedOrganizationId || null } }),
     enabled: !isDemo && !!selectedOrganizationId,
+  });
+  const releaseNotesQ = useQuery({
+    queryKey: ["system-release-notes"],
+    queryFn: () => listReleaseNotes(),
+    enabled: !isDemo,
+    staleTime: 60_000,
   });
   const selectedDemoOrganization =
     demoOrganizations.find((organization) => organization.id === selectedOrganizationId) ??
@@ -807,6 +820,17 @@ function WorkspaceHome() {
     (organization) => organization.id === selectedOrganizationId,
   );
   const totals = dashboard?.totals;
+  const systemNotifications = useMemo<SystemNotification[]>(
+    () =>
+      ((releaseNotesQ.data ?? []) as SystemReleaseNote[]).map((note) => ({
+        id: note.id,
+        title: note.title,
+        description: note.description,
+        tag: note.category,
+        updatedAt: note.published_at,
+      })),
+    [releaseNotesQ.data],
+  );
   return (
     <div className="min-h-screen bg-background text-foreground" style={workspaceGrayVars}>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
@@ -857,6 +881,8 @@ function WorkspaceHome() {
             ))}
           </select>
         </div>
+
+        <SystemNotificationsMenu items={systemNotifications} />
 
         <UserProfileMenu
           email={email}
@@ -1883,6 +1909,85 @@ type RecentActivityItem = {
   version: string | null;
   updatedAt: string;
 };
+
+type SystemNotification = {
+  id: string;
+  title: string;
+  description: string;
+  tag: string;
+  updatedAt: string;
+};
+
+type SystemReleaseNote = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  published_at: string;
+};
+
+function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="relative grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/25"
+        aria-label="Ver atualizações do sistema"
+        aria-expanded={open}
+        title="Atualizações do sistema"
+      >
+        <Bell className="h-4 w-4" />
+        {items.length ? (
+          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--gold)] ring-2 ring-card" />
+        ) : null}
+      </button>
+
+      {open ? (
+        <div className="absolute right-0 top-full z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card shadow-xl">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div>
+              <div className="text-sm font-semibold text-foreground">Atualizações do sistema</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">Últimas melhorias publicadas no BF Flow</div>
+            </div>
+            <Bell className="h-4 w-4 text-[var(--gold)]" />
+          </div>
+          {items.length ? (
+            <div className="max-h-[360px] overflow-y-auto p-2">
+              {items.map((item) => (
+                <div key={item.id} className="rounded-md px-3 py-2.5 transition hover:bg-muted">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex shrink-0 rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
+                      {item.tag}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-semibold text-foreground">{item.title}</div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">{item.description}</div>
+                    </div>
+                    <time className="shrink-0 text-[10px] text-muted-foreground">{formatDateTimeBr(item.updatedAt)}</time>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-8 text-center text-xs text-muted-foreground">Sem atualizações recentes.</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function documentActivityTag(module: string, name = "") {
   const normalizedName = name.toLowerCase();

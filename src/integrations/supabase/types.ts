@@ -626,6 +626,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      system_release_notes: {
+        Row: {
+          category: string;
+          created_at: string;
+          created_by: string | null;
+          description: string;
+          id: string;
+          published: boolean;
+          published_at: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          category?: string;
+          created_at?: string;
+          created_by?: string | null;
+          description: string;
+          id?: string;
+          published?: boolean;
+          published_at?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string;
+          id?: string;
+          published?: boolean;
+          published_at?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_organization_access: {
         Row: {
           created_at: string;
