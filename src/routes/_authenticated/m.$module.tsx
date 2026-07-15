@@ -10677,6 +10677,8 @@ function BpmnModuleV2({
     if (tool !== "select" || editingNodeId || editingPool || editingLaneIndex !== null) return;
     const start = point(event);
     svgRef.current?.setPointerCapture?.(event.pointerId);
+    // The click emitted after a drag must not clear the new area selection.
+    ignoreCanvasClickRef.current = true;
     setSelectedId(null);
     setSelectedNodeIds([]);
     setSelectedFlowId(null);
@@ -11207,7 +11209,10 @@ function BpmnModuleV2({
         : data.nodes
           .filter((node) => {
             const bounds = nodeBounds(node);
-            return bounds.left >= box.x && bounds.right <= box.x + box.width && bounds.top >= box.y && bounds.bottom <= box.y + box.height;
+            return bounds.right >= box.x
+              && bounds.left <= box.x + box.width
+              && bounds.bottom >= box.y
+              && bounds.top <= box.y + box.height;
           })
           .map((node) => node.id);
       setSelectedNodeIds(ids);
