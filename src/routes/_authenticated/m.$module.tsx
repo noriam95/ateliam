@@ -10577,6 +10577,7 @@ function BpmnModuleV2({
     | { kind: "flow-point"; flowId: string; pointIndex: number }
     | { kind: "flow-anchor"; flowId: string; end: "from" | "to" }
     | { kind: "free-flow-end"; flowId: string; end: "from" | "to" }
+    | { kind: "new-flow"; fromId: string; fromAnchor: BpmnEdgeAnchor; current: { x: number; y: number } }
     | null
   >(null);
 
@@ -10694,6 +10695,14 @@ function BpmnModuleV2({
     commit({ ...data, lanes, flows: [...data.flows, next] });
     setSelectedFlowId(next.id);
     setSelectedId(null);
+  }
+
+  function startNodeConnector(node: BpmnNode, anchor: BpmnEdgeAnchor) {
+    const start = anchorPoint(node, anchor);
+    setTool("select");
+    setSelectedId(node.id);
+    setSelectedFlowId(null);
+    setDrag({ kind: "new-flow", fromId: node.id, fromAnchor: anchor, current: start });
   }
 
   function defaultNode(type: BpmnNodeType) {
@@ -11033,13 +11042,53 @@ function BpmnModuleV2({
         flows: data.flows.map((flow) => {
           if (flow.id !== drag.flowId) return flow;
           const snapped = { x: snapValue(p.x), y: snapValue(p.y) };
-          return drag.end === "from" ? { ...flow, freeFrom: snapped } : { ...flow, freeTo: snapped };
+          return drag.end === "from"
+            ? { ...flow, from: undefined, fromAnchor: undefined, freeFrom: snapped }
+            : { ...flow, to: undefined, toAnchor: undefined, freeTo: snapped };
         }),
       });
+    }
+    if (drag.kind === "new-flow") {
+      setDrag({ ...drag, current: { x: snapValue(p.x), y: snapValue(p.y) } });
     }
   }
 
   function finishDrag() {
+    if (drag?.kind === "new-flow") {
+      const fromNode = data.nodes.find((node) => node.id === drag.fromId);
+      const target = nodeAtPoint(drag.current);
+      if (fromNode) {
+        if (target && target.id !== fromNode.id) {
+          const targetAnchor = edgeAnchorFromPoint(target, drag.current);
+          const start = anchorPoint(fromNode, drag.fromAnchor);
+          const end = anchorPoint(target, targetAnchor);
+          const next: BpmnFlow = {
+            id: id("flow"),
+            from: fromNode.id,
+            to: target.id,
+            type: "sequence",
+            fromAnchor: drag.fromAnchor,
+            toAnchor: targetAnchor,
+            points: orthogonalPoints(start, end),
+          };
+          update({ ...data, lanes, flows: [...data.flows, next] });
+          setSelectedFlowId(next.id);
+          setSelectedId(null);
+        } else {
+          const next: BpmnFlow = {
+            id: id("flow"),
+            from: fromNode.id,
+            type: "sequence",
+            fromAnchor: drag.fromAnchor,
+            freeTo: drag.current,
+            points: orthogonalPoints(anchorPoint(fromNode, drag.fromAnchor), drag.current),
+          };
+          update({ ...data, lanes, flows: [...data.flows, next] });
+          setSelectedFlowId(next.id);
+          setSelectedId(null);
+        }
+      }
+    }
     if (drag?.kind === "free-flow-end") {
       const current = data.flows.find((flow) => flow.id === drag.flowId);
       const position = drag.end === "from" ? current?.freeFrom : current?.freeTo;
@@ -11318,38 +11367,57 @@ function BpmnModuleV2({
                       }}
                       onAnchorPointerDown={(event, end) => {
                         event.stopPropagation();
-                        if (flow.from && flow.to) {
-                          setDrag({ kind: "flow-anchor", flowId: flow.id, end });
-                        } else {
-                          const endpointNode = end === "from" ? from : to;
-                          const oppositeNode = end === "from" ? to : from;
-                          const fallback = end === "from" ? flow.freeFrom : flow.freeTo;
-                          const endpoint =
-                            endpointNode && oppositeNode
-                              ? resolveConnectorPoint(endpointNode, oppositeNode, end === "from" ? flow.fromAnchor : flow.toAnchor)
-                              : endpointNode
-                                ? anchorPoint(endpointNode, { side: "right", offset: 0.5 })
-                                : fallback;
-                          if (endpoint) {
-                            update({
-                              ...data,
-                              lanes,
-                              flows: data.flows.map((item) => {
-                                if (item.id !== flow.id) return item;
-                                return end === "from"
-                                  ? { ...item, from: undefined, fromAnchor: undefined, freeFrom: endpoint }
-                                  : { ...item, to: undefined, toAnchor: undefined, freeTo: endpoint };
-                              }),
-                            });
-                          }
-                          setDrag({ kind: "free-flow-end", flowId: flow.id, end });
+                        const endpointNode = end === "from" ? from : to;
+                        const oppositeNode = end === "from" ? to : from;
+                        const fallback = end === "from" ? flow.freeFrom : flow.freeTo;
+                        const endpoint =
+                          endpointNode && oppositeNode
+                            ? resolveConnectorPoint(endpointNode, oppositeNode, end === "from" ? flow.fromAnchor : flow.toAnchor)
+                            : endpointNode
+                              ? anchorPoint(endpointNode, { side: "right", offset: 0.5 })
+                              : fallback;
+                        if (endpoint) {
+                          update({
+                            ...data,
+                            lanes,
+                            flows: data.flows.map((item) => {
+                              if (item.id !== flow.id) return item;
+                              return end === "from"
+                                ? { ...item, from: undefined, fromAnchor: undefined, freeFrom: endpoint }
+                                : { ...item, to: undefined, toAnchor: undefined, freeTo: endpoint };
+                            }),
+                          });
                         }
+                        setDrag({ kind: "free-flow-end", flowId: flow.id, end });
                         setSelectedFlowId(flow.id);
                         setSelectedId(null);
                       }}
                     />
                   );
                 }) : null}
+                {hasPool && drag?.kind === "new-flow" ? (() => {
+                  const from = data.nodes.find((node) => node.id === drag.fromId);
+                  if (!from) return null;
+                  return (
+                    <BpmnConnectorV2
+                      flow={{
+                        id: "preview-flow",
+                        from: from.id,
+                        fromAnchor: drag.fromAnchor,
+                        freeTo: drag.current,
+                        type: "sequence",
+                        points: orthogonalPoints(anchorPoint(from, drag.fromAnchor), drag.current),
+                      }}
+                      from={from}
+                      selected
+                      preview
+                      onClick={(event) => event.stopPropagation()}
+                      onAddPoint={(event) => event.stopPropagation()}
+                      onHandlePointerDown={(event) => event.stopPropagation()}
+                      onAnchorPointerDown={(event) => event.stopPropagation()}
+                    />
+                  );
+                })() : null}
                 {hasPool ? data.nodes.map((node) => (
                   <BpmnShapeV2
                     key={node.id}
@@ -11367,6 +11435,10 @@ function BpmnModuleV2({
                       event.stopPropagation();
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
                       setDrag({ kind: "node-size", id: node.id, startX: p.x, startY: p.y, width: node.width ?? 140, height: node.height ?? 64 });
+                    }}
+                    onConnectorPointerDown={(event, anchor) => {
+                      event.stopPropagation();
+                      startNodeConnector(node, anchor);
                     }}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -11452,6 +11524,7 @@ function BpmnConnectorV2({
   onAddPoint,
   onHandlePointerDown,
   onAnchorPointerDown,
+  preview = false,
 }: {
   flow: BpmnFlow;
   from?: BpmnNode;
@@ -11461,6 +11534,7 @@ function BpmnConnectorV2({
   onAddPoint: (event: React.PointerEvent<SVGPathElement>) => void;
   onHandlePointerDown: (event: React.PointerEvent<SVGCircleElement>, pointIndex: number) => void;
   onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
+  preview?: boolean;
 }) {
   const freeA = flow.freeFrom ?? { x: 0, y: 0 };
   const freeB = flow.freeTo ?? { x: freeA.x + 120, y: freeA.y };
@@ -11476,17 +11550,17 @@ function BpmnConnectorV2({
   const path = route.map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`).join(" ");
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   return (
-    <g onClick={onClick} className="cursor-pointer">
-      <path d={path} fill="none" stroke="transparent" strokeWidth="14" onPointerDown={onAddPoint} />
-      <path d={path} fill="none" stroke={selected ? "#d39a20" : "#26352f"} strokeWidth={selected ? 3 : 2.2} markerEnd="url(#arrow-v2)" pointerEvents="none" />
+    <g onClick={onClick} className={preview ? "pointer-events-none" : "cursor-pointer"}>
+      {!preview ? <path d={path} fill="none" stroke="transparent" strokeWidth="14" onPointerDown={onAddPoint} /> : null}
+      <path d={path} fill="none" stroke={selected ? "#d39a20" : "#26352f"} strokeWidth={selected ? 3 : 2.2} strokeDasharray={preview ? "8 6" : undefined} markerEnd="url(#arrow-v2)" pointerEvents="none" />
       {flow.label ? <text x={labelPoint.x + 8} y={labelPoint.y - 8} fontSize="12" fontWeight="800" fill="#26352f">{flow.label}</text> : null}
-      {selected ? (
+      {selected && !preview ? (
         <>
           <circle cx={a.x} cy={a.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "from")} />
           <circle cx={b.x} cy={b.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
         </>
       ) : null}
-      {selected ? points.map((pointItem, index) => (
+      {selected && !preview ? points.map((pointItem, index) => (
         <circle
           key={`${flow.id}-point-${index}`}
           cx={pointItem.x}
@@ -11509,6 +11583,7 @@ function BpmnShapeV2({
   connecting,
   onPointerDown,
   onResizePointerDown,
+  onConnectorPointerDown,
   onClick,
   onDoubleClick,
   editing,
@@ -11522,6 +11597,7 @@ function BpmnShapeV2({
   connecting: boolean;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
   onResizePointerDown: (event: React.PointerEvent<SVGRectElement>) => void;
+  onConnectorPointerDown: (event: React.PointerEvent<SVGCircleElement>, anchor: BpmnEdgeAnchor) => void;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
   onDoubleClick: (event: React.MouseEvent<SVGGElement>) => void;
   editing: boolean;
@@ -11536,6 +11612,12 @@ function BpmnShapeV2({
   const fill = node.color ?? (node.type === "annotation" ? "#fff7df" : "#ffffff");
   const common = { fill, stroke, strokeWidth: selected || connecting ? 3 : 2 };
   const isEvent = node.type === "start" || node.type === "end";
+  const connectionHandles: BpmnEdgeAnchor[] = [
+    { side: "top", offset: 0.5 },
+    { side: "right", offset: 0.5 },
+    { side: "bottom", offset: 0.5 },
+    { side: "left", offset: 0.5 },
+  ];
   return (
     <g onPointerDown={onPointerDown} onClick={onClick} onDoubleClick={onDoubleClick} className={editing ? "cursor-text" : "cursor-move"}>
       {node.type === "task" ? <rect x={node.x} y={node.y} width={width} height={height} rx="10" {...common} /> : null}
@@ -11588,6 +11670,22 @@ function BpmnShapeV2({
       {selected ? (
         <>
           <rect x={node.x - 4} y={node.y - 4} width={width + 8} height={height + 8} rx="12" fill="none" stroke="#d39a20" strokeDasharray="5 5" strokeWidth="1.5" pointerEvents="none" />
+          {connectionHandles.map((anchor) => {
+            const handle = anchorPoint(node, anchor);
+            return (
+              <circle
+                key={`${node.id}-${anchor.side}`}
+                cx={handle.x}
+                cy={handle.y}
+                r="6"
+                fill="#ffffff"
+                stroke="#06966f"
+                strokeWidth="2.5"
+                className="cursor-crosshair"
+                onPointerDown={(event) => onConnectorPointerDown(event, anchor)}
+              />
+            );
+          })}
           <rect x={node.x + width - 8} y={node.y + height - 8} width="16" height="16" rx="3" fill="#d39a20" className="cursor-nwse-resize" onPointerDown={onResizePointerDown} />
         </>
       ) : null}
