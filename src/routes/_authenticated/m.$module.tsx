@@ -334,6 +334,7 @@ type BpmnNode = {
 
 type BpmnEdgeSide = "top" | "right" | "bottom" | "left";
 type BpmnEdgeAnchor = { side: BpmnEdgeSide; offset: number };
+type BpmnResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 type BpmnFlow = {
   id: string;
@@ -10570,7 +10571,7 @@ function BpmnModuleV2({
   const [future, setFuture] = useState<BpmnState[]>([]);
   const [drag, setDrag] = useState<
     | { kind: "node"; id: string; dx: number; dy: number }
-    | { kind: "node-size"; id: string; startX: number; startY: number; width: number; height: number }
+    | { kind: "node-size"; id: string; startX: number; startY: number; x: number; y: number; width: number; height: number; handle: BpmnResizeHandle }
     | { kind: "pool-width"; startX: number; width: number }
     | { kind: "pool-height"; startY: number; laneHeights: number[] }
     | { kind: "lane-height"; lane: number; startY: number; laneHeights: number[] }
@@ -10810,6 +10811,45 @@ function BpmnModuleV2({
     });
   }
 
+  function quickAddAfter(node: BpmnNode, type: BpmnNodeType) {
+    if (!hasPool) return;
+    const defaults = defaultNode(type);
+    const nodeWidth = node.width ?? 140;
+    const nodeHeight = node.height ?? 72;
+    const x = Math.max(
+      poolX + leftHeaderWidth + 16,
+      Math.min(poolX + poolWidth - defaults.width - 16, snapValue(node.x + nodeWidth + 88)),
+    );
+    const y = Math.max(
+      poolY + 12,
+      Math.min(poolY + poolHeight - defaults.height - 12, snapValue(node.y + nodeHeight / 2 - defaults.height / 2)),
+    );
+    const nextNode: BpmnNode = {
+      id: id(type),
+      type,
+      label: defaults.label,
+      x,
+      y,
+      lane: laneIndexFromY(y + defaults.height / 2),
+      width: defaults.width,
+      height: defaults.height,
+    };
+    const start = anchorPoint(node, { side: "right", offset: 0.5 });
+    const end = anchorPoint(nextNode, { side: "left", offset: 0.5 });
+    const nextFlow: BpmnFlow = {
+      id: id("flow"),
+      from: node.id,
+      to: nextNode.id,
+      type: "sequence",
+      fromAnchor: { side: "right", offset: 0.5 },
+      toAnchor: { side: "left", offset: 0.5 },
+      points: orthogonalPoints(start, end),
+    };
+    commit({ ...data, lanes, nodes: [...data.nodes, nextNode], flows: [...data.flows, nextFlow] });
+    setSelectedId(nextNode.id);
+    setSelectedFlowId(null);
+  }
+
   function commitNodeLabel(nodeId: string) {
     const label = editingLabel.trim();
     if (label) {
@@ -10977,11 +11017,22 @@ function BpmnModuleV2({
       update({
         ...data,
         lanes,
-        nodes: data.nodes.map((node) =>
-          node.id === drag.id
-            ? { ...node, width: Math.max(58, snapValue(drag.width + p.x - drag.startX)), height: Math.max(44, snapValue(drag.height + p.y - drag.startY)) }
-            : node,
-        ),
+        nodes: data.nodes.map((node) => {
+          if (node.id !== drag.id) return node;
+          const dx = p.x - drag.startX;
+          const dy = p.y - drag.startY;
+          const right = drag.x + drag.width;
+          const bottom = drag.y + drag.height;
+          const resizesWest = drag.handle === "w" || drag.handle === "nw" || drag.handle === "sw";
+          const resizesEast = drag.handle === "e" || drag.handle === "ne" || drag.handle === "se";
+          const resizesNorth = drag.handle === "n" || drag.handle === "nw" || drag.handle === "ne";
+          const resizesSouth = drag.handle === "s" || drag.handle === "sw" || drag.handle === "se";
+          const width = snapValue(Math.max(58, resizesWest ? drag.width - dx : resizesEast ? drag.width + dx : drag.width));
+          const height = snapValue(Math.max(44, resizesNorth ? drag.height - dy : resizesSouth ? drag.height + dy : drag.height));
+          const x = resizesWest ? right - width : drag.x;
+          const y = resizesNorth ? bottom - height : drag.y;
+          return { ...node, x, y, width, height, lane: laneIndexFromY(y + height / 2) };
+        }),
       });
     }
     if (drag.kind === "pool-width") {
@@ -11042,9 +11093,14 @@ function BpmnModuleV2({
         flows: data.flows.map((flow) => {
           if (flow.id !== drag.flowId) return flow;
           const snapped = { x: snapValue(p.x), y: snapValue(p.y) };
-          return drag.end === "from"
-            ? { ...flow, from: undefined, fromAnchor: undefined, freeFrom: snapped }
-            : { ...flow, to: undefined, toAnchor: undefined, freeTo: snapped };
+          if (drag.end === "from") {
+            const target = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
+            const opposite = target ? anchorPoint(target, flow.toAnchor ?? { side: "left", offset: 0.5 }) : flow.freeTo ?? snapped;
+            return { ...flow, from: undefined, fromAnchor: undefined, freeFrom: snapped, points: orthogonalPoints(snapped, opposite) };
+          }
+          const source = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
+          const opposite = source ? anchorPoint(source, flow.fromAnchor ?? { side: "right", offset: 0.5 }) : flow.freeFrom ?? snapped;
+          return { ...flow, to: undefined, toAnchor: undefined, freeTo: snapped, points: orthogonalPoints(opposite, snapped) };
         }),
       });
     }
@@ -11100,8 +11156,16 @@ function BpmnModuleV2({
           lanes,
           flows: data.flows.map((flow) => {
             if (flow.id !== drag.flowId) return flow;
-            if (drag.end === "from") return { ...flow, from: target.id, fromAnchor: anchor, freeFrom: undefined };
-            return { ...flow, to: target.id, toAnchor: anchor, freeTo: undefined };
+            if (drag.end === "from") {
+              const targetEnd = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
+              const start = anchorPoint(target, anchor);
+              const end = targetEnd ? anchorPoint(targetEnd, flow.toAnchor ?? { side: "left", offset: 0.5 }) : flow.freeTo ?? start;
+              return { ...flow, from: target.id, fromAnchor: anchor, freeFrom: undefined, points: orthogonalPoints(start, end) };
+            }
+            const source = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
+            const start = source ? anchorPoint(source, flow.fromAnchor ?? { side: "right", offset: 0.5 }) : flow.freeFrom ?? position;
+            const end = anchorPoint(target, anchor);
+            return { ...flow, to: target.id, toAnchor: anchor, freeTo: undefined, points: orthogonalPoints(start, end) };
           }),
         });
       }
@@ -11231,6 +11295,9 @@ function BpmnModuleV2({
                   <marker id="arrow-v2" markerHeight="9" markerWidth="9" orient="auto" refX="8" refY="4.5">
                     <path d="M0,0 L9,4.5 L0,9 Z" fill="#26352f" />
                   </marker>
+                  <filter id="bpmn-tool-shadow" x="-25%" y="-15%" width="150%" height="140%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#10251d" floodOpacity="0.2" />
+                  </filter>
                 </defs>
                 {showGrid ? <rect width={canvasWidth} height={canvasHeight} fill="url(#bpmn-grid-v2)" opacity="0.3" /> : null}
                 {!hasPool ? (
@@ -11431,10 +11498,10 @@ function BpmnModuleV2({
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
                       setDrag({ kind: "node", id: node.id, dx: p.x - node.x, dy: p.y - node.y });
                     }}
-                    onResizePointerDown={(event) => {
+                    onResizePointerDown={(event, handle) => {
                       event.stopPropagation();
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
-                      setDrag({ kind: "node-size", id: node.id, startX: p.x, startY: p.y, width: node.width ?? 140, height: node.height ?? 64 });
+                      setDrag({ kind: "node-size", id: node.id, startX: p.x, startY: p.y, x: node.x, y: node.y, width: node.width ?? 140, height: node.height ?? 64, handle });
                     }}
                     onConnectorPointerDown={(event, anchor) => {
                       event.stopPropagation();
@@ -11452,6 +11519,7 @@ function BpmnModuleV2({
                       setEditingNodeId(node.id);
                       setEditingLabel(node.label);
                     }}
+                    onQuickCreate={(type) => quickAddAfter(node, type)}
                     editing={editingNodeId === node.id}
                     editingValue={editingLabel}
                     onEditingChange={setEditingLabel}
@@ -11584,6 +11652,7 @@ function BpmnShapeV2({
   onPointerDown,
   onResizePointerDown,
   onConnectorPointerDown,
+  onQuickCreate,
   onClick,
   onDoubleClick,
   editing,
@@ -11596,8 +11665,9 @@ function BpmnShapeV2({
   selected: boolean;
   connecting: boolean;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
-  onResizePointerDown: (event: React.PointerEvent<SVGRectElement>) => void;
+  onResizePointerDown: (event: React.PointerEvent<SVGCircleElement>, handle: BpmnResizeHandle) => void;
   onConnectorPointerDown: (event: React.PointerEvent<SVGCircleElement>, anchor: BpmnEdgeAnchor) => void;
+  onQuickCreate: (type: BpmnNodeType) => void;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
   onDoubleClick: (event: React.MouseEvent<SVGGElement>) => void;
   editing: boolean;
@@ -11617,6 +11687,16 @@ function BpmnShapeV2({
     { side: "right", offset: 0.5 },
     { side: "bottom", offset: 0.5 },
     { side: "left", offset: 0.5 },
+  ];
+  const resizeHandles: Array<{ handle: BpmnResizeHandle; x: number; y: number; cursor: string }> = [
+    { handle: "nw", x: node.x, y: node.y, cursor: "nwse-resize" },
+    { handle: "n", x: node.x + width / 2, y: node.y, cursor: "ns-resize" },
+    { handle: "ne", x: node.x + width, y: node.y, cursor: "nesw-resize" },
+    { handle: "e", x: node.x + width, y: node.y + height / 2, cursor: "ew-resize" },
+    { handle: "se", x: node.x + width, y: node.y + height, cursor: "nwse-resize" },
+    { handle: "s", x: node.x + width / 2, y: node.y + height, cursor: "ns-resize" },
+    { handle: "sw", x: node.x, y: node.y + height, cursor: "nesw-resize" },
+    { handle: "w", x: node.x, y: node.y + height / 2, cursor: "ew-resize" },
   ];
   return (
     <g onPointerDown={onPointerDown} onClick={onClick} onDoubleClick={onDoubleClick} className={editing ? "cursor-text" : "cursor-move"}>
@@ -11670,6 +11750,19 @@ function BpmnShapeV2({
       {selected ? (
         <>
           <rect x={node.x - 4} y={node.y - 4} width={width + 8} height={height + 8} rx="12" fill="none" stroke="#d39a20" strokeDasharray="5 5" strokeWidth="1.5" pointerEvents="none" />
+          {resizeHandles.map((handle) => (
+            <circle
+              key={`${node.id}-resize-${handle.handle}`}
+              cx={handle.x}
+              cy={handle.y}
+              r="4.5"
+              fill="#ffffff"
+              stroke="#2583ab"
+              strokeWidth="2"
+              className={handle.cursor}
+              onPointerDown={(event) => onResizePointerDown(event, handle.handle)}
+            />
+          ))}
           {connectionHandles.map((anchor) => {
             const handle = anchorPoint(node, anchor);
             return (
@@ -11686,7 +11779,41 @@ function BpmnShapeV2({
               />
             );
           })}
-          <rect x={node.x + width - 8} y={node.y + height - 8} width="16" height="16" rx="3" fill="#d39a20" className="cursor-nwse-resize" onPointerDown={onResizePointerDown} />
+          {!editing ? (
+            <g transform={`translate(${node.x + width + 14} ${node.y + Math.max(0, height / 2 - 43)})`}>
+              <rect x="0" y="0" width="34" height="102" rx="6" fill="#ffffff" stroke="#b9c7c0" strokeWidth="1" filter="url(#bpmn-tool-shadow)" />
+              <g
+                className="cursor-pointer"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onQuickCreate("task");
+                }}
+              >
+                <rect x="7" y="7" width="20" height="18" rx="4" fill="#e6f5f3" stroke="#008c95" strokeWidth="1.8" />
+              </g>
+              <g
+                className="cursor-pointer"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onQuickCreate("gateway");
+                }}
+              >
+                <path d="M17 37 L27 47 L17 57 L7 47 Z" fill="#fff5d8" stroke="#c49314" strokeWidth="1.8" />
+              </g>
+              <g
+                className="cursor-pointer"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onQuickCreate("end");
+                }}
+              >
+                <circle cx="17" cy="78" r="10" fill="#ffe1df" stroke="#a82b2b" strokeWidth="3" />
+              </g>
+            </g>
+          ) : null}
         </>
       ) : null}
     </g>
