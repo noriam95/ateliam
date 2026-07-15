@@ -331,6 +331,10 @@ type BpmnNode = {
   responsible?: string;
   color?: string;
 };
+
+type BpmnEdgeSide = "top" | "right" | "bottom" | "left";
+type BpmnEdgeAnchor = { side: BpmnEdgeSide; offset: number };
+
 type BpmnFlow = {
   id: string;
   from: string;
@@ -338,6 +342,8 @@ type BpmnFlow = {
   label?: string;
   type?: "sequence" | "message" | "association";
   points?: Array<{ x: number; y: number }>;
+  fromAnchor?: BpmnEdgeAnchor;
+  toAnchor?: BpmnEdgeAnchor;
 };
 
 type DdpState = {
@@ -10550,6 +10556,9 @@ function BpmnModuleV2({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
+  const [connectFromAnchor, setConnectFromAnchor] = useState<BpmnEdgeAnchor | null>(null);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState("");
   const [zoom, setZoom] = useState(100);
   const [showGrid, setShowGrid] = useState(true);
   const [snap, setSnap] = useState(true);
@@ -10562,6 +10571,7 @@ function BpmnModuleV2({
     | { kind: "pool-height"; startY: number; laneHeights: number[] }
     | { kind: "lane-height"; lane: number; startY: number; laneHeights: number[] }
     | { kind: "flow-point"; flowId: string; pointIndex: number }
+    | { kind: "flow-anchor"; flowId: string; end: "from" | "to" }
     | null
   >(null);
 
@@ -10580,8 +10590,6 @@ function BpmnModuleV2({
   const poolHeight = Math.max(laneHeights.reduce((total, height) => total + height, 0), 260);
   const canvasWidth = Math.max(poolX + poolWidth + 180, 1280);
   const canvasHeight = Math.max(poolY + poolHeight + 160, 760);
-  const diagramProgress = completionPercent([data.poolName, lanes, data.nodes, data.flows]);
-  const validation = validateBpmnDiagram(data, lanes, { poolX, poolY, laneLabelWidth: leftHeaderWidth, poolWidth, laneHeights });
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -10594,6 +10602,8 @@ function BpmnModuleV2({
       if (event.key === "Escape") {
         setTool("select");
         setConnectFrom(null);
+        setConnectFromAnchor(null);
+        setEditingNodeId(null);
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
@@ -10759,28 +10769,63 @@ function BpmnModuleV2({
     });
   }
 
-  function handleNodeClick(node: BpmnNode) {
+  function commitNodeLabel(nodeId: string) {
+    const label = editingLabel.trim();
+    if (label) {
+      commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === nodeId ? { ...node, label } : node)) });
+    }
+    setEditingNodeId(null);
+  }
+
+  function selectFlow(flow: BpmnFlow) {
+    const from = data.nodes.find((node) => node.id === flow.from);
+    const to = data.nodes.find((node) => node.id === flow.to);
+    if (from && to && !(flow.points?.length)) {
+      const a = resolveConnectorPoint(from, to, flow.fromAnchor);
+      const b = resolveConnectorPoint(to, from, flow.toAnchor);
+      update({
+        ...data,
+        lanes,
+        flows: data.flows.map((item) => (item.id === flow.id ? { ...item, points: orthogonalPoints(a, b) } : item)),
+      });
+    }
+    setSelectedFlowId(flow.id);
+    setSelectedId(null);
+  }
+
+  function handleNodeClick(node: BpmnNode, pointer?: { x: number; y: number }) {
     if (tool === "connect") {
+      const targetAnchor = pointer ? edgeAnchorFromPoint(node, pointer) : null;
       if (!connectFrom) {
         setConnectFrom(node.id);
+        setConnectFromAnchor(targetAnchor);
         setSelectedId(node.id);
         setSelectedFlowId(null);
         return;
       }
       if (connectFrom !== node.id) {
         const from = data.nodes.find((item) => item.id === connectFrom);
-        const a = from ? connectorPoint(from, node) : { x: node.x, y: node.y };
-        const b = from ? connectorPoint(node, from) : { x: node.x, y: node.y };
+        const a = from ? resolveConnectorPoint(from, node, connectFromAnchor ?? undefined) : { x: node.x, y: node.y };
+        const b = from ? resolveConnectorPoint(node, from, targetAnchor ?? undefined) : { x: node.x, y: node.y };
         commit({
           ...data,
           lanes,
           flows: [
             ...data.flows,
-            { id: id("flow"), from: connectFrom, to: node.id, type: "sequence", points: [{ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }] },
+            {
+              id: id("flow"),
+              from: connectFrom,
+              to: node.id,
+              type: "sequence",
+              fromAnchor: connectFromAnchor ?? undefined,
+              toAnchor: targetAnchor ?? undefined,
+              points: orthogonalPoints(a, b),
+            },
           ],
         });
       }
       setConnectFrom(null);
+      setConnectFromAnchor(null);
       setTool("select");
       setSelectedId(node.id);
       return;
@@ -10806,6 +10851,7 @@ function BpmnModuleV2({
       setSelectedId(null);
       setSelectedFlowId(null);
       setConnectFrom(null);
+      setConnectFromAnchor(null);
       setTool("select");
       toast.success("Fluxograma importado.");
     } catch (error) {
@@ -10886,6 +10932,24 @@ function BpmnModuleV2({
         }),
       });
     }
+    if (drag.kind === "flow-anchor") {
+      update({
+        ...data,
+        lanes,
+        flows: data.flows.map((flow) => {
+          if (flow.id !== drag.flowId) return flow;
+          const from = data.nodes.find((node) => node.id === flow.from);
+          const to = data.nodes.find((node) => node.id === flow.to);
+          if (!from || !to) return flow;
+          const anchorNode = drag.end === "from" ? from : to;
+          const anchor = edgeAnchorFromPoint(anchorNode, p);
+          const nextFlow = drag.end === "from" ? { ...flow, fromAnchor: anchor } : { ...flow, toAnchor: anchor };
+          const a = resolveConnectorPoint(from, to, nextFlow.fromAnchor);
+          const b = resolveConnectorPoint(to, from, nextFlow.toAnchor);
+          return { ...nextFlow, points: orthogonalPoints(a, b) };
+        }),
+      });
+    }
   }
 
   function finishDrag() {
@@ -10903,7 +10967,10 @@ function BpmnModuleV2({
         type="button"
         onClick={() => {
           setTool(value);
-          if (value !== "connect") setConnectFrom(null);
+          if (value !== "connect") {
+            setConnectFrom(null);
+            setConnectFromAnchor(null);
+          }
         }}
         className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition ${
           active ? "border-[#06966f] bg-[#06966f] text-white" : "border-border bg-card text-foreground hover:border-[#06966f] hover:bg-[#edf7f2]"
@@ -10916,13 +10983,13 @@ function BpmnModuleV2({
   }
 
   return (
-    <div className="grid gap-5">
-      <Hero title="Novo fluxograma" eyebrow="Processos · Fluxograma" progress={diagramProgress}>
-        Modelagem BPMN com pool, raias, elementos redimensionáveis e conectores ajustáveis.
-      </Hero>
-
+    <div className="grid gap-3">
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-[#f5f2ea] px-4 py-3 dark:bg-[#151a17]">
+          <div className="min-w-[230px]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">Processos - Fluxograma</div>
+            <h1 className="font-display text-xl font-semibold text-foreground">Editor de fluxograma</h1>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <input ref={importInputRef} type="file" accept=".bpm,.bpmn,.xml,.xpdl" className="hidden" onChange={handleImportFile} />
             <ToolbarButton onClick={() => importInputRef.current?.click()} icon={<Upload className="h-4 w-4" />}>Importar</ToolbarButton>
@@ -10942,7 +11009,7 @@ function BpmnModuleV2({
           </div>
         </div>
 
-        <div className="grid min-h-[760px] xl:grid-cols-[230px_minmax(0,1fr)_320px]">
+        <div className="grid min-h-[calc(100vh-170px)] xl:grid-cols-[190px_minmax(0,1fr)_280px]">
           <aside className="border-b border-border bg-[#f8f8f5] p-4 dark:bg-[#111512] xl:border-b-0 xl:border-r">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Ferramentas</h3>
             <div className="mt-3 grid gap-2">
@@ -10957,19 +11024,7 @@ function BpmnModuleV2({
               <BpmnTool title="Evento final" nodeType="end" disabled={!hasPool} onClick={() => addNode("end")}><span className="h-9 w-9 rounded-full border-4 border-[#a82b2b] bg-[#ffe1df]" /></BpmnTool>
               <BpmnTool title="Anotação" nodeType="annotation" disabled={!hasPool} onClick={() => addNode("annotation")}><span className="h-10 w-8 border-2 border-dashed border-[#06966f] bg-white" /></BpmnTool>
             </div>
-            <div className="mt-4 rounded-lg border border-border bg-card p-3">
-              <div className="flex items-center justify-between text-sm font-semibold">
-                <span>Validação</span>
-                <span className={validation.length ? "text-amber-600" : "text-emerald-600"}>{validation.length}</span>
-              </div>
-              <div className="mt-3 grid max-h-44 gap-2 overflow-auto text-xs text-muted-foreground">
-                {validation.length ? validation.map((item) => (
-                  <button key={item.id} type="button" onClick={() => item.nodeId && setSelectedId(item.nodeId)} className="rounded-md border border-border bg-muted/25 px-2 py-1.5 text-left hover:bg-muted">
-                    <span className="font-semibold text-foreground">{item.kind}</span> · {item.message}
-                  </button>
-                )) : <span>Nenhuma pendência básica.</span>}
-              </div>
-            </div>
+
           </aside>
 
           <main className="min-w-0 bg-[#ebeee9]">
@@ -10978,7 +11033,7 @@ function BpmnModuleV2({
                 {connectFrom ? "Clique no elemento de destino." : "Clique no elemento de origem."}
               </div>
             ) : null}
-            <div className="h-[700px] overflow-auto bg-[#f9fbf8] p-8">
+            <div className="h-[calc(100vh-230px)] min-h-[640px] overflow-auto bg-[#f9fbf8] p-8">
               <svg
                 ref={svgRef}
                 width={(canvasWidth * zoom) / 100}
@@ -11063,8 +11118,7 @@ function BpmnModuleV2({
                       selected={flow.id === selectedFlowId}
                       onClick={(event) => {
                         event.stopPropagation();
-                        setSelectedFlowId(flow.id);
-                        setSelectedId(null);
+                        selectFlow(flow);
                       }}
                       onAddPoint={(event) => {
                         event.stopPropagation();
@@ -11073,6 +11127,12 @@ function BpmnModuleV2({
                       onHandlePointerDown={(event, pointIndex) => {
                         event.stopPropagation();
                         setDrag({ kind: "flow-point", flowId: flow.id, pointIndex });
+                        setSelectedFlowId(flow.id);
+                        setSelectedId(null);
+                      }}
+                      onAnchorPointerDown={(event, end) => {
+                        event.stopPropagation();
+                        setDrag({ kind: "flow-anchor", flowId: flow.id, end });
                         setSelectedFlowId(flow.id);
                         setSelectedId(null);
                       }}
@@ -11087,6 +11147,7 @@ function BpmnModuleV2({
                     connecting={node.id === connectFrom}
                     onPointerDown={(event) => {
                       event.stopPropagation();
+                      if (editingNodeId === node.id) return;
                       if (tool === "connect") return;
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
                       setDrag({ kind: "node", id: node.id, dx: p.x - node.x, dy: p.y - node.y });
@@ -11098,8 +11159,21 @@ function BpmnModuleV2({
                     }}
                     onClick={(event) => {
                       event.stopPropagation();
-                      handleNodeClick(node);
+                      handleNodeClick(node, pointFromClient(event.clientX, event.clientY));
                     }}
+                    onDoubleClick={(event) => {
+                      event.stopPropagation();
+                      setTool("select");
+                      setSelectedId(node.id);
+                      setSelectedFlowId(null);
+                      setEditingNodeId(node.id);
+                      setEditingLabel(node.label);
+                    }}
+                    editing={editingNodeId === node.id}
+                    editingValue={editingLabel}
+                    onEditingChange={setEditingLabel}
+                    onEditingCommit={() => commitNodeLabel(node.id)}
+                    onEditingCancel={() => setEditingNodeId(null)}
                   />
                 )) : null}
               </svg>
@@ -11174,6 +11248,7 @@ function BpmnConnectorV2({
   onClick,
   onAddPoint,
   onHandlePointerDown,
+  onAnchorPointerDown,
 }: {
   flow: BpmnFlow;
   from: BpmnNode;
@@ -11182,22 +11257,12 @@ function BpmnConnectorV2({
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
   onAddPoint: (event: React.PointerEvent<SVGPathElement>) => void;
   onHandlePointerDown: (event: React.PointerEvent<SVGCircleElement>, pointIndex: number) => void;
+  onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
 }) {
-  const a = connectorPoint(from, to);
-  const b = connectorPoint(to, from);
+  const a = resolveConnectorPoint(from, to, flow.fromAnchor);
+  const b = resolveConnectorPoint(to, from, flow.toAnchor);
   const points = flow.points ?? [];
-  const defaultPoints =
-    points.length > 0
-      ? points
-      : Math.abs(a.x - b.x) > Math.abs(a.y - b.y)
-        ? [
-            { x: (a.x + b.x) / 2, y: a.y },
-            { x: (a.x + b.x) / 2, y: b.y },
-          ]
-        : [
-            { x: a.x, y: (a.y + b.y) / 2 },
-            { x: b.x, y: (a.y + b.y) / 2 },
-          ];
+  const defaultPoints = points.length > 0 ? points : orthogonalPoints(a, b);
   const route = [a, ...defaultPoints, b];
   const path = route.map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`).join(" ");
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -11206,6 +11271,12 @@ function BpmnConnectorV2({
       <path d={path} fill="none" stroke="transparent" strokeWidth="14" onPointerDown={onAddPoint} />
       <path d={path} fill="none" stroke={selected ? "#d39a20" : "#26352f"} strokeWidth={selected ? 3 : 2.2} markerEnd="url(#arrow-v2)" pointerEvents="none" />
       {flow.label ? <text x={labelPoint.x + 8} y={labelPoint.y - 8} fontSize="12" fontWeight="800" fill="#26352f">{flow.label}</text> : null}
+      {selected ? (
+        <>
+          <circle cx={a.x} cy={a.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "from")} />
+          <circle cx={b.x} cy={b.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
+        </>
+      ) : null}
       {selected ? points.map((pointItem, index) => (
         <circle
           key={`${flow.id}-point-${index}`}
@@ -11230,6 +11301,12 @@ function BpmnShapeV2({
   onPointerDown,
   onResizePointerDown,
   onClick,
+  onDoubleClick,
+  editing,
+  editingValue,
+  onEditingChange,
+  onEditingCommit,
+  onEditingCancel,
 }: {
   node: BpmnNode;
   selected: boolean;
@@ -11237,6 +11314,12 @@ function BpmnShapeV2({
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
   onResizePointerDown: (event: React.PointerEvent<SVGRectElement>) => void;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
+  onDoubleClick: (event: React.MouseEvent<SVGGElement>) => void;
+  editing: boolean;
+  editingValue: string;
+  onEditingChange: (value: string) => void;
+  onEditingCommit: () => void;
+  onEditingCancel: () => void;
 }) {
   const width = node.width ?? (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 150);
   const height = node.height ?? (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 72);
@@ -11245,7 +11328,7 @@ function BpmnShapeV2({
   const common = { fill, stroke, strokeWidth: selected || connecting ? 3 : 2 };
   const isEvent = node.type === "start" || node.type === "end";
   return (
-    <g onPointerDown={onPointerDown} onClick={onClick} className="cursor-move">
+    <g onPointerDown={onPointerDown} onClick={onClick} onDoubleClick={onDoubleClick} className={editing ? "cursor-text" : "cursor-move"}>
       {node.type === "task" ? <rect x={node.x} y={node.y} width={width} height={height} rx="10" {...common} /> : null}
       {node.type === "annotation" ? (
         <path
@@ -11261,12 +11344,34 @@ function BpmnShapeV2({
       ) : null}
       {node.type === "start" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 4} fill="#d8f3a7" stroke={selected || connecting ? stroke : "#66a80f"} strokeWidth={selected ? 3 : 2.5} /> : null}
       {node.type === "end" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 5} fill="#f4c2bf" stroke={selected || connecting ? stroke : "#a40000"} strokeWidth={selected ? 5 : 4} /> : null}
-      {isEvent ? (
+      {isEvent && !editing ? (
         <text x={node.x + width / 2} y={node.y + height + 22} textAnchor="middle" fontSize="12" fontWeight="700" fill="#10251d" pointerEvents="none">
           {node.label}
         </text>
       ) : null}
-      {!isEvent ? <foreignObject x={node.x + 8} y={node.y + Math.max(8, height / 2 - 22)} width={Math.max(30, width - 16)} height={44} pointerEvents="none">
+      {editing ? (
+        <foreignObject
+          x={isEvent ? node.x - 48 : node.x + 8}
+          y={isEvent ? node.y + height + 4 : node.y + Math.max(8, height / 2 - 24)}
+          width={isEvent ? Math.max(120, width + 96) : Math.max(48, width - 16)}
+          height={isEvent ? 36 : 52}
+        >
+          <input
+            autoFocus
+            value={editingValue}
+            onChange={(event) => onEditingChange(event.target.value)}
+            onBlur={onEditingCommit}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onEditingCommit();
+              if (event.key === "Escape") onEditingCancel();
+            }}
+            className="h-full w-full rounded-md border border-[#d39a20] bg-white px-2 text-center text-xs font-bold text-[#10251d] shadow-sm outline-none"
+          />
+        </foreignObject>
+      ) : null}
+      {!isEvent && !editing ? <foreignObject x={node.x + 8} y={node.y + Math.max(8, height / 2 - 22)} width={Math.max(30, width - 16)} height={44} pointerEvents="none">
         <div className="flex h-full items-center justify-center text-center text-[12px] font-bold leading-tight text-[#10251d]">
           {node.label}
         </div>
@@ -11354,6 +11459,52 @@ function nodeBounds(node: BpmnNode) {
     cx: node.x + width / 2,
     cy: node.y + height / 2,
   };
+}
+
+function clampRatio(value: number) {
+  return Math.max(0.08, Math.min(0.92, value));
+}
+
+function anchorPoint(node: BpmnNode, anchor: BpmnEdgeAnchor) {
+  const bounds = nodeBounds(node);
+  if (anchor.side === "top") return { x: bounds.left + (bounds.right - bounds.left) * anchor.offset, y: bounds.top };
+  if (anchor.side === "bottom") return { x: bounds.left + (bounds.right - bounds.left) * anchor.offset, y: bounds.bottom };
+  if (anchor.side === "left") return { x: bounds.left, y: bounds.top + (bounds.bottom - bounds.top) * anchor.offset };
+  return { x: bounds.right, y: bounds.top + (bounds.bottom - bounds.top) * anchor.offset };
+}
+
+function edgeAnchorFromPoint(node: BpmnNode, point: { x: number; y: number }): BpmnEdgeAnchor {
+  const bounds = nodeBounds(node);
+  const distances = [
+    { side: "top" as const, value: Math.abs(point.y - bounds.top) },
+    { side: "right" as const, value: Math.abs(point.x - bounds.right) },
+    { side: "bottom" as const, value: Math.abs(point.y - bounds.bottom) },
+    { side: "left" as const, value: Math.abs(point.x - bounds.left) },
+  ].sort((a, b) => a.value - b.value);
+  const side = distances[0]?.side ?? "right";
+  if (side === "top" || side === "bottom") {
+    return { side, offset: clampRatio((point.x - bounds.left) / Math.max(1, bounds.right - bounds.left)) };
+  }
+  return { side, offset: clampRatio((point.y - bounds.top) / Math.max(1, bounds.bottom - bounds.top)) };
+}
+
+function resolveConnectorPoint(from: BpmnNode, to: BpmnNode, anchor?: BpmnEdgeAnchor) {
+  return anchor ? anchorPoint(from, anchor) : connectorPoint(from, to);
+}
+
+function orthogonalPoints(a: { x: number; y: number }, b: { x: number; y: number }) {
+  if (Math.abs(a.x - b.x) > Math.abs(a.y - b.y)) {
+    const midX = (a.x + b.x) / 2;
+    return [
+      { x: midX, y: a.y },
+      { x: midX, y: b.y },
+    ];
+  }
+  const midY = (a.y + b.y) / 2;
+  return [
+    { x: a.x, y: midY },
+    { x: b.x, y: midY },
+  ];
 }
 
 function connectorPoint(from: BpmnNode, to: BpmnNode) {
