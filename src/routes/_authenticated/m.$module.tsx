@@ -10578,7 +10578,7 @@ function BpmnModuleV2({
   const [history, setHistory] = useState<BpmnState[]>([]);
   const [future, setFuture] = useState<BpmnState[]>([]);
   const [drag, setDrag] = useState<
-    | { kind: "node"; id: string; dx: number; dy: number }
+    | { kind: "node"; id: string; dx: number; dy: number; start: { x: number; y: number }; moved: boolean }
     | { kind: "node-size"; id: string; startX: number; startY: number; x: number; y: number; width: number; height: number; handle: BpmnResizeHandle }
     | { kind: "pool-width"; startX: number; width: number }
     | { kind: "pool-height"; startY: number; laneHeights: number[] }
@@ -11022,6 +11022,8 @@ function BpmnModuleV2({
     if (!drag) return;
     const p = point(event);
     if (drag.kind === "node") {
+      if (!drag.moved && Math.hypot(p.x - drag.start.x, p.y - drag.start.y) < 4) return;
+      if (!drag.moved) setDrag({ ...drag, moved: true });
       const currentNode = data.nodes.find((node) => node.id === drag.id);
       if (!currentNode) return;
       const width = currentNode.width ?? 140;
@@ -11195,7 +11197,7 @@ function BpmnModuleV2({
         });
       }
     }
-    if (drag) {
+    if (drag && (drag.kind !== "node" || drag.moved)) {
       setHistory((items) => [...items.slice(-24), { ...data, lanes }]);
       setFuture([]);
     }
@@ -11530,13 +11532,16 @@ function BpmnModuleV2({
                     node={node}
                     selected={node.id === selectedId}
                     connecting={node.id === connectFrom || node.id === connectionTarget?.nodeId}
+                    canvasRight={poolX + poolWidth}
                     onPointerDown={(event) => {
                       event.stopPropagation();
                       if (editingNodeId === node.id) return;
                       if (tool === "connect") return;
                       svgRef.current?.setPointerCapture?.(event.pointerId);
                       const p = point(event as React.PointerEvent<SVGSVGElement>);
-                      setDrag({ kind: "node", id: node.id, dx: p.x - node.x, dy: p.y - node.y });
+                      setSelectedId(node.id);
+                      setSelectedFlowId(null);
+                      setDrag({ kind: "node", id: node.id, dx: p.x - node.x, dy: p.y - node.y, start: p, moved: false });
                     }}
                     onResizePointerDown={(event, handle) => {
                       event.stopPropagation();
@@ -11706,6 +11711,7 @@ function BpmnShapeV2({
   node,
   selected,
   connecting,
+  canvasRight,
   onPointerDown,
   onResizePointerDown,
   onConnectorPointerDown,
@@ -11721,6 +11727,7 @@ function BpmnShapeV2({
   node: BpmnNode;
   selected: boolean;
   connecting: boolean;
+  canvasRight: number;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
   onResizePointerDown: (event: React.PointerEvent<SVGCircleElement>, handle: BpmnResizeHandle) => void;
   onConnectorPointerDown: (event: React.PointerEvent<SVGCircleElement>, anchor: BpmnEdgeAnchor) => void;
@@ -11739,6 +11746,7 @@ function BpmnShapeV2({
   const fill = node.color ?? (node.type === "annotation" ? "#fff7df" : "#ffffff");
   const common = { fill, stroke, strokeWidth: selected || connecting ? 3 : 2 };
   const isEvent = node.type === "start" || node.type === "end";
+  const quickToolsX = node.x + width + 52 > canvasRight ? node.x - 48 : node.x + width + 14;
   const connectionHandles: BpmnEdgeAnchor[] = [
     { side: "top", offset: 0.5 },
     { side: "right", offset: 0.5 },
@@ -11837,7 +11845,7 @@ function BpmnShapeV2({
             );
           })}
           {!editing ? (
-            <g transform={`translate(${node.x + width + 14} ${node.y + Math.max(0, height / 2 - 43)})`}>
+            <g transform={`translate(${quickToolsX} ${node.y + Math.max(0, height / 2 - 43)})`}>
               <rect x="0" y="0" width="34" height="102" rx="6" fill="#ffffff" stroke="#b9c7c0" strokeWidth="1" filter="url(#bpmn-tool-shadow)" />
               <g
                 className="cursor-pointer"
