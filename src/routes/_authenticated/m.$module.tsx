@@ -771,10 +771,11 @@ function defaultWorkspace(): WorkspaceState {
       ],
     },
     bpmn: {
-      poolName: "Processo principal",
+      poolName: "",
       area: "",
       status: "Em andamento",
-      lanes: ["Solicitante", "Executor"],
+      lanes: [],
+      laneHeights: [],
       nodes: [
         { id: "start_1", type: "start", label: "Início", x: 120, y: 135, lane: 0 },
         { id: "task_1", type: "task", label: "Receber solicitação", x: 260, y: 110, lane: 0 },
@@ -788,6 +789,10 @@ function defaultWorkspace(): WorkspaceState {
         { id: "flow_3", from: "gateway_1", to: "task_2", label: "Sim" },
         { id: "flow_4", from: "task_2", to: "end_1" },
       ],
+      // Um novo fluxograma inicia com a tela em branco; o exemplo acima permanece
+      // apenas como referência de estrutura durante a leitura do código.
+      nodes: [],
+      flows: [],
     },
   };
 }
@@ -10575,7 +10580,6 @@ function BpmnModuleV2({
     | { kind: "pool-width"; startX: number; width: number }
     | { kind: "pool-height"; startY: number; laneHeights: number[] }
     | { kind: "lane-height"; lane: number; startY: number; laneHeights: number[] }
-    | { kind: "flow-point"; flowId: string; pointIndex: number }
     | { kind: "flow-segment"; flowId: string; firstPoint: number; secondPoint: number; axis: "x" | "y" }
     | { kind: "flow-anchor"; flowId: string; end: "from" | "to" }
     | { kind: "free-flow-end"; flowId: string; end: "from" | "to" }
@@ -10985,18 +10989,6 @@ function BpmnModuleV2({
     }
   }
 
-  function addFlowPoint(flowId: string, position: { x: number; y: number }) {
-    commit({
-      ...data,
-      lanes,
-      flows: data.flows.map((flow) =>
-        flow.id === flowId ? { ...flow, points: [...(flow.points ?? []), { x: snapValue(position.x), y: snapValue(position.y) }] } : flow,
-      ),
-    });
-    setSelectedFlowId(flowId);
-    setSelectedId(null);
-  }
-
   function handlePointerMove(event: React.PointerEvent<SVGSVGElement>) {
     if (!drag) return;
     const p = point(event);
@@ -11054,18 +11046,6 @@ function BpmnModuleV2({
         lanes,
         poolWidth,
         laneHeights: drag.laneHeights.map((height, index) => (index === drag.lane ? Math.max(110, snapValue(height + p.y - drag.startY)) : height)),
-      });
-    }
-    if (drag.kind === "flow-point") {
-      update({
-        ...data,
-        lanes,
-        flows: data.flows.map((flow) => {
-          if (flow.id !== drag.flowId) return flow;
-          const points = [...(flow.points ?? [])];
-          points[drag.pointIndex] = { x: snapValue(p.x), y: snapValue(p.y) };
-          return { ...flow, points };
-        }),
       });
     }
     if (drag.kind === "flow-segment") {
@@ -11438,16 +11418,6 @@ function BpmnModuleV2({
                         event.stopPropagation();
                         selectFlow(flow);
                       }}
-                      onAddPoint={(event) => {
-                        event.stopPropagation();
-                        addFlowPoint(flow.id, point(event as React.PointerEvent<SVGSVGElement>));
-                      }}
-                      onHandlePointerDown={(event, pointIndex) => {
-                        event.stopPropagation();
-                        setDrag({ kind: "flow-point", flowId: flow.id, pointIndex });
-                        setSelectedFlowId(flow.id);
-                        setSelectedId(null);
-                      }}
                       onSegmentPointerDown={(event, firstPoint, secondPoint, axis) => {
                         event.stopPropagation();
                         setDrag({ kind: "flow-segment", flowId: flow.id, firstPoint, secondPoint, axis });
@@ -11505,8 +11475,6 @@ function BpmnModuleV2({
                       selected
                       preview
                       onClick={(event) => event.stopPropagation()}
-                      onAddPoint={(event) => event.stopPropagation()}
-                      onHandlePointerDown={(event) => event.stopPropagation()}
                       onSegmentPointerDown={(event) => event.stopPropagation()}
                       onAnchorPointerDown={(event) => event.stopPropagation()}
                     />
@@ -11616,8 +11584,6 @@ function BpmnConnectorV2({
   to,
   selected,
   onClick,
-  onAddPoint,
-  onHandlePointerDown,
   onSegmentPointerDown,
   onAnchorPointerDown,
   preview = false,
@@ -11627,8 +11593,6 @@ function BpmnConnectorV2({
   to?: BpmnNode;
   selected: boolean;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
-  onAddPoint: (event: React.PointerEvent<SVGPathElement>) => void;
-  onHandlePointerDown: (event: React.PointerEvent<SVGCircleElement>, pointIndex: number) => void;
   onSegmentPointerDown: (event: React.PointerEvent<SVGRectElement>, firstPoint: number, secondPoint: number, axis: "x" | "y") => void;
   onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
   preview?: boolean;
@@ -11648,7 +11612,7 @@ function BpmnConnectorV2({
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   return (
     <g onClick={onClick} className={preview ? "pointer-events-none" : "cursor-pointer"}>
-      {!preview ? <path d={path} fill="none" stroke="transparent" strokeWidth="14" onPointerDown={onAddPoint} /> : null}
+      {!preview ? <path d={path} fill="none" stroke="transparent" strokeWidth="14" /> : null}
       <path d={path} fill="none" stroke={selected ? "#d39a20" : "#26352f"} strokeWidth={selected ? 3 : 2.2} strokeDasharray={preview ? "8 6" : undefined} markerEnd="url(#arrow-v2)" pointerEvents="none" />
       {flow.label ? <text x={labelPoint.x + 8} y={labelPoint.y - 8} fontSize="12" fontWeight="800" fill="#26352f">{flow.label}</text> : null}
       {selected && !preview ? (
@@ -11657,19 +11621,6 @@ function BpmnConnectorV2({
           <circle cx={b.x} cy={b.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
         </>
       ) : null}
-      {selected && !preview ? points.map((pointItem, index) => (
-        <circle
-          key={`${flow.id}-point-${index}`}
-          cx={pointItem.x}
-          cy={pointItem.y}
-          r="6"
-          fill="#ffffff"
-          stroke="#d39a20"
-          strokeWidth="2.5"
-          className="cursor-move"
-          onPointerDown={(event) => onHandlePointerDown(event, index)}
-        />
-      )) : null}
       {selected && !preview ? points.slice(0, -1).map((pointItem, index) => {
         const nextPoint = points[index + 1];
         const horizontal = Math.abs(pointItem.y - nextPoint.y) < 1;
