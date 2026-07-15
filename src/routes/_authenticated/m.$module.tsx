@@ -10576,6 +10576,7 @@ function BpmnModuleV2({
     | { kind: "pool-height"; startY: number; laneHeights: number[] }
     | { kind: "lane-height"; lane: number; startY: number; laneHeights: number[] }
     | { kind: "flow-point"; flowId: string; pointIndex: number }
+    | { kind: "flow-segment"; flowId: string; firstPoint: number; secondPoint: number; axis: "x" | "y" }
     | { kind: "flow-anchor"; flowId: string; end: "from" | "to" }
     | { kind: "free-flow-end"; flowId: string; end: "from" | "to" }
     | { kind: "new-flow"; fromId: string; fromAnchor: BpmnEdgeAnchor; current: { x: number; y: number } }
@@ -11067,6 +11068,20 @@ function BpmnModuleV2({
         }),
       });
     }
+    if (drag.kind === "flow-segment") {
+      update({
+        ...data,
+        lanes,
+        flows: data.flows.map((flow) => {
+          if (flow.id !== drag.flowId) return flow;
+          const points = [...(flow.points ?? [])];
+          const value = snapValue(drag.axis === "x" ? p.x : p.y);
+          points[drag.firstPoint] = { ...points[drag.firstPoint], [drag.axis]: value };
+          points[drag.secondPoint] = { ...points[drag.secondPoint], [drag.axis]: value };
+          return { ...flow, points };
+        }),
+      });
+    }
     if (drag.kind === "flow-anchor") {
       update({
         ...data,
@@ -11092,7 +11107,8 @@ function BpmnModuleV2({
         lanes,
         flows: data.flows.map((flow) => {
           if (flow.id !== drag.flowId) return flow;
-          const snapped = { x: snapValue(p.x), y: snapValue(p.y) };
+          const candidate = nodeAtPoint(p);
+          const snapped = candidate ? anchorPoint(candidate, edgeAnchorFromPoint(candidate, p)) : { x: snapValue(p.x), y: snapValue(p.y) };
           if (drag.end === "from") {
             const target = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
             const opposite = target ? anchorPoint(target, flow.toAnchor ?? { side: "left", offset: 0.5 }) : flow.freeTo ?? snapped;
@@ -11432,6 +11448,12 @@ function BpmnModuleV2({
                         setSelectedFlowId(flow.id);
                         setSelectedId(null);
                       }}
+                      onSegmentPointerDown={(event, firstPoint, secondPoint, axis) => {
+                        event.stopPropagation();
+                        setDrag({ kind: "flow-segment", flowId: flow.id, firstPoint, secondPoint, axis });
+                        setSelectedFlowId(flow.id);
+                        setSelectedId(null);
+                      }}
                       onAnchorPointerDown={(event, end) => {
                         event.stopPropagation();
                         const endpointNode = end === "from" ? from : to;
@@ -11465,15 +11487,19 @@ function BpmnModuleV2({
                 {hasPool && drag?.kind === "new-flow" ? (() => {
                   const from = data.nodes.find((node) => node.id === drag.fromId);
                   if (!from) return null;
+                  const target = nodeAtPoint(drag.current);
+                  const targetPoint = target && target.id !== from.id
+                    ? anchorPoint(target, edgeAnchorFromPoint(target, drag.current))
+                    : drag.current;
                   return (
                     <BpmnConnectorV2
                       flow={{
                         id: "preview-flow",
                         from: from.id,
                         fromAnchor: drag.fromAnchor,
-                        freeTo: drag.current,
+                        freeTo: targetPoint,
                         type: "sequence",
-                        points: orthogonalPoints(anchorPoint(from, drag.fromAnchor), drag.current),
+                        points: orthogonalPoints(anchorPoint(from, drag.fromAnchor), targetPoint),
                       }}
                       from={from}
                       selected
@@ -11481,6 +11507,7 @@ function BpmnModuleV2({
                       onClick={(event) => event.stopPropagation()}
                       onAddPoint={(event) => event.stopPropagation()}
                       onHandlePointerDown={(event) => event.stopPropagation()}
+                      onSegmentPointerDown={(event) => event.stopPropagation()}
                       onAnchorPointerDown={(event) => event.stopPropagation()}
                     />
                   );
@@ -11591,6 +11618,7 @@ function BpmnConnectorV2({
   onClick,
   onAddPoint,
   onHandlePointerDown,
+  onSegmentPointerDown,
   onAnchorPointerDown,
   preview = false,
 }: {
@@ -11601,6 +11629,7 @@ function BpmnConnectorV2({
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
   onAddPoint: (event: React.PointerEvent<SVGPathElement>) => void;
   onHandlePointerDown: (event: React.PointerEvent<SVGCircleElement>, pointIndex: number) => void;
+  onSegmentPointerDown: (event: React.PointerEvent<SVGRectElement>, firstPoint: number, secondPoint: number, axis: "x" | "y") => void;
   onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
   preview?: boolean;
 }) {
@@ -11641,6 +11670,27 @@ function BpmnConnectorV2({
           onPointerDown={(event) => onHandlePointerDown(event, index)}
         />
       )) : null}
+      {selected && !preview ? points.slice(0, -1).map((pointItem, index) => {
+        const nextPoint = points[index + 1];
+        const horizontal = Math.abs(pointItem.y - nextPoint.y) < 1;
+        const x = (pointItem.x + nextPoint.x) / 2;
+        const y = (pointItem.y + nextPoint.y) / 2;
+        return (
+          <rect
+            key={`${flow.id}-segment-${index}`}
+            x={x - 7}
+            y={y - 4}
+            width="14"
+            height="8"
+            rx="3"
+            fill="#ffffff"
+            stroke="#2583ab"
+            strokeWidth="1.7"
+            className={horizontal ? "cursor-ns-resize" : "cursor-ew-resize"}
+            onPointerDown={(event) => onSegmentPointerDown(event, index, index + 1, horizontal ? "y" : "x")}
+          />
+        );
+      }) : null}
     </g>
   );
 }
