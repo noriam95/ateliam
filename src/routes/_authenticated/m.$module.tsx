@@ -10705,8 +10705,9 @@ function BpmnModuleV2({
     setSelectedId(null);
   }
 
-  function startNodeConnector(node: BpmnNode, anchor: BpmnEdgeAnchor) {
+  function startNodeConnector(event: React.PointerEvent<SVGCircleElement>, node: BpmnNode, anchor: BpmnEdgeAnchor) {
     const start = anchorPoint(node, anchor);
+    svgRef.current?.setPointerCapture?.(event.pointerId);
     setTool("select");
     setSelectedId(node.id);
     setSelectedFlowId(null);
@@ -10841,16 +10842,16 @@ function BpmnModuleV2({
       width: defaults.width,
       height: defaults.height,
     };
-    const start = anchorPoint(node, { side: "right", offset: 0.5 });
-    const end = anchorPoint(nextNode, { side: "left", offset: 0.5 });
+    const fromAnchor = { side: "right", offset: 0.5 } as BpmnEdgeAnchor;
+    const toAnchor = { side: "left", offset: 0.5 } as BpmnEdgeAnchor;
     const nextFlow: BpmnFlow = {
       id: id("flow"),
       from: node.id,
       to: nextNode.id,
       type: "sequence",
-      fromAnchor: { side: "right", offset: 0.5 },
-      toAnchor: { side: "left", offset: 0.5 },
-      points: orthogonalPoints(start, end),
+      fromAnchor,
+      toAnchor,
+      points: [],
     };
     commit({ ...data, lanes, nodes: [...data.nodes, nextNode], flows: [...data.flows, nextFlow] });
     setSelectedId(nextNode.id);
@@ -10891,17 +10892,6 @@ function BpmnModuleV2({
   }
 
   function selectFlow(flow: BpmnFlow) {
-    const from = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
-    const to = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
-    if (from && to && !(flow.points?.length)) {
-      const a = resolveConnectorPoint(from, to, flow.fromAnchor);
-      const b = resolveConnectorPoint(to, from, flow.toAnchor);
-      update({
-        ...data,
-        lanes,
-        flows: data.flows.map((item) => (item.id === flow.id ? { ...item, points: orthogonalPoints(a, b) } : item)),
-      });
-    }
     setSelectedFlowId(flow.id);
     setSelectedId(null);
   }
@@ -10932,7 +10922,7 @@ function BpmnModuleV2({
               type: "sequence",
               fromAnchor: connectFromAnchor ?? undefined,
               toAnchor: targetAnchor ?? undefined,
-              points: orthogonalPoints(a, b),
+              points: [],
             },
           ],
         });
@@ -11077,9 +11067,7 @@ function BpmnModuleV2({
           const anchorNode = drag.end === "from" ? from : to;
           const anchor = edgeAnchorFromPoint(anchorNode, p);
           const nextFlow = drag.end === "from" ? { ...flow, fromAnchor: anchor } : { ...flow, toAnchor: anchor };
-          const a = resolveConnectorPoint(from, to, nextFlow.fromAnchor);
-          const b = resolveConnectorPoint(to, from, nextFlow.toAnchor);
-          return { ...nextFlow, points: orthogonalPoints(a, b) };
+          return { ...nextFlow, points: [] };
         }),
       });
     }
@@ -11107,15 +11095,15 @@ function BpmnModuleV2({
     }
   }
 
-  function finishDrag() {
+  function finishDrag(event?: React.PointerEvent<SVGSVGElement>) {
+    const releasePoint = event ? point(event) : drag?.kind === "new-flow" ? drag.current : null;
     if (drag?.kind === "new-flow") {
       const fromNode = data.nodes.find((node) => node.id === drag.fromId);
-      const target = nodeAtPoint(drag.current);
+      const endPoint = releasePoint ?? drag.current;
+      const target = nodeAtPoint(endPoint);
       if (fromNode) {
         if (target && target.id !== fromNode.id) {
-          const targetAnchor = edgeAnchorFromPoint(target, drag.current);
-          const start = anchorPoint(fromNode, drag.fromAnchor);
-          const end = anchorPoint(target, targetAnchor);
+          const targetAnchor = edgeAnchorFromPoint(target, endPoint);
           const next: BpmnFlow = {
             id: id("flow"),
             from: fromNode.id,
@@ -11123,7 +11111,7 @@ function BpmnModuleV2({
             type: "sequence",
             fromAnchor: drag.fromAnchor,
             toAnchor: targetAnchor,
-            points: orthogonalPoints(start, end),
+            points: [],
           };
           update({ ...data, lanes, flows: [...data.flows, next] });
           setSelectedFlowId(next.id);
@@ -11134,8 +11122,8 @@ function BpmnModuleV2({
             from: fromNode.id,
             type: "sequence",
             fromAnchor: drag.fromAnchor,
-            freeTo: drag.current,
-            points: orthogonalPoints(anchorPoint(fromNode, drag.fromAnchor), drag.current),
+            freeTo: endPoint,
+            points: connectorRoutePoints(anchorPoint(fromNode, drag.fromAnchor), endPoint, drag.fromAnchor),
           };
           update({ ...data, lanes, flows: [...data.flows, next] });
           setSelectedFlowId(next.id);
@@ -11145,7 +11133,7 @@ function BpmnModuleV2({
     }
     if (drag?.kind === "free-flow-end") {
       const current = data.flows.find((flow) => flow.id === drag.flowId);
-      const position = drag.end === "from" ? current?.freeFrom : current?.freeTo;
+      const position = releasePoint ?? (drag.end === "from" ? current?.freeFrom : current?.freeTo);
       const target = position ? nodeAtPoint(position) : null;
       if (current && position && target) {
         const anchor = edgeAnchorFromPoint(target, position);
@@ -11155,15 +11143,9 @@ function BpmnModuleV2({
           flows: data.flows.map((flow) => {
             if (flow.id !== drag.flowId) return flow;
             if (drag.end === "from") {
-              const targetEnd = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
-              const start = anchorPoint(target, anchor);
-              const end = targetEnd ? anchorPoint(targetEnd, flow.toAnchor ?? { side: "left", offset: 0.5 }) : flow.freeTo ?? start;
-              return { ...flow, from: target.id, fromAnchor: anchor, freeFrom: undefined, points: orthogonalPoints(start, end) };
+              return { ...flow, from: target.id, fromAnchor: anchor, freeFrom: undefined, points: [] };
             }
-            const source = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
-            const start = source ? anchorPoint(source, flow.fromAnchor ?? { side: "right", offset: 0.5 }) : flow.freeFrom ?? position;
-            const end = anchorPoint(target, anchor);
-            return { ...flow, to: target.id, toAnchor: anchor, freeTo: undefined, points: orthogonalPoints(start, end) };
+            return { ...flow, to: target.id, toAnchor: anchor, freeTo: undefined, points: [] };
           }),
         });
       }
@@ -11422,6 +11404,7 @@ function BpmnModuleV2({
                             }),
                           });
                         }
+                        svgRef.current?.setPointerCapture?.(event.pointerId);
                         setDrag({ kind: "free-flow-end", flowId: flow.id, end });
                         setSelectedFlowId(flow.id);
                         setSelectedId(null);
@@ -11444,7 +11427,12 @@ function BpmnModuleV2({
                         fromAnchor: drag.fromAnchor,
                         freeTo: targetPoint,
                         type: "sequence",
-                        points: orthogonalPoints(anchorPoint(from, drag.fromAnchor), targetPoint),
+                        points: connectorRoutePoints(
+                          anchorPoint(from, drag.fromAnchor),
+                          targetPoint,
+                          drag.fromAnchor,
+                          target ? edgeAnchorFromPoint(target, drag.current) : undefined,
+                        ),
                       }}
                       from={from}
                       selected
@@ -11475,7 +11463,7 @@ function BpmnModuleV2({
                     }}
                     onConnectorPointerDown={(event, anchor) => {
                       event.stopPropagation();
-                      startNodeConnector(node, anchor);
+                      startNodeConnector(event, node, anchor);
                     }}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -11574,14 +11562,16 @@ function BpmnConnectorV2({
 }) {
   const freeA = flow.freeFrom ?? { x: 0, y: 0 };
   const freeB = flow.freeTo ?? { x: freeA.x + 120, y: freeA.y };
+  const fromAnchor = flow.fromAnchor ?? (from ? edgeAnchorFromPoint(from, to ? nodeCenter(to) : freeB) : undefined);
   const a = from
-    ? anchorPoint(from, flow.fromAnchor ?? edgeAnchorFromPoint(from, to ? nodeCenter(to) : freeB))
+    ? anchorPoint(from, fromAnchor ?? { side: "right", offset: 0.5 })
     : freeA;
+  const toAnchor = flow.toAnchor ?? (to ? edgeAnchorFromPoint(to, from ? nodeCenter(from) : a) : undefined);
   const b = to
-    ? anchorPoint(to, flow.toAnchor ?? edgeAnchorFromPoint(to, from ? nodeCenter(from) : a))
+    ? anchorPoint(to, toAnchor ?? { side: "left", offset: 0.5 })
     : freeB;
   const points = flow.points ?? [];
-  const defaultPoints = points.length > 0 ? points : orthogonalPoints(a, b);
+  const defaultPoints = points.length > 0 ? points : connectorRoutePoints(a, b, fromAnchor, toAnchor);
   const route = [a, ...defaultPoints, b];
   const path = route.map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`).join(" ");
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -11922,6 +11912,36 @@ function orthogonalPoints(a: { x: number; y: number }, b: { x: number; y: number
     { x: a.x, y: midY },
     { x: b.x, y: midY },
   ];
+}
+
+function connectorRoutePoints(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  fromAnchor?: BpmnEdgeAnchor,
+  toAnchor?: BpmnEdgeAnchor,
+) {
+  if (!fromAnchor || !toAnchor) return orthogonalPoints(a, b);
+  const distance = 28;
+  const vector = (side: BpmnEdgeSide) => {
+    if (side === "top") return { x: 0, y: -1 };
+    if (side === "bottom") return { x: 0, y: 1 };
+    if (side === "left") return { x: -1, y: 0 };
+    return { x: 1, y: 0 };
+  };
+  const fromVector = vector(fromAnchor.side);
+  const toVector = vector(toAnchor.side);
+  const exit = { x: a.x + fromVector.x * distance, y: a.y + fromVector.y * distance };
+  const entry = { x: b.x + toVector.x * distance, y: b.y + toVector.y * distance };
+  const sourceHorizontal = fromVector.x !== 0;
+  const targetHorizontal = toVector.x !== 0;
+  const points = sourceHorizontal === targetHorizontal
+    ? sourceHorizontal
+      ? [exit, { x: (exit.x + entry.x) / 2, y: exit.y }, { x: (exit.x + entry.x) / 2, y: entry.y }, entry]
+      : [exit, { x: exit.x, y: (exit.y + entry.y) / 2 }, { x: entry.x, y: (exit.y + entry.y) / 2 }, entry]
+    : sourceHorizontal
+      ? [exit, { x: entry.x, y: exit.y }, entry]
+      : [exit, { x: exit.x, y: entry.y }, entry];
+  return points.filter((point, index, list) => index === 0 || point.x !== list[index - 1].x || point.y !== list[index - 1].y);
 }
 
 function connectorPoint(from: BpmnNode, to: BpmnNode) {
