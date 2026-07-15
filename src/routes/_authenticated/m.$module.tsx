@@ -60,6 +60,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import JSZip from "jszip";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
@@ -10382,6 +10383,240 @@ function PopModule({
   );
 }
 
+const BPMN_POOL_X = 80;
+const BPMN_POOL_Y = 80;
+const BPMN_POOL_LABEL_WIDTH = 62;
+const BPMN_LANE_LABEL_WIDTH = 82;
+const BPMN_LEFT_HEADER_WIDTH = BPMN_POOL_LABEL_WIDTH + BPMN_LANE_LABEL_WIDTH;
+
+function xmlChildren(element: Element, localName?: string) {
+  return Array.from(element.children).filter((child) => !localName || child.localName === localName);
+}
+
+function xmlFirst(element: Element, localName: string) {
+  return xmlChildren(element, localName)[0] ?? null;
+}
+
+function xmlAttr(element: Element | null | undefined, name: string, fallback = "") {
+  return element?.getAttribute(name) ?? fallback;
+}
+
+function xmlNumber(element: Element | null | undefined, name: string, fallback = 0) {
+  const value = Number(xmlAttr(element, name));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function nodeGraphicsInfo(element: Element) {
+  return xmlFirst(xmlFirst(element, "NodeGraphicsInfos") ?? element, "NodeGraphicsInfo");
+}
+
+function nodeCoordinates(element: Element) {
+  return xmlFirst(nodeGraphicsInfo(element) ?? element, "Coordinates");
+}
+
+function detectXpdlNodeType(activity: Element): BpmnNodeType {
+  if (xmlFirst(xmlFirst(activity, "Event") ?? activity, "StartEvent")) return "start";
+  if (xmlFirst(xmlFirst(activity, "Event") ?? activity, "EndEvent")) return "end";
+  if (xmlFirst(activity, "Route")) return "gateway";
+  return "task";
+}
+
+function normalizeImportedText(value: string, fallback: string) {
+  return value.trim() || fallback;
+}
+
+async function selectedBizagiDiagramName(zip: JSZip) {
+  const preferenceFile = Object.keys(zip.files).find((name) => name.endsWith("UserPreferences.xml"));
+  if (!preferenceFile) return null;
+  const xml = await zip.files[preferenceFile].async("text");
+  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  const selected = Array.from(doc.getElementsByTagName("ModelItem")).find(
+    (item) => item.getAttribute("ItemType") === "Diagram" && item.getAttribute("IsSelected") === "true",
+  );
+  const diagramId = selected?.getAttribute("DiagramId");
+  return diagramId ? `${diagramId}.diag` : null;
+}
+
+async function importBpmnFile(file: File): Promise<BpmnState> {
+  const buffer = await file.arrayBuffer();
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith(".bpm")) {
+    const outer = await JSZip.loadAsync(buffer);
+    const preferred = await selectedBizagiDiagramName(outer);
+    const diagName = (preferred && outer.file(preferred) ? preferred : null) ?? Object.keys(outer.files).find((name) => name.endsWith(".diag"));
+    if (!diagName) throw new Error("Arquivo BPM sem diagrama importavel.");
+    const inner = await JSZip.loadAsync(await outer.file(diagName)!.async("arraybuffer"));
+    const diagram = inner.file("Diagram.xml");
+    if (!diagram) throw new Error("Diagrama Bizagi sem Diagram.xml.");
+    return parseXpdlDiagram(await diagram.async("text"));
+  }
+  const xml = new TextDecoder("utf-8").decode(buffer);
+  if (xml.includes("XPDL2.2") || xml.includes("<Package")) return parseXpdlDiagram(xml);
+  return parseBpmnXmlDiagram(xml);
+}
+
+function parseXpdlDiagram(xml: string): BpmnState {
+  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  const packageElement = doc.documentElement;
+  const pools = Array.from(doc.getElementsByTagNameNS("*", "Pool"));
+  const pool =
+    pools.find((item) => item.getAttribute("BoundaryVisible") !== "false" && item.getElementsByTagNameNS("*", "Lane").length > 0) ??
+    pools.find((item) => item.getElementsByTagNameNS("*", "Lane").length > 0) ??
+    pools[0];
+  const lanesXml = pool ? Array.from(pool.getElementsByTagNameNS("*", "Lane")) : [];
+  const laneSource = lanesXml.map((lane, index) => {
+    const graphics = nodeGraphicsInfo(lane);
+    const coordinates = nodeCoordinates(lane);
+    return {
+      name: normalizeImportedText(xmlAttr(lane, "Name"), `Raia ${index + 1}`),
+      sourceY: xmlNumber(coordinates, "YCoordinate", index * 180),
+      sourceHeight: Math.max(120, xmlNumber(graphics, "Height", 180)),
+      sourceWidth: Math.max(760, xmlNumber(graphics, "Width", 1000)),
+    };
+  });
+  const lanes = laneSource.length ? laneSource.map((lane) => lane.name) : ["Raia 1"];
+  const maxSourceWidth = Math.max(...laneSource.map((lane) => lane.sourceWidth), 1000);
+  const scale = Math.min(1, 1180 / Math.max(maxSourceWidth, 1));
+  const laneHeights = laneSource.length ? laneSource.map((lane) => Math.max(140, Math.round(lane.sourceHeight * scale))) : [240];
+  const laneTargetY = (index: number) => BPMN_POOL_Y + laneHeights.slice(0, index).reduce((total, height) => total + height, 0);
+  const sourceLaneIndex = (sourceY: number) => {
+    const found = laneSource.findIndex((lane) => sourceY >= lane.sourceY && sourceY <= lane.sourceY + lane.sourceHeight);
+    return found >= 0 ? found : 0;
+  };
+  const sourceMinX = Math.min(
+    ...Array.from(doc.getElementsByTagNameNS("*", "Activity"))
+      .map((activity) => xmlNumber(nodeCoordinates(activity), "XCoordinate", 0))
+      .filter((value) => value > 0),
+    120,
+  );
+  const sourceToTarget = (sourceX: number, sourceY: number) => {
+    const laneIndex = sourceLaneIndex(sourceY);
+    const lane = laneSource[laneIndex] ?? { sourceY: 0 };
+    return {
+      x: BPMN_POOL_X + BPMN_LEFT_HEADER_WIDTH + 60 + (sourceX - sourceMinX) * scale,
+      y: laneTargetY(laneIndex) + Math.max(20, (sourceY - lane.sourceY) * scale),
+    };
+  };
+  const activityNodes = Array.from(doc.getElementsByTagNameNS("*", "Activity"));
+  const nodes: BpmnNode[] = activityNodes.map((activity, index) => {
+    const type = detectXpdlNodeType(activity);
+    const graphics = nodeGraphicsInfo(activity);
+    const coordinates = nodeCoordinates(activity);
+    const sourceX = xmlNumber(coordinates, "XCoordinate", 160 + index * 120);
+    const sourceY = xmlNumber(coordinates, "YCoordinate", 120);
+    const target = sourceToTarget(sourceX, sourceY);
+    const rawWidth = xmlNumber(graphics, "Width", type === "task" ? 120 : 44) * scale;
+    const rawHeight = xmlNumber(graphics, "Height", type === "task" ? 70 : 44) * scale;
+    const width = type === "task" ? Math.max(100, rawWidth) : type === "gateway" ? Math.max(56, rawWidth) : Math.max(42, rawWidth);
+    const height = type === "task" ? Math.max(58, rawHeight) : type === "gateway" ? Math.max(56, rawHeight) : Math.max(42, rawHeight);
+    return {
+      id: xmlAttr(activity, "Id", id(type)),
+      type,
+      label: normalizeImportedText(xmlAttr(activity, "Name"), type === "start" ? "Inicio" : type === "end" ? "Fim" : type === "gateway" ? "Decisao" : `Atividade ${index + 1}`),
+      x: Math.round(target.x),
+      y: Math.round(target.y),
+      lane: sourceLaneIndex(sourceY + xmlNumber(graphics, "Height", 0) / 2),
+      width: Math.round(width),
+      height: Math.round(height),
+    };
+  });
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const flows = Array.from(doc.getElementsByTagNameNS("*", "Transition"))
+    .map((transition) => {
+      const from = xmlAttr(transition, "From");
+      const to = xmlAttr(transition, "To");
+      if (!nodeIds.has(from) || !nodeIds.has(to)) return null;
+      const converted = Array.from(transition.getElementsByTagNameNS("*", "Coordinates")).map((coordinates) =>
+        sourceToTarget(xmlNumber(coordinates, "XCoordinate", 0), xmlNumber(coordinates, "YCoordinate", 0)),
+      );
+      const middle = converted.length > 2 ? converted.slice(1, -1) : converted;
+      return {
+        id: xmlAttr(transition, "Id", id("flow")),
+        from,
+        to,
+        label: xmlAttr(transition, "Name") || undefined,
+        type: "sequence" as const,
+        points: middle.map((point) => ({ x: Math.round(point.x), y: Math.round(point.y) })),
+      };
+    })
+    .filter(Boolean) as BpmnFlow[];
+  const maxX = Math.max(...nodes.map((node) => node.x + (node.width ?? 0)), ...flows.flatMap((flow) => flow.points ?? []).map((point) => point.x), 1000);
+  return {
+    poolName: normalizeImportedText(xmlAttr(pool, "Name"), xmlAttr(packageElement, "Name", "Processo importado")),
+    codigo: xmlAttr(packageElement, "Id"),
+    lanes,
+    laneHeights,
+    poolWidth: Math.max(900, Math.round(maxX - BPMN_POOL_X + 130)),
+    nodes,
+    flows,
+  };
+}
+
+function parseBpmnXmlDiagram(xml: string): BpmnState {
+  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  const boundsByElement = new Map<string, { x: number; y: number; width: number; height: number }>();
+  Array.from(doc.getElementsByTagNameNS("*", "BPMNShape")).forEach((shape) => {
+    const elementId = xmlAttr(shape, "bpmnElement");
+    const bounds = Array.from(shape.getElementsByTagNameNS("*", "Bounds"))[0];
+    if (!elementId || !bounds) return;
+    boundsByElement.set(elementId, {
+      x: xmlNumber(bounds, "x", 0),
+      y: xmlNumber(bounds, "y", 0),
+      width: xmlNumber(bounds, "width", 120),
+      height: xmlNumber(bounds, "height", 70),
+    });
+  });
+  const minX = Math.min(...Array.from(boundsByElement.values()).map((item) => item.x), 100);
+  const minY = Math.min(...Array.from(boundsByElement.values()).map((item) => item.y), 100);
+  const target = (x: number, y: number) => ({
+    x: Math.round(BPMN_POOL_X + BPMN_LEFT_HEADER_WIDTH + 60 + (x - minX)),
+    y: Math.round(BPMN_POOL_Y + 60 + (y - minY)),
+  });
+  const mapType = (element: Element): BpmnNodeType => {
+    if (element.localName === "startEvent") return "start";
+    if (element.localName === "endEvent") return "end";
+    if (element.localName.toLowerCase().includes("gateway")) return "gateway";
+    return "task";
+  };
+  const names = ["startEvent", "endEvent", "task", "userTask", "serviceTask", "manualTask", "exclusiveGateway", "parallelGateway", "inclusiveGateway"];
+  const nodeElements = names.flatMap((name) => Array.from(doc.getElementsByTagNameNS("*", name)));
+  const nodes = nodeElements.map((element, index) => {
+    const elementId = xmlAttr(element, "id", id("task"));
+    const type = mapType(element);
+    const bounds = boundsByElement.get(elementId) ?? { x: 120 + index * 160, y: 120, width: type === "task" ? 130 : 50, height: type === "task" ? 72 : 50 };
+    const p = target(bounds.x, bounds.y);
+    return {
+      id: elementId,
+      type,
+      label: normalizeImportedText(xmlAttr(element, "name"), type === "start" ? "Inicio" : type === "end" ? "Fim" : type === "gateway" ? "Decisao" : `Atividade ${index + 1}`),
+      x: p.x,
+      y: p.y,
+      lane: 0,
+      width: Math.max(type === "task" ? 110 : 46, bounds.width),
+      height: Math.max(type === "task" ? 58 : 46, bounds.height),
+    };
+  });
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const flows = Array.from(doc.getElementsByTagNameNS("*", "sequenceFlow"))
+    .map((flow) => {
+      const from = xmlAttr(flow, "sourceRef");
+      const to = xmlAttr(flow, "targetRef");
+      if (!nodeIds.has(from) || !nodeIds.has(to)) return null;
+      return { id: xmlAttr(flow, "id", id("flow")), from, to, label: xmlAttr(flow, "name") || undefined, type: "sequence" as const, points: [] };
+    })
+    .filter(Boolean) as BpmnFlow[];
+  const maxX = Math.max(...nodes.map((node) => node.x + (node.width ?? 0)), 1000);
+  const maxY = Math.max(...nodes.map((node) => node.y + (node.height ?? 0)), BPMN_POOL_Y + 260);
+  return {
+    poolName: "Processo importado",
+    lanes: ["Raia 1"],
+    laneHeights: [Math.max(260, maxY - BPMN_POOL_Y + 80)],
+    poolWidth: Math.max(900, maxX - BPMN_POOL_X + 120),
+    nodes,
+    flows,
+  };
+}
+
 function BpmnModuleV2({
   data,
   update,
@@ -10394,6 +10629,7 @@ function BpmnModuleV2({
   codePreview?: string;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [tool, setTool] = useState<"select" | "connect">("select");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
@@ -10418,16 +10654,18 @@ function BpmnModuleV2({
   const laneHeights = lanes.map((_, index) => data.laneHeights?.[index] ?? 170);
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null;
   const selectedFlow = data.flows.find((flow) => flow.id === selectedFlowId) ?? null;
-  const poolX = 80;
-  const poolY = 80;
-  const laneLabelWidth = 96;
+  const poolX = BPMN_POOL_X;
+  const poolY = BPMN_POOL_Y;
+  const poolLabelWidth = BPMN_POOL_LABEL_WIDTH;
+  const laneLabelWidth = BPMN_LANE_LABEL_WIDTH;
+  const leftHeaderWidth = BPMN_LEFT_HEADER_WIDTH;
   const maxNodeX = data.nodes.reduce((max, node) => Math.max(max, node.x + (node.width ?? 140)), 0);
-  const poolWidth = Math.max(data.poolWidth ?? 1080, maxNodeX - poolX + 180, 720);
+  const poolWidth = Math.max(data.poolWidth ?? 1080, maxNodeX - poolX + 180, leftHeaderWidth + 720);
   const poolHeight = Math.max(laneHeights.reduce((total, height) => total + height, 0), 260);
   const canvasWidth = Math.max(poolX + poolWidth + 180, 1280);
   const canvasHeight = Math.max(poolY + poolHeight + 160, 760);
   const diagramProgress = completionPercent([data.poolName, lanes, data.nodes, data.flows]);
-  const validation = validateBpmnDiagram(data, lanes, { poolX, poolY, laneLabelWidth, poolWidth, laneHeights });
+  const validation = validateBpmnDiagram(data, lanes, { poolX, poolY, laneLabelWidth: leftHeaderWidth, poolWidth, laneHeights });
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -10504,11 +10742,11 @@ function BpmnModuleV2({
   }
 
   function defaultNode(type: BpmnNodeType) {
-    if (type === "gateway") return { width: 90, height: 90, label: "Decisão" };
-    if (type === "start") return { width: 70, height: 70, label: "Início" };
-    if (type === "end") return { width: 70, height: 70, label: "Fim" };
-    if (type === "annotation") return { width: 180, height: 90, label: "Anotação" };
-    return { width: 150, height: 72, label: "Atividade" };
+    if (type === "gateway") return { width: 64, height: 64, label: "Decisao" };
+    if (type === "start") return { width: 44, height: 44, label: "Inicio" };
+    if (type === "end") return { width: 48, height: 48, label: "Fim" };
+    if (type === "annotation") return { width: 180, height: 90, label: "Anotacao" };
+    return { width: 140, height: 72, label: "Atividade" };
   }
 
   function createPool() {
@@ -10518,7 +10756,7 @@ function BpmnModuleV2({
       poolName: "Processo 1",
       lanes: ["Raia 1", "Raia 2"],
       laneHeights: [170, 170],
-      poolWidth: 1080,
+      poolWidth: 1100,
       nodes: [],
       flows: [],
     });
@@ -10532,8 +10770,8 @@ function BpmnModuleV2({
     const defaults = defaultNode(type);
     const targetLane = position ? laneIndexFromY(position.y) : Math.min(Math.max(selected?.lane ?? 0, 0), lanes.length - 1);
     const x = position
-      ? Math.max(poolX + laneLabelWidth + 20, Math.min(poolX + poolWidth - defaults.width - 20, snapValue(position.x - defaults.width / 2)))
-      : poolX + laneLabelWidth + 70 + data.nodes.length * 28;
+      ? Math.max(poolX + leftHeaderWidth + 20, Math.min(poolX + poolWidth - defaults.width - 20, snapValue(position.x - defaults.width / 2)))
+      : poolX + leftHeaderWidth + 70 + data.nodes.length * 28;
     const y = position
       ? Math.max(poolY + 16, Math.min(poolY + poolHeight - defaults.height - 16, snapValue(position.y - defaults.height / 2)))
       : laneY(targetLane) + 42;
@@ -10642,6 +10880,24 @@ function BpmnModuleV2({
     addNode(type, pointFromClient(event.clientX, event.clientY));
   }
 
+  async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const imported = await importBpmnFile(file);
+      commit(imported);
+      setSelectedId(null);
+      setSelectedFlowId(null);
+      setConnectFrom(null);
+      setTool("select");
+      toast.success("Fluxograma importado.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Nao foi possivel importar o arquivo.";
+      toast.error(message);
+    }
+  }
+
   function addFlowPoint(flowId: string, position: { x: number; y: number }) {
     commit({
       ...data,
@@ -10665,7 +10921,7 @@ function BpmnModuleV2({
           if (node.id !== drag.id) return node;
           const width = node.width ?? 140;
           const height = node.height ?? 64;
-          const x = Math.max(poolX + laneLabelWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(p.x - drag.dx)));
+          const x = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(p.x - drag.dx)));
           const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(p.y - drag.dy)));
           return { ...node, x, y, lane: laneIndexFromY(y + height / 2) };
         }),
@@ -10752,6 +11008,8 @@ function BpmnModuleV2({
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-[#f5f2ea] px-4 py-3 dark:bg-[#151a17]">
           <div className="flex flex-wrap items-center gap-2">
+            <input ref={importInputRef} type="file" accept=".bpm,.bpmn,.xml,.xpdl" className="hidden" onChange={handleImportFile} />
+            <ToolbarButton onClick={() => importInputRef.current?.click()} icon={<Upload className="h-4 w-4" />}>Importar</ToolbarButton>
             <ToolbarButton onClick={createPool} icon={<Layers className="h-4 w-4" />}>Criar pool</ToolbarButton>
             <ToolbarButton onClick={addLane} icon={<Plus className="h-4 w-4" />}>Raia</ToolbarButton>
             <ToolbarButton onClick={undo} icon={<RotateCcw className="h-4 w-4" />}>Desfazer</ToolbarButton>
@@ -10843,17 +11101,17 @@ function BpmnModuleV2({
                   </g>
                 ) : null}
                 {hasPool ? <rect x={poolX} y={poolY} width={poolWidth} height={poolHeight} fill="#ffffff" stroke="#10251d" strokeWidth="1.7" /> : null}
-                {hasPool ? <rect x={poolX} y={poolY} width={laneLabelWidth} height={poolHeight} fill="#f3eee4" stroke="#10251d" strokeWidth="1.7" /> : null}
+                {hasPool ? <rect x={poolX} y={poolY} width={poolLabelWidth} height={poolHeight} fill="#f8f3ea" stroke="#10251d" strokeWidth="1.7" /> : null}
                 {hasPool ? (
-                  <text x={poolX + laneLabelWidth / 2} y={poolY + poolHeight / 2} textAnchor="middle" fontSize="16" fontWeight="800" fill="#10251d" transform={`rotate(-90 ${poolX + laneLabelWidth / 2} ${poolY + poolHeight / 2})`}>
+                  <text x={poolX + poolLabelWidth / 2} y={poolY + poolHeight / 2} textAnchor="middle" fontSize="16" fontWeight="800" fill="#10251d" transform={`rotate(-90 ${poolX + poolLabelWidth / 2} ${poolY + poolHeight / 2})`}>
                     {data.poolName}
                   </text>
                 ) : null}
                 {hasPool ? lanes.map((lane, index) => (
                   <g key={`${lane}-${index}`}>
-                    <rect x={poolX} y={laneY(index)} width={poolWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
-                    <rect x={poolX + laneLabelWidth} y={laneY(index)} width={poolWidth - laneLabelWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
-                    <text x={poolX + laneLabelWidth / 2} y={laneY(index) + laneHeights[index] / 2} textAnchor="middle" fontSize="13" fontWeight="800" fill="#10251d" transform={`rotate(-90 ${poolX + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}>
+                    <rect x={poolX + poolLabelWidth} y={laneY(index)} width={laneLabelWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
+                    <rect x={poolX + leftHeaderWidth} y={laneY(index)} width={poolWidth - leftHeaderWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
+                    <text x={poolX + poolLabelWidth + laneLabelWidth / 2} y={laneY(index) + laneHeights[index] / 2} textAnchor="middle" fontSize="13" fontWeight="800" fill="#10251d" transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}>
                       {lane || `Raia ${index + 1}`}
                     </text>
                     {index < lanes.length - 1 ? (
@@ -11006,9 +11264,21 @@ function BpmnConnectorV2({
   const a = connectorPoint(from, to);
   const b = connectorPoint(to, from);
   const points = flow.points ?? [];
-  const route = [a, ...points, b];
+  const defaultPoints =
+    points.length > 0
+      ? points
+      : Math.abs(a.x - b.x) > Math.abs(a.y - b.y)
+        ? [
+            { x: (a.x + b.x) / 2, y: a.y },
+            { x: (a.x + b.x) / 2, y: b.y },
+          ]
+        : [
+            { x: a.x, y: (a.y + b.y) / 2 },
+            { x: b.x, y: (a.y + b.y) / 2 },
+          ];
+  const route = [a, ...defaultPoints, b];
   const path = route.map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`).join(" ");
-  const labelPoint = points[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   return (
     <g onClick={onClick} className="cursor-pointer">
       <path d={path} fill="none" stroke="transparent" strokeWidth="14" onPointerDown={onAddPoint} />
@@ -11051,6 +11321,7 @@ function BpmnShapeV2({
   const stroke = connecting ? "#d39a20" : selected ? "#06966f" : "#26352f";
   const fill = node.color ?? (node.type === "annotation" ? "#fff7df" : "#ffffff");
   const common = { fill, stroke, strokeWidth: selected || connecting ? 3 : 2 };
+  const isEvent = node.type === "start" || node.type === "end";
   return (
     <g onPointerDown={onPointerDown} onClick={onClick} className="cursor-move">
       {node.type === "task" ? <rect x={node.x} y={node.y} width={width} height={height} rx="10" {...common} /> : null}
@@ -11066,13 +11337,18 @@ function BpmnShapeV2({
       {node.type === "gateway" ? (
         <path d={`M${node.x + width / 2},${node.y} L${node.x + width},${node.y + height / 2} L${node.x + width / 2},${node.y + height} L${node.x},${node.y + height / 2} Z`} {...common} />
       ) : null}
-      {node.type === "start" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 4} fill="#d8f3e8" stroke={stroke} strokeWidth={selected ? 3 : 2} /> : null}
-      {node.type === "end" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 5} fill="#ffe1df" stroke={stroke} strokeWidth={selected ? 5 : 4} /> : null}
-      <foreignObject x={node.x + 8} y={node.y + Math.max(8, height / 2 - 22)} width={Math.max(30, width - 16)} height={44} pointerEvents="none">
+      {node.type === "start" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 4} fill="#d8f3a7" stroke={selected || connecting ? stroke : "#66a80f"} strokeWidth={selected ? 3 : 2.5} /> : null}
+      {node.type === "end" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 5} fill="#f4c2bf" stroke={selected || connecting ? stroke : "#a40000"} strokeWidth={selected ? 5 : 4} /> : null}
+      {isEvent ? (
+        <text x={node.x + width / 2} y={node.y + height + 22} textAnchor="middle" fontSize="12" fontWeight="700" fill="#10251d" pointerEvents="none">
+          {node.label}
+        </text>
+      ) : null}
+      {!isEvent ? <foreignObject x={node.x + 8} y={node.y + Math.max(8, height / 2 - 22)} width={Math.max(30, width - 16)} height={44} pointerEvents="none">
         <div className="flex h-full items-center justify-center text-center text-[12px] font-bold leading-tight text-[#10251d]">
           {node.label}
         </div>
-      </foreignObject>
+      </foreignObject> : null}
       {selected ? (
         <>
           <rect x={node.x - 4} y={node.y - 4} width={width + 8} height={height + 8} rx="12" fill="none" stroke="#d39a20" strokeDasharray="5 5" strokeWidth="1.5" pointerEvents="none" />
