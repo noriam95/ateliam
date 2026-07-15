@@ -11022,18 +11022,20 @@ function BpmnModuleV2({
     if (!drag) return;
     const p = point(event);
     if (drag.kind === "node") {
+      const currentNode = data.nodes.find((node) => node.id === drag.id);
+      if (!currentNode) return;
+      const width = currentNode.width ?? 140;
+      const height = currentNode.height ?? 64;
+      const x = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(p.x - drag.dx)));
+      const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(p.y - drag.dy)));
+      const aligned = alignNodePosition(x, y, width, height, currentNode.id);
+      const nextNode = { ...currentNode, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + height / 2) };
+      const delta = { x: nextNode.x - currentNode.x, y: nextNode.y - currentNode.y };
       update({
         ...data,
         lanes,
-        nodes: data.nodes.map((node) => {
-          if (node.id !== drag.id) return node;
-          const width = node.width ?? 140;
-          const height = node.height ?? 64;
-          const x = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(p.x - drag.dx)));
-          const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(p.y - drag.dy)));
-          const aligned = alignNodePosition(x, y, width, height, node.id);
-          return { ...node, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + height / 2) };
-        }),
+        nodes: data.nodes.map((node) => node.id === drag.id ? nextNode : node),
+        flows: data.flows.map((flow) => moveConnectorWithNode(flow, drag.id, delta)),
       });
     }
     if (drag.kind === "node-size") {
@@ -12073,6 +12075,34 @@ function connectorControlSegment(points: Array<{ x: number; y: number }>) {
     secondPoint,
     axis: Math.abs(first.y - second.y) < 1 ? "y" as const : "x" as const,
   };
+}
+
+function moveConnectorWithNode(flow: BpmnFlow, nodeId: string, delta: { x: number; y: number }) {
+  if ((!delta.x && !delta.y) || !flow.points?.length || (flow.from !== nodeId && flow.to !== nodeId)) return flow;
+  const points = flow.points.map((point) => ({ ...point }));
+  const movePoint = (index: number, x = 0, y = 0) => {
+    if (!points[index]) return;
+    points[index] = { x: points[index].x + x, y: points[index].y + y };
+  };
+
+  if (flow.from === nodeId) {
+    movePoint(0, delta.x, delta.y);
+    if (points.length >= 4) {
+      const anchor = flow.fromAnchor?.side;
+      if (anchor === "left" || anchor === "right") movePoint(1, delta.x, 0);
+      else movePoint(1, 0, delta.y);
+    }
+  }
+  if (flow.to === nodeId) {
+    const last = points.length - 1;
+    movePoint(last, delta.x, delta.y);
+    if (points.length >= 4) {
+      const anchor = flow.toAnchor?.side;
+      if (anchor === "left" || anchor === "right") movePoint(last - 1, delta.x, 0);
+      else movePoint(last - 1, 0, delta.y);
+    }
+  }
+  return { ...flow, points };
 }
 
 function connectorRoutePoints(
