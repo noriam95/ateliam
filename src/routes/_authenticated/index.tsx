@@ -831,6 +831,28 @@ function WorkspaceHome() {
       })),
     [releaseNotesQ.data],
   );
+  const activityFeed = useMemo<SystemNotification[]>(() => {
+    const processUpdates = (dashboard?.recentProcesses ?? []).map((process) => ({
+      id: `process-${process.id}`,
+      title: process.name,
+      description: "Processo atualizado",
+      tag: "Processo",
+      updatedAt: process.updated_at,
+    }));
+    const documentUpdates = (dashboard?.recentDocuments ?? []).map((document) => {
+      const tag = documentActivityTag(document.module, document.name);
+      return {
+        id: `document-${document.id}`,
+        title: document.name,
+        description: `${tag} atualizado`,
+        tag,
+        updatedAt: document.updated_at,
+      };
+    });
+    return [...systemNotifications, ...processUpdates, ...documentUpdates]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 8);
+  }, [dashboard?.recentDocuments, dashboard?.recentProcesses, systemNotifications]);
   return (
     <div className="min-h-screen bg-background text-foreground" style={workspaceGrayVars}>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
@@ -882,7 +904,7 @@ function WorkspaceHome() {
           </select>
         </div>
 
-        <SystemNotificationsMenu items={systemNotifications} />
+        <SystemNotificationsMenu items={activityFeed} />
 
         <UserProfileMenu
           email={email}
@@ -1056,6 +1078,7 @@ function WorkspaceHome() {
               topOwners={dashboard?.topOwners ?? []}
               recentDocuments={dashboard?.recentDocuments ?? []}
               recentProcesses={dashboard?.recentProcesses ?? []}
+              activityItems={activityFeed}
               mappingCoverage={dashboard?.mappingCoverage ?? { covered: 0, total: 0, rows: [] }}
               isLoading={dashboardQ.isLoading && !isDemo}
               isDemo={isDemo}
@@ -1944,9 +1967,9 @@ function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="relative grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/25"
-        aria-label="Ver atualizações do sistema"
+        aria-label="Ver atividades e atualizações"
         aria-expanded={open}
-        title="Atualizações do sistema"
+        title="Atividades e atualizações"
       >
         <Bell className="h-4 w-4" />
         {items.length ? (
@@ -1958,8 +1981,8 @@ function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
         <div className="absolute right-0 top-full z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card shadow-xl">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
-              <div className="text-sm font-semibold text-foreground">Atualizações do sistema</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">Últimas melhorias publicadas no BF Flow</div>
+              <div className="text-sm font-semibold text-foreground">Atividades e atualizações</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">Melhorias publicadas e alterações recentes</div>
             </div>
             <Bell className="h-4 w-4 text-[var(--gold)]" />
           </div>
@@ -2025,6 +2048,7 @@ function WorkspaceContent({
   topOwners,
   recentDocuments,
   recentProcesses,
+  activityItems,
   mappingCoverage,
   isLoading,
   isDemo,
@@ -2048,6 +2072,7 @@ function WorkspaceContent({
     updated_at: string;
   }>;
   recentProcesses: DashboardProcess[];
+  activityItems: SystemNotification[];
   mappingCoverage: MappingCoverage;
   isLoading: boolean;
   isDemo: boolean;
@@ -2433,11 +2458,11 @@ function WorkspaceContent({
             <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Últimas atividades
             </div>
-            {recentActivityItems.length === 0 ? (
+            {activityItems.length === 0 ? (
               <div className="py-4 text-center text-xs text-muted-foreground">Sem atividade recente.</div>
             ) : (
               <div className="grid gap-2">
-                {recentActivityItems.map((item) => (
+                {activityItems.map((item) => (
                   <div
                     key={item.id}
                     className="rounded-lg border border-border bg-background p-3 transition hover:border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] hover:bg-[color-mix(in_oklab,var(--gold)_5%,var(--background))]"
@@ -2452,14 +2477,9 @@ function WorkspaceContent({
                             {item.title}
                           </div>
                         </div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">{item.subtitle}</div>
+                        <div className="mt-1 text-[11px] text-muted-foreground">{item.description}</div>
                       </div>
                       <div className="shrink-0 text-right">
-                        {item.version ? (
-                          <div className="text-[10px] font-data text-muted-foreground">
-                            {item.version}
-                          </div>
-                        ) : null}
                         <div className="text-[10px] text-muted-foreground">
                           {formatShortDate(item.updatedAt)}
                         </div>
