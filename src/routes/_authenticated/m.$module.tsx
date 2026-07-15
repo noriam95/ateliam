@@ -10750,7 +10750,7 @@ function BpmnModuleV2({
       : poolX + leftHeaderWidth + 70 + data.nodes.length * 28;
     const y = position
       ? Math.max(poolY + 16, Math.min(poolY + poolHeight - defaults.height - 16, snapValue(position.y - defaults.height / 2)))
-      : laneY(targetLane) + 42;
+      : snapValue(laneY(targetLane) + Math.max(16, (laneHeights[targetLane] - defaults.height) / 2));
     const next: BpmnNode = { id: id(type), type, label: defaults.label, x, y, lane: targetLane, width: defaults.width, height: defaults.height };
     commit({ ...data, lanes, nodes: [...data.nodes, next] });
     setSelectedId(next.id);
@@ -11170,7 +11170,6 @@ function BpmnModuleV2({
             <ToolbarButton label="Importar" onClick={() => importInputRef.current?.click()} icon={<Upload className="h-4 w-4" />} />
             <ToolbarButton label="Desfazer" onClick={undo} icon={<RotateCcw className="h-4 w-4" />} />
             <ToolbarButton label="Refazer" onClick={redo} icon={<RotateCcw className="h-4 w-4 rotate-180" />} />
-            <ToolbarButton label="Duplicar" onClick={duplicateSelected} icon={<Copy className="h-4 w-4" />} />
             <ToolbarButton label="Excluir" onClick={deleteSelected} icon={<Trash2 className="h-4 w-4" />} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -11375,8 +11374,15 @@ function BpmnModuleV2({
                         event.stopPropagation();
                         selectFlow(flow);
                       }}
-                      onSegmentPointerDown={(event, firstPoint, secondPoint, axis) => {
+                      onSegmentPointerDown={(event, routePoints, firstPoint, secondPoint, axis) => {
                         event.stopPropagation();
+                        if (!(flow.points?.length)) {
+                          update({
+                            ...data,
+                            lanes,
+                            flows: data.flows.map((item) => item.id === flow.id ? { ...item, points: routePoints } : item),
+                          });
+                        }
                         setDrag({ kind: "flow-segment", flowId: flow.id, firstPoint, secondPoint, axis });
                         setSelectedFlowId(flow.id);
                         setSelectedId(null);
@@ -11556,7 +11562,7 @@ function BpmnConnectorV2({
   to?: BpmnNode;
   selected: boolean;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
-  onSegmentPointerDown: (event: React.PointerEvent<SVGRectElement>, firstPoint: number, secondPoint: number, axis: "x" | "y") => void;
+  onSegmentPointerDown: (event: React.PointerEvent<SVGRectElement>, routePoints: Array<{ x: number; y: number }>, firstPoint: number, secondPoint: number, axis: "x" | "y") => void;
   onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
   preview?: boolean;
 }) {
@@ -11586,8 +11592,8 @@ function BpmnConnectorV2({
           <circle cx={b.x} cy={b.y} r="7" fill="#ffffff" stroke="#06966f" strokeWidth="2.5" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
         </>
       ) : null}
-      {selected && !preview ? points.slice(0, -1).map((pointItem, index) => {
-        const nextPoint = points[index + 1];
+      {selected && !preview ? defaultPoints.slice(0, -1).map((pointItem, index) => {
+        const nextPoint = defaultPoints[index + 1];
         const horizontal = Math.abs(pointItem.y - nextPoint.y) < 1;
         const x = (pointItem.x + nextPoint.x) / 2;
         const y = (pointItem.y + nextPoint.y) / 2;
@@ -11603,7 +11609,7 @@ function BpmnConnectorV2({
             stroke="#2583ab"
             strokeWidth="1.7"
             className={horizontal ? "cursor-ns-resize" : "cursor-ew-resize"}
-            onPointerDown={(event) => onSegmentPointerDown(event, index, index + 1, horizontal ? "y" : "x")}
+            onPointerDown={(event) => onSegmentPointerDown(event, defaultPoints, index, index + 1, horizontal ? "y" : "x")}
           />
         );
       }) : null}
