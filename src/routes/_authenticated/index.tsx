@@ -813,17 +813,22 @@ function WorkspaceHome() {
     (organization) => organization.id === selectedOrganizationId,
   );
   const totals = dashboard?.totals;
-  const systemNotifications = useMemo<SystemNotification[]>(
-    () =>
-      ((releaseNotesQ.data ?? []) as SystemReleaseNote[]).map((note) => ({
+  const systemNotifications = useMemo<SystemNotification[]>(() => {
+    const notes = [
+      ...AUTOMATED_RELEASE_NOTES,
+      ...((releaseNotesQ.data ?? []) as SystemReleaseNote[]),
+    ];
+    return Array.from(new Map(notes.map((note) => [note.id, note])).values())
+      .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+      .slice(0, 20)
+      .map((note) => ({
         id: note.id,
         title: note.title,
         description: note.description,
         tag: note.category,
         updatedAt: note.published_at,
-      })),
-    [releaseNotesQ.data],
-  );
+      }));
+  }, [releaseNotesQ.data]);
   const activityFeed = useMemo<SystemNotification[]>(() => {
     const processUpdates = (dashboard?.recentProcesses ?? []).map((process) => ({
       id: `process-${process.id}`,
@@ -1960,6 +1965,11 @@ type SystemReleaseNote = {
   category: string;
   published_at: string;
 };
+
+declare const __BF_FLOW_RELEASE_NOTES__: SystemReleaseNote[];
+
+const AUTOMATED_RELEASE_NOTES =
+  typeof __BF_FLOW_RELEASE_NOTES__ === "undefined" ? [] : __BF_FLOW_RELEASE_NOTES__;
 
 function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
   const [open, setOpen] = useState(false);
