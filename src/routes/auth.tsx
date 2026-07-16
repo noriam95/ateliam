@@ -20,9 +20,14 @@ function AuthPage() {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [flowStep, setFlowStep] = useState(0);
 
   useEffect(() => {
     clearLegacyDemoData();
+    const timer = window.setInterval(() => {
+      setFlowStep((current) => (current + 1) % 3);
+    }, 1800);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -68,10 +73,10 @@ function AuthPage() {
 
   return (
     <main className="flex min-h-screen items-stretch bg-[#f5f6f6]">
-      <section className="relative hidden w-[58%] overflow-hidden bg-[#151a1b] px-14 py-12 text-white md:flex md:flex-col md:justify-between lg:px-20 lg:py-16">
+      <section className="relative hidden w-[58%] overflow-hidden bg-[#151a1b] px-14 py-12 text-white md:flex md:flex-col lg:px-20 lg:py-16">
         <BFFlowMark className="h-12 self-start" variant="color" />
 
-        <div className="max-w-[44rem] pb-10">
+        <div className="mt-[clamp(5rem,13vh,8rem)] max-w-[44rem]">
           <span className="mb-7 block h-1 w-14 bg-[#d19a29]" />
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#e4af3a]">
             Gestão de processos
@@ -82,25 +87,52 @@ function AuthPage() {
             fazer melhor.
           </h1>
 
-          <div className="mt-12 flex max-w-lg items-center gap-4 text-xs font-semibold uppercase tracking-[0.14em] text-white/58">
-            <span>Mapear</span>
-            <span className="h-px flex-1 bg-white/20" />
-            <span>Documentar</span>
-            <span className="h-px flex-1 bg-white/20" />
-            <span>Evoluir</span>
+          <div
+            className="mt-10 grid max-w-xl grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em]"
+            aria-label="Mapear, documentar e evoluir"
+          >
+            {["Mapear", "Documentar", "Evoluir"].map((label, index) => (
+              <div key={label} className="contents">
+                <span
+                  className={`transition-all duration-500 motion-reduce:transition-none ${
+                    flowStep === index
+                      ? "-translate-y-0.5 text-[#f0b93e]"
+                      : index < flowStep
+                        ? "text-white/72"
+                        : "text-white/38"
+                  }`}
+                >
+                  {label}
+                </span>
+                {index < 2 ? (
+                  <span className="relative h-px overflow-hidden bg-white/15" aria-hidden="true">
+                    <span
+                      className={`absolute inset-y-0 left-0 bg-[#d19a29] transition-[width] duration-700 ease-out motion-reduce:transition-none ${
+                        flowStep > index ? "w-full" : "w-0"
+                      }`}
+                    />
+                    <span
+                      className={`absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 border-r border-t transition-colors duration-500 ${
+                        flowStep > index ? "border-[#d19a29]" : "border-white/20"
+                      }`}
+                    />
+                  </span>
+                ) : null}
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="text-[11px] text-white/38">© 2026 BF Flow</div>
+        <div className="mt-auto text-[11px] text-white/38">© 2026 BF Flow</div>
       </section>
 
       <section className="flex flex-1 items-center justify-center border-l border-black/5 bg-[#f5f6f6] px-6 py-12 sm:px-10 lg:px-16">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-[420px]">
           <div className="mb-16 md:hidden">
             <BFFlowMark className="h-12" variant="color" />
           </div>
 
-          <div className="mb-10 flex items-end justify-between border-b border-foreground/15 pb-5">
+          <div className="mb-8 flex items-end justify-between border-b border-foreground/15 pb-5">
             <div>
               <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--gold)]">
                 BF Flow
@@ -112,8 +144,8 @@ function AuthPage() {
             <span className="mb-1 h-2 w-2 bg-[var(--gold)]" aria-hidden="true" />
           </div>
 
-          <form onSubmit={submit} className="grid gap-6">
-            <label className="grid gap-2.5 text-sm font-semibold text-foreground">
+          <form onSubmit={submit} className="grid gap-5">
+            <label className="grid gap-2 text-sm font-semibold text-foreground">
               E-mail ou usuário
               <span className="relative block">
                 <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -129,7 +161,7 @@ function AuthPage() {
               </span>
             </label>
 
-            <label className="grid gap-2.5 text-sm font-semibold text-foreground">
+            <label className="grid gap-2 text-sm font-semibold text-foreground">
               Senha
               <span className="relative block">
                 <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -149,7 +181,7 @@ function AuthPage() {
             <button
               type="submit"
               disabled={busy}
-              className="mt-2 inline-flex h-[52px] w-full items-center justify-between rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-1 inline-flex h-[52px] w-full items-center justify-between rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? "Validando acesso..." : "Acessar"}
               {!busy ? <ArrowRight className="h-4 w-4" /> : null}
