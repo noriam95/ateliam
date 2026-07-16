@@ -338,6 +338,33 @@ type RevisionItem = {
 };
 type ChangeItem = { id: string; versao: string; local: string; descricao: string };
 type BpmnNodeType = "start" | "task" | "gateway" | "end" | "annotation";
+type BpmnTaskType =
+  | "none"
+  | "user"
+  | "service"
+  | "manual"
+  | "script"
+  | "business-rule"
+  | "send"
+  | "receive";
+type BpmnGatewayType = "exclusive" | "parallel" | "inclusive" | "event-based" | "complex";
+const BPMN_TASK_TYPES: Array<{ value: BpmnTaskType; label: string }> = [
+  { value: "none", label: "Tarefa simples" },
+  { value: "user", label: "Usuário" },
+  { value: "service", label: "Serviço" },
+  { value: "manual", label: "Manual" },
+  { value: "script", label: "Script" },
+  { value: "business-rule", label: "Regra de negócio" },
+  { value: "send", label: "Envio" },
+  { value: "receive", label: "Recebimento" },
+];
+const BPMN_GATEWAY_TYPES: Array<{ value: BpmnGatewayType; label: string }> = [
+  { value: "exclusive", label: "Exclusivo" },
+  { value: "parallel", label: "Paralelo" },
+  { value: "inclusive", label: "Inclusivo" },
+  { value: "event-based", label: "Baseado em eventos" },
+  { value: "complex", label: "Complexo" },
+];
 type BpmnNode = {
   id: string;
   type: BpmnNodeType;
@@ -350,6 +377,8 @@ type BpmnNode = {
   description?: string;
   responsible?: string;
   color?: string;
+  taskType?: BpmnTaskType;
+  gatewayType?: BpmnGatewayType;
 };
 
 type BpmnEdgeSide = "top" | "right" | "bottom" | "left";
@@ -452,6 +481,7 @@ type PopState = {
 
 type BpmnState = {
   poolName: string;
+  processId?: string;
   codigo?: string;
   area?: string;
   status?: string;
@@ -824,21 +854,6 @@ function defaultWorkspace(): WorkspaceState {
       status: "Em andamento",
       lanes: [],
       laneHeights: [],
-      nodes: [
-        { id: "start_1", type: "start", label: "Início", x: 120, y: 135, lane: 0 },
-        { id: "task_1", type: "task", label: "Receber solicitação", x: 260, y: 110, lane: 0 },
-        { id: "gateway_1", type: "gateway", label: "Completo?", x: 470, y: 135, lane: 0 },
-        { id: "task_2", type: "task", label: "Executar atividade", x: 610, y: 310, lane: 1 },
-        { id: "end_1", type: "end", label: "Fim", x: 825, y: 335, lane: 1 },
-      ],
-      flows: [
-        { id: "flow_1", from: "start_1", to: "task_1" },
-        { id: "flow_2", from: "task_1", to: "gateway_1" },
-        { id: "flow_3", from: "gateway_1", to: "task_2", label: "Sim" },
-        { id: "flow_4", from: "task_2", to: "end_1" },
-      ],
-      // Um novo fluxograma inicia com a tela em branco; o exemplo acima permanece
-      // apenas como referência de estrutura durante a leitura do código.
       nodes: [],
       flows: [],
     },
@@ -6652,7 +6667,21 @@ function ModuleWorkspacePage() {
         {loaded && moduleId === "bpmn" ? (
           <BpmnModuleV2
             data={workspace.bpmn}
+            catalogs={organizationCatalogs}
+            organizationId={codeOrganizationId}
+            isDemo={isDemo}
+            codeSettings={codeSettings}
             update={(bpmn) => updateWorkspace((current) => ({ ...current, bpmn }))}
+            onProcessCreated={async (process) => {
+              if (isDemo) {
+                setDemoCatalogs((current) => ({
+                  ...current,
+                  processes: [...current.processes, process as unknown as OrganizationProcess],
+                }));
+              } else {
+                await catalogsQ.refetch();
+              }
+            }}
             autoCode={isAutoCodeModule}
             codePreview={autoCodePreview}
           />
@@ -12605,10 +12634,20 @@ function parseBpmnXmlDiagram(xml: string): BpmnState {
 
 function BpmnModuleV2({
   data,
+  catalogs,
+  organizationId,
+  isDemo,
+  codeSettings,
   update,
+  onProcessCreated,
 }: {
   data: BpmnState;
+  catalogs: OrganizationCatalogs;
+  organizationId: string | null;
+  isDemo: boolean;
+  codeSettings: CodeSettings | null;
   update: (value: BpmnState) => void;
+  onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
   autoCode?: boolean;
   codePreview?: string;
 }) {
@@ -12628,9 +12667,14 @@ function BpmnModuleV2({
   } | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
-  const [editingPool, setEditingPool] = useState(false);
   const [editingLaneIndex, setEditingLaneIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [createProcessName, setCreateProcessName] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    nodeId: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const [showInspector, setShowInspector] = useState(true);
   const [zoom, setZoom] = useState(100);
   const [showGrid] = useState(true);
@@ -12681,6 +12725,12 @@ function BpmnModuleV2({
   >(null);
 
   const lanes = data.lanes.length ? data.lanes : ["Raia 1"];
+  const selectedProcess =
+    catalogs.processes.find((process) => process.id === data.processId) ??
+    catalogs.processes.find(
+      (process) => normalizeLabel(process.name) === normalizeLabel(data.poolName),
+    ) ??
+    null;
   const hasPool = Boolean(data.poolName.trim());
   const laneHeights = lanes.map((_, index) => data.laneHeights?.[index] ?? 170);
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null;
@@ -12718,6 +12768,7 @@ function BpmnModuleV2({
         setConnectFrom(null);
         setConnectFromAnchor(null);
         setEditingNodeId(null);
+        setContextMenu(null);
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
@@ -12765,7 +12816,7 @@ function BpmnModuleV2({
   }
 
   function startSelectionBox(event: React.PointerEvent<SVGSVGElement>) {
-    if (tool !== "select" || editingNodeId || editingPool || editingLaneIndex !== null) return;
+    if (tool !== "select" || editingNodeId || editingLaneIndex !== null) return;
     const start = point(event);
     svgRef.current?.setPointerCapture?.(event.pointerId);
     // The click emitted after a drag must not clear the new area selection.
@@ -12925,20 +12976,45 @@ function BpmnModuleV2({
     return { width: 140, height: 72, label: "Atividade" };
   }
 
-  function createPool() {
-    if (hasPool) {
-      toast.message("Cada desenho possui apenas uma pool.");
+  function selectDiagramProcess(process: OrganizationProcess | null) {
+    if (!process) {
+      if (data.nodes.length || data.flows.length) {
+        toast.error("Exclua os elementos antes de desvincular o processo.");
+        return;
+      }
+      commit({
+        ...data,
+        processId: undefined,
+        poolName: "",
+        lanes: [],
+        laneHeights: [],
+        nodes: [],
+        flows: [],
+      });
+      return;
+    }
+    if (hasPool && data.nodes.length && selectedProcess?.id !== process.id) {
+      toast.error("O processo não pode ser trocado enquanto houver elementos no desenho.");
       return;
     }
     commit({
       ...data,
-      poolName: "Processo 1",
-      lanes: ["Raia 1"],
-      laneHeights: [260],
-      poolWidth: 1100,
-      nodes: [],
-      flows: [],
+      processId: process.id,
+      poolName: process.name,
+      area: process.department ?? "",
+      lanes: data.lanes.length ? data.lanes : ["Raia 1"],
+      laneHeights: data.laneHeights?.length ? data.laneHeights : [260],
+      poolWidth: data.poolWidth ?? 1100,
     });
+  }
+
+  function updateNodeNotation(nodeId: string, patch: Pick<BpmnNode, "taskType" | "gatewayType">) {
+    commit({
+      ...data,
+      lanes,
+      nodes: data.nodes.map((node) => (node.id === nodeId ? { ...node, ...patch } : node)),
+    });
+    setContextMenu(null);
   }
 
   function addNode(type: BpmnNodeType, position?: { x: number; y: number }) {
@@ -12980,6 +13056,8 @@ function BpmnModuleV2({
       lane: laneIndexFromY(aligned.y + defaults.height / 2),
       width: defaults.width,
       height: defaults.height,
+      taskType: type === "task" ? "none" : undefined,
+      gatewayType: type === "gateway" ? "exclusive" : undefined,
     };
     commit({ ...data, lanes, nodes: [...data.nodes, next] });
     setSelectedId(next.id);
@@ -13099,6 +13177,8 @@ function BpmnModuleV2({
       lane: laneIndexFromY(y + defaults.height / 2),
       width: defaults.width,
       height: defaults.height,
+      taskType: type === "task" ? "none" : undefined,
+      gatewayType: type === "gateway" ? "exclusive" : undefined,
     };
     const fromAnchor = { side: "right", offset: 0.5 } as BpmnEdgeAnchor;
     const toAnchor = { side: "left", offset: 0.5 } as BpmnEdgeAnchor;
@@ -13129,20 +13209,7 @@ function BpmnModuleV2({
     setEditingNodeId(null);
   }
 
-  function startPoolEdit() {
-    setEditingPool(true);
-    setEditingLaneIndex(null);
-    setEditingText(data.poolName);
-  }
-
-  function commitPoolEdit() {
-    const value = editingText.trim();
-    if (value) commit({ ...data, lanes, poolName: value });
-    setEditingPool(false);
-  }
-
   function startLaneEdit(index: number) {
-    setEditingPool(false);
     setEditingLaneIndex(index);
     setEditingText(lanes[index] ?? `Raia ${index + 1}`);
   }
@@ -13217,10 +13284,6 @@ function BpmnModuleV2({
       createFreeConnector(dropPoint);
       return;
     }
-    if (draggedTool === "pool") {
-      createPool();
-      return;
-    }
     if (draggedTool === "lane") {
       if (!isInsidePool(dropPoint)) {
         toast.error("Solte a raia dentro da pool.");
@@ -13238,9 +13301,18 @@ function BpmnModuleV2({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (!selectedProcess) {
+      toast.error("Selecione o processo antes de importar o desenho.");
+      return;
+    }
     try {
       const imported = await importBpmnFile(file);
-      commit(imported);
+      commit({
+        ...imported,
+        processId: selectedProcess.id,
+        poolName: selectedProcess.name,
+        area: selectedProcess.department ?? "",
+      });
       setSelectedId(null);
       setSelectedFlowId(null);
       setConnectFrom(null);
@@ -13570,6 +13642,20 @@ function BpmnModuleV2({
 
   return (
     <div className="grid gap-3">
+      {createProcessName !== null ? (
+        <ProcessRegistrationDialog
+          organizationId={organizationId}
+          isDemo={isDemo}
+          codeSettings={codeSettings}
+          initialName={createProcessName}
+          onClose={() => setCreateProcessName(null)}
+          onCreated={async (process) => {
+            await onProcessCreated(process);
+            selectDiagramProcess(process as unknown as OrganizationProcess);
+            setCreateProcessName(null);
+          }}
+        />
+      ) : null}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-[#f5f2ea] px-4 py-3 dark:bg-[#151a17]">
           <div className="min-w-[230px]">
@@ -13649,6 +13735,22 @@ function BpmnModuleV2({
           </div>
         </div>
 
+        <div className="border-b border-border bg-card px-4 py-3">
+          <div className="mx-auto grid max-w-3xl gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <RegisteredProcessSelect
+              label="Processo do diagrama"
+              value={selectedProcess?.id ?? ""}
+              processes={catalogs.processes.filter((process) => process.status !== "Arquivado")}
+              onSelect={selectDiagramProcess}
+              placeholder="Pesquise por código ou nome do processo"
+              onRequestCreate={setCreateProcessName}
+            />
+            <div className="pb-0.5 text-xs text-muted-foreground sm:max-w-48">
+              O processo selecionado identifica a pool.
+            </div>
+          </div>
+        </div>
+
         <div
           className={`grid min-h-[calc(100vh-170px)] ${showInspector ? "xl:grid-cols-[190px_minmax(0,1fr)_280px]" : "xl:grid-cols-[190px_minmax(0,1fr)]"}`}
         >
@@ -13657,14 +13759,8 @@ function BpmnModuleV2({
               <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                 Estrutura
               </h3>
-              <BpmnTool title="Pool" toolType="pool" disabled={false} onClick={createPool}>
-                <span className="grid h-12 w-20 grid-cols-[16px_1fr] overflow-hidden rounded-sm border-2 border-[#10251d] bg-white">
-                  <span className="border-r border-[#10251d] bg-[#f8f3ea]" />
-                  <span />
-                </span>
-              </BpmnTool>
               <BpmnTool title="Raia" toolType="lane" disabled={!hasPool} onClick={addLane}>
-                <span className="h-8 w-20 rounded-sm border-2 border-[#06966f] bg-[#edf7f2]" />
+                <span className="h-8 w-20 rounded-sm border-2 border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50" />
               </BpmnTool>
               <BpmnTool
                 title="Conector"
@@ -13725,19 +13821,19 @@ function BpmnModuleV2({
             </div>
           </aside>
 
-          <main className="min-w-0 bg-[#ebeee9]">
+          <main className="min-w-0 bg-muted/35">
             {tool === "connect" ? (
               <div className="border-b border-[#b8d9cb] bg-[#e8f6f0] px-4 py-2 text-sm font-semibold text-[#064f3d]">
                 {connectFrom ? "Clique no elemento de destino." : "Clique no elemento de origem."}
               </div>
             ) : null}
-            <div className="h-[calc(100vh-230px)] min-h-[640px] overflow-auto bg-[#f9fbf8] p-8">
+            <div className="h-[calc(100vh-230px)] min-h-[640px] overflow-auto bg-muted/20 p-8">
               <svg
                 ref={svgRef}
                 width={(canvasWidth * zoom) / 100}
                 height={(canvasHeight * zoom) / 100}
                 viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
-                className="touch-none rounded-lg bg-white shadow-sm"
+                className="touch-none rounded-lg bg-card shadow-sm"
                 onPointerDown={startSelectionBox}
                 onPointerMove={handlePointerMove}
                 onPointerUp={finishDrag}
@@ -13760,7 +13856,12 @@ function BpmnModuleV2({
               >
                 <defs>
                   <pattern id="bpmn-grid-v2" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d3ded8" strokeWidth="0.6" />
+                    <path
+                      d="M 20 0 L 0 0 0 20"
+                      fill="none"
+                      stroke="var(--border)"
+                      strokeWidth="0.6"
+                    />
                   </pattern>
                   <marker
                     id="arrow-v2"
@@ -13770,7 +13871,7 @@ function BpmnModuleV2({
                     refX="8"
                     refY="4.5"
                   >
-                    <path d="M0,0 L9,4.5 L0,9 Z" fill="#26352f" />
+                    <path d="M0,0 L9,4.5 L0,9 Z" fill="var(--foreground)" />
                   </marker>
                   <filter id="bpmn-tool-shadow" x="-25%" y="-15%" width="150%" height="140%">
                     <feDropShadow
@@ -13798,8 +13899,8 @@ function BpmnModuleV2({
                       width="720"
                       height="260"
                       rx="14"
-                      fill="#ffffff"
-                      stroke="#cfd8d4"
+                      fill="var(--card)"
+                      stroke="var(--border)"
                       strokeDasharray="8 8"
                     />
                     <text
@@ -13808,9 +13909,9 @@ function BpmnModuleV2({
                       textAnchor="middle"
                       fontSize="20"
                       fontWeight="800"
-                      fill="#047a61"
+                      fill="var(--foreground)"
                     >
-                      Crie uma pool para iniciar o desenho
+                      Selecione o processo para iniciar
                     </text>
                     <text
                       x={poolX + 360}
@@ -13818,9 +13919,9 @@ function BpmnModuleV2({
                       textAnchor="middle"
                       fontSize="13"
                       fontWeight="600"
-                      fill="#64736e"
+                      fill="var(--muted-foreground)"
                     >
-                      Depois adicione raias, arraste elementos e conecte o fluxo.
+                      A pool será criada com o nome do processo escolhido.
                     </text>
                   </g>
                 ) : null}
@@ -13830,8 +13931,8 @@ function BpmnModuleV2({
                     y={poolY}
                     width={poolWidth}
                     height={poolHeight}
-                    fill="#ffffff"
-                    stroke="#10251d"
+                    fill="var(--card)"
+                    stroke="var(--foreground)"
                     strokeWidth="1.7"
                   />
                 ) : null}
@@ -13841,53 +13942,23 @@ function BpmnModuleV2({
                     y={poolY}
                     width={poolLabelWidth}
                     height={poolHeight}
-                    fill="#f8f3ea"
-                    stroke="#10251d"
+                    fill="color-mix(in oklab, var(--muted) 82%, var(--card))"
+                    stroke="var(--foreground)"
                     strokeWidth="1.7"
                   />
                 ) : null}
                 {hasPool ? (
-                  editingPool ? (
-                    <foreignObject
-                      x={poolX + 6}
-                      y={poolY + poolHeight / 2 - 55}
-                      width={poolLabelWidth - 12}
-                      height={110}
-                    >
-                      <textarea
-                        autoFocus
-                        value={editingText}
-                        onChange={(event) => setEditingText(event.target.value)}
-                        onBlur={commitPoolEdit}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && !event.shiftKey) {
-                            event.preventDefault();
-                            commitPoolEdit();
-                          }
-                          if (event.key === "Escape") setEditingPool(false);
-                        }}
-                        className="h-full w-full resize-none rounded-md border border-[#d39a20] bg-white px-2 py-1 text-center text-xs font-bold text-[#10251d] outline-none"
-                      />
-                    </foreignObject>
-                  ) : (
-                    <text
-                      x={poolX + poolLabelWidth / 2}
-                      y={poolY + poolHeight / 2}
-                      textAnchor="middle"
-                      fontSize="16"
-                      fontWeight="800"
-                      fill="#10251d"
-                      transform={`rotate(-90 ${poolX + poolLabelWidth / 2} ${poolY + poolHeight / 2})`}
-                      className="cursor-text"
-                      onDoubleClick={(event) => {
-                        event.stopPropagation();
-                        startPoolEdit();
-                      }}
-                    >
-                      {data.poolName}
-                    </text>
-                  )
+                  <text
+                    x={poolX + poolLabelWidth / 2}
+                    y={poolY + poolHeight / 2}
+                    textAnchor="middle"
+                    fontSize="16"
+                    fontWeight="800"
+                    fill="var(--foreground)"
+                    transform={`rotate(-90 ${poolX + poolLabelWidth / 2} ${poolY + poolHeight / 2})`}
+                  >
+                    {data.poolName}
+                  </text>
                 ) : null}
                 {hasPool
                   ? lanes.map((lane, index) => (
@@ -13897,8 +13968,8 @@ function BpmnModuleV2({
                           y={laneY(index)}
                           width={laneLabelWidth}
                           height={laneHeights[index]}
-                          fill="#ffffff"
-                          stroke="#10251d"
+                          fill="var(--card)"
+                          stroke="var(--foreground)"
                           strokeWidth="1"
                         />
                         <rect
@@ -13906,8 +13977,8 @@ function BpmnModuleV2({
                           y={laneY(index)}
                           width={poolWidth - leftHeaderWidth}
                           height={laneHeights[index]}
-                          fill="#ffffff"
-                          stroke="#10251d"
+                          fill="var(--card)"
+                          stroke="var(--foreground)"
                           strokeWidth="1"
                         />
                         {editingLaneIndex === index ? (
@@ -13930,7 +14001,7 @@ function BpmnModuleV2({
                                 }
                                 if (event.key === "Escape") setEditingLaneIndex(null);
                               }}
-                              className="h-full w-full resize-none rounded-md border border-[#d39a20] bg-white px-2 py-1 text-center text-xs font-bold text-[#10251d] outline-none"
+                              className="h-full w-full resize-none rounded-md border border-[var(--gold)] bg-card px-2 py-1 text-center text-xs font-bold text-foreground outline-none"
                             />
                           </foreignObject>
                         ) : (
@@ -13940,7 +14011,7 @@ function BpmnModuleV2({
                             textAnchor="middle"
                             fontSize="13"
                             fontWeight="800"
-                            fill="#10251d"
+                            fill="var(--foreground)"
                             transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}
                             className="cursor-text"
                             onDoubleClick={(event) => {
@@ -13948,6 +14019,7 @@ function BpmnModuleV2({
                               startLaneEdit(index);
                             }}
                           >
+                            <title>Duplo clique para renomear a raia</title>
                             {lane || `Raia ${index + 1}`}
                           </text>
                         )}
@@ -14234,6 +14306,7 @@ function BpmnModuleV2({
                         canvasRight={poolX + poolWidth}
                         onPointerDown={(event) => {
                           event.stopPropagation();
+                          if (event.button !== 0) return;
                           if (editingNodeId === node.id) return;
                           if (tool === "connect") return;
                           ignoreNodeClickRef.current = false;
@@ -14293,6 +14366,15 @@ function BpmnModuleV2({
                           setEditingNodeId(node.id);
                           setEditingLabel(node.label);
                         }}
+                        onContextMenu={(event) => {
+                          if (node.type !== "task" && node.type !== "gateway") return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setSelectedId(node.id);
+                          setSelectedNodeIds([node.id]);
+                          setSelectedFlowId(null);
+                          setContextMenu({ nodeId: node.id, x: event.clientX, y: event.clientY });
+                        }}
                         onQuickCreate={(type) => quickAddAfter(node, type)}
                         editing={editingNodeId === node.id}
                         editingValue={editingLabel}
@@ -14311,12 +14393,13 @@ function BpmnModuleV2({
               <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                 Propriedades
               </h3>
-              <div className="grid gap-3">
-                <Field
-                  label="Nome da pool"
-                  value={data.poolName}
-                  onChange={(poolName) => commit({ ...data, lanes, poolName })}
-                />
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Pool vinculada
+                </div>
+                <div className="mt-1 text-sm font-semibold text-foreground">
+                  {data.poolName || "Selecione um processo"}
+                </div>
               </div>
               <div className="mt-5 border-t border-border pt-4">
                 <div className="mb-2 flex items-center justify-between">
@@ -14444,6 +14527,61 @@ function BpmnModuleV2({
           ) : null}
         </div>
       </div>
+      {contextMenu && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[90]"
+              onPointerDown={() => setContextMenu(null)}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              {(() => {
+                const node = data.nodes.find((item) => item.id === contextMenu.nodeId);
+                if (!node) return null;
+                const options = node.type === "task" ? BPMN_TASK_TYPES : BPMN_GATEWAY_TYPES;
+                const current =
+                  node.type === "task"
+                    ? (node.taskType ?? "none")
+                    : (node.gatewayType ?? "exclusive");
+                return (
+                  <div
+                    className="fixed w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-xl"
+                    style={{
+                      left: Math.min(contextMenu.x, window.innerWidth - 240),
+                      top: Math.min(contextMenu.y, window.innerHeight - options.length * 38 - 56),
+                    }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      {node.type === "task" ? "Tipo de tarefa" : "Tipo de gateway"}
+                    </div>
+                    {options.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          node.type === "task"
+                            ? updateNodeNotation(node.id, {
+                                taskType: option.value as BpmnTaskType,
+                              })
+                            : updateNodeNotation(node.id, {
+                                gatewayType: option.value as BpmnGatewayType,
+                              })
+                        }
+                        className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted ${current === option.value ? "bg-muted font-semibold" : ""}`}
+                      >
+                        {option.label}
+                        {current === option.value ? (
+                          <Check className="h-4 w-4 text-emerald-600" />
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -14502,7 +14640,13 @@ function BpmnConnectorV2({
       <path
         d={path}
         fill="none"
-        stroke={preview ? "#06966f" : selected ? "#d39a20" : "#26352f"}
+        stroke={
+          preview
+            ? "#10a37f"
+            : selected
+              ? "var(--gold)"
+              : "color-mix(in oklab, var(--foreground) 82%, transparent)"
+        }
         strokeWidth={preview ? 3.4 : selected ? 3 : 2.2}
         strokeDasharray={preview ? "8 6" : undefined}
         markerEnd="url(#arrow-v2)"
@@ -14514,7 +14658,10 @@ function BpmnConnectorV2({
           y={labelPoint.y - 8}
           fontSize="12"
           fontWeight="800"
-          fill="#26352f"
+          fill="var(--foreground)"
+          stroke="var(--card)"
+          strokeWidth="3"
+          paintOrder="stroke"
         >
           {flow.label}
         </text>
@@ -14569,7 +14716,7 @@ function BpmnConnectorV2({
                   width={horizontal ? "26" : "12"}
                   height={horizontal ? "12" : "26"}
                   rx="6"
-                  fill="#ffffff"
+                  fill="var(--card)"
                   stroke="#2583ab"
                   strokeWidth="2"
                   filter="url(#bpmn-tool-shadow)"
@@ -14615,6 +14762,7 @@ function BpmnShapeV2({
   onQuickCreate,
   onClick,
   onDoubleClick,
+  onContextMenu,
   editing,
   editingValue,
   onEditingChange,
@@ -14638,6 +14786,7 @@ function BpmnShapeV2({
   onQuickCreate: (type: BpmnNodeType) => void;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
   onDoubleClick: (event: React.MouseEvent<SVGGElement>) => void;
+  onContextMenu: (event: React.MouseEvent<SVGGElement>) => void;
   editing: boolean;
   editingValue: string;
   onEditingChange: (value: string) => void;
@@ -14650,8 +14799,16 @@ function BpmnShapeV2({
   const height =
     node.height ??
     (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 72);
-  const stroke = connecting ? "#d39a20" : selected ? "#06966f" : "#26352f";
-  const fill = node.color ?? (node.type === "annotation" ? "#fff7df" : "#ffffff");
+  const stroke = connecting
+    ? "var(--gold)"
+    : selected
+      ? "#10a37f"
+      : "color-mix(in oklab, var(--foreground) 82%, transparent)";
+  const fill =
+    node.color ??
+    (node.type === "annotation"
+      ? "color-mix(in oklab, var(--gold) 13%, var(--card))"
+      : "var(--card)");
   const common = { fill, stroke, strokeWidth: selected || connecting ? 3 : 2 };
   const isEvent = node.type === "start" || node.type === "end";
   const quickToolsX = node.x + width + 52 > canvasRight ? node.x - 48 : node.x + width + 14;
@@ -14676,6 +14833,7 @@ function BpmnShapeV2({
       onPointerDown={onPointerDown}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
       className={editing ? "cursor-text" : "cursor-move"}
     >
       {node.type === "task" ? (
@@ -14684,7 +14842,7 @@ function BpmnShapeV2({
       {node.type === "annotation" ? (
         <path
           d={`M${node.x},${node.y} H${node.x + width - 18} L${node.x + width},${node.y + 18} V${node.y + height} H${node.x} Z`}
-          fill="#fff7df"
+          fill="color-mix(in oklab, var(--gold) 13%, var(--card))"
           stroke={stroke}
           strokeWidth={selected ? 3 : 2}
           strokeDasharray="6 4"
@@ -14695,6 +14853,60 @@ function BpmnShapeV2({
           d={`M${node.x + width / 2},${node.y} L${node.x + width},${node.y + height / 2} L${node.x + width / 2},${node.y + height} L${node.x},${node.y + height / 2} Z`}
           {...common}
         />
+      ) : null}
+      {node.type === "gateway" && (node.gatewayType ?? "exclusive") === "exclusive" ? (
+        <path
+          d={`M${node.x + width * 0.35},${node.y + height * 0.35} L${node.x + width * 0.65},${node.y + height * 0.65} M${node.x + width * 0.65},${node.y + height * 0.35} L${node.x + width * 0.35},${node.y + height * 0.65}`}
+          fill="none"
+          stroke="var(--foreground)"
+          strokeWidth="3"
+          pointerEvents="none"
+        />
+      ) : null}
+      {node.type === "gateway" && node.gatewayType === "parallel" ? (
+        <path
+          d={`M${node.x + width / 2},${node.y + height * 0.28} V${node.y + height * 0.72} M${node.x + width * 0.28},${node.y + height / 2} H${node.x + width * 0.72}`}
+          fill="none"
+          stroke="var(--foreground)"
+          strokeWidth="3"
+          pointerEvents="none"
+        />
+      ) : null}
+      {node.type === "gateway" && node.gatewayType === "inclusive" ? (
+        <circle
+          cx={node.x + width / 2}
+          cy={node.y + height / 2}
+          r={Math.min(width, height) * 0.2}
+          fill="none"
+          stroke="var(--foreground)"
+          strokeWidth="3"
+          pointerEvents="none"
+        />
+      ) : null}
+      {node.type === "gateway" && node.gatewayType === "event-based" ? (
+        <circle
+          cx={node.x + width / 2}
+          cy={node.y + height / 2}
+          r={Math.min(width, height) * 0.2}
+          fill="none"
+          stroke="var(--foreground)"
+          strokeWidth="2"
+          strokeDasharray="3 2"
+          pointerEvents="none"
+        />
+      ) : null}
+      {node.type === "gateway" && node.gatewayType === "complex" ? (
+        <text
+          x={node.x + width / 2}
+          y={node.y + height / 2 + 8}
+          textAnchor="middle"
+          fontSize="28"
+          fontWeight="800"
+          fill="var(--foreground)"
+          pointerEvents="none"
+        >
+          *
+        </text>
       ) : null}
       {node.type === "start" ? (
         <circle
@@ -14723,7 +14935,7 @@ function BpmnShapeV2({
           textAnchor="middle"
           fontSize="12"
           fontWeight="700"
-          fill="#10251d"
+          fill="var(--foreground)"
           pointerEvents="none"
         >
           {node.label}
@@ -14747,7 +14959,7 @@ function BpmnShapeV2({
               if (event.key === "Enter") onEditingCommit();
               if (event.key === "Escape") onEditingCancel();
             }}
-            className="h-full w-full rounded-md border border-[#d39a20] bg-white px-2 text-center text-xs font-bold text-[#10251d] shadow-sm outline-none"
+            className="h-full w-full rounded-md border border-[var(--gold)] bg-card px-2 text-center text-xs font-bold text-foreground shadow-sm outline-none"
           />
         </foreignObject>
       ) : null}
@@ -14759,10 +14971,22 @@ function BpmnShapeV2({
           height={44}
           pointerEvents="none"
         >
-          <div className="flex h-full items-center justify-center text-center text-[12px] font-bold leading-tight text-[#10251d]">
+          <div className="flex h-full items-center justify-center text-center text-[12px] font-bold leading-tight text-foreground">
             {node.label}
           </div>
         </foreignObject>
+      ) : null}
+      {node.type === "task" && node.taskType && node.taskType !== "none" && !editing ? (
+        <text
+          x={node.x + 10}
+          y={node.y + height - 9}
+          fontSize="9"
+          fontWeight="800"
+          fill="var(--muted-foreground)"
+          pointerEvents="none"
+        >
+          {BPMN_TASK_TYPES.find((option) => option.value === node.taskType)?.label.slice(0, 3)}
+        </text>
       ) : null}
       {selected ? (
         <>
@@ -14989,7 +15213,7 @@ function BpmnTool({
         event.dataTransfer.effectAllowed = "copy";
       }}
       onClick={onClick}
-      className="grid h-16 place-items-center rounded-md border border-transparent bg-white text-[#202124] transition hover:border-[#047a61] hover:bg-[color-mix(in_oklab,var(--gold)_10%,white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#047a61] disabled:cursor-not-allowed disabled:opacity-40"
+      className="grid h-16 place-items-center rounded-md border border-border bg-card text-foreground transition hover:border-emerald-600 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>
