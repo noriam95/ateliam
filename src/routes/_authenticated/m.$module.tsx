@@ -11403,7 +11403,8 @@ function PopModule({
                                                 label="Imagens deste trecho"
                                                 captionLabel="Legenda"
                                                 showTitle={false}
-                                                compactAddButton
+                                                inputId={`procedure-images-${block.id}`}
+                                                hideAddButton
                                                 images={block.images}
                                                 onChange={(images) =>
                                                   updateProcedureBlocks(
@@ -11423,6 +11424,15 @@ function PopModule({
                                         ))}
 
                                         <div className="flex items-center gap-1.5">
+                                          <label
+                                            htmlFor={`procedure-images-${blocks.at(-1)?.id}`}
+                                            title="Adicionar imagem ao trecho atual"
+                                            aria-label="Adicionar imagem ao trecho atual"
+                                            className="grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                                          >
+                                            <ImagePlus className="h-3.5 w-3.5" />
+                                            <span className="sr-only">Adicionar imagem</span>
+                                          </label>
                                           <button
                                             type="button"
                                             title="Adicionar trecho"
@@ -15892,14 +15902,16 @@ function ImageManager({
   label = "Imagens",
   captionLabel = "Legenda",
   showTitle = true,
-  compactAddButton = false,
+  inputId,
+  hideAddButton = false,
   images,
   onChange,
 }: {
   label?: string;
   captionLabel?: string;
   showTitle?: boolean;
-  compactAddButton?: boolean;
+  inputId?: string;
+  hideAddButton?: boolean;
   images: ModuleImage[];
   onChange: (images: ModuleImage[]) => void;
 }) {
@@ -15930,22 +15942,25 @@ function ImageManager({
             {images.length ? `${images.length} imagem(ns) incorporada(s)` : "Nenhuma imagem ainda"}
           </div>
         </div>
-        <label
-          title="Adicionar imagem"
-          aria-label="Adicionar imagem"
-          className={
-            compactAddButton
-              ? "grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
-              : "inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-          }
-        >
-          <ImagePlus className="h-4 w-4" />
-          {compactAddButton ? (
-            <span className="sr-only">Adicionar imagem</span>
-          ) : (
-            "Adicionar imagem"
-          )}
+        {!hideAddButton ? (
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted">
+            <ImagePlus className="h-4 w-4" />
+            Adicionar imagem
+            <input
+              id={inputId}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                addFiles(event.target.files);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+        ) : (
           <input
+            id={inputId}
             type="file"
             accept="image/*"
             multiple
@@ -15955,7 +15970,7 @@ function ImageManager({
               event.currentTarget.value = "";
             }}
           />
-        </label>
+        )}
       </div>
       {images.length ? (
         <div className="grid gap-3">
