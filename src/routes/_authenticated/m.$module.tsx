@@ -54,6 +54,7 @@ import {
   type ChangeEvent,
   type ReactNode,
   type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
   useMemo,
   useRef,
@@ -6636,6 +6637,9 @@ function ModuleWorkspacePage() {
               onPreview={previewCurrentPop}
               saving={saveMut.isPending}
               savedNonce={savedNonce}
+              isEditing={Boolean(
+                activeCloudDocument || openedLocalFile || workspace.pop.meta.codigo,
+              )}
             />
           )
         ) : null}
@@ -10281,6 +10285,7 @@ function PopModule({
   onPreview,
   saving = false,
   savedNonce = 0,
+  isEditing = false,
 }: {
   data: PopState;
   catalogs: OrganizationCatalogs;
@@ -10296,6 +10301,7 @@ function PopModule({
   onPreview?: () => void;
   saving?: boolean;
   savedNonce?: number;
+  isEditing?: boolean;
 }) {
   const saveArea = useServerFn(saveProcessArea);
   const savePosition = useServerFn(savePositionRegistration);
@@ -10414,6 +10420,10 @@ function PopModule({
       ...subitem.clauses.map((clause) => `clause:${clause.id}`),
     ]),
   ]);
+
+  useEffect(() => {
+    setOpenProcedureNodes({});
+  }, [isEditing, data.meta.codigo]);
   async function saveQuickCatalog() {
     if (!quickCatalog) return;
     try {
@@ -10777,7 +10787,7 @@ function PopModule({
     revealProcedureNodes(`item:${section.id}`, `subitem:${subitemId}`, `clause:${clauseId}`);
   }
 
-  function addProcedureClause(sectionId: string, subitem: PopProcedureSubitem) {
+  function addProcedureClause(sectionId: string, subitem: PopProcedureSubitem, focusText = false) {
     const clauseId = id("clause");
     updateProcedureSubitem(sectionId, subitem.id, {
       clauses: [
@@ -10793,6 +10803,34 @@ function PopModule({
       ],
     });
     revealProcedureNodes(`item:${sectionId}`, `subitem:${subitem.id}`, `clause:${clauseId}`);
+    if (focusText) {
+      window.setTimeout(() => {
+        document
+          .querySelector<HTMLTextAreaElement>(`[data-procedure-clause="${clauseId}"] textarea`)
+          ?.focus();
+      }, 0);
+    }
+  }
+
+  function addClauseOnTab(
+    event: ReactKeyboardEvent<HTMLElement>,
+    sectionId: string,
+    subitem: PopProcedureSubitem,
+  ) {
+    const target = event.target as HTMLElement;
+    if (
+      event.key !== "Tab" ||
+      event.shiftKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      !target.matches('input, textarea, [contenteditable="true"]')
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    addProcedureClause(sectionId, subitem, true);
   }
 
   return (
@@ -10836,14 +10874,22 @@ function PopModule({
                     <button
                       key={tipo}
                       type="button"
-                      onClick={() => updateMeta({ tipo }, tipo !== data.meta.tipo)}
+                      disabled={isEditing}
+                      onClick={() => {
+                        if (!isEditing) updateMeta({ tipo }, tipo !== data.meta.tipo);
+                      }}
                       className={[
                         "h-9 min-w-20 rounded-md px-3 text-sm font-bold transition",
                         selected
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        isEditing ? "cursor-not-allowed opacity-60" : "",
                       ].join(" ")}
-                      title={documentationTypeName(tipo)}
+                      title={
+                        isEditing
+                          ? "O tipo não pode ser alterado após o documento ser salvo"
+                          : documentationTypeName(tipo)
+                      }
                     >
                       {tipo}
                     </button>
@@ -11064,7 +11110,7 @@ function PopModule({
                     key={section.id}
                     open={procedureNodeOpen(
                       `item:${section.id}`,
-                      data.sections[0]?.id === section.id,
+                      !isEditing && data.sections[0]?.id === section.id,
                     )}
                     onToggle={(event) =>
                       setProcedureNodeOpen(`item:${section.id}`, event.currentTarget.open)
@@ -11130,7 +11176,7 @@ function PopModule({
                             key={subitem.id}
                             open={procedureNodeOpen(
                               `subitem:${subitem.id}`,
-                              (section.subitems ?? [])[0]?.id === subitem.id,
+                              !isEditing && (section.subitems ?? [])[0]?.id === subitem.id,
                             )}
                             onToggle={(event) =>
                               setProcedureNodeOpen(
@@ -11150,6 +11196,7 @@ function PopModule({
                               event.preventDefault();
                               reorderProcedureSubitem(section.id, subitem.id);
                             }}
+                            onKeyDown={(event) => addClauseOnTab(event, section.id, subitem)}
                             className={`group overflow-hidden rounded-lg border border-border bg-card transition ${
                               draggedProcedureSubitem?.subitemId === subitem.id
                                 ? "opacity-60 ring-2 ring-[var(--gold)]/40"
@@ -11217,6 +11264,7 @@ function PopModule({
                                   return (
                                     <details
                                       key={clause.id}
+                                      data-procedure-clause={clause.id}
                                       open={procedureNodeOpen(
                                         `clause:${clause.id}`,
                                         subitem.clauses[0]?.id === clause.id,
@@ -11242,6 +11290,9 @@ function PopModule({
                                         event.stopPropagation();
                                         reorderProcedureClause(section.id, subitem.id, clause.id);
                                       }}
+                                      onKeyDown={(event) =>
+                                        addClauseOnTab(event, section.id, subitem)
+                                      }
                                       className={`group overflow-hidden rounded-lg border border-border bg-muted/20 transition ${
                                         draggedProcedureClause?.clauseId === clause.id
                                           ? "opacity-60 ring-2 ring-[var(--gold)]/40"
