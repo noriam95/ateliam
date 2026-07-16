@@ -1270,25 +1270,12 @@ function CoverageDonut({
       </g>
       <text
         x="50%"
-        y="47%"
+        y="50%"
         textAnchor="middle"
         dominantBaseline="middle"
         style={{ fill: "var(--foreground)", fontSize: size * 0.24, fontWeight: 700 }}
       >
         {Math.round(pct * 100)}%
-      </text>
-      <text
-        x="50%"
-        y="64%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        style={{
-          fill: "var(--muted-foreground)",
-          fontSize: size * 0.1,
-          letterSpacing: "0.12em",
-        }}
-      >
-        COBERTURA
       </text>
     </svg>
   );
