@@ -375,10 +375,12 @@ function BpmnNotationIcon({
   kind,
   value,
   className = "h-7 w-7",
+  framed = true,
 }: {
   kind: "task" | "gateway";
   value: BpmnTaskType | BpmnGatewayType;
   className?: string;
+  framed?: boolean;
 }) {
   if (kind === "gateway") {
     return (
@@ -399,20 +401,22 @@ function BpmnNotationIcon({
   }
 
   return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
-      <rect x="2" y="5" width="28" height="22" rx="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      {value === "user" ? (
-        <><circle cx="16" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.7" /><path d="M10.5 22c.7-4 3-6 5.5-6s4.8 2 5.5 6" fill="none" stroke="currentColor" strokeWidth="1.7" /></>
-      ) : null}
-      {value === "service" ? (
-        <><circle cx="13" cy="16" r="4" fill="none" stroke="currentColor" strokeWidth="1.7" /><circle cx="21" cy="12" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M13 9v3m0 8v3m-7-7h3m8 0h3m1-9v2m0 6v2m-5-5h2m6 0h2" stroke="currentColor" strokeWidth="1.4" /></>
-      ) : null}
-      {value === "manual" ? <path d="M8 20c3-5 5-7 7-5l1-5c.3-1.5 2.5-1.3 2.5.2v4l1-3c.5-1.3 2.4-.8 2.1.7l-1.2 6.5c-.5 2.4-2.1 4-5 4H12Z" fill="none" stroke="currentColor" strokeWidth="1.5" /> : null}
-      {value === "script" ? <path d="M10 9h12v14H10Zm3 4h6m-6 3h6m-6 3h4" fill="none" stroke="currentColor" strokeWidth="1.5" /> : null}
-      {value === "business-rule" ? <path d="M9 10h14v12H9Zm0 4h14m-9-4v12m4-8v8" fill="none" stroke="currentColor" strokeWidth="1.5" /> : null}
-      {value === "send" || value === "receive" ? (
-        <path d="M8 11h16v11H8Zm0 0 8 6 8-6" fill={value === "send" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" />
-      ) : null}
+    <svg viewBox={framed ? "0 0 72 48" : "0 0 20 20"} className={className} aria-hidden="true">
+      {framed ? <rect x="2" y="3" width="68" height="42" rx="5" fill="none" stroke="currentColor" strokeWidth="1.8" /> : null}
+      <g transform={framed ? "translate(7 7)" : "translate(1 1)"}>
+        {value === "user" ? (
+          <><circle cx="8" cy="4" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M3.5 15c.4-4 2.2-6.5 4.5-6.5s4.1 2.5 4.5 6.5M5 9l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" /></>
+        ) : null}
+        {value === "service" ? (
+          <><circle cx="7" cy="9" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.5" /><circle cx="13" cy="4" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M7 3v2m0 8v2M1 9h2m8 0h2m0-9v1.5m0 5V8M9.5 4H11m4 0h1.5" stroke="currentColor" strokeWidth="1.3" /></>
+        ) : null}
+        {value === "manual" ? <path d="M1.5 12.5h4L4 9.5c-.7-1.5 1.2-2.3 2-.9l1.3 2.2V4.7c0-1.5 2-1.5 2 0v4-5c0-1.4 2-1.4 2 0v5-4c0-1.4 2-1.3 2 .1v5.7c0 3-2 5.5-5.5 5.5H5.5Z" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round" /> : null}
+        {value === "script" ? <path d="M4 1.5h9v15H4c2-2 2-4 0-6 2-2 2-4 0-6 1-.8 1.4-1.8 0-3Zm3 4h4M7 9h4m-4 3.5h3" fill="none" stroke="currentColor" strokeWidth="1.35" /> : null}
+        {value === "business-rule" ? <path d="M1.5 2.5h15v12h-15Zm0 4h15m-10-4v12m5-8v8" fill="none" stroke="currentColor" strokeWidth="1.4" /> : null}
+        {value === "send" || value === "receive" ? (
+          <><path d="M1.5 4h15v10h-15Z" fill={value === "send" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" /><path d="m2 4.5 7 5 7-5" fill="none" stroke={value === "send" ? "var(--card)" : "currentColor"} strokeWidth="1.4" /></>
+        ) : null}
+      </g>
     </svg>
   );
 }
@@ -15525,7 +15529,7 @@ function BpmnModuleV2({
                     <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                       {node.type === "task" ? "Tipo de tarefa" : "Tipo de gateway"}
                     </div>
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div className={node.type === "task" ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-3 gap-1.5"}>
                       {options.map((option) => (
                         <button
                           key={option.value}
@@ -15541,12 +15545,12 @@ function BpmnModuleV2({
                                   gatewayType: option.value as BpmnGatewayType,
                                 })
                           }
-                          className={`relative grid aspect-square place-items-center rounded-md border text-foreground transition hover:border-primary hover:bg-muted ${current === option.value ? "border-primary bg-primary/10 text-primary" : "border-border bg-card"}`}
+                          className={`relative grid h-16 place-items-center rounded-md border text-foreground transition hover:border-primary hover:bg-muted ${current === option.value ? "border-primary bg-primary/10 text-primary" : "border-border bg-card"}`}
                         >
                           <BpmnNotationIcon
                             kind={node.type === "task" ? "task" : "gateway"}
                             value={option.value}
-                            className="h-8 w-8"
+                            className={node.type === "task" ? "h-12 w-[72px]" : "h-10 w-10"}
                           />
                           {current === option.value ? (
                             <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-primary" />
@@ -15958,13 +15962,13 @@ function BpmnShapeV2({
       {node.type === "task" && node.taskType && node.taskType !== "none" && !editing ? (
         <foreignObject
           x={node.x + 7}
-          y={node.y + height - 27}
+          y={node.y + 6}
           width="22"
           height="22"
           pointerEvents="none"
         >
           <div className="text-foreground">
-            <BpmnNotationIcon kind="task" value={node.taskType} className="h-[22px] w-[22px]" />
+            <BpmnNotationIcon kind="task" value={node.taskType} framed={false} className="h-[20px] w-[20px]" />
           </div>
         </foreignObject>
       ) : null}
