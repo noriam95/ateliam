@@ -11,6 +11,8 @@ import {
   BarChart2,
   Bell,
   Building2,
+  Check,
+  CheckCheck,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -63,11 +65,9 @@ export const Route = createFileRoute("/_authenticated/")({
         ? "value-chain"
         : search.area === "registrations"
           ? "modules"
-        : search.area === "modules" ||
-          search.area === "value-chain" ||
-          search.area === "settings"
-          ? search.area
-          : undefined,
+          : search.area === "modules" || search.area === "value-chain" || search.area === "settings"
+            ? search.area
+            : undefined,
     view: typeof search.view === "string" ? search.view : undefined,
   }),
 });
@@ -249,7 +249,7 @@ function normalizeStatusKey(status: string): keyof DashboardMappingStatusCounts 
 }
 
 const DASHBOARD_CARD_CLASS =
-  "rounded-lg border border-border bg-card p-5 shadow-sm ring-1 ring-transparent transition-shadow hover:shadow-md";
+  "min-w-0 overflow-hidden rounded-lg border border-border bg-card p-5 shadow-sm ring-1 ring-transparent transition-shadow hover:shadow-md";
 type DashboardDocumentType = "Norma" | "POP" | "Instrução" | "Fluxograma" | "Mapeamento";
 type DashboardDocumentCatalogRow = {
   id: string;
@@ -285,14 +285,7 @@ function isModuleView(view: WorkspaceView, moduleId: AteliamModule) {
 }
 
 function isRegistrationView(view: WorkspaceView) {
-  return [
-    "processes",
-    "areas",
-    "owners",
-    "owner-users",
-    "systems",
-    "process-types",
-  ].includes(view);
+  return ["processes", "areas", "owners", "owner-users", "systems", "process-types"].includes(view);
 }
 
 function WorkspaceHome() {
@@ -1024,7 +1017,10 @@ function WorkspaceHome() {
                   ) : null}
 
                   {activeArea === "value-chain" ? (
-                    <div key="value-chain" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+                    <div
+                      key="value-chain"
+                      className="grid gap-1 animate-[slideDown_0.18s_ease-out]"
+                    >
                       {/* O cadastro foi incorporado ao relatório (tabela editável),
                           por isso a única entrada é o "Cadastro". */}
                       <TreeButton
@@ -1078,7 +1074,7 @@ function WorkspaceHome() {
               topOwners={dashboard?.topOwners ?? []}
               recentDocuments={dashboard?.recentDocuments ?? []}
               recentProcesses={dashboard?.recentProcesses ?? []}
-              activityItems={activityFeed}
+              activityItems={activityFeed.slice(0, 5)}
               mappingCoverage={dashboard?.mappingCoverage ?? { covered: 0, total: 0, rows: [] }}
               isLoading={dashboardQ.isLoading && !isDemo}
               isDemo={isDemo}
@@ -1192,18 +1188,14 @@ function StatusSummaryTile({
 }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
-    <div className="rounded-lg border border-border bg-background p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="font-data text-3xl font-bold leading-none" style={{ color }}>
-            {value}
-          </div>
-          <div className="mt-1 text-[11px] font-medium leading-tight text-muted-foreground">
-            {label}
-          </div>
+    <div className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-background p-3.5">
+      <span className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: color }} />
+      <div className="flex items-center justify-between gap-3">
+        <div className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+          {label}
         </div>
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
           style={{
             backgroundColor: `color-mix(in oklab, ${color} 14%, var(--card))`,
             color,
@@ -1212,11 +1204,12 @@ function StatusSummaryTile({
           {pct}%
         </span>
       </div>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${pct}%`, backgroundColor: color }}
-        />
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <div className="font-data text-3xl font-bold leading-none text-foreground">{value}</div>
+        <div className="pb-0.5 text-[10px] text-muted-foreground">de {total}</div>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/80">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
     </div>
   );
@@ -1395,7 +1388,8 @@ function MappingCoverageExpanded({ coverage }: { coverage: MappingCoverage }) {
         <CoverageDonut covered={coverage.covered} total={coverage.total} size={168} stroke={20} />
         <div className="grid gap-2">
           <div className="text-sm text-muted-foreground">
-            {coverage.covered} de {coverage.total} processos com pelo menos um mapeamento cadastrado.
+            {coverage.covered} de {coverage.total} processos com pelo menos um mapeamento
+            cadastrado.
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="h-2.5 w-2.5 rounded-full bg-[var(--gold)]" />
@@ -1502,13 +1496,7 @@ function ProcessRecordsTable({
 
 type DashboardSortDir = "asc" | "desc";
 
-function SortGlyph({
-  active,
-  dir,
-}: {
-  active: boolean;
-  dir: DashboardSortDir;
-}) {
+function SortGlyph({ active, dir }: { active: boolean; dir: DashboardSortDir }) {
   if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
   return dir === "asc" ? (
     <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
@@ -1526,7 +1514,11 @@ function StatusBadge({ status }: { status: string }) {
       : normalized.includes("revis")
         ? { bg: "#FFF3D8", fg: "#9A5A00", border: "#F3D18A" }
         : normalized.includes("andamento") || normalized.includes("ativo")
-          ? { bg: "color-mix(in oklab, var(--gold) 15%, var(--card))", fg: "var(--gold)", border: "color-mix(in oklab, var(--gold) 35%, var(--border))" }
+          ? {
+              bg: "color-mix(in oklab, var(--gold) 15%, var(--card))",
+              fg: "var(--gold)",
+              border: "color-mix(in oklab, var(--gold) 35%, var(--border))",
+            }
           : { bg: "var(--muted)", fg: "var(--muted-foreground)", border: "var(--border)" };
   return (
     <span
@@ -1540,7 +1532,15 @@ function StatusBadge({ status }: { status: string }) {
 
 type DashboardMappingColumn = keyof Pick<
   DashboardMappingRow,
-  "code" | "name" | "process" | "modalidade" | "area" | "owner" | "responsible" | "status" | "updatedAt"
+  | "code"
+  | "name"
+  | "process"
+  | "modalidade"
+  | "area"
+  | "owner"
+  | "responsible"
+  | "status"
+  | "updatedAt"
 >;
 
 const DASHBOARD_MAPPING_COLUMNS: Array<[DashboardMappingColumn, string]> = [
@@ -1565,10 +1565,12 @@ function compareMappingValues(
   if (field === "updatedAt") {
     return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * sign;
   }
-  return String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
-    numeric: true,
-    sensitivity: "base",
-  }) * sign;
+  return (
+    String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
+    }) * sign
+  );
 }
 
 function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
@@ -1590,7 +1592,9 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
     const filtered = normalized
       ? rows.filter((row) =>
           DASHBOARD_MAPPING_COLUMNS.some(([field]) =>
-            String(row[field] ?? "").toLowerCase().includes(normalized),
+            String(row[field] ?? "")
+              .toLowerCase()
+              .includes(normalized),
           ),
         )
       : rows;
@@ -1716,9 +1720,11 @@ function latestStatusForDocumentType(
 ) {
   const typeRows = rows.filter((row) => row.documentType === type);
   if (!typeRows.length) return "-";
-  return [...typeRows].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  )[0].status || "-";
+  return (
+    [...typeRows].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    )[0].status || "-"
+  );
 }
 
 function topAreasForDocumentType(rows: DashboardDocumentCatalogRow[], type: DashboardDocumentType) {
@@ -1732,7 +1738,7 @@ function topAreasForDocumentType(rows: DashboardDocumentCatalogRow[], type: Dash
   return Array.from(counts.entries())
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "pt-BR"))
-    .slice(0, 4);
+    .slice(0, 5);
 }
 
 function DocumentTypeQuadrant({
@@ -1745,7 +1751,7 @@ function DocumentTypeQuadrant({
   const areas = topAreasForDocumentType(rows, type);
   const maxValue = Math.max(1, areas[0]?.value ?? 1);
   return (
-    <div className="min-h-[118px] rounded-lg border border-border bg-background p-3">
+    <div className="min-h-[142px] min-w-0 overflow-hidden rounded-lg border border-border bg-background p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {type}
@@ -1759,21 +1765,23 @@ function DocumentTypeQuadrant({
           areas.map((area, index) => (
             <div
               key={area.label}
-              className="grid min-w-0 grid-cols-[1rem_minmax(6rem,1fr)_4.5rem_1.25rem] items-center gap-2"
+              className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)_1.25rem] items-center gap-x-2"
             >
-              <span className="text-[10px] font-data font-bold text-[var(--gold)]">
+              <span className="row-span-2 text-[10px] font-data font-bold text-[var(--gold)]">
                 {index + 1}
               </span>
-              <span className="min-w-0 flex-1 truncate text-xs text-foreground">{area.label}</span>
-              <div className="h-1.5 w-full min-w-0 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-[var(--gold)]/80"
-                  style={{ width: `${Math.max(10, (area.value / maxValue) * 100)}%` }}
-                />
-              </div>
+              <span className="min-w-0 truncate text-[11px] text-foreground" title={area.label}>
+                {area.label}
+              </span>
               <span className="text-right text-[10px] font-data text-muted-foreground">
                 {area.value}
               </span>
+              <div className="col-span-2 mt-1 h-1 min-w-0 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full max-w-full rounded-full bg-[var(--gold)]/80"
+                  style={{ width: `${Math.max(8, (area.value / maxValue) * 100)}%` }}
+                />
+              </div>
             </div>
           ))
         ) : (
@@ -1794,10 +1802,12 @@ function compareDocumentCatalogRows(
   if (field === "updatedAt") {
     return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * sign;
   }
-  return String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
-    numeric: true,
-    sensitivity: "base",
-  }) * sign;
+  return (
+    String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
+    }) * sign
+  );
 }
 
 function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[] }) {
@@ -1829,7 +1839,9 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
       if (row.documentType !== activeType) return false;
       if (!normalized) return true;
       return DOCUMENT_CATALOG_COLUMNS.some(([field]) =>
-        String(row[field] ?? "").toLowerCase().includes(normalized),
+        String(row[field] ?? "")
+          .toLowerCase()
+          .includes(normalized),
       );
     });
     return [...filtered].sort((a, b) => compareDocumentCatalogRows(a, b, sortField, sortDir));
@@ -1951,7 +1963,41 @@ type SystemReleaseNote = {
 
 function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
   const [open, setOpen] = useState(false);
+  const [readIds, setReadIds] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const readStorageKey = "bf-flow.notification-read.v1";
+  const readSet = useMemo(() => new Set(readIds), [readIds]);
+  const notificationReadKey = (item: SystemNotification) => `${item.id}:${item.updatedAt}`;
+  const unreadCount = items.filter((item) => !readSet.has(notificationReadKey(item))).length;
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(readStorageKey) || "[]");
+      if (Array.isArray(stored)) setReadIds(stored.filter((id) => typeof id === "string"));
+    } catch {
+      setReadIds([]);
+    }
+  }, []);
+
+  function saveReadIds(next: string[]) {
+    const unique = Array.from(new Set(next));
+    setReadIds(unique);
+    try {
+      localStorage.setItem(readStorageKey, JSON.stringify(unique.slice(-250)));
+    } catch {
+      // A leitura continua válida durante a sessão quando o armazenamento não está disponível.
+    }
+  }
+
+  function markAsRead(item: SystemNotification) {
+    const key = notificationReadKey(item);
+    if (readSet.has(key)) return;
+    saveReadIds([...readIds, key]);
+  }
+
+  function markAllAsRead() {
+    saveReadIds([...readIds, ...items.map(notificationReadKey)]);
+  }
 
   useEffect(() => {
     function closeOnOutsideClick(event: MouseEvent) {
@@ -1972,39 +2018,83 @@ function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
         title="Atividades e atualizações"
       >
         <Bell className="h-4 w-4" />
-        {items.length ? (
+        {unreadCount ? (
           <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--gold)] ring-2 ring-card" />
         ) : null}
       </button>
 
       {open ? (
         <div className="absolute right-0 top-full z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card shadow-xl">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div>
               <div className="text-sm font-semibold text-foreground">Atividades e atualizações</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">Melhorias publicadas e alterações recentes</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {unreadCount
+                  ? `${unreadCount} não lida${unreadCount === 1 ? "" : "s"}`
+                  : "Tudo lido"}
+              </div>
             </div>
-            <Bell className="h-4 w-4 text-[var(--gold)]" />
+            {unreadCount ? (
+              <button
+                type="button"
+                onClick={markAllAsRead}
+                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--gold)] transition hover:bg-muted"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Marcar todas
+              </button>
+            ) : (
+              <CheckCheck className="h-4 w-4 text-emerald-600" />
+            )}
           </div>
           {items.length ? (
             <div className="max-h-[360px] overflow-y-auto p-2">
-              {items.map((item) => (
-                <div key={item.id} className="rounded-md px-3 py-2.5 transition hover:bg-muted">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 inline-flex shrink-0 rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
-                      {item.tag}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-semibold text-foreground">{item.title}</div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">{item.description}</div>
+              {items.map((item) => {
+                const isRead = readSet.has(notificationReadKey(item));
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-md px-3 py-2.5 transition hover:bg-muted ${
+                      isRead ? "opacity-70" : "bg-[color-mix(in_oklab,var(--gold)_5%,var(--card))]"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex shrink-0 rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
+                        {item.tag}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-xs font-semibold text-foreground">
+                          {item.title}
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                          {item.description}
+                        </div>
+                      </div>
+                      <div className="grid shrink-0 justify-items-end gap-1">
+                        <time className="text-[10px] text-muted-foreground">
+                          {formatDateTimeBr(item.updatedAt)}
+                        </time>
+                        {isRead ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" aria-label="Lida" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => markAsRead(item)}
+                            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold)] hover:bg-muted"
+                          >
+                            Marcar como lida
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <time className="shrink-0 text-[10px] text-muted-foreground">{formatDateTimeBr(item.updatedAt)}</time>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="px-4 py-8 text-center text-xs text-muted-foreground">Sem atualizações recentes.</div>
+            <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+              Sem atualizações recentes.
+            </div>
           )}
         </div>
       ) : null}
@@ -2271,7 +2361,7 @@ function WorkspaceContent({
   const activeProcesses = totals?.activeProcesses ?? 0;
   const ddpCount = totals?.ddps ?? 0;
   const popCount = totals?.pops ?? 0;
-  const coveragePct = totalProcesses > 0 ? Math.round(((activeProcesses) / totalProcesses) * 100) : 0;
+  const coveragePct = totalProcesses > 0 ? Math.round((activeProcesses / totalProcesses) * 100) : 0;
   const ddpCoverage = totalProcesses > 0 ? Math.round((ddpCount / totalProcesses) * 100) : 0;
   const recentActivityItems: RecentActivityItem[] = [
     ...recentProcesses.map((proc) => ({
@@ -2308,7 +2398,8 @@ function WorkspaceContent({
               Visão operacional
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Acompanhe mapeamentos, cobertura de processos, catálogo documental e atividades recentes.
+              Acompanhe mapeamentos, cobertura de processos, catálogo documental e atividades
+              recentes.
             </p>
           </div>
           <div className="rounded-lg border border-border bg-background px-4 py-3 text-right">
@@ -2333,30 +2424,46 @@ function WorkspaceContent({
         <ExpandableCard
           title="Índice de Mapeamento"
           icon={<Activity className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[230px] flex-col gap-4`}
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[250px] flex-col gap-4`}
           expanded={<MappingCoverageExpanded coverage={mappingCoverage} />}
         >
-          <div className="flex items-center gap-4">
-            <CoverageDonut covered={mappingCoverage.covered} total={mappingCoverage.total} />
-            <div className="grid flex-1 gap-2 text-[11px]">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--gold)]" />
-                <span className="text-muted-foreground">Com mapeamento</span>
-                <span className="ml-auto font-semibold text-foreground">
-                  {mappingCoverage.covered}
-                </span>
+          <div className="grid flex-1 grid-cols-[132px_minmax(0,1fr)] items-center gap-5">
+            <CoverageDonut
+              covered={mappingCoverage.covered}
+              total={mappingCoverage.total}
+              size={126}
+              stroke={15}
+            />
+            <div className="grid min-w-0 gap-2.5">
+              <div className="rounded-lg border border-border bg-background px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--gold)]" />
+                    <span className="truncate">Com mapeamento</span>
+                  </span>
+                  <strong className="font-data text-lg text-foreground">
+                    {mappingCoverage.covered}
+                  </strong>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-muted" />
-                <span className="text-muted-foreground">Sem mapeamento</span>
-                <span className="ml-auto font-semibold text-foreground">
-                  {Math.max(0, mappingCoverage.total - mappingCoverage.covered)}
-                </span>
+              <div className="rounded-lg border border-border bg-background px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/25" />
+                    <span className="truncate">Sem mapeamento</span>
+                  </span>
+                  <strong className="font-data text-lg text-foreground">
+                    {Math.max(0, mappingCoverage.total - mappingCoverage.covered)}
+                  </strong>
+                </div>
               </div>
             </div>
           </div>
-          <div className="mt-auto border-t border-border pt-2 text-[11px] text-muted-foreground">
-            {mappingCoverage.covered} de {mappingCoverage.total} processos com mapeamento
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3 text-[11px] text-muted-foreground">
+            <span>Cobertura dos processos cadastrados</span>
+            <strong className="shrink-0 text-foreground">
+              {mappingCoverage.covered} de {mappingCoverage.total}
+            </strong>
           </div>
         </ExpandableCard>
 
@@ -2364,22 +2471,31 @@ function WorkspaceContent({
         <ExpandableCard
           title="Acompanhamento de Mapeamentos"
           icon={<FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[230px] flex-col gap-4 xl:col-span-2`}
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[250px] flex-col gap-4 xl:col-span-2`}
           expanded={<MappingRecordsTable rows={mappingRows} />}
         >
-          <div className="mt-auto grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {MAPPING_STATUS_TILES.map((tile) => (
-              <StatusSummaryTile
-                key={tile.key}
-                label={tile.label}
-                value={mappingStatusCounts[tile.key]}
-                total={mappingRows.length}
-                color={tile.color}
-              />
-            ))}
+          <div className="flex flex-1 flex-col justify-center gap-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs text-muted-foreground">
+                Distribuição dos registros por status
+              </span>
+              <strong className="font-data text-sm text-foreground">
+                {mappingRows.length} no total
+              </strong>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {MAPPING_STATUS_TILES.map((tile) => (
+                <StatusSummaryTile
+                  key={tile.key}
+                  label={tile.label}
+                  value={mappingStatusCounts[tile.key]}
+                  total={mappingRows.length}
+                  color={tile.color}
+                />
+              ))}
+            </div>
           </div>
         </ExpandableCard>
-
       </section>
 
       {/* Bottom: Catálogo e Conformidade + Painel de Atividade Recente */}
@@ -2392,9 +2508,9 @@ function WorkspaceContent({
           className={DASHBOARD_CARD_CLASS}
           expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
         >
-          <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
+          <div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-[minmax(220px,0.78fr)_minmax(0,1.5fr)]">
             {/* Controle de Documentos */}
-            <div>
+            <div className="min-w-0 rounded-lg border border-border bg-background p-3">
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Controle de Documentos
               </div>
@@ -2414,7 +2530,9 @@ function WorkspaceContent({
                         <td className="py-1.5 font-medium text-foreground">{type}</td>
                         <td className="py-1.5 text-right font-data text-foreground">{count}</td>
                         <td className="py-1.5 text-right">
-                          <StatusBadge status={latestStatusForDocumentType(documentCatalogRows, type)} />
+                          <StatusBadge
+                            status={latestStatusForDocumentType(documentCatalogRows, type)}
+                          />
                         </td>
                       </tr>
                     );
@@ -2424,21 +2542,13 @@ function WorkspaceContent({
             </div>
 
             {/* Quadrantes por tipo de documento */}
-            <div>
+            <div className="min-w-0">
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Documentos por Área
               </div>
-              <div className="grid gap-3 xl:grid-cols-2">
-                {DOCUMENT_CATALOG_TYPES.map((type, index) => (
-                  <div
-                    key={type}
-                    className={
-                      DOCUMENT_CATALOG_TYPES.length % 2 === 1 &&
-                      index === DOCUMENT_CATALOG_TYPES.length - 1
-                        ? "sm:col-span-2"
-                        : undefined
-                    }
-                  >
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                {DOCUMENT_CATALOG_TYPES.map((type) => (
+                  <div key={type} className="min-w-0">
                     <DocumentTypeQuadrant type={type} rows={documentCatalogRows} />
                   </div>
                 ))}
@@ -2459,7 +2569,9 @@ function WorkspaceContent({
               Últimas atividades
             </div>
             {activityItems.length === 0 ? (
-              <div className="py-4 text-center text-xs text-muted-foreground">Sem atividade recente.</div>
+              <div className="py-4 text-center text-xs text-muted-foreground">
+                Sem atividade recente.
+              </div>
             ) : (
               <div className="grid gap-2">
                 {activityItems.map((item) => (
@@ -2477,7 +2589,9 @@ function WorkspaceContent({
                             {item.title}
                           </div>
                         </div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">{item.description}</div>
+                        <div className="mt-1 text-[11px] text-muted-foreground">
+                          {item.description}
+                        </div>
                       </div>
                       <div className="shrink-0 text-right">
                         <div className="text-[10px] text-muted-foreground">
@@ -3187,9 +3301,7 @@ function DocumentTable({
           <span className="text-xs text-muted-foreground">
             {document.module === "ddp" ? "" : `v${document.current_version}`}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {formatDateBr(document.updated_at)}
-          </span>
+          <span className="text-xs text-muted-foreground">{formatDateBr(document.updated_at)}</span>
         </div>
       ))}
     </div>
