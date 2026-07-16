@@ -11141,19 +11141,30 @@ function PopModule({
                           value={section.title.replace(/^3\.\d+\s*/, "")}
                           onChange={(title) => updateSection(section.id, { title })}
                         />
-                        <IconButton
-                          label="Excluir item"
-                          onClick={() =>
-                            update({
-                              ...data,
-                              sections: renumberPopSections(
-                                data.sections.filter((item) => item.id !== section.id),
-                              ),
-                            })
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </IconButton>
+                        <div className="mt-5 flex items-center gap-1.5">
+                          <label
+                            htmlFor={`procedure-item-images-${section.id}`}
+                            title="Adicionar imagem ao item"
+                            aria-label="Adicionar imagem ao item"
+                            className="grid h-10 w-10 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                          >
+                            <ImagePlus className="h-4 w-4" />
+                            <span className="sr-only">Adicionar imagem</span>
+                          </label>
+                          <IconButton
+                            label="Excluir item"
+                            onClick={() =>
+                              update({
+                                ...data,
+                                sections: renumberPopSections(
+                                  data.sections.filter((item) => item.id !== section.id),
+                                ),
+                              })
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </IconButton>
+                        </div>
                       </div>
                       <div className="mb-3 grid gap-3 rounded-lg border border-border bg-card p-3">
                         <TextArea
@@ -11166,6 +11177,8 @@ function PopModule({
                           label="Imagens do item"
                           captionLabel="Legenda"
                           showTitle={false}
+                          inputId={`procedure-item-images-${section.id}`}
+                          hideAddButton
                           images={section.images}
                           onChange={(images) => updateSection(section.id, { images })}
                         />
