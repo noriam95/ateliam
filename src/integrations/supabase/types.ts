@@ -435,6 +435,10 @@ export type Database = {
           impact: string | null;
           organization_id: string;
           priority: string;
+          status: string;
+          responsible: string | null;
+          due_date: string | null;
+          comments: Json;
           title: string;
           updated_at: string;
         };
@@ -447,6 +451,10 @@ export type Database = {
           impact?: string | null;
           organization_id: string;
           priority?: string;
+          status?: string;
+          responsible?: string | null;
+          due_date?: string | null;
+          comments?: Json;
           title: string;
           updated_at?: string;
         };
@@ -459,6 +467,10 @@ export type Database = {
           impact?: string | null;
           organization_id?: string;
           priority?: string;
+          status?: string;
+          responsible?: string | null;
+          due_date?: string | null;
+          comments?: Json;
           title?: string;
           updated_at?: string;
         };

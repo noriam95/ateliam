@@ -85,11 +85,28 @@ const catalogNameSchema = z.object({
   name: z.string().trim().min(2).max(120),
 });
 const catalogCauseSchema = z.object({
+  organizationId: z.string().uuid().optional().nullable(),
   title: z.string().trim().min(2).max(180),
   description: z.string().trim().max(2000).optional().nullable(),
   impact: z.string().trim().max(2000).optional().nullable(),
   action: z.string().trim().max(2000).optional().nullable(),
   priority: z.string().trim().max(40).optional().default("Média"),
+  status: z
+    .enum(["Não iniciada", "Em andamento", "Encerrado", "Cancelada"])
+    .optional()
+    .default("Não iniciada"),
+  responsible: z.string().trim().max(180).optional().nullable(),
+  due_date: z.string().trim().max(40).optional().nullable(),
+  comments: z
+    .array(
+      z.object({
+        id: z.string().max(120),
+        text: z.string().max(2000),
+        createdAt: z.string().max(80).optional(),
+      }),
+    )
+    .optional()
+    .default([]),
 });
 const processSchema = z.object({
   id: z.string().uuid().optional(),
@@ -134,6 +151,11 @@ const positionRegistrationSchema = organizationScopeSchema.extend({
   title: z.string().trim().min(2).max(160),
   description: z.string().trim().max(2000).optional().nullable(),
 });
+
+function isMissingExtendedCauseColumn(message: string) {
+  return /organization_causes|status|responsible|due_date|comments/i.test(message) &&
+    /column|schema cache|could not find/i.test(message);
+}
 const ownerRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   departmentId: z.string().uuid(),
@@ -501,7 +523,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
     const [
       { data: departments, error: departmentsError },
       { data: processOwners, error: ownersError },
-      { data: causes, error: causesError },
+      { data: extendedCauses, error: causesError },
       { data: processes, error: processesError },
       { data: valueChains, error: valueChainsError },
       { data: systems, error: systemsError },
@@ -520,7 +542,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       context.supabase
         .from("organization_causes")
         .select(
-          "id, title, description, impact, action, priority, organization_id, created_at, updated_at",
+          "id, title, description, impact, action, priority, status, responsible, due_date, comments, organization_id, created_at, updated_at",
         )
         .eq("organization_id", organizationId)
         .order("title", { ascending: true }),
@@ -555,7 +577,23 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
     ]);
     if (departmentsError) throw new Error(departmentsError.message);
     if (ownersError) throw new Error(ownersError.message);
-    if (causesError) throw new Error(causesError.message);
+    let causes = extendedCauses;
+    if (causesError) {
+      if (!isMissingExtendedCauseColumn(causesError.message)) throw new Error(causesError.message);
+      const legacyResult = await context.supabase
+        .from("organization_causes")
+        .select("id, title, description, impact, action, priority, organization_id, created_at, updated_at")
+        .eq("organization_id", organizationId)
+        .order("title", { ascending: true });
+      if (legacyResult.error) throw new Error(legacyResult.error.message);
+      causes = (legacyResult.data ?? []).map((cause) => ({
+        ...cause,
+        status: "Não iniciada",
+        responsible: null,
+        due_date: null,
+        comments: [],
+      }));
+    }
     if (processesError) throw new Error(processesError.message);
     if (valueChainsError) throw new Error(valueChainsError.message);
     // organization_systems só existe depois que a migração correspondente é
@@ -1042,22 +1080,44 @@ export const createOrganizationCause = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: z.infer<typeof catalogCauseSchema>) => catalogCauseSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const access = await assertOrganizationEditor(context);
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const basePayload = {
+      organization_id: access.organizationId,
+      title: data.title,
+      description: data.description ?? null,
+      impact: data.impact ?? null,
+      action: data.action ?? null,
+      priority: data.priority || "Média",
+      created_by: context.userId,
+    };
     const { data: row, error } = await context.supabase
       .from("organization_causes")
       .insert({
-        organization_id: access.organizationId,
-        title: data.title,
-        description: data.description ?? null,
-        impact: data.impact ?? null,
-        action: data.action ?? null,
-        priority: data.priority || "Média",
-        created_by: context.userId,
+        ...basePayload,
+        status: data.status,
+        responsible: data.responsible ?? null,
+        due_date: data.due_date ?? null,
+        comments: data.comments,
       })
       .select(
-        "id, title, description, impact, action, priority, organization_id, created_at, updated_at",
+        "id, title, description, impact, action, priority, status, responsible, due_date, comments, organization_id, created_at, updated_at",
       )
       .single();
+    if (error && isMissingExtendedCauseColumn(error.message)) {
+      const legacyResult = await context.supabase
+        .from("organization_causes")
+        .insert(basePayload)
+        .select("id, title, description, impact, action, priority, organization_id, created_at, updated_at")
+        .single();
+      if (legacyResult.error) throw new Error(legacyResult.error.message);
+      return {
+        ...legacyResult.data,
+        status: data.status,
+        responsible: data.responsible ?? null,
+        due_date: data.due_date ?? null,
+        comments: data.comments,
+      };
+    }
     if (error) throw new Error(error.message);
     return row;
   });
@@ -1068,31 +1128,57 @@ export const updateOrganizationCause = createServerFn({ method: "POST" })
     catalogCauseSchema.extend({ id: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const access = await assertOrganizationEditor(context);
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const basePayload = {
+      title: data.title,
+      description: data.description ?? null,
+      impact: data.impact ?? null,
+      action: data.action ?? null,
+      priority: data.priority || "Média",
+    };
     const { data: row, error } = await context.supabase
       .from("organization_causes")
       .update({
-        title: data.title,
-        description: data.description ?? null,
-        impact: data.impact ?? null,
-        action: data.action ?? null,
-        priority: data.priority || "Média",
+        ...basePayload,
+        status: data.status,
+        responsible: data.responsible ?? null,
+        due_date: data.due_date ?? null,
+        comments: data.comments,
       })
       .eq("id", data.id)
       .eq("organization_id", access.organizationId)
       .select(
-        "id, title, description, impact, action, priority, organization_id, created_at, updated_at",
+        "id, title, description, impact, action, priority, status, responsible, due_date, comments, organization_id, created_at, updated_at",
       )
       .single();
+    if (error && isMissingExtendedCauseColumn(error.message)) {
+      const legacyResult = await context.supabase
+        .from("organization_causes")
+        .update(basePayload)
+        .eq("id", data.id)
+        .eq("organization_id", access.organizationId)
+        .select("id, title, description, impact, action, priority, organization_id, created_at, updated_at")
+        .single();
+      if (legacyResult.error) throw new Error(legacyResult.error.message);
+      return {
+        ...legacyResult.data,
+        status: data.status,
+        responsible: data.responsible ?? null,
+        due_date: data.due_date ?? null,
+        comments: data.comments,
+      };
+    }
     if (error) throw new Error(error.message);
     return row;
   });
 
 export const deleteOrganizationCause = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d: { organizationId?: string | null; id: string }) =>
+    organizationScopeSchema.extend({ id: z.string().uuid() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
-    const access = await assertOrganizationEditor(context);
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const { error } = await context.supabase
       .from("organization_causes")
       .delete()

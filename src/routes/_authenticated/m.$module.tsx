@@ -549,7 +549,7 @@ type ImportResult = {
   moduleId: AteliamModule;
   label: string;
 };
-const CAUSE_STATUS_OPTIONS = ["Pendente", "Em andamento", "Concluída"] as const;
+const CAUSE_STATUS_OPTIONS = ["Não iniciada", "Em andamento", "Encerrado", "Cancelada"] as const;
 const CAUSE_PRIORITY_OPTIONS = ["Baixa", "Média", "Alta", "Crítica"] as const;
 const DEMO_CATALOGS: OrganizationCatalogs = {
   departments: [
@@ -1708,8 +1708,9 @@ function asNextStepItem(value: unknown): NextStepItem {
 function normalizeCauseStatus(value: unknown) {
   const normalized = normalizeLabel(String(value ?? ""));
   if (normalized.includes("andamento")) return "Em andamento";
-  if (normalized.includes("conclu")) return "Concluída";
-  return "Pendente";
+  if (normalized.includes("conclu") || normalized.includes("encerr")) return "Encerrado";
+  if (normalized.includes("cancel")) return "Cancelada";
+  return "Não iniciada";
 }
 
 function normalizeCausePriority(value: unknown) {
@@ -2686,9 +2687,21 @@ type OrganizationCause = {
   impact: string | null;
   action: string | null;
   priority: string;
+  status?: string;
+  responsible?: string | null;
+  due_date?: string | null;
+  comments?: CauseComment[] | null;
   organization_id?: string;
   created_at?: string;
   updated_at?: string;
+};
+type MappingCauseRecord = GapItem & {
+  recordId: string;
+  gapId: string;
+  documentId: string;
+  mappingCode: string;
+  mappingTitle: string;
+  updatedAt: string;
 };
 type OrganizationProcess = {
   id: string;
@@ -5487,7 +5500,9 @@ function ModuleWorkspacePage() {
           moduleId: moduleId as "ddp" | "pop" | "bpmn",
         },
       }),
-    enabled: (showLibrary || moduleSurface === "consult") && !isDemo,
+    enabled:
+      (showLibrary || moduleSurface === "consult" || (moduleId === "ddp" && ddpView === "causes")) &&
+      !isDemo,
   });
   const draftKey = isDemo ? DRAFT_KEY : `${DRAFT_KEY}_${wsQ.data?.id ?? "cloud"}`;
   const organizationCatalogs: OrganizationCatalogs = isDemo
@@ -6071,44 +6086,17 @@ function ModuleWorkspacePage() {
       setDemoCatalogs((current) => ({ ...current, causes: [...current.causes, row] }));
       return row;
     }
-    const row = await createSharedCause({ data: payload });
+    const row = await createSharedCause({
+      data: { ...payload, organizationId: selectedOrganizationId },
+    });
     await catalogsQ.refetch();
     return row;
   }
 
   async function syncDdpGapsToCatalog(source: WorkspaceState) {
-    if (moduleId !== "ddp") return source;
-    const knownCauses = new Map(
-      organizationCatalogs.causes.map((cause) => [normalizeLabel(cause.title), cause]),
-    );
-    let changed = false;
-    const gaps: GapItem[] = [];
-
-    for (const gap of source.ddp.gaps) {
-      const title = plain(gap.causa);
-      if (!title) {
-        gaps.push(gap);
-        continue;
-      }
-
-      const linked = organizationCatalogs.causes.find((item) => item.id === gap.sharedCauseId);
-      const payload = {
-        title,
-        description: plain(gap.descricao) || null,
-        impact: plain(gap.impacto) || null,
-        action: plain(gap.acao) || null,
-        priority: gap.prioridade || "Média",
-      };
-      const cause = linked
-        ? await updateCauseCatalog({ ...linked, ...payload })
-        : (knownCauses.get(normalizeLabel(title)) ?? (await addCauseToCatalog(gap)));
-
-      knownCauses.set(normalizeLabel(cause.title), cause);
-      if (gap.sharedCauseId !== cause.id) changed = true;
-      gaps.push(gap.sharedCauseId === cause.id ? gap : { ...gap, sharedCauseId: cause.id });
-    }
-
-    return changed ? { ...source, ddp: { ...source.ddp, gaps } } : source;
+    // Causas registradas no mapeamento pertencem ao próprio mapeamento. Elas só
+    // entram no catálogo quando o usuário as cadastra explicitamente como causa avulsa.
+    return source;
   }
 
   async function updateCauseCatalog(cause: OrganizationCause) {
@@ -6122,11 +6110,16 @@ function ModuleWorkspacePage() {
     const row = await updateSharedCause({
       data: {
         id: cause.id,
+        organizationId: selectedOrganizationId,
         title: cause.title,
         description: cause.description,
         impact: cause.impact,
         action: cause.action,
         priority: cause.priority,
+        status: normalizeCauseStatus(cause.status),
+        responsible: cause.responsible ?? null,
+        due_date: cause.due_date ?? null,
+        comments: cause.comments ?? [],
       },
     });
     await catalogsQ.refetch();
@@ -6141,7 +6134,7 @@ function ModuleWorkspacePage() {
       }));
       return;
     }
-    await removeSharedCause({ data: { id: causeId } });
+    await removeSharedCause({ data: { id: causeId, organizationId: selectedOrganizationId } });
     await catalogsQ.refetch();
   }
 
@@ -6256,6 +6249,113 @@ function ModuleWorkspacePage() {
     savedDemoDocument,
     isDemo,
   ).map((row) => (statusOverrides[row.id] ? { ...row, status: statusOverrides[row.id] } : row));
+
+  const mappingCauseRecords = useMemo<MappingCauseRecord[]>(() => {
+    const documents = (cloudDocsQ.data as CloudModuleDocument[] | undefined) ?? [];
+    return documents.flatMap((document) => {
+      if (!document.content_inline) return [];
+      try {
+        const snapshot = parseWorkspace(document.content_inline);
+        return snapshot.ddp.gaps.map((gap) => ({
+          ...gap,
+          status: normalizeCauseStatus(gap.status),
+          recordId: `mapping:${document.id}:${gap.id}`,
+          gapId: gap.id,
+          documentId: document.id,
+          mappingCode: snapshot.ddp.meta.codigo || "-",
+          mappingTitle: snapshot.ddp.meta.titulo || document.name,
+          updatedAt: document.updated_at,
+        }));
+      } catch {
+        return [];
+      }
+    });
+  }, [cloudDocsQ.data]);
+
+  async function updateMappingCauseStatus(record: MappingCauseRecord, status: string) {
+    const document = (cloudDocsQ.data as CloudModuleDocument[] | undefined)?.find(
+      (item) => item.id === record.documentId,
+    );
+    if (!document?.content_inline) throw new Error("Mapeamento de origem não encontrado.");
+
+    const snapshot = parseWorkspace(document.content_inline);
+    const gapExists = snapshot.ddp.gaps.some((gap) => gap.id === record.gapId);
+    if (!gapExists) throw new Error("A causa não existe mais no mapeamento de origem.");
+
+    const updatedWorkspace: WorkspaceState = {
+      ...snapshot,
+      ddp: {
+        ...snapshot.ddp,
+        gaps: snapshot.ddp.gaps.map((gap) =>
+          gap.id === record.gapId ? { ...gap, status: normalizeCauseStatus(status) } : gap,
+        ),
+      },
+    };
+    const payload = currentModuleSavePayload(updatedWorkspace);
+    await saveCloudDocument({
+      data: {
+        organizationId: selectedOrganizationId,
+        id: document.id,
+        moduleId: "ddp",
+        code: payload.code,
+        title: payload.title,
+        description: payload.description,
+        content: buildModuleJson("ddp", updatedWorkspace),
+        comment: `[Mapeamento] Status da causa alterado para ${normalizeCauseStatus(status)}`,
+        primaryProcessId: payload.primaryProcessId,
+        primaryProcessVersion: payload.primaryProcessVersion,
+      },
+    });
+
+    if (activeCloudDocument?.id === document.id) {
+      setWorkspace(updatedWorkspace);
+      window.localStorage.setItem(draftKey, JSON.stringify(updatedWorkspace));
+    }
+    await cloudDocsQ.refetch();
+  }
+
+  async function createStandaloneCause(gap: GapItem) {
+    if (isDemo) {
+      const row: OrganizationCause = {
+        id: id("cause"),
+        title: gap.causa,
+        description: gap.descricao || null,
+        impact: gap.impacto || null,
+        action: gap.acao || null,
+        priority: gap.prioridade,
+        status: normalizeCauseStatus(gap.status),
+        responsible: gap.responsavel || null,
+        due_date: gap.prazo || null,
+        comments: gap.comentarios,
+      };
+      setDemoCatalogs((current) => ({ ...current, causes: [...current.causes, row] }));
+      return row;
+    }
+    const row = await createSharedCause({
+      data: {
+        organizationId: selectedOrganizationId,
+        title: gap.causa,
+        description: gap.descricao || null,
+        impact: gap.impacto || null,
+        action: gap.acao || null,
+        priority: gap.prioridade,
+        status: normalizeCauseStatus(gap.status),
+        responsible: gap.responsavel || null,
+        due_date: gap.prazo || null,
+        comments: gap.comentarios,
+      },
+    });
+    await catalogsQ.refetch();
+    return row as OrganizationCause;
+  }
+
+  async function openMappingFromCause(record: MappingCauseRecord) {
+    const document = (cloudDocsQ.data as CloudModuleDocument[] | undefined)?.find(
+      (item) => item.id === record.documentId,
+    );
+    if (!document) throw new Error("Mapeamento de origem não encontrado.");
+    await openCloudModuleDocument(document);
+  }
 
   async function changeRowStatus(row: ModuleGridRow, status: string) {
     if (row.status === status) return;
@@ -6563,16 +6663,19 @@ function ModuleWorkspacePage() {
         {loaded && moduleId === "ddp" ? (
           ddpView === "causes" ? (
             <DdpCausesModuleV2
-              data={workspace.ddp}
-              catalogs={organizationCatalogs}
-              update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
-              onDeleteSharedCause={deleteCauseCatalog}
+              mappingCauses={mappingCauseRecords}
+              standaloneCauses={organizationCatalogs.causes}
+              loading={cloudDocsQ.isLoading || catalogsQ.isLoading}
+              onCreateStandaloneCause={createStandaloneCause}
+              onUpdateStandaloneCause={updateCauseCatalog}
+              onDeleteStandaloneCause={deleteCauseCatalog}
+              onUpdateMappingStatus={updateMappingCauseStatus}
+              onOpenMapping={openMappingFromCause}
               mode={
                 search.view?.startsWith("cause-")
                   ? (search.view.slice(6) as "new" | "consult" | "edit")
                   : "consult"
               }
-              onOpenEditor={() => setDdpView("editor")}
             />
           ) : !moduleEditStarted ? (
             <ModuleDocumentGrid
@@ -8119,7 +8222,7 @@ function RowActions({
   );
 }
 
-function DdpCausesModuleV2({
+function DdpCausesModuleLegacy({
   data,
   catalogs,
   update,
@@ -8701,6 +8804,420 @@ function DdpCausesModuleV2({
       ) : null}
     </div>
   );
+}
+
+function DdpCausesModuleV2({
+  mappingCauses,
+  standaloneCauses,
+  loading,
+  onCreateStandaloneCause,
+  onUpdateStandaloneCause,
+  onDeleteStandaloneCause,
+  onUpdateMappingStatus,
+  onOpenMapping,
+  mode = "consult",
+}: {
+  mappingCauses: MappingCauseRecord[];
+  standaloneCauses: OrganizationCause[];
+  loading: boolean;
+  onCreateStandaloneCause: (gap: GapItem) => Promise<OrganizationCause>;
+  onUpdateStandaloneCause: (cause: OrganizationCause) => Promise<OrganizationCause>;
+  onDeleteStandaloneCause: (causeId: string) => Promise<void>;
+  onUpdateMappingStatus: (record: MappingCauseRecord, status: string) => Promise<void>;
+  onOpenMapping: (record: MappingCauseRecord) => Promise<void>;
+  mode?: "new" | "consult" | "edit";
+}) {
+  void DdpCausesModuleLegacy;
+  type CauseRow = {
+    id: string;
+    source: "mapping" | "standalone";
+    gap: GapItem;
+    mapping?: MappingCauseRecord;
+    standalone?: OrganizationCause;
+    updatedAt?: string;
+  };
+  type CauseDraft = { source: "mapping" | "standalone"; gap: GapItem; row?: CauseRow };
+
+  const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [draft, setDraft] = useState<CauseDraft | null>(null);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [statusSavingId, setStatusSavingId] = useState("");
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  const initializedNew = useRef(false);
+
+  const rows = useMemo<CauseRow[]>(() => {
+    const mappingRows = mappingCauses.map((cause) => ({
+      id: cause.recordId,
+      source: "mapping" as const,
+      gap: cause,
+      mapping: cause,
+      updatedAt: cause.updatedAt,
+    }));
+    const standaloneRows = standaloneCauses.map((cause) => ({
+      id: `standalone:${cause.id}`,
+      source: "standalone" as const,
+      gap: gapFromStandaloneCause(cause),
+      standalone: cause,
+      updatedAt: cause.updated_at,
+    }));
+    return [...mappingRows, ...standaloneRows].sort((a, b) =>
+      String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")),
+    );
+  }, [mappingCauses, standaloneCauses]);
+
+  const filtered = useMemo(() => {
+    const normalized = normalizeLabel(query);
+    if (!normalized) return rows;
+    return rows.filter((row) =>
+      normalizeLabel(
+        [
+          row.gap.causa,
+          row.gap.descricao,
+          row.gap.impacto,
+          row.gap.acao,
+          row.gap.responsavel,
+          row.gap.status,
+          row.mapping?.mappingCode,
+          row.mapping?.mappingTitle,
+          row.source === "mapping" ? "Mapeamento" : "Avulsa",
+        ].join(" "),
+      ).includes(normalized),
+    );
+  }, [query, rows]);
+
+  function emptyCause(): GapItem {
+    return {
+      id: "",
+      sharedCauseId: "",
+      causa: "",
+      descricao: "",
+      impacto: "",
+      acao: "",
+      responsavel: "",
+      prazo: "",
+      prioridade: "Média",
+      status: "Não iniciada",
+      comentarios: [],
+    };
+  }
+
+  function openNewCause() {
+    setDraft({ source: "standalone", gap: emptyCause() });
+    setCommentDraft("");
+  }
+
+  function openRow(row: CauseRow) {
+    setDraft({ source: row.source, gap: { ...row.gap, comentarios: [...row.gap.comentarios] }, row });
+    setCommentDraft("");
+  }
+
+  useEffect(() => {
+    if (mode === "new" && !initializedNew.current) {
+      initializedNew.current = true;
+      openNewCause();
+    }
+    // A abertura é intencionalmente executada uma única vez ao entrar no modo novo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  useEffect(() => {
+    setSelectedIds((current) =>
+      current.filter((recordId) => rows.some((row) => row.id === recordId && row.source === "standalone")),
+    );
+  }, [rows]);
+
+  function updateDraft(patch: Partial<GapItem>) {
+    setDraft((current) =>
+      current ? { ...current, gap: { ...current.gap, ...patch } } : current,
+    );
+  }
+
+  async function saveDraft() {
+    if (!draft || draft.source !== "standalone") return;
+    const title = draft.gap.causa.trim();
+    if (!title) {
+      toast.error("Informe a causa.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const normalized = {
+        ...draft.gap,
+        causa: title,
+        status: normalizeCauseStatus(draft.gap.status),
+      };
+      if (draft.row?.standalone) {
+        await onUpdateStandaloneCause(organizationCauseFromGap(normalized, draft.row.standalone));
+        toast.success("Causa avulsa atualizada.");
+      } else {
+        await onCreateStandaloneCause(normalized);
+        toast.success("Causa avulsa cadastrada.");
+      }
+      setDraft(null);
+      setCommentDraft("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar a causa.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function changeStatus(row: CauseRow, status: string) {
+    setStatusSavingId(row.id);
+    try {
+      const normalizedStatus = normalizeCauseStatus(status);
+      if (row.mapping) {
+        await onUpdateMappingStatus(row.mapping, normalizedStatus);
+      } else if (row.standalone) {
+        await onUpdateStandaloneCause(
+          organizationCauseFromGap({ ...row.gap, status: normalizedStatus }, row.standalone),
+        );
+      }
+      toast.success(`Status atualizado para "${normalizedStatus}".`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível alterar o status.");
+    } finally {
+      setStatusSavingId("");
+    }
+  }
+
+  async function confirmDelete() {
+    setSaving(true);
+    try {
+      for (const recordId of pendingDeleteIds) {
+        const row = rows.find((item) => item.id === recordId);
+        if (row?.standalone) await onDeleteStandaloneCause(row.standalone.id);
+      }
+      setSelectedIds([]);
+      setPendingDeleteIds([]);
+      toast.success("Causa(s) avulsa(s) excluída(s).");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir a causa.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function addComment() {
+    if (!draft || !commentDraft.trim()) return;
+    updateDraft({
+      comentarios: [
+        ...draft.gap.comentarios,
+        { id: id("comment"), text: commentDraft.trim(), createdAt: new Date().toISOString() },
+      ],
+    });
+    setCommentDraft("");
+  }
+
+  return (
+    <div className="grid gap-5">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <header className="border-b border-border px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+                Processos · Mapeamento · Causas
+              </div>
+              <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar causas</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Causas dos mapeamentos e registros avulsos da organização.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {selectedIds.length ? (
+                <button
+                  type="button"
+                  onClick={() => setPendingDeleteIds(selectedIds)}
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-destructive hover:bg-destructive/5"
+                >
+                  <Trash2 className="h-4 w-4" /> Excluir ({selectedIds.length})
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={openNewCause}
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" /> Nova causa avulsa
+              </button>
+            </div>
+          </div>
+          <div className="relative mt-4 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar causa, mapeamento ou responsável"
+              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+            />
+          </div>
+        </header>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
+            <thead className="bg-muted/80 text-xs font-semibold text-muted-foreground">
+              <tr>
+                <th className="w-12 px-4 py-3" />
+                <th className="px-3 py-3">Origem</th>
+                <th className="px-3 py-3">Causa</th>
+                <th className="px-3 py-3">Mapeamento</th>
+                <th className="px-3 py-3">Impacto</th>
+                <th className="px-3 py-3">Ação proposta</th>
+                <th className="px-3 py-3">Responsável</th>
+                <th className="px-3 py-3">Prazo</th>
+                <th className="px-3 py-3">Prioridade</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="w-[150px] px-4 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">Carregando causas...</td></tr>
+              ) : !filtered.length ? (
+                <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">Nenhuma causa encontrada.</td></tr>
+              ) : null}
+              {filtered.map((row) => (
+                <tr key={row.id} className="border-t border-border bg-card hover:bg-muted/45">
+                  <td className="px-4 py-3">
+                    {row.source === "standalone" ? (
+                      <input
+                        type="checkbox"
+                        aria-label={`Selecionar ${row.gap.causa}`}
+                        checked={selectedIds.includes(row.id)}
+                        onChange={() => setSelectedIds((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])}
+                      />
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${row.source === "mapping" ? "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200" : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"}`}>
+                      {row.source === "mapping" ? "Mapeamento" : "Avulsa"}
+                    </span>
+                  </td>
+                  <td className="max-w-[250px] px-3 py-3">
+                    <div className="font-semibold text-foreground">{row.gap.causa || "Causa sem nome"}</div>
+                    <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{row.gap.descricao || "-"}</div>
+                  </td>
+                  <td className="max-w-[220px] px-3 py-3 text-xs leading-5">
+                    {row.mapping ? <><div className="font-semibold text-foreground">{row.mapping.mappingCode}</div><div className="text-muted-foreground">{row.mapping.mappingTitle}</div></> : <span className="text-muted-foreground">Não vinculada</span>}
+                  </td>
+                  <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">{row.gap.impacto || "-"}</td>
+                  <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">{row.gap.acao || "-"}</td>
+                  <td className="px-3 py-3">{row.gap.responsavel || "-"}</td>
+                  <td className="px-3 py-3">{formatGapDateRangeBr(row.gap.prazo) || "-"}</td>
+                  <td className="px-3 py-3">{row.gap.prioridade || "Média"}</td>
+                  <td className="px-3 py-3">
+                    <select
+                      value={normalizeCauseStatus(row.gap.status)}
+                      disabled={statusSavingId === row.id}
+                      onChange={(event) => changeStatus(row, event.target.value)}
+                      className="h-9 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                    >
+                      {CAUSE_STATUS_OPTIONS.map((status) => <option key={status}>{status}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1.5">
+                      <button type="button" title="Visualizar" onClick={() => openRow(row)} className="grid h-8 w-8 place-items-center rounded-md border border-border hover:bg-muted"><Eye className="h-4 w-4" /></button>
+                      <button
+                        type="button"
+                        title={row.mapping ? "Editar no mapeamento" : "Editar causa"}
+                        onClick={() => row.mapping ? onOpenMapping(row.mapping).catch((error) => toast.error(error.message)) : openRow(row)}
+                        className="grid h-8 w-8 place-items-center rounded-md border border-border hover:bg-muted"
+                      ><Pencil className="h-4 w-4" /></button>
+                      {row.standalone ? <button type="button" title="Excluir" onClick={() => setPendingDeleteIds([row.id])} className="grid h-8 w-8 place-items-center rounded-md border border-border text-destructive hover:bg-destructive/5"><Trash2 className="h-4 w-4" /></button> : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
+          {filtered.length} registro(s) · {mappingCauses.length} de mapeamentos · {standaloneCauses.length} avulsa(s)
+        </footer>
+      </section>
+
+      {draft ? (
+        <div className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/35 p-4 backdrop-blur-[2px]" onClick={(event) => event.target === event.currentTarget && setDraft(null)}>
+          <div className="my-auto max-h-[92vh] w-full max-w-4xl overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">{draft.source === "mapping" ? "Causa do mapeamento" : draft.row ? "Editar causa avulsa" : "Nova causa avulsa"}</h2>
+                {draft.row?.mapping ? <p className="mt-1 text-sm text-muted-foreground">{draft.row.mapping.mappingCode} · {draft.row.mapping.mappingTitle}</p> : null}
+              </div>
+              <button type="button" onClick={() => setDraft(null)} className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted" aria-label="Fechar"><X className="h-4 w-4" /></button>
+            </div>
+            {draft.source === "mapping" ? (
+              <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/35 dark:text-sky-100">
+                Os dados desta causa são mantidos pelo mapeamento. Nesta consulta, somente o status pode ser alterado.
+              </div>
+            ) : null}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Causa" value={draft.gap.causa} onChange={(causa) => updateDraft({ causa })} disabled={draft.source === "mapping"} />
+              <Field label="Responsável" value={draft.gap.responsavel} onChange={(responsavel) => updateDraft({ responsavel })} disabled={draft.source === "mapping"} />
+              <SelectField label="Status" value={normalizeCauseStatus(draft.gap.status)} options={[...CAUSE_STATUS_OPTIONS]} onChange={(status) => updateDraft({ status })} />
+              <SelectField label="Prioridade" value={draft.gap.prioridade} options={[...CAUSE_PRIORITY_OPTIONS]} onChange={(prioridade) => updateDraft({ prioridade })} disabled={draft.source === "mapping"} />
+              <DateRangeField label="Prazo" value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} disabled={draft.source === "mapping"} />
+              <TextArea label="Descrição" value={draft.gap.descricao} onChange={(descricao) => updateDraft({ descricao })} disabled={draft.source === "mapping"} />
+              <TextArea label="Impacto" value={draft.gap.impacto} onChange={(impacto) => updateDraft({ impacto })} disabled={draft.source === "mapping"} />
+              <TextArea label="Ação proposta" value={draft.gap.acao} onChange={(acao) => updateDraft({ acao })} disabled={draft.source === "mapping"} />
+            </div>
+            <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><MessageSquare className="h-4 w-4" /> Comentários</h3>
+              {draft.source === "standalone" ? <div className="flex gap-2"><input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Adicionar comentário" className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm" /><button type="button" onClick={addComment} disabled={!commentDraft.trim()} className="rounded-md bg-foreground px-3 text-sm font-semibold text-background disabled:opacity-40">Adicionar</button></div> : null}
+              <div className="mt-3 grid gap-2">{draft.gap.comentarios.length ? draft.gap.comentarios.map((comment) => <div key={comment.id} className="rounded-md border border-border bg-background p-3 text-sm"><div>{comment.text}</div>{comment.createdAt ? <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeBr(comment.createdAt)}</div> : null}</div>) : <div className="text-sm text-muted-foreground">Nenhum comentário registrado.</div>}</div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
+              <button type="button" onClick={() => setDraft(null)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Cancelar</button>
+              {draft.source === "mapping" && draft.row?.mapping ? <><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { await onUpdateMappingStatus(draft.row!.mapping!, draft.gap.status); setDraft(null); toast.success("Status atualizado."); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o status."); } finally { setSaving(false); } }} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Salvar status</button><button type="button" onClick={() => onOpenMapping(draft.row!.mapping!).catch((error) => toast.error(error.message))} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Editar no mapeamento</button></> : <button type="button" disabled={saving} onClick={saveDraft} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">Salvar causa</button>}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingDeleteIds.length ? (
+        <Modal title="Excluir causas avulsas" subtitle={`Confirma excluir ${pendingDeleteIds.length} causa(s) avulsa(s)?`} onClose={() => setPendingDeleteIds([])}>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setPendingDeleteIds([])} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Cancelar</button>
+            <button type="button" disabled={saving} onClick={confirmDelete} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-destructive disabled:opacity-50">Excluir</button>
+          </div>
+        </Modal>
+      ) : null}
+    </div>
+  );
+}
+
+function gapFromStandaloneCause(cause: OrganizationCause): GapItem {
+  return {
+    id: cause.id,
+    sharedCauseId: cause.id,
+    causa: cause.title,
+    descricao: cause.description ?? "",
+    impacto: cause.impact ?? "",
+    acao: cause.action ?? "",
+    responsavel: cause.responsible ?? "",
+    prazo: cause.due_date ?? "",
+    prioridade: normalizeCausePriority(cause.priority),
+    status: normalizeCauseStatus(cause.status),
+    comentarios: Array.isArray(cause.comments) ? cause.comments : [],
+  };
+}
+
+function organizationCauseFromGap(gap: GapItem, cause: OrganizationCause): OrganizationCause {
+  return {
+    ...cause,
+    title: gap.causa.trim(),
+    description: gap.descricao || null,
+    impact: gap.impacto || null,
+    action: gap.acao || null,
+    priority: normalizeCausePriority(gap.prioridade),
+    status: normalizeCauseStatus(gap.status),
+    responsible: gap.responsavel || null,
+    due_date: gap.prazo || null,
+    comments: gap.comentarios,
+  };
 }
 
 function gapPatchFromOrganizationCause(cause: OrganizationCause): Partial<GapItem> {
@@ -9427,7 +9944,7 @@ function DdpModule({
             prioridade: CAUSE_PRIORITY_OPTIONS.includes(gap.priority as never)
               ? gap.priority
               : "Média",
-            status: CAUSE_STATUS_OPTIONS.includes(gap.status as never) ? gap.status : "Pendente",
+            status: normalizeCauseStatus(gap.status),
             comentarios: [],
           }))
         : data.gaps,
