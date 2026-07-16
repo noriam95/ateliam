@@ -311,6 +311,12 @@ type PopProcedureClause = {
   text: string;
   alert: string;
   images: ModuleImage[];
+  blocks?: PopProcedureBlock[];
+};
+type PopProcedureBlock = {
+  id: string;
+  text: string;
+  images: ModuleImage[];
 };
 type ResponsibilityItem = { id: string; area: string; cargo?: string; responsabilidade: string };
 type ReferenceItem = { id: string; codigo: string; titulo: string; aplicabilidade: string };
@@ -509,8 +515,16 @@ const DEMO_CATALOGS: OrganizationCatalogs = {
     { id: "demo-dept-ti", name: "Tecnologia da Informação", sigla: "TIN" },
   ],
   positions: [
-    { id: "demo-position-analista", title: "Analista de Processos", description: "Executa e mantém documentação de processos." },
-    { id: "demo-position-gestor", title: "Gestor da Área", description: "Aprova e responde pela aplicação do documento." },
+    {
+      id: "demo-position-analista",
+      title: "Analista de Processos",
+      description: "Executa e mantém documentação de processos.",
+    },
+    {
+      id: "demo-position-gestor",
+      title: "Gestor da Área",
+      description: "Aprova e responde pela aplicação do documento.",
+    },
   ],
   processOwners: [
     { id: "demo-owner-processo", name: "Dono do processo" },
@@ -551,12 +565,32 @@ const DEMO_CATALOGS: OrganizationCatalogs = {
     },
   ],
   systems: [
-    { id: "sys-erp", name: "ERP TOTVS", description: "Sistema transacional de gestão (financeiro, fiscal, estoque)." },
-    { id: "sys-powerbi", name: "Power BI", description: "Plataforma de dashboards e relatórios analíticos." },
-    { id: "sys-crm", name: "HubSpot CRM", description: "Gestão de leads, funil e atividades comerciais." },
-    { id: "sys-ats", name: "Gupy (ATS)", description: "Recrutamento e seleção: publicação de vagas e triagem." },
+    {
+      id: "sys-erp",
+      name: "ERP TOTVS",
+      description: "Sistema transacional de gestão (financeiro, fiscal, estoque).",
+    },
+    {
+      id: "sys-powerbi",
+      name: "Power BI",
+      description: "Plataforma de dashboards e relatórios analíticos.",
+    },
+    {
+      id: "sys-crm",
+      name: "HubSpot CRM",
+      description: "Gestão de leads, funil e atividades comerciais.",
+    },
+    {
+      id: "sys-ats",
+      name: "Gupy (ATS)",
+      description: "Recrutamento e seleção: publicação de vagas e triagem.",
+    },
     { id: "sys-jira", name: "Jira", description: "Gestão de demandas e projetos de TI." },
-    { id: "sys-workspace", name: "Google Workspace", description: "E-mail, colaboração e agenda corporativa." },
+    {
+      id: "sys-workspace",
+      name: "Google Workspace",
+      description: "E-mail, colaboração e agenda corporativa.",
+    },
   ],
 };
 
@@ -905,18 +939,20 @@ function makeDemoDdpWorkspace(spec: DemoDdpSpec): WorkspaceState {
         saidas,
         clientes,
       })),
-      gaps: spec.gaps.map(([causa, descricao, impacto, acao, responsavel, prazo, prioridade, status]) => ({
-        id: id("gap"),
-        causa,
-        descricao,
-        impacto,
-        acao,
-        responsavel,
-        prazo,
-        prioridade,
-        status,
-        comentarios: [],
-      })),
+      gaps: spec.gaps.map(
+        ([causa, descricao, impacto, acao, responsavel, prazo, prioridade, status]) => ({
+          id: id("gap"),
+          causa,
+          descricao,
+          impacto,
+          acao,
+          responsavel,
+          prazo,
+          prioridade,
+          status,
+          comentarios: [],
+        }),
+      ),
       nextSteps: spec.nextSteps.map((text) => ({ id: id("next"), text })),
       glossary: spec.glossary.map(([termo, definicao]) => ({ id: id("gloss"), termo, definicao })),
     },
@@ -953,24 +989,109 @@ const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
     oportunidades:
       "Portal único de demandas, template de requisitos e checkpoint de validação intermediária.",
     systems: [
-      ["Power BI", "Plataforma de BI", "Alta", "Construção e publicação de dashboards e relatórios."],
-      ["Azure SQL / DW", "Banco de dados analítico", "Alta", "Camada de dados consolidada para análise."],
-      ["Jira", "Gestão de demandas", "Média", "Registro e acompanhamento das demandas priorizadas."],
+      [
+        "Power BI",
+        "Plataforma de BI",
+        "Alta",
+        "Construção e publicação de dashboards e relatórios.",
+      ],
+      [
+        "Azure SQL / DW",
+        "Banco de dados analítico",
+        "Alta",
+        "Camada de dados consolidada para análise.",
+      ],
+      [
+        "Jira",
+        "Gestão de demandas",
+        "Média",
+        "Registro e acompanhamento das demandas priorizadas.",
+      ],
     ],
     steps: [
-      ["Receber e registrar demanda", "Analista de BI", "Pedido do solicitante", "Registrar a demanda e capturar o objetivo de negócio.", "Demanda registrada", "Jira", "Requisito incompleto"],
-      ["Priorizar demanda", "Carlos Menezes · TI", "Backlog de demandas", "Classificar por valor e esforço no comitê semanal.", "Demanda priorizada", "Jira", "Priorização subjetiva"],
-      ["Modelar dados", "Engenheiro de Dados", "Fontes de dados", "Construir/ajustar o modelo de dados necessário.", "Modelo pronto", "Azure SQL / DW", "Qualidade de dados"],
-      ["Construir dashboard", "Analista de BI", "Modelo de dados", "Desenvolver visualizações conforme requisitos.", "Dashboard em homologação", "Power BI", "Divergência de requisito"],
-      ["Validar e publicar", "Solicitante", "Dashboard homologado", "Validar com o solicitante e publicar no workspace.", "Dashboard publicado", "Power BI", "Validação tardia"],
+      [
+        "Receber e registrar demanda",
+        "Analista de BI",
+        "Pedido do solicitante",
+        "Registrar a demanda e capturar o objetivo de negócio.",
+        "Demanda registrada",
+        "Jira",
+        "Requisito incompleto",
+      ],
+      [
+        "Priorizar demanda",
+        "Carlos Menezes · TI",
+        "Backlog de demandas",
+        "Classificar por valor e esforço no comitê semanal.",
+        "Demanda priorizada",
+        "Jira",
+        "Priorização subjetiva",
+      ],
+      [
+        "Modelar dados",
+        "Engenheiro de Dados",
+        "Fontes de dados",
+        "Construir/ajustar o modelo de dados necessário.",
+        "Modelo pronto",
+        "Azure SQL / DW",
+        "Qualidade de dados",
+      ],
+      [
+        "Construir dashboard",
+        "Analista de BI",
+        "Modelo de dados",
+        "Desenvolver visualizações conforme requisitos.",
+        "Dashboard em homologação",
+        "Power BI",
+        "Divergência de requisito",
+      ],
+      [
+        "Validar e publicar",
+        "Solicitante",
+        "Dashboard homologado",
+        "Validar com o solicitante e publicar no workspace.",
+        "Dashboard publicado",
+        "Power BI",
+        "Validação tardia",
+      ],
     ],
     sipoc: [
-      ["Áreas de negócio", "Pedido e regras de negócio", "Atendimento da demanda de BI", "Dashboard publicado", "Gestores e analistas"],
-      ["Sistemas transacionais", "Dados brutos", "Modelagem e consolidação", "Base analítica confiável", "Time de BI"],
+      [
+        "Áreas de negócio",
+        "Pedido e regras de negócio",
+        "Atendimento da demanda de BI",
+        "Dashboard publicado",
+        "Gestores e analistas",
+      ],
+      [
+        "Sistemas transacionais",
+        "Dados brutos",
+        "Modelagem e consolidação",
+        "Base analítica confiável",
+        "Time de BI",
+      ],
     ],
     gaps: [
-      ["Priorização informal", "Não há critério objetivo para priorizar demandas.", "Atrasos e insatisfação das áreas", "Implantar matriz valor × esforço no comitê", "Carlos Menezes · TI", "2026-07-31", "Alta", "Pendente"],
-      ["Requisitos incompletos", "Demandas chegam sem detalhamento suficiente.", "Retrabalho e atraso", "Adotar template de requisitos no portal", "Aline Ferreira · Processos & Qualidade", "2026-07-15", "Alta", "Em andamento"],
+      [
+        "Priorização informal",
+        "Não há critério objetivo para priorizar demandas.",
+        "Atrasos e insatisfação das áreas",
+        "Implantar matriz valor × esforço no comitê",
+        "Carlos Menezes · TI",
+        "2026-07-31",
+        "Alta",
+        "Pendente",
+      ],
+      [
+        "Requisitos incompletos",
+        "Demandas chegam sem detalhamento suficiente.",
+        "Retrabalho e atraso",
+        "Adotar template de requisitos no portal",
+        "Aline Ferreira · Processos & Qualidade",
+        "2026-07-15",
+        "Alta",
+        "Em andamento",
+      ],
     ],
     nextSteps: [
       "Implantar portal único de demandas com template de requisitos",
@@ -1009,24 +1130,99 @@ const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
     dores: "Triagem demorada; baixa padronização de entrevistas; comunicação lenta com candidatos.",
     oportunidades: "ATS para triagem; roteiro de entrevista padrão; comunicação automatizada.",
     systems: [
-      ["Gupy (ATS)", "Recrutamento e seleção", "Alta", "Publicação de vagas e triagem de candidatos."],
+      [
+        "Gupy (ATS)",
+        "Recrutamento e seleção",
+        "Alta",
+        "Publicação de vagas e triagem de candidatos.",
+      ],
       ["LinkedIn Recruiter", "Sourcing", "Média", "Busca ativa de candidatos."],
       ["Google Workspace", "Colaboração", "Média", "Agendamento e comunicação."],
     ],
     steps: [
-      ["Abrir requisição de vaga", "Gestor da área", "Necessidade de contratação", "Registrar a vaga com perfil e justificativa.", "Vaga aprovada", "Gupy (ATS)", "Perfil mal definido"],
-      ["Divulgar e captar", "Analista de R&S", "Vaga aprovada", "Publicar a vaga e fazer sourcing ativo.", "Pipeline de candidatos", "Gupy / LinkedIn", "Poucos candidatos"],
-      ["Triar candidatos", "Analista de R&S", "Currículos recebidos", "Avaliar fit técnico e cultural.", "Shortlist", "Gupy (ATS)", "Triagem subjetiva"],
-      ["Entrevistar", "Gestor da área", "Shortlist", "Conduzir entrevistas conforme roteiro.", "Candidato avaliado", "Google Workspace", "Falta de padronização"],
-      ["Fazer proposta e admitir", "Juliana Castro · RH", "Candidato aprovado", "Negociar proposta e iniciar admissão.", "Colaborador admitido", "Gupy (ATS)", "Recusa de proposta"],
+      [
+        "Abrir requisição de vaga",
+        "Gestor da área",
+        "Necessidade de contratação",
+        "Registrar a vaga com perfil e justificativa.",
+        "Vaga aprovada",
+        "Gupy (ATS)",
+        "Perfil mal definido",
+      ],
+      [
+        "Divulgar e captar",
+        "Analista de R&S",
+        "Vaga aprovada",
+        "Publicar a vaga e fazer sourcing ativo.",
+        "Pipeline de candidatos",
+        "Gupy / LinkedIn",
+        "Poucos candidatos",
+      ],
+      [
+        "Triar candidatos",
+        "Analista de R&S",
+        "Currículos recebidos",
+        "Avaliar fit técnico e cultural.",
+        "Shortlist",
+        "Gupy (ATS)",
+        "Triagem subjetiva",
+      ],
+      [
+        "Entrevistar",
+        "Gestor da área",
+        "Shortlist",
+        "Conduzir entrevistas conforme roteiro.",
+        "Candidato avaliado",
+        "Google Workspace",
+        "Falta de padronização",
+      ],
+      [
+        "Fazer proposta e admitir",
+        "Juliana Castro · RH",
+        "Candidato aprovado",
+        "Negociar proposta e iniciar admissão.",
+        "Colaborador admitido",
+        "Gupy (ATS)",
+        "Recusa de proposta",
+      ],
     ],
     sipoc: [
-      ["Áreas requisitantes", "Requisição de pessoal", "Recrutamento e seleção", "Profissional contratado", "Área requisitante"],
-      ["Fontes de candidatos", "Currículos", "Triagem e avaliação", "Shortlist qualificada", "Gestores"],
+      [
+        "Áreas requisitantes",
+        "Requisição de pessoal",
+        "Recrutamento e seleção",
+        "Profissional contratado",
+        "Área requisitante",
+      ],
+      [
+        "Fontes de candidatos",
+        "Currículos",
+        "Triagem e avaliação",
+        "Shortlist qualificada",
+        "Gestores",
+      ],
     ],
     gaps: [
-      ["Triagem manual", "Currículos avaliados manualmente um a um.", "Demora e perda de talentos", "Configurar filtros e ranking no ATS", "Juliana Castro · RH", "2026-07-20", "Alta", "Pendente"],
-      ["Entrevistas sem roteiro", "Cada gestor entrevista de forma diferente.", "Decisão inconsistente", "Criar roteiro e ficha de avaliação padrão", "Juliana Castro · RH", "2026-07-10", "Média", "Em andamento"],
+      [
+        "Triagem manual",
+        "Currículos avaliados manualmente um a um.",
+        "Demora e perda de talentos",
+        "Configurar filtros e ranking no ATS",
+        "Juliana Castro · RH",
+        "2026-07-20",
+        "Alta",
+        "Pendente",
+      ],
+      [
+        "Entrevistas sem roteiro",
+        "Cada gestor entrevista de forma diferente.",
+        "Decisão inconsistente",
+        "Criar roteiro e ficha de avaliação padrão",
+        "Juliana Castro · RH",
+        "2026-07-10",
+        "Média",
+        "Em andamento",
+      ],
     ],
     nextSteps: [
       "Padronizar roteiro de entrevista por nível",
@@ -1066,22 +1262,91 @@ const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
     systems: [
       ["ERP TOTVS", "Sistema transacional", "Alta", "Emissão de faturas, baixa e razão contábil."],
       ["Portal Bancário / API", "Integração financeira", "Alta", "Recebíveis e retorno bancário."],
-      ["Planilhas de aging", "Controle manual", "Média", "Acompanhamento de vencidos (a ser substituído)."],
+      [
+        "Planilhas de aging",
+        "Controle manual",
+        "Média",
+        "Acompanhamento de vencidos (a ser substituído).",
+      ],
     ],
     steps: [
-      ["Emitir fatura", "Analista Financeiro", "Pedido faturado", "Gerar a fatura e a nota fiscal.", "Fatura emitida", "ERP TOTVS", "Erro de dados cadastrais"],
-      ["Enviar cobrança", "Analista Financeiro", "Fatura emitida", "Enviar boleto e lembretes ao cliente.", "Cobrança enviada", "ERP TOTVS", "Cobrança tardia"],
-      ["Receber pagamento", "Cliente", "Boleto", "Cliente efetua o pagamento.", "Pagamento recebido", "Portal Bancário / API", "Pagamento divergente"],
-      ["Conciliar", "Analista Financeiro", "Retorno bancário", "Conciliar recebimentos e dar baixa.", "Título baixado", "ERP TOTVS", "Conciliação manual"],
-      ["Tratar inadimplência", "Bruno Cardoso · Financeiro", "Títulos vencidos", "Acionar régua de cobrança e negociação.", "Título regularizado", "ERP TOTVS", "Perda por inadimplência"],
+      [
+        "Emitir fatura",
+        "Analista Financeiro",
+        "Pedido faturado",
+        "Gerar a fatura e a nota fiscal.",
+        "Fatura emitida",
+        "ERP TOTVS",
+        "Erro de dados cadastrais",
+      ],
+      [
+        "Enviar cobrança",
+        "Analista Financeiro",
+        "Fatura emitida",
+        "Enviar boleto e lembretes ao cliente.",
+        "Cobrança enviada",
+        "ERP TOTVS",
+        "Cobrança tardia",
+      ],
+      [
+        "Receber pagamento",
+        "Cliente",
+        "Boleto",
+        "Cliente efetua o pagamento.",
+        "Pagamento recebido",
+        "Portal Bancário / API",
+        "Pagamento divergente",
+      ],
+      [
+        "Conciliar",
+        "Analista Financeiro",
+        "Retorno bancário",
+        "Conciliar recebimentos e dar baixa.",
+        "Título baixado",
+        "ERP TOTVS",
+        "Conciliação manual",
+      ],
+      [
+        "Tratar inadimplência",
+        "Bruno Cardoso · Financeiro",
+        "Títulos vencidos",
+        "Acionar régua de cobrança e negociação.",
+        "Título regularizado",
+        "ERP TOTVS",
+        "Perda por inadimplência",
+      ],
     ],
     sipoc: [
-      ["Área Comercial", "Pedidos faturados", "Faturamento e cobrança", "Recebimento conciliado", "Tesouraria"],
+      [
+        "Área Comercial",
+        "Pedidos faturados",
+        "Faturamento e cobrança",
+        "Recebimento conciliado",
+        "Tesouraria",
+      ],
       ["Bancos", "Retorno bancário", "Conciliação e baixa", "Razão atualizado", "Controladoria"],
     ],
     gaps: [
-      ["Cobrança reativa", "Não há régua de cobrança automatizada.", "Aumento da inadimplência", "Implantar régua automática por faixa de atraso", "Bruno Cardoso · Financeiro", "2026-04-30", "Alta", "Concluído"],
-      ["Conciliação manual", "Conciliação feita em planilhas no fim do mês.", "Erros e atraso no fechamento", "Integrar conciliação via API bancária", "Bruno Cardoso · Financeiro", "2026-05-31", "Média", "Em andamento"],
+      [
+        "Cobrança reativa",
+        "Não há régua de cobrança automatizada.",
+        "Aumento da inadimplência",
+        "Implantar régua automática por faixa de atraso",
+        "Bruno Cardoso · Financeiro",
+        "2026-04-30",
+        "Alta",
+        "Concluído",
+      ],
+      [
+        "Conciliação manual",
+        "Conciliação feita em planilhas no fim do mês.",
+        "Erros e atraso no fechamento",
+        "Integrar conciliação via API bancária",
+        "Bruno Cardoso · Financeiro",
+        "2026-05-31",
+        "Média",
+        "Em andamento",
+      ],
     ],
     nextSteps: [
       "Publicar painel de aging em tempo real",
@@ -1124,19 +1389,77 @@ const DEMO_MAPPING_SPECS: DemoDdpSpec[] = [
       ["Planilhas de apoio", "Controle manual", "Baixa", "Controles paralelos (a eliminar)."],
     ],
     steps: [
-      ["Captar lead", "Marketing", "Campanhas e formulários", "Capturar o lead e registrar a origem.", "Lead registrado", "RD Station", "Lead duplicado"],
-      ["Qualificar (MQL)", "SDR", "Lead registrado", "Avaliar fit com critério BANT.", "Lead qualificado (MQL)", "HubSpot CRM", "Qualificação subjetiva"],
-      ["Abordar e nutrir", "SDR", "MQL", "Realizar abordagem e nutrição até o interesse.", "Lead engajado", "HubSpot CRM", "Falta de follow-up"],
-      ["Converter em SQL", "SDR", "Lead engajado", "Confirmar oportunidade e agendar reunião.", "SQL gerado", "HubSpot CRM", "Passagem incompleta"],
-      ["Passar para vendas", "Rafael Souza · Comercial", "SQL gerado", "Repassar o SQL ao executivo de vendas.", "Oportunidade no funil", "HubSpot CRM", "Perda na passagem"],
+      [
+        "Captar lead",
+        "Marketing",
+        "Campanhas e formulários",
+        "Capturar o lead e registrar a origem.",
+        "Lead registrado",
+        "RD Station",
+        "Lead duplicado",
+      ],
+      [
+        "Qualificar (MQL)",
+        "SDR",
+        "Lead registrado",
+        "Avaliar fit com critério BANT.",
+        "Lead qualificado (MQL)",
+        "HubSpot CRM",
+        "Qualificação subjetiva",
+      ],
+      [
+        "Abordar e nutrir",
+        "SDR",
+        "MQL",
+        "Realizar abordagem e nutrição até o interesse.",
+        "Lead engajado",
+        "HubSpot CRM",
+        "Falta de follow-up",
+      ],
+      [
+        "Converter em SQL",
+        "SDR",
+        "Lead engajado",
+        "Confirmar oportunidade e agendar reunião.",
+        "SQL gerado",
+        "HubSpot CRM",
+        "Passagem incompleta",
+      ],
+      [
+        "Passar para vendas",
+        "Rafael Souza · Comercial",
+        "SQL gerado",
+        "Repassar o SQL ao executivo de vendas.",
+        "Oportunidade no funil",
+        "HubSpot CRM",
+        "Perda na passagem",
+      ],
     ],
     sipoc: [
       ["Marketing", "Leads captados", "Qualificação de leads", "SQL qualificado", "Time de Vendas"],
       ["Canais digitais", "Dados de contato", "Nutrição e abordagem", "Lead engajado", "SDRs"],
     ],
     gaps: [
-      ["Sem critério único", "Qualificação varia entre SDRs.", "Conversão baixa e inconsistente", "Adotar critério BANT padronizado", "Rafael Souza · Comercial", "2026-07-15", "Alta", "Pendente"],
-      ["Follow-up manual", "Acompanhamento depende de memória do SDR.", "Leads esfriam", "Automatizar cadência de follow-up no CRM", "Rafael Souza · Comercial", "2026-07-05", "Média", "Pendente"],
+      [
+        "Sem critério único",
+        "Qualificação varia entre SDRs.",
+        "Conversão baixa e inconsistente",
+        "Adotar critério BANT padronizado",
+        "Rafael Souza · Comercial",
+        "2026-07-15",
+        "Alta",
+        "Pendente",
+      ],
+      [
+        "Follow-up manual",
+        "Acompanhamento depende de memória do SDR.",
+        "Leads esfriam",
+        "Automatizar cadência de follow-up no CRM",
+        "Rafael Souza · Comercial",
+        "2026-07-05",
+        "Média",
+        "Pendente",
+      ],
     ],
     nextSteps: [
       "Unificar a base de leads no CRM",
@@ -1228,9 +1551,21 @@ const DEMO_POP_SPECS: DemoPopSpec[] = [
     objetivo: "Padronizar a admissão de novos colaboradores, garantindo conformidade e prazo.",
     abrangencia: "Aplica-se a todas as admissões CLT da organização.",
     sections: [
-      ["1. Pré-requisitos", "Documentos e aprovações necessárias", "Proposta aceita, documentos pessoais do candidato e exame admissional agendado."],
-      ["2. Registro e contrato", "Cadastro e formalização", "Cadastrar o colaborador no sistema de folha, gerar e colher assinatura do contrato e anexos."],
-      ["3. Integração inicial", "Acessos e boas-vindas", "Solicitar acessos a TI, preparar estação de trabalho e agendar o onboarding."],
+      [
+        "1. Pré-requisitos",
+        "Documentos e aprovações necessárias",
+        "Proposta aceita, documentos pessoais do candidato e exame admissional agendado.",
+      ],
+      [
+        "2. Registro e contrato",
+        "Cadastro e formalização",
+        "Cadastrar o colaborador no sistema de folha, gerar e colher assinatura do contrato e anexos.",
+      ],
+      [
+        "3. Integração inicial",
+        "Acessos e boas-vindas",
+        "Solicitar acessos a TI, preparar estação de trabalho e agendar o onboarding.",
+      ],
     ],
     responsibilities: [
       ["RH", "Conduzir a admissão e validar a documentação."],
@@ -1254,9 +1589,21 @@ const DEMO_POP_SPECS: DemoPopSpec[] = [
     objetivo: "Definir as regras para concessão, revisão e revogação de acessos a sistemas.",
     abrangencia: "Aplica-se a todos os sistemas corporativos e usuários internos.",
     sections: [
-      ["1. Solicitação", "Abertura do pedido", "Gestor solicita o acesso via chamado, informando sistema, perfil e justificativa."],
-      ["2. Aprovação e provisionamento", "Análise e liberação", "TI valida o perfil mínimo necessário, aprova e provisiona o acesso registrando evidência."],
-      ["3. Revisão periódica", "Recertificação", "Revisar trimestralmente os acessos ativos e revogar os desnecessários."],
+      [
+        "1. Solicitação",
+        "Abertura do pedido",
+        "Gestor solicita o acesso via chamado, informando sistema, perfil e justificativa.",
+      ],
+      [
+        "2. Aprovação e provisionamento",
+        "Análise e liberação",
+        "TI valida o perfil mínimo necessário, aprova e provisiona o acesso registrando evidência.",
+      ],
+      [
+        "3. Revisão periódica",
+        "Recertificação",
+        "Revisar trimestralmente os acessos ativos e revogar os desnecessários.",
+      ],
     ],
     responsibilities: [
       ["Gestor solicitante", "Justificar a necessidade do acesso."],
@@ -1279,9 +1626,21 @@ const DEMO_POP_SPECS: DemoPopSpec[] = [
     objetivo: "Padronizar a conciliação entre extratos bancários e títulos no ERP.",
     abrangencia: "Aplica-se a todas as contas correntes da organização.",
     sections: [
-      ["1. Importar retorno bancário", "Coleta dos dados", "Baixar o arquivo de retorno e importar no ERP."],
-      ["2. Conciliar movimentos", "Confronto", "Confrontar recebimentos com títulos em aberto e dar baixa nos correspondentes."],
-      ["3. Tratar divergências", "Exceções", "Investigar divergências, registrar ajustes e escalar quando necessário."],
+      [
+        "1. Importar retorno bancário",
+        "Coleta dos dados",
+        "Baixar o arquivo de retorno e importar no ERP.",
+      ],
+      [
+        "2. Conciliar movimentos",
+        "Confronto",
+        "Confrontar recebimentos com títulos em aberto e dar baixa nos correspondentes.",
+      ],
+      [
+        "3. Tratar divergências",
+        "Exceções",
+        "Investigar divergências, registrar ajustes e escalar quando necessário.",
+      ],
     ],
     responsibilities: [
       ["Analista Financeiro", "Executar a conciliação diária."],
@@ -1401,7 +1760,8 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
     meta: { ...fallback.meta, ...(input?.meta ?? {}) },
     overview: { ...fallback.overview, ...(input?.overview ?? {}) },
     systems: (input?.systems ?? fallback.systems).map((system) => {
-      const legacy = system as Partial<DdpSystem> & Partial<TextItem> & { system_id?: string; name?: string };
+      const legacy = system as Partial<DdpSystem> &
+        Partial<TextItem> & { system_id?: string; name?: string };
       return {
         id: legacy.id || id("sys"),
         systemId: legacy.systemId || legacy.system_id || "",
@@ -1491,20 +1851,85 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
   };
 }
 
+function procedureClauseBlocks(clause: PopProcedureClause): PopProcedureBlock[] {
+  if (clause.blocks?.length) return clause.blocks;
+  return [
+    {
+      id: `legacy-${clause.id}`,
+      text: clause.text || "",
+      images: clause.images || [],
+    },
+  ];
+}
+
+function procedureLetter(index: number) {
+  let value = index + 1;
+  let result = "";
+  while (value > 0) {
+    value -= 1;
+    result = String.fromCharCode(97 + (value % 26)) + result;
+    value = Math.floor(value / 26);
+  }
+  return result;
+}
+
+function renumberPopSections(sections: PopSection[]) {
+  return sections.map((section, sectionIndex) => {
+    const sectionCode = `3.${sectionIndex + 1}`;
+    return {
+      ...section,
+      code: sectionCode,
+      subitems: (section.subitems ?? []).map((subitem, subitemIndex) => ({
+        ...subitem,
+        code: `${sectionCode}.${subitemIndex + 1}`,
+        clauses: subitem.clauses.map((clause, clauseIndex) => ({
+          ...clause,
+          letter: procedureLetter(clauseIndex),
+        })),
+      })),
+    };
+  });
+}
+
 function normalizePop(input: Partial<PopState> | undefined, fallback: PopState): PopState {
-  const normalizeClauses = (items: unknown[] | undefined, fallbackText = ""): PopProcedureClause[] => {
+  const normalizeClauses = (
+    items: unknown[] | undefined,
+    fallbackText = "",
+  ): PopProcedureClause[] => {
     const source = Array.isArray(items) ? items : [];
     if (!source.length && fallbackText.trim()) {
       return [{ id: id("clause"), letter: "a", text: fallbackText, alert: "", images: [] }];
     }
     return source.map((item, index) => {
-      const row = (item && typeof item === "object" ? item : {}) as Partial<PopProcedureClause>;
+      const row = (item && typeof item === "object" ? item : {}) as Partial<
+        PopProcedureClause & { blocks: unknown[] }
+      >;
+      const legacyImages = normalizeImages(row.images, "popclauseimg");
+      const blocks = Array.isArray(row.blocks)
+        ? row.blocks.map((block) => {
+            const current = (
+              block && typeof block === "object" ? block : {}
+            ) as Partial<PopProcedureBlock>;
+            return {
+              id: current.id || id("clauseblock"),
+              text: current.text || "",
+              images: normalizeImages(current.images, "popclauseimg"),
+            };
+          })
+        : [
+            {
+              id: id("clauseblock"),
+              text: row.text || "",
+              images: legacyImages,
+            },
+          ];
       return {
         id: row.id || id("clause"),
-        letter: row.letter || String.fromCharCode(97 + index),
+        letter: procedureLetter(index),
         text: row.text || "",
         alert: row.alert || "",
-        images: normalizeImages(row.images, "popclauseimg"),
+        images: legacyImages,
+        blocks: blocks.length ? blocks : [{ id: id("clauseblock"), text: "", images: [] }],
       };
     });
   };
@@ -1539,20 +1964,26 @@ function normalizePop(input: Partial<PopState> | undefined, fallback: PopState):
     ...input,
     meta: { ...fallback.meta, ...(input?.meta ?? {}) },
     purpose: { ...fallback.purpose, ...(input?.purpose ?? {}) },
-    sections: (input?.sections ?? fallback.sections).map((section, index) => {
-      const code = section.code || `3.${index + 1}`;
-      return {
-        id: section.id || id("sec"),
-        code,
-        title: section.title || `${code} Novo item`,
-        description: section.description || "",
-        body: section.body || "",
-        records: section.records || "",
-        risks: section.risks || "",
-        images: normalizeImages(section.images, "popimg"),
-        subitems: normalizeSubitems(section.subitems, code, section.body || section.description || ""),
-      };
-    }),
+    sections: renumberPopSections(
+      (input?.sections ?? fallback.sections).map((section, index) => {
+        const code = `3.${index + 1}`;
+        return {
+          id: section.id || id("sec"),
+          code,
+          title: section.title || `${code} Novo item`,
+          description: section.description || "",
+          body: section.body || "",
+          records: section.records || "",
+          risks: section.risks || "",
+          images: normalizeImages(section.images, "popimg"),
+          subitems: normalizeSubitems(
+            section.subitems,
+            code,
+            section.body || section.description || "",
+          ),
+        };
+      }),
+    ),
     responsibilities: (input?.responsibilities ?? fallback.responsibilities).map((item) => {
       const legacy = item as Partial<ResponsibilityItem> & Partial<TextItem>;
       return {
@@ -2348,49 +2779,49 @@ function getDdpExportModel(data: DdpState) {
   }));
 
   const flowSteps: ExportFlowStep[] = data.steps.map((step) => ({
-        title: step.etapa,
-        description: "",
-        owner: "",
-        system: "",
-        risk: "",
-        images: step.images.map((image) => ({
-          title: image.titulo,
-          caption: image.legenda,
-          src: image.src,
-        })),
-        substeps: step.substeps.length
-          ? step.substeps.map((substep) => ({
-              code: substep.codigo,
-              title: substep.titulo,
-              description: substep.descricao,
-              images: substep.images.map((image) => ({
-                title: image.titulo,
-                caption: image.legenda,
-                src: image.src,
-              })),
-            }))
-          : [],
-      }));
+    title: step.etapa,
+    description: "",
+    owner: "",
+    system: "",
+    risk: "",
+    images: step.images.map((image) => ({
+      title: image.titulo,
+      caption: image.legenda,
+      src: image.src,
+    })),
+    substeps: step.substeps.length
+      ? step.substeps.map((substep) => ({
+          code: substep.codigo,
+          title: substep.titulo,
+          description: substep.descricao,
+          images: substep.images.map((image) => ({
+            title: image.titulo,
+            caption: image.legenda,
+            src: image.src,
+          })),
+        }))
+      : [],
+  }));
 
   const gaps: ExportGap[] = data.gaps.map((gap) => ({
-        title: gap.causa,
-        description: gap.descricao || gap.causa,
-        impact: gap.impacto,
-        action: gap.acao,
-        owner: gap.responsavel,
-        due: gap.prazo,
-        priority: gap.prioridade,
-        status: gap.status,
-        implementation: gap.acao,
-        comments: gap.comentarios,
-      }));
+    title: gap.causa,
+    description: gap.descricao || gap.causa,
+    impact: gap.impacto,
+    action: gap.acao,
+    owner: gap.responsavel,
+    due: gap.prazo,
+    priority: gap.prioridade,
+    status: gap.status,
+    implementation: gap.acao,
+    comments: gap.comentarios,
+  }));
 
   const nextSteps: ExportNextStep[] = data.nextSteps.map((item) => ({
-        title: plain(item.text),
-        description: "",
-        owner: item.responsavel || "",
-        due: item.prazo || "",
-      }));
+    title: plain(item.text),
+    description: "",
+    owner: item.responsavel || "",
+    due: item.prazo || "",
+  }));
 
   const currentMacro = data.macroprocess;
 
@@ -2434,31 +2865,34 @@ function getPopExportModel(data: PopState) {
           note: "",
           images: [],
         },
-        ...subitem.clauses.map((clause) => ({
-          text: clause.text,
-          kind: "clause" as const,
-          label: `${clause.letter}) `,
-          note: clause.alert,
-          images: clause.images.map((image) => ({
-            title: image.titulo,
-            caption: image.legenda,
-            src: image.src,
-          })),
-        })),
+        ...subitem.clauses.flatMap((clause) => {
+          const blocks = procedureClauseBlocks(clause);
+          return blocks.map((block, blockIndex) => ({
+            text: block.text,
+            kind: blockIndex === 0 ? ("clause" as const) : ("paragraph" as const),
+            label: blockIndex === 0 ? `${clause.letter}) ` : "",
+            note: blockIndex === blocks.length - 1 ? clause.alert : "",
+            images: block.images.map((image) => ({
+              title: "",
+              caption: image.legenda,
+              src: image.src,
+            })),
+          }));
+        }),
       ]) ?? [];
     const legacyItems = splitText(section.records || section.risks).map((line) => ({
-        text: line,
-        kind: "paragraph" as const,
-        label: "",
-        note: "",
-        images: [],
-      }));
+      text: line,
+      kind: "paragraph" as const,
+      label: "",
+      note: "",
+      images: [],
+    }));
     return {
       title: section.title,
       description: section.description,
       body: section.body,
       images: section.images.map((image) => ({
-        title: image.titulo,
+        title: "",
         caption: image.legenda,
         src: image.src,
       })),
@@ -2922,7 +3356,11 @@ function buildPopImportTemplate(data: PopState) {
       name: "Responsabilidades",
       rows: [
         ["area", "cargo", "responsabilidade"],
-        ...data.responsibilities.map((item) => [item.area, item.cargo ?? "", item.responsabilidade]),
+        ...data.responsibilities.map((item) => [
+          item.area,
+          item.cargo ?? "",
+          item.responsabilidade,
+        ]),
       ],
     },
     {
@@ -3719,8 +4157,14 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           { xml: doc.labelValue("Modalidade", model.meta.modalidade) },
         ],
         [
-          { xml: doc.labelValue("Status", model.meta.status || "Em andamento"), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Data", formatDateBr(model.meta.dataRelatorio || model.meta.data)), fill: doc.C.gray50 },
+          {
+            xml: doc.labelValue("Status", model.meta.status || "Em andamento"),
+            fill: doc.C.gray50,
+          },
+          {
+            xml: doc.labelValue("Data", formatDateBr(model.meta.dataRelatorio || model.meta.data)),
+            fill: doc.C.gray50,
+          },
           { xml: doc.labelValue("Área", model.area || "-"), gridSpan: 2, fill: doc.C.gray50 },
         ],
         [
@@ -3758,10 +4202,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     model.systems.length
       ? doc.table(
           [
-            [
-              doc.headerCell("Sistema"),
-              doc.headerCell("Descrição / uso no processo"),
-            ],
+            [doc.headerCell("Sistema"), doc.headerCell("Descrição / uso no processo")],
             ...model.systems.map((system) => [
               doc.bodyCell(system.name),
               doc.bodyCell(system.items.join("; ") || system.description),
@@ -3927,11 +4368,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     model.nextSteps.length
       ? doc.table(
           [
-            [
-              doc.headerCell("Ação"),
-              doc.headerCell("Responsável"),
-              doc.headerCell("Prazo"),
-            ],
+            [doc.headerCell("Ação"), doc.headerCell("Responsável"), doc.headerCell("Prazo")],
             ...model.nextSteps.map((step) => [
               doc.bodyCell(step.title),
               doc.bodyCell(step.owner || "-"),
@@ -3993,7 +4430,10 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
           },
           { xml: doc.labelValue("Área responsável", model.meta.area), fill: doc.C.gray50 },
           { xml: doc.labelValue("Processo relacionado", model.meta.processo), fill: doc.C.gray50 },
-          { xml: doc.labelValue("Publicação", formatDateBr(model.meta.publicacao)), fill: doc.C.gray50 },
+          {
+            xml: doc.labelValue("Publicação", formatDateBr(model.meta.publicacao)),
+            fill: doc.C.gray50,
+          },
         ],
         [
           { xml: doc.labelValue("Elaborador", model.meta.elaboracao), fill: doc.C.gray50 },
@@ -4036,43 +4476,49 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
   }
 
   parts.push(doc.sectionTitle(`03 ${model.contentTitle}`));
+  let procedureFigureNumber = 0;
   model.sections.forEach((section, sectionIndex) => {
     parts.push(doc.subTitle(`3.${sectionIndex + 1} - ${section.title || "Seção"}`));
     if (section.description) parts.push(doc.p(section.description, { align: "both", line: 1.05 }));
     if (section.body) parts.push(doc.p(section.body, { align: "both", line: 1.05 }));
-    section.images.forEach((image, imageIndex) => {
+    section.images.forEach((image) => {
       if (!image.src) return;
+      procedureFigureNumber += 1;
       parts.push(
-        doc.imageParagraph(image.src, image.title || `Figura ${imageIndex + 1}`, 6.5, 4.2),
+        doc.imageParagraph(image.src, image.caption || `Figura ${procedureFigureNumber}`, 6.5, 4.2),
       );
       parts.push(
-        doc.p(
-          `Figura ${imageIndex + 1} - ${image.caption || image.title || "Imagem do documento"}`,
-          { size: 8.5, align: "center", color: doc.C.gray500 },
-        ),
+        doc.p(`Figura ${procedureFigureNumber} - ${image.caption || "Imagem do documento"}`, {
+          size: 8.5,
+          align: "center",
+          color: doc.C.gray500,
+        }),
       );
     });
     section.items.forEach((item) => {
       if (item.kind === "subitem") parts.push(doc.subTitle(item.text));
       else if (item.kind === "clause") parts.push(doc.mixedP(item.label, item.text));
       else parts.push(doc.p(item.text, { align: "both", line: 1.05 }));
-      if (item.note) parts.push(doc.notice(item.note));
-      item.images.forEach((image, imageIndex) => {
+      item.images.forEach((image) => {
         if (!image.src) return;
+        procedureFigureNumber += 1;
         parts.push(
-          doc.imageParagraph(image.src, image.title || `Figura ${imageIndex + 1}`, 6.5, 4.2),
-        );
-        parts.push(
-          doc.p(
-            `Figura ${imageIndex + 1} - ${image.caption || image.title || "Imagem do documento"}`,
-            {
-              size: 8.5,
-              align: "center",
-              color: doc.C.gray500,
-            },
+          doc.imageParagraph(
+            image.src,
+            image.caption || `Figura ${procedureFigureNumber}`,
+            6.5,
+            4.2,
           ),
         );
+        parts.push(
+          doc.p(`Figura ${procedureFigureNumber} - ${image.caption || "Imagem do documento"}`, {
+            size: 8.5,
+            align: "center",
+            color: doc.C.gray500,
+          }),
+        );
       });
+      if (item.note) parts.push(doc.notice(item.note));
     });
   });
   if (!model.sections.length) parts.push(doc.p("Nenhuma seção preenchida."));
@@ -4249,7 +4695,10 @@ function buildPopPreviewHtml(pop: PopState, brand?: OrganizationBrand) {
     )
     .join("");
   const resp = pop.responsibilities
-    .map((r) => `<tr><td>${html(r.area)}</td><td>${html(r.cargo || "-")}</td><td>${html(r.responsabilidade)}</td></tr>`)
+    .map(
+      (r) =>
+        `<tr><td>${html(r.area)}</td><td>${html(r.cargo || "-")}</td><td>${html(r.responsabilidade)}</td></tr>`,
+    )
     .join("");
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -4300,24 +4749,37 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
     ["historico", "06 Histórico e alterações"],
   ];
   const block = (label: string, value: string) =>
-    '<div class="cover-field"><span>' + html(label) + '</span><strong>' + html(value || "-") + "</strong></div>";
-  const imageCards = (images: ModuleImage[]) =>
+    '<div class="cover-field"><span>' +
+    html(label) +
+    "</span><strong>" +
+    html(value || "-") +
+    "</strong></div>";
+  const imageCards = (images: ModuleImage[], showTitle = true) =>
     images
       .filter((item) => item.src)
-      .map(
-        (item) =>
-          '<figure class="image-card"><figcaption><strong>' +
-          html(item.titulo || "Imagem") +
-          "</strong>" +
-          (item.legenda ? "<span>" + html(item.legenda) + "</span>" : "") +
-          '</figcaption><img src="' +
+      .map((item) => {
+        const accessibleTitle = item.legenda || item.titulo || "Imagem";
+        const caption = showTitle
+          ? "<figcaption><strong>" +
+            html(item.titulo || "Imagem") +
+            "</strong>" +
+            (item.legenda ? "<span>" + html(item.legenda) + "</span>" : "") +
+            "</figcaption>"
+          : item.legenda
+            ? "<figcaption><span>" + html(item.legenda) + "</span></figcaption>"
+            : "";
+        return (
+          '<figure class="image-card">' +
+          caption +
+          '<img src="' +
           html(item.src) +
           '" alt="' +
-          html(item.titulo || "Imagem") +
+          html(accessibleTitle) +
           '" data-title="' +
-          html(item.titulo || "Imagem") +
-          '" onclick="openImageZoom(this,event)"/></figure>',
-      )
+          html(accessibleTitle) +
+          '" onclick="openImageZoom(this,event)"/></figure>'
+        );
+      })
       .join("");
   const procedure = pop.sections.length
     ? pop.sections
@@ -4325,20 +4787,27 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
           const subitems = (section.subitems ?? [])
             .map((subitem) => {
               const clauses = subitem.clauses
-                .map(
-                  (clause) =>
+                .map((clause) => {
+                  const content = procedureClauseBlocks(clause)
+                    .map(
+                      (block) =>
+                        (block.text ? "<p>" + html(block.text) + "</p>" : "") +
+                        imageCards(block.images, false),
+                    )
+                    .join("");
+                  return (
                     '<article class="clause"><span>' +
                     html((clause.letter || "a") + ")") +
                     "</span><div>" +
-                    (clause.text ? "<p>" + html(clause.text) + "</p>" : "") +
+                    content +
                     (clause.alert
                       ? '<aside style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--gold);border-radius:12px"><span class="alert-icon" style="display:grid;width:28px;height:28px;place-items:center;border-radius:999px;background:var(--gold);color:#fff;font-weight:950">!</span><div><strong style="display:block;color:var(--gold);font-size:11px;letter-spacing:.12em;text-transform:uppercase">Observação</strong><p>' +
                         html(clause.alert) +
                         "</p></div></aside>"
                       : "") +
-                    imageCards(clause.images) +
-                    "</div></article>",
-                )
+                    "</div></article>"
+                  );
+                })
                 .join("");
               return (
                 '<details class="subitem"><summary><b>' +
@@ -4370,7 +4839,7 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
                   : "") +
                 "</dl>"
               : "") +
-            imageCards(section.images) +
+            imageCards(section.images, false) +
             subitems +
             "</article>"
           );
@@ -4398,7 +4867,7 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
       pop.references
         .map(
           (item) =>
-            '<article><span>' +
+            "<article><span>" +
             html(item.codigo || "Referência") +
             "</span><h3>" +
             html(item.titulo || "Sem título") +
@@ -4434,7 +4903,7 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
       pop.changes
         .map(
           (item) =>
-            '<article><span>' +
+            "<article><span>" +
             html(item.versao || "-") +
             "</span><div><strong>" +
             html(item.local || "Alteração") +
@@ -4458,7 +4927,7 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
     html(code) +
     " - " +
     html(title) +
-    '</title><style>:root{--accent:#' +
+    "</title><style>:root{--accent:#" +
     accent +
     ";--accent-strong:color-mix(in srgb,var(--accent) 78%,#000);--gold:#d49a21;--bg:#f4f2ea;--surface:#fff;--surface-2:#faf8f1;--text:#17191f;--muted:#626a73;--line:#ddd8ca;--nav:282px;--shadow:0 18px 60px rgba(28,28,28,.12)}[data-theme=dark]{--bg:#101418;--surface:#171c22;--surface-2:#1d232a;--text:#f7f9fb;--muted:#c8d0da;--line:#3f4853;--shadow:0 20px 80px rgba(0,0,0,.58);--accent-strong:color-mix(in srgb,var(--accent) 28%,#f4f8fb)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}.shell{display:grid;grid-template-columns:var(--nav) minmax(0,1fr);min-height:100vh}.sidebar{position:sticky;top:0;display:flex;flex-direction:column;gap:26px;height:100vh;padding:26px 20px;background:linear-gradient(180deg,var(--accent-strong),color-mix(in srgb,var(--accent) 52%,#111));color:#fff}.brand-logo{max-width:170px;max-height:54px;object-fit:contain}.system-logo-pair{display:inline-flex;align-items:center}.logo-dark{display:none}[data-theme=dark] .logo-light{display:none}[data-theme=dark] .logo-dark{display:block}.doc-code{border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px;background:rgba(255,255,255,.08)}.doc-code span{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.75}.doc-code strong{display:block;margin-top:8px;font-size:16px;line-height:1.28}.nav{display:grid;gap:4px}.nav a{border-radius:9px;padding:10px 12px;color:rgba(255,255,255,.84);font-size:12px;font-weight:750;letter-spacing:.1em;text-decoration:none;text-transform:uppercase}.nav a:hover{background:rgba(255,255,255,.12);color:#fff}.presentation-controls{display:grid;grid-template-columns:1fr 40px;gap:8px;margin-top:auto}.theme-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:5px;background:rgba(0,0,0,.12)}.theme-toggle button,.fullscreen-button{display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.76);cursor:pointer}.theme-toggle button{padding:9px}.theme-toggle button svg,.fullscreen-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.theme-toggle button.active{background:#fff;color:#111}.fullscreen-button{height:40px;width:40px;border:1px solid rgba(255,255,255,.28);border-radius:12px;background:rgba(255,255,255,.08)}.slide{min-height:100vh;padding:56px 72px;border-bottom:1px solid var(--line);background:var(--surface)}.slide.alt{background:var(--surface-2)}.cover{display:flex;flex-direction:column;justify-content:center;background:radial-gradient(circle at 84% 12%,color-mix(in srgb,var(--gold) 30%,transparent),transparent 30%),linear-gradient(135deg,var(--accent-strong),color-mix(in srgb,var(--accent) 48%,#111));color:#fff}.kicker{color:#ffd47a;font-size:12px;font-weight:900;letter-spacing:.34em;text-transform:uppercase}.cover h1{max-width:980px;margin:18px 0 22px;font-size:clamp(44px,6vw,82px);line-height:.95;letter-spacing:-.02em}.cover-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:44px;align-items:end;max-width:1180px}.cover-code{min-width:190px;border-left:4px solid #ffd47a;padding:0 0 3px 18px}.cover-code span{display:block;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase}.cover-code strong{display:block;margin-top:10px;font-size:28px;letter-spacing:.08em}.cover-context{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:1px;max-width:1180px;margin:52px 0 0;border-top:1px solid rgba(255,255,255,.24);border-bottom:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.18)}.cover-line{display:grid;gap:10px;margin:0;padding:22px 24px;background:rgba(0,0,0,.16)}.cover-line dt{color:#ffd47a;font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}.cover-line dd{margin:0;color:#fff;font-size:18px;font-weight:800;line-height:1.25}.cover-meta{display:flex;flex-wrap:wrap;gap:10px;max-width:1180px;margin-top:28px}.cover-field{border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 13px;background:rgba(255,255,255,.08)}.cover-field span{margin-right:7px;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.cover-field strong{color:#fff;font-size:13px}.section-head{display:flex;align-items:flex-start;gap:22px;margin-bottom:30px}.section-head>span{display:grid;width:64px;height:64px;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-strong);font-size:28px;font-weight:950}.section-head p{margin:0 0 7px;color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.26em;text-transform:uppercase}.section-head h2{margin:0;font-size:clamp(30px,4vw,48px);line-height:1.02}.section-head small{display:block;margin-top:8px;color:var(--muted);font-size:15px}.text-panel,.procedure-card,.reference-grid article,.changes article{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}.text-panel{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;padding:24px}.text-panel .icon{display:grid;width:44px;height:44px;place-items:center;border-radius:14px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:950}.text-panel h3,.procedure-card h3,.reference-grid h3{margin:0 0 9px;color:var(--accent-strong);font-size:18px}.text-panel p,.procedure-card p,.reference-grid p,.changes p{margin:0;color:var(--muted);line-height:1.6}.procedure-stack{display:grid;gap:16px}.procedure-card{padding:22px}.procedure-card>header{display:grid;grid-template-columns:42px minmax(0,1fr);gap:14px;align-items:start}.procedure-card>header>span{display:grid;place-items:center;width:38px;height:30px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:950}.procedure-body{margin:17px 0 0;padding:16px 0;border-top:1px solid var(--line);white-space:pre-line;line-height:1.65}.procedure-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:16px 0 0}.procedure-info div{padding:12px;border-radius:10px;background:var(--surface-2)}.procedure-info dt{color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.procedure-info dd{margin:5px 0 0;font-size:14px;line-height:1.45}.subitem{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}.subitem summary{display:flex;gap:10px;align-items:center;cursor:pointer;list-style:none}.subitem summary::-webkit-details-marker{display:none}.subitem summary:before{content:'';width:8px;height:8px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg)}.subitem summary b{color:var(--gold)}.subitem-content{display:grid;gap:12px;margin-top:14px;padding-left:18px}.clause{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;border-left:2px solid color-mix(in srgb,var(--gold) 45%,var(--line));padding:12px 0 12px 13px}.clause>span{color:var(--gold);font-weight:950}.clause aside{margin-top:10px;border-left:3px solid var(--gold);padding:10px 12px;background:color-mix(in srgb,var(--gold) 10%,transparent);color:var(--text);font-size:14px;line-height:1.45}.image-card{display:grid;gap:10px;margin:16px 0 0;border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--surface-2)}.image-card figcaption{display:grid;gap:3px}.image-card figcaption strong{font-size:14px;color:var(--accent-strong)}.image-card figcaption span{color:var(--muted);font-size:13px}.image-card img{width:100%;max-height:62vh;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:zoom-in}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}table{width:100%;border-collapse:collapse}th,td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 16px;text-align:left;vertical-align:top;font-size:14px;line-height:1.45}th{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--accent-strong);font-size:11px;letter-spacing:.14em;text-transform:uppercase}.reference-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.reference-grid article{padding:22px}.reference-grid article>span{color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}.changes{display:grid;gap:10px;margin-top:18px}.changes article{display:grid;grid-template-columns:56px minmax(0,1fr);gap:14px;padding:16px 18px;box-shadow:none}.changes article>span{display:grid;place-items:center;height:30px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-weight:900}.changes strong{display:block;margin-bottom:5px}.empty{border:1px dashed var(--line);border-radius:16px;padding:34px;background:var(--surface-2);color:var(--muted);font-style:italic;text-align:center}.empty-inline{color:var(--muted);font-style:italic}.zoom-modal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;overflow:hidden;padding:28px;background:rgba(5,7,10,.92)}.zoom-modal.open{display:flex}.zoom-modal>img{max-width:94vw;max-height:86vh;background:#fff;box-shadow:0 20px 70px rgba(0,0,0,.55);cursor:zoom-out;transition:transform .16s ease;transform:scale(var(--zoom-scale,1));transform-origin:center center}.zoom-title{position:fixed;top:22px;left:28px;color:#fff;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.zoom-close{position:fixed;top:20px;right:28px;border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:9px 14px;background:transparent;color:#fff;cursor:pointer}.zoom-help{position:fixed;bottom:24px;left:28px;color:rgba(255,255,255,.74);font-size:12px}.zoom-map{position:fixed;right:28px;bottom:24px;display:none;overflow:hidden;width:190px;height:126px;border:1px solid rgba(255,255,255,.32);border-radius:12px;padding:8px;background:rgba(255,255,255,.08)}.zoom-modal.open .zoom-map{display:block}.zoom-map img{width:100%;height:100%;border-radius:8px;background:#fff;object-fit:contain}.zoom-map span{position:absolute;border:2px solid #d49a21;border-radius:8px;background:rgba(212,154,33,.14);box-shadow:0 0 0 999px rgba(0,0,0,.18)}[data-theme=dark] .sidebar{background:linear-gradient(180deg,#111820,#0b0f13);border-right:1px solid #303943}[data-theme=dark] .doc-code{border-color:#66717d;background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.07))}[data-theme=dark] .slide{background:#151a20}[data-theme=dark] .slide.alt{background:#11161b}[data-theme=dark] .section-head>span{border:1px solid rgba(242,188,75,.3);background:rgba(212,154,33,.16);color:#f2bc4b}[data-theme=dark] .text-panel,.procedure-card,.reference-grid article,.changes article{background:#1b2128;border-color:#46505b}[data-theme=dark] .text-panel h3,[data-theme=dark] .procedure-card h3,[data-theme=dark] .reference-grid h3,[data-theme=dark] .image-card figcaption strong{color:#f2bc4b}[data-theme=dark] .text-panel p,[data-theme=dark] .procedure-card p,[data-theme=dark] .reference-grid p,[data-theme=dark] .changes p{color:#d5dce4}[data-theme=dark] .table-wrap{background:#171d24;border-color:#505a66}[data-theme=dark] th{background:#232b34;color:#dfe6ee;border-color:#505a66}[data-theme=dark] td{border-color:#404a55;color:#eef2f6}[data-theme=dark] .image-card{background:#1b2128;border-color:#46505b}@media(max-width:980px){.shell{display:block}.sidebar{position:static;height:auto}.slide{padding:36px 22px}.cover-hero,.cover-context{grid-template-columns:1fr;gap:24px}.cover-context{margin-top:32px}.cover-meta{margin-top:20px}.zoom-map{display:none!important}}@media print{.sidebar{display:none}.shell{display:block}.slide{break-after:page;min-height:100vh}}</style></head><body><div class='shell'><aside class='sidebar'><div class='brand'>" +
     bfFlowLogoHtml(brand, assetBase) +
@@ -4741,16 +5210,18 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     ["Elaborador", model.meta.elaborador],
     ["Revisor", model.meta.revisor],
   ]).replace('class="field-grid"', 'class="cover-meta"')}</section>
-<section class="slide" id="visao">${sectionHead("01", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${[
-    textPanel("Objetivo", model.description, overviewIcon("target")),
-    textPanel("Escopo", data.overview.escopo, overviewIcon("scope")),
-    textPanel("Estado atual", data.overview.estadoAtual),
-    textPanel("Contexto", data.overview.kpis, overviewIcon("context")),
-    textPanel("Volume", data.overview.volume),
-    textPanel("Frequência", data.overview.frequencia),
-    textPanel("Dores", data.overview.dores),
-    textPanel("Oportunidades", data.overview.oportunidades),
-  ].join("") || emptyBlock()}</div></section>
+<section class="slide" id="visao">${sectionHead("01", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${
+    [
+      textPanel("Objetivo", model.description, overviewIcon("target")),
+      textPanel("Escopo", data.overview.escopo, overviewIcon("scope")),
+      textPanel("Estado atual", data.overview.estadoAtual),
+      textPanel("Contexto", data.overview.kpis, overviewIcon("context")),
+      textPanel("Volume", data.overview.volume),
+      textPanel("Frequência", data.overview.frequencia),
+      textPanel("Dores", data.overview.dores),
+      textPanel("Oportunidades", data.overview.oportunidades),
+    ].join("") || emptyBlock()
+  }</div></section>
 <section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
 <section class="slide" id="sipoc">${sectionHead("03", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
 <section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
@@ -4888,7 +5359,7 @@ function ModuleWorkspacePage() {
     enabled: !isDemo,
   });
   const accessibleOrganizations = useMemo(
-    () => ((accessibleOrganizationsQ.data ?? []) as AccessibleOrganization[]),
+    () => (accessibleOrganizationsQ.data ?? []) as AccessibleOrganization[],
     [accessibleOrganizationsQ.data],
   );
   const selectedOrganizationId = isDemo
@@ -4954,12 +5425,12 @@ function ModuleWorkspacePage() {
     : {
         departments: catalogsQ.data?.departments ?? [],
         processOwners: catalogsQ.data?.processOwners ?? [],
-        positions: ((catalogsQ.data as { positions?: OrganizationPosition[] } | undefined)?.positions) ?? [],
+        positions:
+          (catalogsQ.data as { positions?: OrganizationPosition[] } | undefined)?.positions ?? [],
         causes: catalogsQ.data?.causes ?? [],
         processes: catalogsQ.data?.processes ?? [],
         valueChains: catalogsQ.data?.valueChains ?? [],
-        systems:
-          ((catalogsQ.data as { systems?: OrganizationSystem[] } | undefined)?.systems) ?? [],
+        systems: (catalogsQ.data as { systems?: OrganizationSystem[] } | undefined)?.systems ?? [],
       };
   const organizationBrand: OrganizationBrand = isDemo
     ? {
@@ -4967,7 +5438,8 @@ function ModuleWorkspacePage() {
         word_header_color: "1D1D1F",
         logo_data_url: demoOrganizationLogo,
       }
-    : (selectedOrganization ?? meQ.data?.organization ?? { name: "BF Flow", word_header_color: "1D1D1F" });
+    : (selectedOrganization ??
+      meQ.data?.organization ?? { name: "BF Flow", word_header_color: "1D1D1F" });
   const elaboratorOptions = useMemo(() => {
     const fromUsers =
       (usersQ.data as Array<{ email?: string | null; display_name?: string | null }> | undefined)
@@ -4981,10 +5453,9 @@ function ModuleWorkspacePage() {
       : [];
     return Array.from(new Set([...fromUsers, ...currentUser, ...demoUsers]));
   }, [isDemo, meQ.data?.profile?.display_name, meQ.data?.profile?.email, usersQ.data]);
-  const currentElaborator =
-    !isDemo
-      ? meQ.data?.profile?.display_name || meQ.data?.profile?.email || ""
-      : "Administrador local";
+  const currentElaborator = !isDemo
+    ? meQ.data?.profile?.display_name || meQ.data?.profile?.email || ""
+    : "Administrador local";
 
   // Contexto de codificação da organização ativa (modo demo via localStorage).
   const demoOrgForCode = isDemo ? readActiveDemoOrganization() : null;
@@ -5360,7 +5831,9 @@ function ModuleWorkspacePage() {
 
   async function importSpreadsheet(file: File) {
     if (moduleId === "bpmn") {
-      toast.info("Importação textual por Excel está disponível para Mapeamento e POP por enquanto.");
+      toast.info(
+        "Importação textual por Excel está disponível para Mapeamento e POP por enquanto.",
+      );
       return;
     }
     const sheets = await readXlsxSheets(file);
@@ -5416,10 +5889,7 @@ function ModuleWorkspacePage() {
       const row = await saveCloudDocument({
         data: {
           organizationId: selectedOrganizationId,
-          id:
-            activeCloudDocument?.moduleId === moduleId
-              ? activeCloudDocument.id
-              : null,
+          id: activeCloudDocument?.moduleId === moduleId ? activeCloudDocument.id : null,
           moduleId: moduleId as "ddp" | "pop" | "bpmn",
           code: payload.code,
           title: payload.title,
@@ -5715,9 +6185,7 @@ function ModuleWorkspacePage() {
     (cloudDocsQ.data as CloudModuleDocument[] | undefined) ?? [],
     savedDemoDocument,
     isDemo,
-  ).map((row) =>
-    statusOverrides[row.id] ? { ...row, status: statusOverrides[row.id] } : row,
-  );
+  ).map((row) => (statusOverrides[row.id] ? { ...row, status: statusOverrides[row.id] } : row));
 
   async function changeRowStatus(row: ModuleGridRow, status: string) {
     if (row.status === status) return;
@@ -5848,7 +6316,9 @@ function ModuleWorkspacePage() {
       window.localStorage.setItem(draftKey, JSON.stringify(duplicated));
       toast.success("Copia criada. Revise e salve para gerar um novo registro.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel duplicar o mapeamento.");
+      toast.error(
+        error instanceof Error ? error.message : "Nao foi possivel duplicar o mapeamento.",
+      );
     }
   }
 
@@ -6064,10 +6534,7 @@ function ModuleWorkspacePage() {
                 if (isDemo) {
                   setDemoCatalogs((current) => ({
                     ...current,
-                    processes: [
-                      ...current.processes,
-                      process as unknown as OrganizationProcess,
-                    ],
+                    processes: [...current.processes, process as unknown as OrganizationProcess],
                   }));
                 } else {
                   await catalogsQ.refetch();
@@ -6266,7 +6733,6 @@ function ModuleWorkspacePage() {
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-3">
-
                 {railArea === "modules" ? (
                   <WorkspaceModulesTree
                     expanded={expandedTree}
@@ -6599,9 +7065,7 @@ function moduleGridRowFromWorkspace(
       type: "Mapeamento",
       modalidade: workspace.ddp.meta.modalidade || "AS IS",
       process:
-        workspace.ddp.macroprocess.titulo ||
-        workspace.ddp.legacy?.processName?.toString() ||
-        "-",
+        workspace.ddp.macroprocess.titulo || workspace.ddp.legacy?.processName?.toString() || "-",
       area: workspace.ddp.legacy?.processArea?.toString() || workspace.ddp.meta.area || "-",
       owner:
         workspace.ddp.legacy?.processOwner?.toString() ||
@@ -6644,38 +7108,237 @@ function moduleGridRowFromWorkspace(
 type DemoRowTuple = [string, string, string, string, string, string, string, string];
 const DEMO_MODULE_ROW_DATA: Record<AteliamModule, DemoRowTuple[]> = {
   ddp: [
-    ["MAP.PMO.001", "Mapeamento — Planejamento Estratégico", "Planejamento Estratégico", "Processos & Qualidade", "Aline Ferreira", "Aline Ferreira", "Aprovado", "2026-05-12"],
-    ["MAP.PMO.002", "Mapeamento — Gestão de Indicadores", "Gestão de Indicadores e Desempenho", "Processos & Qualidade", "Aline Ferreira", "Bruno Cardoso", "Ativo", "2026-06-02"],
-    ["MAP.RH.001", "Mapeamento — Recrutamento e Seleção", "Recrutamento e Seleção", "Recursos Humanos", "Juliana Castro", "Juliana Castro", "Em revisão", "2026-06-18"],
-    ["MAP.RH.002", "Mapeamento — Integração e Onboarding", "Integração e Onboarding", "Recursos Humanos", "Juliana Castro", "Patrícia Lima", "Ativo", "2026-04-27"],
-    ["MAP.TI.001", "Mapeamento — Gestão de Demandas de TI", "Gestão de Demandas de TI", "Tecnologia da Informação", "Carlos Menezes", "Carlos Menezes", "Aprovado", "2026-05-30"],
-    ["MAP.TI.002", "Mapeamento — Segurança da Informação", "Gestão de Segurança da Informação", "Tecnologia da Informação", "Carlos Menezes", "Carlos Menezes", "Rascunho", "2026-06-21"],
-    ["MAP.COM.001", "Mapeamento — Prospecção e Leads", "Prospecção e Geração de Leads", "Comercial & Vendas", "Rafael Souza", "Rafael Souza", "Ativo", "2026-06-09"],
-    ["MAP.OPE.001", "Mapeamento — Planejamento da Produção", "Planejamento da Produção", "Operações", "Patrícia Lima", "Patrícia Lima", "Em revisão", "2026-06-15"],
-    ["MAP.FIN.001", "Mapeamento — Contas a Receber", "Contas a Receber", "Financeiro & Controladoria", "Bruno Cardoso", "Bruno Cardoso", "Aprovado", "2026-03-19"],
+    [
+      "MAP.PMO.001",
+      "Mapeamento — Planejamento Estratégico",
+      "Planejamento Estratégico",
+      "Processos & Qualidade",
+      "Aline Ferreira",
+      "Aline Ferreira",
+      "Aprovado",
+      "2026-05-12",
+    ],
+    [
+      "MAP.PMO.002",
+      "Mapeamento — Gestão de Indicadores",
+      "Gestão de Indicadores e Desempenho",
+      "Processos & Qualidade",
+      "Aline Ferreira",
+      "Bruno Cardoso",
+      "Ativo",
+      "2026-06-02",
+    ],
+    [
+      "MAP.RH.001",
+      "Mapeamento — Recrutamento e Seleção",
+      "Recrutamento e Seleção",
+      "Recursos Humanos",
+      "Juliana Castro",
+      "Juliana Castro",
+      "Em revisão",
+      "2026-06-18",
+    ],
+    [
+      "MAP.RH.002",
+      "Mapeamento — Integração e Onboarding",
+      "Integração e Onboarding",
+      "Recursos Humanos",
+      "Juliana Castro",
+      "Patrícia Lima",
+      "Ativo",
+      "2026-04-27",
+    ],
+    [
+      "MAP.TI.001",
+      "Mapeamento — Gestão de Demandas de TI",
+      "Gestão de Demandas de TI",
+      "Tecnologia da Informação",
+      "Carlos Menezes",
+      "Carlos Menezes",
+      "Aprovado",
+      "2026-05-30",
+    ],
+    [
+      "MAP.TI.002",
+      "Mapeamento — Segurança da Informação",
+      "Gestão de Segurança da Informação",
+      "Tecnologia da Informação",
+      "Carlos Menezes",
+      "Carlos Menezes",
+      "Rascunho",
+      "2026-06-21",
+    ],
+    [
+      "MAP.COM.001",
+      "Mapeamento — Prospecção e Leads",
+      "Prospecção e Geração de Leads",
+      "Comercial & Vendas",
+      "Rafael Souza",
+      "Rafael Souza",
+      "Ativo",
+      "2026-06-09",
+    ],
+    [
+      "MAP.OPE.001",
+      "Mapeamento — Planejamento da Produção",
+      "Planejamento da Produção",
+      "Operações",
+      "Patrícia Lima",
+      "Patrícia Lima",
+      "Em revisão",
+      "2026-06-15",
+    ],
+    [
+      "MAP.FIN.001",
+      "Mapeamento — Contas a Receber",
+      "Contas a Receber",
+      "Financeiro & Controladoria",
+      "Bruno Cardoso",
+      "Bruno Cardoso",
+      "Aprovado",
+      "2026-03-19",
+    ],
   ],
   pop: [
-    ["POP.RH.001", "POP — Admissão de Colaborador", "Recrutamento e Seleção", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-05-04"],
-    ["POP.RH.002", "POP — Desligamento de Colaborador", "Avaliação de Desempenho", "Recursos Humanos", "-", "Juliana Castro", "Ativo", "2026-06-01"],
-    ["IT.TI.001", "IT — Concessão de Acessos", "Gestão de Segurança da Informação", "Tecnologia da Informação", "-", "Carlos Menezes", "Aprovado", "2026-05-22"],
-    ["IT.TI.002", "IT — Rotina de Backup", "Gestão de Demandas de TI", "Tecnologia da Informação", "-", "Carlos Menezes", "Em revisão", "2026-06-17"],
-    ["POP.FIN.001", "POP — Conciliação Bancária", "Contas a Receber", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Ativo", "2026-04-30"],
-    ["POP.FIN.002", "POP — Aprovação de Pagamentos", "Contas a Pagar", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Rascunho", "2026-06-20"],
-    ["POP.OPE.001", "POP — Inspeção de Qualidade", "Controle de Qualidade na Produção", "Operações", "-", "Patrícia Lima", "Aprovado", "2026-05-15"],
-    ["POP.LOG.001", "POP — Recebimento de Mercadorias", "Logística & Supply Chain", "Logística & Supply Chain", "-", "Marcos Oliveira", "Ativo", "2026-06-07"],
+    [
+      "POP.RH.001",
+      "POP — Admissão de Colaborador",
+      "Recrutamento e Seleção",
+      "Recursos Humanos",
+      "-",
+      "Juliana Castro",
+      "Aprovado",
+      "2026-05-04",
+    ],
+    [
+      "POP.RH.002",
+      "POP — Desligamento de Colaborador",
+      "Avaliação de Desempenho",
+      "Recursos Humanos",
+      "-",
+      "Juliana Castro",
+      "Ativo",
+      "2026-06-01",
+    ],
+    [
+      "IT.TI.001",
+      "IT — Concessão de Acessos",
+      "Gestão de Segurança da Informação",
+      "Tecnologia da Informação",
+      "-",
+      "Carlos Menezes",
+      "Aprovado",
+      "2026-05-22",
+    ],
+    [
+      "IT.TI.002",
+      "IT — Rotina de Backup",
+      "Gestão de Demandas de TI",
+      "Tecnologia da Informação",
+      "-",
+      "Carlos Menezes",
+      "Em revisão",
+      "2026-06-17",
+    ],
+    [
+      "POP.FIN.001",
+      "POP — Conciliação Bancária",
+      "Contas a Receber",
+      "Financeiro & Controladoria",
+      "-",
+      "Bruno Cardoso",
+      "Ativo",
+      "2026-04-30",
+    ],
+    [
+      "POP.FIN.002",
+      "POP — Aprovação de Pagamentos",
+      "Contas a Pagar",
+      "Financeiro & Controladoria",
+      "-",
+      "Bruno Cardoso",
+      "Rascunho",
+      "2026-06-20",
+    ],
+    [
+      "POP.OPE.001",
+      "POP — Inspeção de Qualidade",
+      "Controle de Qualidade na Produção",
+      "Operações",
+      "-",
+      "Patrícia Lima",
+      "Aprovado",
+      "2026-05-15",
+    ],
+    [
+      "POP.LOG.001",
+      "POP — Recebimento de Mercadorias",
+      "Logística & Supply Chain",
+      "Logística & Supply Chain",
+      "-",
+      "Marcos Oliveira",
+      "Ativo",
+      "2026-06-07",
+    ],
   ],
   bpmn: [
-    ["FLX.COM.001", "Fluxograma — Ciclo de Vendas", "Comercialização & Vendas", "Comercial & Vendas", "-", "Rafael Souza", "Aprovado", "2026-05-18"],
-    ["FLX.OPE.001", "Fluxograma — Ordem de Produção", "Produção & Entrega", "Operações", "-", "Patrícia Lima", "Ativo", "2026-06-03"],
-    ["FLX.FIN.001", "Fluxograma — Contas a Pagar", "Gestão Financeira", "Financeiro & Controladoria", "-", "Bruno Cardoso", "Em revisão", "2026-06-19"],
-    ["FLX.RH.001", "Fluxograma — Onboarding", "Gestão de Pessoas", "Recursos Humanos", "-", "Juliana Castro", "Aprovado", "2026-04-25"],
-    ["FLX.LOG.001", "Fluxograma — Expedição", "Logística & Supply Chain", "Logística & Supply Chain", "-", "Marcos Oliveira", "Rascunho", "2026-06-22"],
+    [
+      "FLX.COM.001",
+      "Fluxograma — Ciclo de Vendas",
+      "Comercialização & Vendas",
+      "Comercial & Vendas",
+      "-",
+      "Rafael Souza",
+      "Aprovado",
+      "2026-05-18",
+    ],
+    [
+      "FLX.OPE.001",
+      "Fluxograma — Ordem de Produção",
+      "Produção & Entrega",
+      "Operações",
+      "-",
+      "Patrícia Lima",
+      "Ativo",
+      "2026-06-03",
+    ],
+    [
+      "FLX.FIN.001",
+      "Fluxograma — Contas a Pagar",
+      "Gestão Financeira",
+      "Financeiro & Controladoria",
+      "-",
+      "Bruno Cardoso",
+      "Em revisão",
+      "2026-06-19",
+    ],
+    [
+      "FLX.RH.001",
+      "Fluxograma — Onboarding",
+      "Gestão de Pessoas",
+      "Recursos Humanos",
+      "-",
+      "Juliana Castro",
+      "Aprovado",
+      "2026-04-25",
+    ],
+    [
+      "FLX.LOG.001",
+      "Fluxograma — Expedição",
+      "Logística & Supply Chain",
+      "Logística & Supply Chain",
+      "-",
+      "Marcos Oliveira",
+      "Rascunho",
+      "2026-06-22",
+    ],
   ],
 };
 
 function buildDemoModuleRows(moduleId: AteliamModule): ModuleGridRow[] {
   const tuples = DEMO_MODULE_ROW_DATA[moduleId] ?? [];
-  const typeLabel = moduleId === "ddp" ? "Mapeamento" : moduleId === "pop" ? "Documento" : "Fluxo de atividades";
+  const typeLabel =
+    moduleId === "ddp" ? "Mapeamento" : moduleId === "pop" ? "Documento" : "Fluxo de atividades";
   return tuples.map(([code, name, process, area, owner, responsible, status, updatedAt]) => ({
     id: `demo-row:${moduleId}:${code}`,
     code,
@@ -6754,16 +7417,19 @@ const MODULE_STATUS_OPTIONS = ["Em andamento", "Em revisão", "Aprovado", "Concl
 type ModuleGridSortDir = "asc" | "desc";
 type ModuleGridColumn = keyof Pick<
   ModuleGridRow,
-  "code" | "name" | "type" | "modalidade" | "process" | "area" | "owner" | "responsible" | "status" | "updatedAt"
+  | "code"
+  | "name"
+  | "type"
+  | "modalidade"
+  | "process"
+  | "area"
+  | "owner"
+  | "responsible"
+  | "status"
+  | "updatedAt"
 >;
 
-function ModuleSortGlyph({
-  active,
-  dir,
-}: {
-  active: boolean;
-  dir: ModuleGridSortDir;
-}) {
+function ModuleSortGlyph({ active, dir }: { active: boolean; dir: ModuleGridSortDir }) {
   if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
   return dir === "asc" ? (
     <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
@@ -6782,10 +7448,12 @@ function compareModuleGridRows(
   if (field === "updatedAt") {
     return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * sign;
   }
-  return String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
-    numeric: true,
-    sensitivity: "base",
-  }) * sign;
+  return (
+    String(a[field] ?? "").localeCompare(String(b[field] ?? ""), "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
+    }) * sign
+  );
 }
 
 function moduleStatusStyle(status: string): CSSProperties {
@@ -7023,7 +7691,9 @@ function ModuleDocumentGrid({
                 <input
                   type="checkbox"
                   aria-label="Selecionar registros exibidos"
-                  checked={!!sortedRows.length && sortedRows.every((row) => selected.includes(row.id))}
+                  checked={
+                    !!sortedRows.length && sortedRows.every((row) => selected.includes(row.id))
+                  }
                   onChange={(event) =>
                     setSelected(event.target.checked ? sortedRows.map((row) => row.id) : [])
                   }
@@ -7287,64 +7957,74 @@ function RowActions({
         </button>
         {menuOpen && typeof document !== "undefined"
           ? createPortal(
-          <div
-            ref={menuRef}
-            role="menu"
-            style={menuPosition}
-            className="max-h-[min(420px,calc(100vh-24px))] overflow-y-auto rounded-md border border-border bg-popover shadow-xl"
-          >
-            <button type="button" role="menuitem" className={menuItem} onClick={() => run(onView)}>
-              <Eye className="h-4 w-4 shrink-0" /> Visualizar
-            </button>
-            <button type="button" role="menuitem" className={menuItem} onClick={() => run(onEdit)}>
-              <Pencil className="h-4 w-4 shrink-0" /> Editar
-            </button>
-            {onDuplicate ? (
-              <button
-                type="button"
-                role="menuitem"
-                className={menuItem}
-                onClick={() => run(onDuplicate)}
+              <div
+                ref={menuRef}
+                role="menu"
+                style={menuPosition}
+                className="max-h-[min(420px,calc(100vh-24px))] overflow-y-auto rounded-md border border-border bg-popover shadow-xl"
               >
-                <Copy className="h-4 w-4 shrink-0" /> Duplicar
-              </button>
-            ) : null}
-            <div className="border-t border-border" />
-            <button
-              type="button"
-              role="menuitem"
-              className={menuItem}
-              onClick={() => {
-                setMenuOpen(false);
-                onExport(reportFormat);
-              }}
-            >
-              <FileText className="h-4 w-4 shrink-0" /> Relatório
-            </button>
-            {hasPresentation ? (
-              <button
-                type="button"
-                role="menuitem"
-                className={menuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onExport("ddp-html");
-                }}
-              >
-                <Presentation className="h-4 w-4 shrink-0" /> Apresentação
-              </button>
-            ) : null}
-            <div className="border-t border-border" />
-            <button
-              type="button"
-              role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/5"
-              onClick={() => run(onDelete)}
-            >
-              <Trash2 className="h-4 w-4 shrink-0" /> Excluir
-            </button>
-          </div>,
-          document.body,
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => run(onView)}
+                >
+                  <Eye className="h-4 w-4 shrink-0" /> Visualizar
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => run(onEdit)}
+                >
+                  <Pencil className="h-4 w-4 shrink-0" /> Editar
+                </button>
+                {onDuplicate ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={menuItem}
+                    onClick={() => run(onDuplicate)}
+                  >
+                    <Copy className="h-4 w-4 shrink-0" /> Duplicar
+                  </button>
+                ) : null}
+                <div className="border-t border-border" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={menuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onExport(reportFormat);
+                  }}
+                >
+                  <FileText className="h-4 w-4 shrink-0" /> Relatório
+                </button>
+                {hasPresentation ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={menuItem}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onExport("ddp-html");
+                    }}
+                  >
+                    <Presentation className="h-4 w-4 shrink-0" /> Apresentação
+                  </button>
+                ) : null}
+                <div className="border-t border-border" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/5"
+                  onClick={() => run(onDelete)}
+                >
+                  <Trash2 className="h-4 w-4 shrink-0" /> Excluir
+                </button>
+              </div>,
+              document.body,
             )
           : null}
       </div>
@@ -7673,7 +8353,9 @@ function DdpCausesModuleV2({
                   <td className="break-words px-3 py-3 text-foreground">
                     {gap.responsavel || "-"}
                   </td>
-                  <td className="break-words px-3 py-3 text-foreground">{formatGapDateRangeBr(gap.prazo) || "-"}</td>
+                  <td className="break-words px-3 py-3 text-foreground">
+                    {formatGapDateRangeBr(gap.prazo) || "-"}
+                  </td>
                   <td className="px-3 py-3">
                     <select
                       value={gap.prioridade}
@@ -7766,134 +8448,141 @@ function DdpCausesModuleV2({
                 <X className="h-4 w-4" />
               </button>
             </div>
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-3 md:col-span-2">
-                <label className="block">
-                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                    Causa reutilizável da organização
-                  </span>
-                  <select
-                    value={draft.sharedCauseId ?? ""}
-                    onChange={(event) => applySharedCauseToDraft(event.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-                  >
-                    <option value="">Causa local / nova</option>
-                    {catalogs.causes.map((cause) => (
-                      <option key={cause.id} value={cause.id}>
-                        {cause.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 md:col-span-2">
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      Causa reutilizável da organização
+                    </span>
+                    <select
+                      value={draft.sharedCauseId ?? ""}
+                      onChange={(event) => applySharedCauseToDraft(event.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                    >
+                      <option value="">Causa local / nova</option>
+                      {catalogs.causes.map((cause) => (
+                        <option key={cause.id} value={cause.id}>
+                          {cause.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <Field
+                  label="Causa"
+                  value={draft.causa}
+                  onChange={(causa) => updateDraft({ causa })}
+                />
+                <Field
+                  label="Responsável"
+                  value={draft.responsavel}
+                  onChange={(responsavel) => updateDraft({ responsavel })}
+                />
+                <SelectField
+                  label="Status"
+                  value={draft.status}
+                  options={[...CAUSE_STATUS_OPTIONS]}
+                  onChange={(status) => updateDraft({ status })}
+                />
+                <SelectField
+                  label="Prioridade"
+                  value={draft.prioridade}
+                  options={[...CAUSE_PRIORITY_OPTIONS]}
+                  onChange={(prioridade) => updateDraft({ prioridade })}
+                />
+                <DateRangeField
+                  label="Prazo"
+                  value={draft.prazo}
+                  onChange={(prazo) => updateDraft({ prazo })}
+                />
+                <TextArea
+                  label="Descrição"
+                  value={draft.descricao}
+                  onChange={(descricao) => updateDraft({ descricao })}
+                />
+                <TextArea
+                  label="Impacto"
+                  value={draft.impacto}
+                  onChange={(impacto) => updateDraft({ impacto })}
+                />
+                <TextArea
+                  label="Ação proposta"
+                  value={draft.acao}
+                  onChange={(acao) => updateDraft({ acao })}
+                />
               </div>
-              <Field label="Causa" value={draft.causa} onChange={(causa) => updateDraft({ causa })} />
-              <Field
-                label="Responsável"
-                value={draft.responsavel}
-                onChange={(responsavel) => updateDraft({ responsavel })}
-              />
-              <SelectField
-                label="Status"
-                value={draft.status}
-                options={[...CAUSE_STATUS_OPTIONS]}
-                onChange={(status) => updateDraft({ status })}
-              />
-              <SelectField
-                label="Prioridade"
-                value={draft.prioridade}
-                options={[...CAUSE_PRIORITY_OPTIONS]}
-                onChange={(prioridade) => updateDraft({ prioridade })}
-              />
-              <DateRangeField
-                label="Prazo"
-                value={draft.prazo}
-                onChange={(prazo) => updateDraft({ prazo })}
-              />
-              <TextArea
-                label="Descrição"
-                value={draft.descricao}
-                onChange={(descricao) => updateDraft({ descricao })}
-              />
-              <TextArea
-                label="Impacto"
-                value={draft.impacto}
-                onChange={(impacto) => updateDraft({ impacto })}
-              />
-              <TextArea
-                label="Ação proposta"
-                value={draft.acao}
-                onChange={(acao) => updateDraft({ acao })}
-              />
-            </div>
 
-            <div className="rounded-lg border border-border bg-muted/35 p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-foreground" />
-                <h3 className="text-sm font-semibold text-foreground">Comentários</h3>
+              <div className="rounded-lg border border-border bg-muted/35 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-foreground" />
+                  <h3 className="text-sm font-semibold text-foreground">Comentários</h3>
+                </div>
+                <textarea
+                  value={commentDraft}
+                  onChange={(event) => setCommentDraft(event.target.value)}
+                  rows={4}
+                  placeholder="Registre uma atualização, decisão ou pendência da causa."
+                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={addComment}
+                  disabled={!commentDraft.trim()}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2.5 text-sm font-bold text-background hover:opacity-90 disabled:opacity-45"
+                >
+                  Inserir comentário
+                </button>
+                <div className="mt-4 grid gap-2">
+                  {draft.comentarios.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className="rounded-lg border border-border bg-muted/20 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm leading-5 text-foreground">{comment.text}</p>
+                        <button
+                          type="button"
+                          onClick={() => removeComment(comment.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {comment.createdAt ? (
+                        <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          {formatDateTimeBr(comment.createdAt)}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                  {!draft.comentarios.length ? (
+                    <div className="rounded-lg border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
+                      Nenhum comentário registrado.
+                    </div>
+                  ) : null}
+                </div>
               </div>
-              <textarea
-                value={commentDraft}
-                onChange={(event) => setCommentDraft(event.target.value)}
-                rows={4}
-                placeholder="Registre uma atualização, decisão ou pendência da causa."
-                className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
               <button
                 type="button"
-                onClick={addComment}
-                disabled={!commentDraft.trim()}
-                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2.5 text-sm font-bold text-background hover:opacity-90 disabled:opacity-45"
+                onClick={() => {
+                  setDraft(null);
+                  setCommentDraft("");
+                }}
+                className="rounded-lg px-4 py-2 text-sm hover:bg-muted"
               >
-                Inserir comentário
+                Cancelar
               </button>
-              <div className="mt-4 grid gap-2">
-                {draft.comentarios.map((comment) => (
-                  <div key={comment.id} className="rounded-lg border border-border bg-muted/20 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm leading-5 text-foreground">{comment.text}</p>
-                      <button
-                        type="button"
-                        onClick={() => removeComment(comment.id)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    {comment.createdAt ? (
-                      <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        {formatDateTimeBr(comment.createdAt)}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-                {!draft.comentarios.length ? (
-                  <div className="rounded-lg border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
-                    Nenhum comentário registrado.
-                  </div>
-                ) : null}
-              </div>
+              <button
+                type="button"
+                onClick={saveDraft}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
+              >
+                Salvar causa
+              </button>
             </div>
-          </div>
-          <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(null);
-                setCommentDraft("");
-              }}
-              className="rounded-lg px-4 py-2 text-sm hover:bg-muted"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={saveDraft}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
-            >
-              Salvar causa
-            </button>
-          </div>
           </div>
         </div>
       ) : null}
@@ -7980,13 +8669,7 @@ function DateRangeField({
   );
 }
 
-function TableDateRange({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function TableDateRange({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const range = parseGapDateRange(value);
   return (
     <div className="grid min-w-[220px] gap-2 sm:grid-cols-2">
@@ -8072,13 +8755,7 @@ function TableSelect({
   );
 }
 
-function TableReadonly({
-  value,
-  multiline = false,
-}: {
-  value: string;
-  multiline?: boolean;
-}) {
+function TableReadonly({ value, multiline = false }: { value: string; multiline?: boolean }) {
   return (
     <div
       className={`min-w-[140px] rounded-md border border-border bg-muted/35 px-2.5 py-2 text-xs text-muted-foreground ${
@@ -8137,8 +8814,7 @@ function DdpModule({
     [catalogs.processes, data.macroprocess.processId],
   );
   const primaryProcessOptions = useMemo(
-    () =>
-      catalogs.processes.filter((process) => process.status !== "Arquivado"),
+    () => catalogs.processes.filter((process) => process.status !== "Arquivado"),
     [catalogs.processes],
   );
   const flowProcessOptions = useMemo(() => {
@@ -8186,12 +8862,11 @@ function DdpModule({
         return catalogs.valueChains.find((chain) => chain.id === current?.value_chain_id) ?? null;
       }
       current = current.parent_process_id
-        ? catalogs.processes.find((item) => item.id === current?.parent_process_id) ?? null
+        ? (catalogs.processes.find((item) => item.id === current?.parent_process_id) ?? null)
         : null;
     }
     return null;
   }
-
 
   function selectPrimaryProcess(process: OrganizationProcess | null) {
     const valueChain = findProcessValueChain(process);
@@ -8232,11 +8907,7 @@ function DdpModule({
     // Não contabilizamos campos preenchidos automaticamente (código, data de
     // hoje, modalidade e status já vêm com valor padrão) — só os campos que
     // dependem do usuário entram no cálculo de preenchimento.
-    identification: completionPercent([
-      data.meta.titulo,
-      data.meta.elaborador,
-      data.meta.revisor,
-    ]),
+    identification: completionPercent([data.meta.titulo, data.meta.elaborador, data.meta.revisor]),
     overview: completionPercent([data.overview.objetivo, data.overview.escopo, data.overview.kpis]),
     systems: completionPercent(data.systems.flatMap((system) => [system.nome, system.descricao])),
     flowStage: completionPercent([
@@ -8286,7 +8957,12 @@ function DdpModule({
   // Seções na ordem exata do relatório em Word — fonte única para o índice
   // lateral e para o medidor segmentado da barra de comando.
   const sections: MappingSectionInfo[] = [
-    { key: "identification", num: "00", title: "Dados do Mapeamento", pct: sectionProgress.identification },
+    {
+      key: "identification",
+      num: "00",
+      title: "Dados do Mapeamento",
+      pct: sectionProgress.identification,
+    },
     { key: "overview", num: "01", title: "Visão geral", pct: sectionProgress.overview },
     { key: "systems", num: "02", title: "Sistemas envolvidos", pct: sectionProgress.systems },
     { key: "sipoc", num: "03", title: "Análise SIPOC", pct: sectionProgress.sipoc },
@@ -8304,10 +8980,7 @@ function DdpModule({
   // edição — mesmo que o processo vinculado não esteja no catálogo atual). O
   // estado vazio ("Selecione um processo") só vale para um mapeamento novo.
   const mappingReady =
-    !!selectedProcess ||
-    !!data.macroprocess.processId ||
-    !!data.meta.codigo ||
-    !!data.meta.titulo;
+    !!selectedProcess || !!data.macroprocess.processId || !!data.meta.codigo || !!data.meta.titulo;
 
   const [activeSection, setActiveSection] = useState("identification");
   const [openNonce, setOpenNonce] = useState(0);
@@ -8619,875 +9292,906 @@ function DdpModule({
         </div>
       ) : (
         <div className="mt-2 grid gap-5 lg:grid-cols-[218px_minmax(0,1fr)] lg:items-start">
-          <MappingSectionNav
-            sections={sections}
-            activeKey={activeSection}
-            onSelect={goToSection}
-          />
+          <MappingSectionNav sections={sections} activeKey={activeSection} onSelect={goToSection} />
           <div className="grid min-w-0 gap-4">
-      <Panel
-        id="sec-identification"
-        num="01"
-        openSignal={openTarget === "identification" ? openNonce : 0}
-        title="Dados do Mapeamento"
-        progress={sectionProgress.identification}
-        defaultOpen={mappingReady}
-      >
-        <div className="grid gap-4 md:grid-cols-3">
-          {data.meta.codigo ? (
-            <div className="md:col-span-3 rounded-xl border border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_10%,var(--card))] px-4 py-3 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
-                    Código gerado do mapeamento
-                  </span>
-                  <strong className="mt-1 block font-data text-2xl font-black tracking-[0.14em] text-foreground">
-                    {data.meta.codigo}
-                  </strong>
-                </div>
-                <span className="rounded-full border border-border bg-background px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  Registro único
-                </span>
-              </div>
-            </div>
-          ) : null}
-          <Field
-            label="Título do Mapeamento"
-            value={data.meta.titulo}
-            onChange={(titulo) => update({ ...data, meta: { ...data.meta, titulo } })}
-          />
-          {/* Ordem abaixo espelha a tabela de identificação do relatório Word
+            <Panel
+              id="sec-identification"
+              num="01"
+              openSignal={openTarget === "identification" ? openNonce : 0}
+              title="Dados do Mapeamento"
+              progress={sectionProgress.identification}
+              defaultOpen={mappingReady}
+            >
+              <div className="grid gap-4 md:grid-cols-3">
+                {data.meta.codigo ? (
+                  <div className="md:col-span-3 rounded-xl border border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_10%,var(--card))] px-4 py-3 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
+                          Código gerado do mapeamento
+                        </span>
+                        <strong className="mt-1 block font-data text-2xl font-black tracking-[0.14em] text-foreground">
+                          {data.meta.codigo}
+                        </strong>
+                      </div>
+                      <span className="rounded-full border border-border bg-background px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                        Registro único
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+                <Field
+                  label="Título do Mapeamento"
+                  value={data.meta.titulo}
+                  onChange={(titulo) => update({ ...data, meta: { ...data.meta, titulo } })}
+                />
+                {/* Ordem abaixo espelha a tabela de identificação do relatório Word
               (Tipo/Dono/Área/Modalidade, Elaborador/Revisor/Data). Tipo, Dono e
               Área são automáticos — não editáveis aqui. */}
-          <ReadOnlyField label="Código do processo" value={selectedProcess?.code ?? ""} />
-          <ReadOnlyField
-            label="Cadeia de valor"
-            value={
-              data.legacy?.processValueChainName?.toString() ??
-              findProcessValueChain(selectedProcess)?.name ??
-              ""
-            }
-          />
-          <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
-          <ReadOnlyField
-            label="Dono"
-            value={selectedProcess?.owner ?? data.overview.donoProcesso ?? data.meta.responsavel ?? ""}
-          />
-          <ReadOnlyField
-            label="Área"
-            value={selectedProcess?.department ?? data.meta.area ?? ""}
-          />
-          <SelectField
-            label="Modalidade"
-            value={data.meta.modalidade || "AS IS"}
-            options={["AS IS", "TO BE"]}
-            onChange={(modalidade) =>
-              update({
-                ...data,
-                meta: { ...data.meta, modalidade: modalidade as "AS IS" | "TO BE" },
-              })
-            }
-          />
-          <UserSearchField
-            label="Elaborador"
-            value={data.meta.elaborador}
-            options={userOptions}
-            onChange={(elaborador) => update({ ...data, meta: { ...data.meta, elaborador } })}
-          />
-          <Field
-            label="Revisor"
-            value={data.meta.revisor}
-            onChange={(revisor) => update({ ...data, meta: { ...data.meta, revisor } })}
-          />
-          <Field
-            label="Data"
-            type="date"
-            value={data.meta.data}
-            onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
-          />
-          <SelectField
-            label="Status"
-            value={data.meta.status || "Em andamento"}
-            options={MODULE_STATUS_OPTIONS}
-            onChange={requestStatusChange}
-          />
-        </div>
-        </Panel>
-      <Panel
-        id="sec-overview"
-        num="02"
-        openSignal={openTarget === "overview" ? openNonce : 0}
-        title="Visão geral"
-        progress={sectionProgress.overview}
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <TextArea
-            label="Objetivo"
-            value={data.overview.objetivo}
-            onChange={(objetivo) => update({ ...data, overview: { ...data.overview, objetivo } })}
-          />
-          <TextArea
-            label="Escopo"
-            value={data.overview.escopo}
-            onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
-          />
-          <div className="md:col-span-2">
-            <TextArea
-              label="Contexto"
-              value={data.overview.kpis}
-              onChange={(kpis) => update({ ...data, overview: { ...data.overview, kpis } })}
-            />
-          </div>
-        </div>
-      </Panel>
-      <Panel
-        id="sec-systems"
-        num="03"
-        openSignal={openTarget === "systems" ? openNonce : 0}
-        title="Sistemas envolvidos"
-        progress={sectionProgress.systems}
-      >
-        <div className="grid gap-3">
-          {data.systems.map((system) => (
-            <div
-              key={system.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[1fr_auto]"
-            >
-              <RegisteredSystemSelect
-                label="Sistema"
-                value={system.systemId ?? ""}
-                displayValue={system.nome}
-                systems={catalogs.systems}
-                placeholder="Buscar sistema cadastrado..."
-                onSelect={(selectedSystem) =>
-                  update({
-                    ...data,
-                    systems: data.systems.map((item) =>
-                      item.id === system.id
-                        ? {
-                            ...item,
-                            systemId: selectedSystem?.id ?? "",
-                            nome: selectedSystem?.name ?? "",
-                            descricao: item.descricao || selectedSystem?.description || "",
-                          }
-                        : item,
-                    ),
-                  })
-                }
-                onRequestCreate={(query) => setCreateSystemRequest({ stepId: system.id, query })}
-              />
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  update({ ...data, systems: data.systems.filter((item) => item.id !== system.id) })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
-              <div className="lg:col-span-2">
-                <TextArea
-                  label="Descrição / uso no processo"
-                  value={system.descricao}
-                  onChange={(descricao) =>
+                <ReadOnlyField label="Código do processo" value={selectedProcess?.code ?? ""} />
+                <ReadOnlyField
+                  label="Cadeia de valor"
+                  value={
+                    data.legacy?.processValueChainName?.toString() ??
+                    findProcessValueChain(selectedProcess)?.name ??
+                    ""
+                  }
+                />
+                <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
+                <ReadOnlyField
+                  label="Dono"
+                  value={
+                    selectedProcess?.owner ??
+                    data.overview.donoProcesso ??
+                    data.meta.responsavel ??
+                    ""
+                  }
+                />
+                <ReadOnlyField
+                  label="Área"
+                  value={selectedProcess?.department ?? data.meta.area ?? ""}
+                />
+                <SelectField
+                  label="Modalidade"
+                  value={data.meta.modalidade || "AS IS"}
+                  options={["AS IS", "TO BE"]}
+                  onChange={(modalidade) =>
                     update({
                       ...data,
-                      systems: data.systems.map((item) =>
-                        item.id === system.id ? { ...item, descricao } : item,
-                      ),
+                      meta: { ...data.meta, modalidade: modalidade as "AS IS" | "TO BE" },
                     })
                   }
                 />
+                <UserSearchField
+                  label="Elaborador"
+                  value={data.meta.elaborador}
+                  options={userOptions}
+                  onChange={(elaborador) => update({ ...data, meta: { ...data.meta, elaborador } })}
+                />
+                <Field
+                  label="Revisor"
+                  value={data.meta.revisor}
+                  onChange={(revisor) => update({ ...data, meta: { ...data.meta, revisor } })}
+                />
+                <Field
+                  label="Data"
+                  type="date"
+                  value={data.meta.data}
+                  onChange={(date) => update({ ...data, meta: { ...data.meta, data: date } })}
+                />
+                <SelectField
+                  label="Status"
+                  value={data.meta.status || "Em andamento"}
+                  options={MODULE_STATUS_OPTIONS}
+                  onChange={requestStatusChange}
+                />
               </div>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                systems: [
-                  ...data.systems,
-                  {
-                    id: id("sys"),
-                    nome: "",
-                    tipo: "",
-                    dono: "",
-                    criticidade: "Média",
-                    descricao: "",
-                  },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar sistema
-          </button>
-        </div>
-      </Panel>
-      <Panel
-        id="sec-sipoc"
-        num="04"
-        openSignal={openTarget === "sipoc" ? openNonce : 0}
-        title="Análise SIPOC do processo"
-        progress={sectionProgress.sipoc}
-      >
-        <div className="grid gap-3">
-          {data.sipocRows.map((row) => (
-            <div
-              key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+            </Panel>
+            <Panel
+              id="sec-overview"
+              num="02"
+              openSignal={openTarget === "overview" ? openNonce : 0}
+              title="Visão geral"
+              progress={sectionProgress.overview}
             >
-              {(["fornecedores", "entradas", "processo", "saidas", "clientes"] as const).map(
-                (field) => (
+              <div className="grid gap-4 md:grid-cols-2">
+                <TextArea
+                  label="Objetivo"
+                  value={data.overview.objetivo}
+                  onChange={(objetivo) =>
+                    update({ ...data, overview: { ...data.overview, objetivo } })
+                  }
+                />
+                <TextArea
+                  label="Escopo"
+                  value={data.overview.escopo}
+                  onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
+                />
+                <div className="md:col-span-2">
                   <TextArea
-                    key={field}
-                    label={field === "saidas" ? "Saídas" : field}
-                    value={row[field]}
-                    onChange={(value) =>
-                      update({
-                        ...data,
-                        sipocRows: data.sipocRows.map((item) =>
-                          item.id === row.id ? { ...item, [field]: value } : item,
-                        ),
-                      })
-                    }
+                    label="Contexto"
+                    value={data.overview.kpis}
+                    onChange={(kpis) => update({ ...data, overview: { ...data.overview, kpis } })}
                   />
-                ),
-              )}
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  update({
-                    ...data,
-                    sipocRows: data.sipocRows.filter((item) => item.id !== row.id),
-                  })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                sipocRows: [
-                  ...data.sipocRows,
-                  {
-                    id: id("sipoc"),
-                    fornecedores: "",
-                    entradas: "",
-                    processo: "",
-                    saidas: "",
-                    clientes: "",
-                  },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar linha SIPOC
-          </button>
-        </div>
-      </Panel>
-      <Panel
-        id="sec-flowStage"
-        num="04"
-        openSignal={openTarget === "flowStage" ? openNonce : 0}
-        title="Etapas do processo"
-        progress={sectionProgress.flowStage}
-      >
-        <div className="grid gap-5">
-        <div>
-        <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
-          Macroprocesso
-        </h3>
-        <div className="grid gap-4">
-          <RegisteredProcessSelect
-            label="Processo, macroprocesso ou atividade"
-            value={data.macroprocess.processId ?? ""}
-            processes={primaryProcessOptions}
-            placeholder="Buscar processo, macroprocesso ou atividade"
-            onSelect={selectPrimaryProcess}
-            onRequestCreate={(name) => setCreateProcessName(name)}
-          />
-          <ImageManager
-            label="Imagem do processo"
-            captionLabel="Descrição"
-            images={
-              data.macroprocess.src
-                ? [
-                    {
-                      id: "macroprocess",
-                      titulo: data.macroprocess.titulo || "Diagrama do Macroprocesso",
-                      legenda: data.macroprocess.legenda,
-                      src: data.macroprocess.src,
-                    },
-                  ]
-                : []
-            }
-            onChange={(images) => {
-              const image = images[images.length - 1];
-              update({
-                ...data,
-                macroprocess: {
-                  ...data.macroprocess,
-                  titulo: image?.titulo ?? data.macroprocess.titulo,
-                  legenda: image?.legenda ?? data.macroprocess.legenda,
-                  src: image?.src ?? "",
-                },
-              });
-            }}
-          />
-        </div>
-        </div>
-        <div className="border-t border-border pt-5">
-        <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
-          Etapas do processo
-        </h3>
-        <div className="grid gap-3">
-          {data.steps.map((step, index) => (
-            <div
-              key={step.id}
-              onDragOver={(event: DragEvent<HTMLDivElement>) => {
-                if (draggedStepId && draggedStepId !== step.id) event.preventDefault();
-              }}
-              onDrop={(event: DragEvent<HTMLDivElement>) => {
-                event.preventDefault();
-                reorderSteps(step.id);
-              }}
-              className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
-                draggedStepId === step.id ? "opacity-60 ring-2 ring-[var(--gold)]/40" : ""
-              }`}
+                </div>
+              </div>
+            </Panel>
+            <Panel
+              id="sec-systems"
+              num="03"
+              openSignal={openTarget === "systems" ? openNonce : 0}
+              title="Sistemas envolvidos"
+              progress={sectionProgress.systems}
             >
-              <div className={`flex items-center gap-3 ${openSteps[step.id] ? "mb-3" : ""}`}>
+              <div className="grid gap-3">
+                {data.systems.map((system) => (
+                  <div
+                    key={system.id}
+                    className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[1fr_auto]"
+                  >
+                    <RegisteredSystemSelect
+                      label="Sistema"
+                      value={system.systemId ?? ""}
+                      displayValue={system.nome}
+                      systems={catalogs.systems}
+                      placeholder="Buscar sistema cadastrado..."
+                      onSelect={(selectedSystem) =>
+                        update({
+                          ...data,
+                          systems: data.systems.map((item) =>
+                            item.id === system.id
+                              ? {
+                                  ...item,
+                                  systemId: selectedSystem?.id ?? "",
+                                  nome: selectedSystem?.name ?? "",
+                                  descricao: item.descricao || selectedSystem?.description || "",
+                                }
+                              : item,
+                          ),
+                        })
+                      }
+                      onRequestCreate={(query) =>
+                        setCreateSystemRequest({ stepId: system.id, query })
+                      }
+                    />
+                    <IconButton
+                      label="Excluir"
+                      onClick={() =>
+                        update({
+                          ...data,
+                          systems: data.systems.filter((item) => item.id !== system.id),
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                    <div className="lg:col-span-2">
+                      <TextArea
+                        label="Descrição / uso no processo"
+                        value={system.descricao}
+                        onChange={(descricao) =>
+                          update({
+                            ...data,
+                            systems: data.systems.map((item) =>
+                              item.id === system.id ? { ...item, descricao } : item,
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                ))}
                 <button
-                  type="button"
-                  draggable
-                  onDragStart={() => setDraggedStepId(step.id)}
-                  onDragEnd={() => setDraggedStepId(null)}
-                  className="grid h-9 w-9 shrink-0 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                  title="Arrastar etapa"
-                  aria-label="Arrastar etapa"
-                >
-                  <ArrowDownUp className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleStep(step.id)}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                  title={openSteps[step.id] ? "Recolher etapa" : "Expandir etapa"}
-                  aria-label={openSteps[step.id] ? "Recolher etapa" : "Expandir etapa"}
-                >
-                  {openSteps[step.id] ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </button>
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
-                  {String(index + 1).padStart(2, "0")}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <RegisteredProcessSelect
-                    label="Processo, macroprocesso ou atividade"
-                    value={step.processId ?? ""}
-                    processes={flowProcessOptions}
-                    placeholder="Busque processo, macroprocesso ou atividade"
-                    onSelect={(process) =>
-                      updateStep(step.id, {
-                        processId: process?.id ?? "",
-                        processVersion: 1,
-                        etapa: process?.name ?? "",
-                        responsavel: process?.owner ?? "",
-                        atividade: step.atividade || process?.description || "",
-                      })
-                    }
-                  />
-                </div>
-                <IconButton
-                  label="Excluir"
                   onClick={() =>
                     update({
                       ...data,
-                      steps: renumberFlowSteps(data.steps.filter((item) => item.id !== step.id)),
+                      systems: [
+                        ...data.systems,
+                        {
+                          id: id("sys"),
+                          nome: "",
+                          tipo: "",
+                          dono: "",
+                          criticidade: "Média",
+                          descricao: "",
+                        },
+                      ],
                     })
                   }
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </IconButton>
+                  <Plus className="h-4 w-4" />
+                  Adicionar sistema
+                </button>
               </div>
-              {openSteps[step.id] ? (
-                <>
+            </Panel>
+            <Panel
+              id="sec-sipoc"
+              num="04"
+              openSignal={openTarget === "sipoc" ? openNonce : 0}
+              title="Análise SIPOC do processo"
+              progress={sectionProgress.sipoc}
+            >
               <div className="grid gap-3">
-                <ImageManager
-                  label="Imagens da etapa"
-                  captionLabel="Descrição"
-                  images={step.images}
-                  onChange={(images) => updateStep(step.id, { images })}
-                />
-                <div className="rounded-lg border border-border bg-card p-3">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <div className="text-[11px] font-semibold text-foreground">Subetapas</div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        Detalhe subprocessos e adicione imagens específicas quando necessário.
-                      </div>
-                    </div>
-                  </div>
-                  {step.substeps.length ? (
-                    <div className="grid gap-3">
-                      {step.substeps.map((substep, substepIndex) => (
-                        <div
-                          key={substep.id}
-                          onDragOver={(event: DragEvent<HTMLDivElement>) => {
-                            if (
-                              draggedSubstep?.stepId === step.id &&
-                              draggedSubstep.substepId !== substep.id
-                            ) {
-                              event.preventDefault();
-                            }
-                          }}
-                          onDrop={(event: DragEvent<HTMLDivElement>) => {
-                            event.preventDefault();
-                            reorderSubsteps(step.id, substep.id);
-                          }}
-                          className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
-                            draggedSubstep?.substepId === substep.id
-                              ? "opacity-60 ring-2 ring-[var(--gold)]/40"
-                              : ""
-                          }`}
-                        >
-                          <div className="mb-3 grid gap-3 md:grid-cols-[40px_120px_1fr_auto]">
-                            <button
-                              type="button"
-                              draggable
-                              onDragStart={() =>
-                                setDraggedSubstep({ stepId: step.id, substepId: substep.id })
-                              }
-                              onDragEnd={() => setDraggedSubstep(null)}
-                              className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                              title="Arrastar subetapa"
-                              aria-label="Arrastar subetapa"
-                            >
-                              <ArrowDownUp className="h-4 w-4" />
-                            </button>
-                            <ReadOnlyField
-                              label="Código"
-                              value={`${index + 1}.${substepIndex + 1}`}
-                            />
-                            <Field
-                              compact
-                              label="Título"
-                              value={substep.titulo}
-                              onChange={(titulo) => updateSubstep(step.id, substep.id, { titulo })}
-                            />
-                            <IconButton
-                              label="Excluir subetapa"
-                              onClick={() =>
-                                updateStep(step.id, {
-                                  substeps: step.substeps.filter((item) => item.id !== substep.id),
-                                })
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </IconButton>
-                          </div>
-                          <TextArea
-                            label="Descrição da subetapa"
-                            value={substep.descricao}
-                            onChange={(descricao) =>
-                              updateSubstep(step.id, substep.id, { descricao })
-                            }
-                          />
-                          <div className="mt-3">
-                            <ImageManager
-                              label="Imagens da subetapa"
-                              images={substep.images}
-                              onChange={(images) => updateSubstep(step.id, substep.id, { images })}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateStep(step.id, {
-                        substeps: [
-                          ...step.substeps,
-                          {
-                            id: id("substep"),
-                            processId: "",
-                            processVersion: 1,
-                            codigo: `${index + 1}.${step.substeps.length + 1}`,
-                            titulo: "Nova subetapa",
-                            descricao: "",
-                            images: [],
-                          },
-                        ],
-                      })
-                    }
-                    className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                {data.sipocRows.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
                   >
-                    <Plus className="h-4 w-4" />
-                    Adicionar subetapa
-                  </button>
-                </div>
+                    {(["fornecedores", "entradas", "processo", "saidas", "clientes"] as const).map(
+                      (field) => (
+                        <TextArea
+                          key={field}
+                          label={field === "saidas" ? "Saídas" : field}
+                          value={row[field]}
+                          onChange={(value) =>
+                            update({
+                              ...data,
+                              sipocRows: data.sipocRows.map((item) =>
+                                item.id === row.id ? { ...item, [field]: value } : item,
+                              ),
+                            })
+                          }
+                        />
+                      ),
+                    )}
+                    <IconButton
+                      label="Excluir"
+                      onClick={() =>
+                        update({
+                          ...data,
+                          sipocRows: data.sipocRows.filter((item) => item.id !== row.id),
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    update({
+                      ...data,
+                      sipocRows: [
+                        ...data.sipocRows,
+                        {
+                          id: id("sipoc"),
+                          fornecedores: "",
+                          entradas: "",
+                          processo: "",
+                          saidas: "",
+                          clientes: "",
+                        },
+                      ],
+                    })
+                  }
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar linha SIPOC
+                </button>
               </div>
-                </>
-              ) : null}
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                steps: renumberFlowSteps([
-                  ...data.steps,
-                  {
-                      id: id("step"),
-                      processId: "",
-                      processVersion: 1,
-                      etapa: "",
-                      responsavel: "",
-                      entrada: "",
-                      atividade: "",
-                      saida: "",
-                      sistema: "",
-                      risco: "",
-                      observacoes: "",
-                      images: [],
-                      substeps: [],
-                    },
-                ]),
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar etapa
-          </button>
-        </div>
-        </div>
-        </div>
-      </Panel>
-      <Panel
-        id="sec-gaps"
-        num="06"
-        openSignal={openTarget === "gaps" ? openNonce : 0}
-        title="Gaps e causas-raiz"
-        progress={sectionProgress.gaps}
-      >
-        <div className="grid gap-3">
-          <div className="overflow-hidden rounded-lg border border-border bg-card">
-            <div className="overflow-auto">
-              <table className="w-full min-w-[1540px] border-collapse text-left text-sm">
-                <thead className="bg-muted text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-3">Usar causa cadastrada?</th>
-                    <th className="px-3 py-3">Causa cadastrada</th>
-                    <th className="px-3 py-3">Causa</th>
-                    <th className="px-3 py-3">Descrição</th>
-                    <th className="px-3 py-3">Impacto</th>
-                    <th className="px-3 py-3">Ação proposta</th>
-                    <th className="px-3 py-3">Responsável</th>
-                    <th className="px-3 py-3">Prazo</th>
-                    <th className="px-3 py-3">Prioridade</th>
-                    <th className="px-3 py-3">Status</th>
-                    <th className="px-3 py-3 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.gaps.map((gap) => {
-                    const usesLibraryCause = libraryCauseRows[gap.id] ?? Boolean(gap.sharedCauseId);
-                    const selectedCause = catalogs.causes.find((cause) => cause.id === gap.sharedCauseId);
-                    const causeSearchValue = causeSearch[gap.id] ?? selectedCause?.title ?? "";
-
-                    return (
-                      <tr key={gap.id} className="border-t border-border align-top">
-                        <td className="px-3 py-3">
-                          <div className="grid min-w-[180px] gap-2">
-                            <div className="grid grid-cols-2 overflow-hidden rounded-md border border-border bg-background p-0.5">
-                              <button
-                                type="button"
-                                onClick={() => setGapLibraryMode(gap.id, false)}
-                                className={`rounded px-2.5 py-1.5 text-xs font-bold transition ${
-                                  !usesLibraryCause
-                                    ? "bg-[var(--gold)] text-black"
-                                    : "text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                Não
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setGapLibraryMode(gap.id, true)}
-                                className={`rounded px-2.5 py-1.5 text-xs font-bold transition ${
-                                  usesLibraryCause
-                                    ? "bg-[var(--gold)] text-black"
-                                    : "text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                Sim
-                              </button>
-                            </div>
-                            <span className="text-[11px] leading-snug text-muted-foreground">
-                              {usesLibraryCause
-                                ? "Dados bloqueados pela causa cadastrada."
-                                : "Gap local/editavel neste mapeamento."}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause ? (
-                            <div className="grid min-w-[230px] gap-2">
-                              <DropdownTextField
-                                label="Causa cadastrada"
-                                value={causeSearchValue}
-                                options={catalogs.causes.map((cause) => cause.title)}
-                                placeholder="Pesquisar causa cadastrada"
-                                onChange={(value) => selectSharedCauseByTitle(gap.id, value)}
-                                compact
-                              />
-                              {!selectedCause ? (
-                                <span className="text-[11px] text-muted-foreground">
-                                  Selecione uma causa da lista para preencher os campos.
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <div className="min-w-[230px] rounded-md border border-dashed border-border bg-muted/25 px-2.5 py-2 text-xs text-muted-foreground">
-                              Marque Sim para pesquisar uma causa existente.
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.causa} />
-                          ) : (
-                            <TableInput
-                              value={gap.causa}
-                              onChange={(causa) => updateGap(gap.id, { causa })}
-                              placeholder="Nome da causa"
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.descricao} multiline />
-                          ) : (
-                            <TableTextarea
-                              value={gap.descricao}
-                              onChange={(descricao) => updateGap(gap.id, { descricao })}
-                              placeholder="Descreva a causa"
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.impacto} multiline />
-                          ) : (
-                            <TableTextarea
-                              value={gap.impacto}
-                              onChange={(impacto) => updateGap(gap.id, { impacto })}
-                              placeholder="Impacto"
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.acao} multiline />
-                          ) : (
-                            <TableTextarea
-                              value={gap.acao}
-                              onChange={(acao) => updateGap(gap.id, { acao })}
-                              placeholder="Ação proposta"
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.responsavel} />
-                          ) : (
-                            <TableInput
-                              value={gap.responsavel}
-                              onChange={(responsavel) => updateGap(gap.id, { responsavel })}
-                              placeholder="Responsável"
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={formatGapDateRangeBr(gap.prazo)} />
-                          ) : (
-                            <TableDateRange
-                              value={gap.prazo}
-                              onChange={(prazo) => updateGap(gap.id, { prazo })}
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.prioridade} />
-                          ) : (
-                            <TableSelect
-                              value={gap.prioridade}
-                              options={[...CAUSE_PRIORITY_OPTIONS]}
-                              onChange={(prioridade) => updateGap(gap.id, { prioridade })}
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {usesLibraryCause && selectedCause ? (
-                            <TableReadonly value={gap.status} />
-                          ) : (
-                            <TableSelect
-                              value={gap.status}
-                              options={[...CAUSE_STATUS_OPTIONS]}
-                              onChange={(status) => updateGap(gap.id, { status })}
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-right">
+            </Panel>
+            <Panel
+              id="sec-flowStage"
+              num="04"
+              openSignal={openTarget === "flowStage" ? openNonce : 0}
+              title="Etapas do processo"
+              progress={sectionProgress.flowStage}
+            >
+              <div className="grid gap-5">
+                <div>
+                  <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Macroprocesso
+                  </h3>
+                  <div className="grid gap-4">
+                    <RegisteredProcessSelect
+                      label="Processo, macroprocesso ou atividade"
+                      value={data.macroprocess.processId ?? ""}
+                      processes={primaryProcessOptions}
+                      placeholder="Buscar processo, macroprocesso ou atividade"
+                      onSelect={selectPrimaryProcess}
+                      onRequestCreate={(name) => setCreateProcessName(name)}
+                    />
+                    <ImageManager
+                      label="Imagem do processo"
+                      captionLabel="Descrição"
+                      images={
+                        data.macroprocess.src
+                          ? [
+                              {
+                                id: "macroprocess",
+                                titulo: data.macroprocess.titulo || "Diagrama do Macroprocesso",
+                                legenda: data.macroprocess.legenda,
+                                src: data.macroprocess.src,
+                              },
+                            ]
+                          : []
+                      }
+                      onChange={(images) => {
+                        const image = images[images.length - 1];
+                        update({
+                          ...data,
+                          macroprocess: {
+                            ...data.macroprocess,
+                            titulo: image?.titulo ?? data.macroprocess.titulo,
+                            legenda: image?.legenda ?? data.macroprocess.legenda,
+                            src: image?.src ?? "",
+                          },
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="border-t border-border pt-5">
+                  <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Etapas do processo
+                  </h3>
+                  <div className="grid gap-3">
+                    {data.steps.map((step, index) => (
+                      <div
+                        key={step.id}
+                        onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                          if (draggedStepId && draggedStepId !== step.id) event.preventDefault();
+                        }}
+                        onDrop={(event: DragEvent<HTMLDivElement>) => {
+                          event.preventDefault();
+                          reorderSteps(step.id);
+                        }}
+                        className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
+                          draggedStepId === step.id ? "opacity-60 ring-2 ring-[var(--gold)]/40" : ""
+                        }`}
+                      >
+                        <div
+                          className={`flex items-center gap-3 ${openSteps[step.id] ? "mb-3" : ""}`}
+                        >
                           <button
                             type="button"
+                            draggable
+                            onDragStart={() => setDraggedStepId(step.id)}
+                            onDragEnd={() => setDraggedStepId(null)}
+                            className="grid h-9 w-9 shrink-0 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                            title="Arrastar etapa"
+                            aria-label="Arrastar etapa"
+                          >
+                            <ArrowDownUp className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleStep(step.id)}
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                            title={openSteps[step.id] ? "Recolher etapa" : "Expandir etapa"}
+                            aria-label={openSteps[step.id] ? "Recolher etapa" : "Expandir etapa"}
+                          >
+                            {openSteps[step.id] ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
+                            {String(index + 1).padStart(2, "0")}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <RegisteredProcessSelect
+                              label="Processo, macroprocesso ou atividade"
+                              value={step.processId ?? ""}
+                              processes={flowProcessOptions}
+                              placeholder="Busque processo, macroprocesso ou atividade"
+                              onSelect={(process) =>
+                                updateStep(step.id, {
+                                  processId: process?.id ?? "",
+                                  processVersion: 1,
+                                  etapa: process?.name ?? "",
+                                  responsavel: process?.owner ?? "",
+                                  atividade: step.atividade || process?.description || "",
+                                })
+                              }
+                            />
+                          </div>
+                          <IconButton
+                            label="Excluir"
                             onClick={() =>
                               update({
                                 ...data,
-                                gaps: data.gaps.filter((item) => item.id !== gap.id),
+                                steps: renumberFlowSteps(
+                                  data.steps.filter((item) => item.id !== step.id),
+                                ),
                               })
                             }
-                            className="inline-flex items-center gap-2 rounded-md border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/5"
                           >
                             <Trash2 className="h-4 w-4" />
-                            Excluir
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {!data.gaps.length ? (
-                    <tr>
-                      <td
-                        colSpan={11}
-                        className="px-3 py-10 text-center text-sm text-muted-foreground"
-                      >
-                        Nenhum gap cadastrado.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                gaps: [
-                  ...data.gaps,
-                  {
-                    id: id("gap"),
-                    sharedCauseId: "",
-                    causa: "",
-                    descricao: "",
-                    impacto: "",
-                    acao: "",
-                    responsavel: "",
-                    prazo: "",
-                    prioridade: "Média",
-                    status: "Pendente",
-                    comentarios: [],
-                  },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar gap
-          </button>
-        </div>
-      </Panel>
-      <ListEditor
-        anchorId="sec-nextSteps"
-        num="07"
-        openSignal={openTarget === "nextSteps" ? openNonce : 0}
-        title="Próximos passos"
-        items={data.nextSteps}
-        onChange={(nextSteps) => update({ ...data, nextSteps })}
-        placeholder="Próxima ação recomendada"
-        progress={sectionProgress.nextSteps}
-      />
-      <Panel
-        id="sec-glossary"
-        num="08"
-        openSignal={openTarget === "glossary" ? openNonce : 0}
-        title="Glossário"
-        progress={sectionProgress.glossary}
-      >
-        <div className="grid gap-3">
-          {data.glossary.map((item) => (
-            <div
-              key={item.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[240px_1fr_auto]"
+                          </IconButton>
+                        </div>
+                        {openSteps[step.id] ? (
+                          <>
+                            <div className="grid gap-3">
+                              <ImageManager
+                                label="Imagens da etapa"
+                                captionLabel="Descrição"
+                                images={step.images}
+                                onChange={(images) => updateStep(step.id, { images })}
+                              />
+                              <div className="rounded-lg border border-border bg-card p-3">
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                  <div>
+                                    <div className="text-[11px] font-semibold text-foreground">
+                                      Subetapas
+                                    </div>
+                                    <div className="mt-0.5 text-xs text-muted-foreground">
+                                      Detalhe subprocessos e adicione imagens específicas quando
+                                      necessário.
+                                    </div>
+                                  </div>
+                                </div>
+                                {step.substeps.length ? (
+                                  <div className="grid gap-3">
+                                    {step.substeps.map((substep, substepIndex) => (
+                                      <div
+                                        key={substep.id}
+                                        onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                                          if (
+                                            draggedSubstep?.stepId === step.id &&
+                                            draggedSubstep.substepId !== substep.id
+                                          ) {
+                                            event.preventDefault();
+                                          }
+                                        }}
+                                        onDrop={(event: DragEvent<HTMLDivElement>) => {
+                                          event.preventDefault();
+                                          reorderSubsteps(step.id, substep.id);
+                                        }}
+                                        className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
+                                          draggedSubstep?.substepId === substep.id
+                                            ? "opacity-60 ring-2 ring-[var(--gold)]/40"
+                                            : ""
+                                        }`}
+                                      >
+                                        <div className="mb-3 grid gap-3 md:grid-cols-[40px_120px_1fr_auto]">
+                                          <button
+                                            type="button"
+                                            draggable
+                                            onDragStart={() =>
+                                              setDraggedSubstep({
+                                                stepId: step.id,
+                                                substepId: substep.id,
+                                              })
+                                            }
+                                            onDragEnd={() => setDraggedSubstep(null)}
+                                            className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                                            title="Arrastar subetapa"
+                                            aria-label="Arrastar subetapa"
+                                          >
+                                            <ArrowDownUp className="h-4 w-4" />
+                                          </button>
+                                          <ReadOnlyField
+                                            label="Código"
+                                            value={`${index + 1}.${substepIndex + 1}`}
+                                          />
+                                          <Field
+                                            compact
+                                            label="Título"
+                                            value={substep.titulo}
+                                            onChange={(titulo) =>
+                                              updateSubstep(step.id, substep.id, { titulo })
+                                            }
+                                          />
+                                          <IconButton
+                                            label="Excluir subetapa"
+                                            onClick={() =>
+                                              updateStep(step.id, {
+                                                substeps: step.substeps.filter(
+                                                  (item) => item.id !== substep.id,
+                                                ),
+                                              })
+                                            }
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </IconButton>
+                                        </div>
+                                        <TextArea
+                                          label="Descrição da subetapa"
+                                          value={substep.descricao}
+                                          onChange={(descricao) =>
+                                            updateSubstep(step.id, substep.id, { descricao })
+                                          }
+                                        />
+                                        <div className="mt-3">
+                                          <ImageManager
+                                            label="Imagens da subetapa"
+                                            images={substep.images}
+                                            onChange={(images) =>
+                                              updateSubstep(step.id, substep.id, { images })
+                                            }
+                                          />
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateStep(step.id, {
+                                      substeps: [
+                                        ...step.substeps,
+                                        {
+                                          id: id("substep"),
+                                          processId: "",
+                                          processVersion: 1,
+                                          codigo: `${index + 1}.${step.substeps.length + 1}`,
+                                          titulo: "Nova subetapa",
+                                          descricao: "",
+                                          images: [],
+                                        },
+                                      ],
+                                    })
+                                  }
+                                  className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Adicionar subetapa
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() =>
+                        update({
+                          ...data,
+                          steps: renumberFlowSteps([
+                            ...data.steps,
+                            {
+                              id: id("step"),
+                              processId: "",
+                              processVersion: 1,
+                              etapa: "",
+                              responsavel: "",
+                              entrada: "",
+                              atividade: "",
+                              saida: "",
+                              sistema: "",
+                              risco: "",
+                              observacoes: "",
+                              images: [],
+                              substeps: [],
+                            },
+                          ]),
+                        })
+                      }
+                      className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Adicionar etapa
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+            <Panel
+              id="sec-gaps"
+              num="06"
+              openSignal={openTarget === "gaps" ? openNonce : 0}
+              title="Gaps e causas-raiz"
+              progress={sectionProgress.gaps}
             >
-              <Field
-                compact
-                label="Termo"
-                value={item.termo}
-                onChange={(termo) =>
-                  update({
-                    ...data,
-                    glossary: data.glossary.map((row) =>
-                      row.id === item.id ? { ...row, termo } : row,
-                    ),
-                  })
-                }
-              />
-              <Field
-                compact
-                label="Definição"
-                value={item.definicao}
-                onChange={(definicao) =>
-                  update({
-                    ...data,
-                    glossary: data.glossary.map((row) =>
-                      row.id === item.id ? { ...row, definicao } : row,
-                    ),
-                  })
-                }
-              />
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  update({ ...data, glossary: data.glossary.filter((row) => row.id !== item.id) })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                glossary: [...data.glossary, { id: id("gloss"), termo: "", definicao: "" }],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar termo
-          </button>
-        </div>
-      </Panel>
-          {/* Folga para que qualquer seção consiga alcançar o topo (abaixo da
+              <div className="grid gap-3">
+                <div className="overflow-hidden rounded-lg border border-border bg-card">
+                  <div className="overflow-auto">
+                    <table className="w-full min-w-[1540px] border-collapse text-left text-sm">
+                      <thead className="bg-muted text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-3">Usar causa cadastrada?</th>
+                          <th className="px-3 py-3">Causa cadastrada</th>
+                          <th className="px-3 py-3">Causa</th>
+                          <th className="px-3 py-3">Descrição</th>
+                          <th className="px-3 py-3">Impacto</th>
+                          <th className="px-3 py-3">Ação proposta</th>
+                          <th className="px-3 py-3">Responsável</th>
+                          <th className="px-3 py-3">Prazo</th>
+                          <th className="px-3 py-3">Prioridade</th>
+                          <th className="px-3 py-3">Status</th>
+                          <th className="px-3 py-3 text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.gaps.map((gap) => {
+                          const usesLibraryCause =
+                            libraryCauseRows[gap.id] ?? Boolean(gap.sharedCauseId);
+                          const selectedCause = catalogs.causes.find(
+                            (cause) => cause.id === gap.sharedCauseId,
+                          );
+                          const causeSearchValue =
+                            causeSearch[gap.id] ?? selectedCause?.title ?? "";
+
+                          return (
+                            <tr key={gap.id} className="border-t border-border align-top">
+                              <td className="px-3 py-3">
+                                <div className="grid min-w-[180px] gap-2">
+                                  <div className="grid grid-cols-2 overflow-hidden rounded-md border border-border bg-background p-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setGapLibraryMode(gap.id, false)}
+                                      className={`rounded px-2.5 py-1.5 text-xs font-bold transition ${
+                                        !usesLibraryCause
+                                          ? "bg-[var(--gold)] text-black"
+                                          : "text-muted-foreground hover:bg-muted"
+                                      }`}
+                                    >
+                                      Não
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setGapLibraryMode(gap.id, true)}
+                                      className={`rounded px-2.5 py-1.5 text-xs font-bold transition ${
+                                        usesLibraryCause
+                                          ? "bg-[var(--gold)] text-black"
+                                          : "text-muted-foreground hover:bg-muted"
+                                      }`}
+                                    >
+                                      Sim
+                                    </button>
+                                  </div>
+                                  <span className="text-[11px] leading-snug text-muted-foreground">
+                                    {usesLibraryCause
+                                      ? "Dados bloqueados pela causa cadastrada."
+                                      : "Gap local/editavel neste mapeamento."}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause ? (
+                                  <div className="grid min-w-[230px] gap-2">
+                                    <DropdownTextField
+                                      label="Causa cadastrada"
+                                      value={causeSearchValue}
+                                      options={catalogs.causes.map((cause) => cause.title)}
+                                      placeholder="Pesquisar causa cadastrada"
+                                      onChange={(value) => selectSharedCauseByTitle(gap.id, value)}
+                                      compact
+                                    />
+                                    {!selectedCause ? (
+                                      <span className="text-[11px] text-muted-foreground">
+                                        Selecione uma causa da lista para preencher os campos.
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                ) : (
+                                  <div className="min-w-[230px] rounded-md border border-dashed border-border bg-muted/25 px-2.5 py-2 text-xs text-muted-foreground">
+                                    Marque Sim para pesquisar uma causa existente.
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={gap.causa} />
+                                ) : (
+                                  <TableInput
+                                    value={gap.causa}
+                                    onChange={(causa) => updateGap(gap.id, { causa })}
+                                    placeholder="Nome da causa"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={gap.descricao} multiline />
+                                ) : (
+                                  <TableTextarea
+                                    value={gap.descricao}
+                                    onChange={(descricao) => updateGap(gap.id, { descricao })}
+                                    placeholder="Descreva a causa"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={gap.impacto} multiline />
+                                ) : (
+                                  <TableTextarea
+                                    value={gap.impacto}
+                                    onChange={(impacto) => updateGap(gap.id, { impacto })}
+                                    placeholder="Impacto"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={gap.acao} multiline />
+                                ) : (
+                                  <TableTextarea
+                                    value={gap.acao}
+                                    onChange={(acao) => updateGap(gap.id, { acao })}
+                                    placeholder="Ação proposta"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={gap.responsavel} />
+                                ) : (
+                                  <TableInput
+                                    value={gap.responsavel}
+                                    onChange={(responsavel) => updateGap(gap.id, { responsavel })}
+                                    placeholder="Responsável"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={formatGapDateRangeBr(gap.prazo)} />
+                                ) : (
+                                  <TableDateRange
+                                    value={gap.prazo}
+                                    onChange={(prazo) => updateGap(gap.id, { prazo })}
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={gap.prioridade} />
+                                ) : (
+                                  <TableSelect
+                                    value={gap.prioridade}
+                                    options={[...CAUSE_PRIORITY_OPTIONS]}
+                                    onChange={(prioridade) => updateGap(gap.id, { prioridade })}
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {usesLibraryCause && selectedCause ? (
+                                  <TableReadonly value={gap.status} />
+                                ) : (
+                                  <TableSelect
+                                    value={gap.status}
+                                    options={[...CAUSE_STATUS_OPTIONS]}
+                                    onChange={(status) => updateGap(gap.id, { status })}
+                                  />
+                                )}
+                              </td>
+                              <td className="px-3 py-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    update({
+                                      ...data,
+                                      gaps: data.gaps.filter((item) => item.id !== gap.id),
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-2 rounded-md border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/5"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Excluir
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {!data.gaps.length ? (
+                          <tr>
+                            <td
+                              colSpan={11}
+                              className="px-3 py-10 text-center text-sm text-muted-foreground"
+                            >
+                              Nenhum gap cadastrado.
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <button
+                  onClick={() =>
+                    update({
+                      ...data,
+                      gaps: [
+                        ...data.gaps,
+                        {
+                          id: id("gap"),
+                          sharedCauseId: "",
+                          causa: "",
+                          descricao: "",
+                          impacto: "",
+                          acao: "",
+                          responsavel: "",
+                          prazo: "",
+                          prioridade: "Média",
+                          status: "Pendente",
+                          comentarios: [],
+                        },
+                      ],
+                    })
+                  }
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar gap
+                </button>
+              </div>
+            </Panel>
+            <ListEditor
+              anchorId="sec-nextSteps"
+              num="07"
+              openSignal={openTarget === "nextSteps" ? openNonce : 0}
+              title="Próximos passos"
+              items={data.nextSteps}
+              onChange={(nextSteps) => update({ ...data, nextSteps })}
+              placeholder="Próxima ação recomendada"
+              progress={sectionProgress.nextSteps}
+            />
+            <Panel
+              id="sec-glossary"
+              num="08"
+              openSignal={openTarget === "glossary" ? openNonce : 0}
+              title="Glossário"
+              progress={sectionProgress.glossary}
+            >
+              <div className="grid gap-3">
+                {data.glossary.map((item) => (
+                  <div
+                    key={item.id}
+                    className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[240px_1fr_auto]"
+                  >
+                    <Field
+                      compact
+                      label="Termo"
+                      value={item.termo}
+                      onChange={(termo) =>
+                        update({
+                          ...data,
+                          glossary: data.glossary.map((row) =>
+                            row.id === item.id ? { ...row, termo } : row,
+                          ),
+                        })
+                      }
+                    />
+                    <Field
+                      compact
+                      label="Definição"
+                      value={item.definicao}
+                      onChange={(definicao) =>
+                        update({
+                          ...data,
+                          glossary: data.glossary.map((row) =>
+                            row.id === item.id ? { ...row, definicao } : row,
+                          ),
+                        })
+                      }
+                    />
+                    <IconButton
+                      label="Excluir"
+                      onClick={() =>
+                        update({
+                          ...data,
+                          glossary: data.glossary.filter((row) => row.id !== item.id),
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    update({
+                      ...data,
+                      glossary: [...data.glossary, { id: id("gloss"), termo: "", definicao: "" }],
+                    })
+                  }
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar termo
+                </button>
+              </div>
+            </Panel>
+            {/* Folga para que qualquer seção consiga alcançar o topo (abaixo da
               barra fixa) ao ser aberta pelo índice. */}
-          <div aria-hidden className="h-[45vh]" />
+            <div aria-hidden className="h-[45vh]" />
           </div>
         </div>
       )}
@@ -9554,15 +10258,22 @@ function PopModule({
   const savePosition = useServerFn(savePositionRegistration);
   const [createProcessName, setCreateProcessName] = useState<string | null>(null);
   const [quickCatalog, setQuickCatalog] = useState<
-    | { kind: "area"; initial: string }
-    | { kind: "position"; initial: string }
-    | null
+    { kind: "area"; initial: string } | { kind: "position"; initial: string } | null
   >(null);
   const [quickAreaSigla, setQuickAreaSigla] = useState("");
   const [quickPositionDescription, setQuickPositionDescription] = useState("");
   const [activeSection, setActiveSection] = useState("identification");
   const [openSignals, setOpenSignals] = useState<Record<string, number>>({});
   const [visibleClauseNotes, setVisibleClauseNotes] = useState<Record<string, boolean>>({});
+  const [draggedProcedureSubitem, setDraggedProcedureSubitem] = useState<{
+    sectionId: string;
+    subitemId: string;
+  } | null>(null);
+  const [draggedProcedureClause, setDraggedProcedureClause] = useState<{
+    sectionId: string;
+    subitemId: string;
+    clauseId: string;
+  } | null>(null);
   const documentName = documentationTypeName(data.meta.tipo);
   const contentTitle = documentationContentTitle(data.meta.tipo);
   const visibleCode = data.meta.codigo || codePreview;
@@ -9604,9 +10315,8 @@ function PopModule({
           subitem.title,
           ...subitem.clauses.flatMap((clause) => [
             clause.letter,
-            clause.text,
             clause.alert,
-            clause.images,
+            ...procedureClauseBlocks(clause).flatMap((block) => [block.text, block.images]),
           ]),
         ]),
       ]),
@@ -9630,12 +10340,27 @@ function PopModule({
     ]),
   };
   const sections: MappingSectionInfo[] = [
-    { key: "identification", num: "00", title: "Dados do documento", pct: sectionProgress.identification },
+    {
+      key: "identification",
+      num: "00",
+      title: "Dados do documento",
+      pct: sectionProgress.identification,
+    },
     { key: "objective", num: "01", title: "Objetivo", pct: sectionProgress.objective },
     { key: "scope", num: "02", title: "Abrangência", pct: sectionProgress.scope },
     { key: "procedure", num: "03", title: contentTitle, pct: sectionProgress.sections },
-    { key: "responsibilities", num: "04", title: "Responsabilidades", pct: sectionProgress.responsibilities },
-    { key: "references", num: "05", title: "Referências normativas", pct: sectionProgress.references },
+    {
+      key: "responsibilities",
+      num: "04",
+      title: "Responsabilidades",
+      pct: sectionProgress.responsibilities,
+    },
+    {
+      key: "references",
+      num: "05",
+      title: "Referências normativas",
+      pct: sectionProgress.references,
+    },
     { key: "history", num: "06", title: "Histórico e alterações", pct: sectionProgress.history },
   ];
   async function saveQuickCatalog() {
@@ -9779,7 +10504,9 @@ function PopModule({
     setActiveSection(key);
     setOpenSignals((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }));
     window.setTimeout(() => {
-      document.getElementById(`pop-sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document
+        .getElementById(`pop-sec-${key}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   }
 
@@ -9810,7 +10537,9 @@ function PopModule({
   function updateSection(sectionId: string, patch: Partial<PopSection>) {
     update({
       ...data,
-      sections: data.sections.map((item) => (item.id === sectionId ? { ...item, ...patch } : item)),
+      sections: renumberPopSections(
+        data.sections.map((item) => (item.id === sectionId ? { ...item, ...patch } : item)),
+      ),
     });
   }
 
@@ -9821,15 +10550,17 @@ function PopModule({
   ) {
     update({
       ...data,
-      sections: data.sections.map((section) =>
-        section.id === sectionId
-          ? {
-              ...section,
-              subitems: (section.subitems ?? []).map((subitem) =>
-                subitem.id === subitemId ? { ...subitem, ...patch } : subitem,
-              ),
-            }
-          : section,
+      sections: renumberPopSections(
+        data.sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                subitems: (section.subitems ?? []).map((subitem) =>
+                  subitem.id === subitemId ? { ...subitem, ...patch } : subitem,
+                ),
+              }
+            : section,
+        ),
       ),
     });
   }
@@ -9842,28 +10573,92 @@ function PopModule({
   ) {
     update({
       ...data,
-      sections: data.sections.map((section) =>
-        section.id === sectionId
-          ? {
-              ...section,
-              subitems: (section.subitems ?? []).map((subitem) =>
-                subitem.id === subitemId
-                  ? {
-                      ...subitem,
-                      clauses: subitem.clauses.map((clause) =>
-                        clause.id === clauseId ? { ...clause, ...patch } : clause,
-                      ),
-                    }
-                  : subitem,
-              ),
-            }
-          : section,
+      sections: renumberPopSections(
+        data.sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                subitems: (section.subitems ?? []).map((subitem) =>
+                  subitem.id === subitemId
+                    ? {
+                        ...subitem,
+                        clauses: subitem.clauses.map((clause) =>
+                          clause.id === clauseId ? { ...clause, ...patch } : clause,
+                        ),
+                      }
+                    : subitem,
+                ),
+              }
+            : section,
+        ),
       ),
     });
   }
 
-  function nextClauseLetter(clauses: PopProcedureClause[]) {
-    return String.fromCharCode(97 + clauses.length);
+  function updateProcedureBlocks(
+    sectionId: string,
+    subitemId: string,
+    clauseId: string,
+    blocks: PopProcedureBlock[],
+  ) {
+    const normalizedBlocks = blocks.length
+      ? blocks
+      : [{ id: id("clauseblock"), text: "", images: [] }];
+    updateProcedureClause(sectionId, subitemId, clauseId, {
+      blocks: normalizedBlocks,
+      text: normalizedBlocks
+        .map((block) => block.text)
+        .filter(Boolean)
+        .join("\n\n"),
+      images: normalizedBlocks.flatMap((block) => block.images),
+    });
+  }
+
+  function moveProcedureItem<T>(items: T[], fromIndex: number, toIndex: number) {
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return items;
+    const next = [...items];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+  }
+
+  function reorderProcedureSubitem(sectionId: string, targetSubitemId: string) {
+    if (
+      !draggedProcedureSubitem ||
+      draggedProcedureSubitem.sectionId !== sectionId ||
+      draggedProcedureSubitem.subitemId === targetSubitemId
+    ) {
+      return;
+    }
+    const section = data.sections.find((item) => item.id === sectionId);
+    const subitems = section?.subitems ?? [];
+    const fromIndex = subitems.findIndex((item) => item.id === draggedProcedureSubitem.subitemId);
+    const toIndex = subitems.findIndex((item) => item.id === targetSubitemId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    updateSection(sectionId, { subitems: moveProcedureItem(subitems, fromIndex, toIndex) });
+    setDraggedProcedureSubitem(null);
+  }
+
+  function reorderProcedureClause(sectionId: string, subitemId: string, targetClauseId: string) {
+    if (
+      !draggedProcedureClause ||
+      draggedProcedureClause.sectionId !== sectionId ||
+      draggedProcedureClause.subitemId !== subitemId ||
+      draggedProcedureClause.clauseId === targetClauseId
+    ) {
+      return;
+    }
+    const clauses =
+      data.sections
+        .find((section) => section.id === sectionId)
+        ?.subitems?.find((subitem) => subitem.id === subitemId)?.clauses ?? [];
+    const fromIndex = clauses.findIndex((clause) => clause.id === draggedProcedureClause.clauseId);
+    const toIndex = clauses.findIndex((clause) => clause.id === targetClauseId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    updateProcedureSubitem(sectionId, subitemId, {
+      clauses: moveProcedureItem(clauses, fromIndex, toIndex),
+    });
+    setDraggedProcedureClause(null);
   }
 
   return (
@@ -9901,25 +10696,25 @@ function PopModule({
             <div className="grid gap-1">
               <span className={fieldLabelClass}>Tipo de documento</span>
               <div className="inline-flex w-fit rounded-lg border border-border bg-card p-1">
-              {DOCUMENTATION_TYPE_OPTIONS.map((tipo) => {
-                const selected = tipo === data.meta.tipo;
-                return (
-                  <button
-                    key={tipo}
-                    type="button"
-                    onClick={() => updateMeta({ tipo }, tipo !== data.meta.tipo)}
-                    className={[
-                      "h-9 min-w-20 rounded-md px-3 text-sm font-bold transition",
-                      selected
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    ].join(" ")}
-                    title={documentationTypeName(tipo)}
-                  >
-                    {tipo}
-                  </button>
-                );
-              })}
+                {DOCUMENTATION_TYPE_OPTIONS.map((tipo) => {
+                  const selected = tipo === data.meta.tipo;
+                  return (
+                    <button
+                      key={tipo}
+                      type="button"
+                      onClick={() => updateMeta({ tipo }, tipo !== data.meta.tipo)}
+                      className={[
+                        "h-9 min-w-20 rounded-md px-3 text-sm font-bold transition",
+                        selected
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      ].join(" ")}
+                      title={documentationTypeName(tipo)}
+                    >
+                      {tipo}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <RegisteredProcessSelect
@@ -9928,7 +10723,13 @@ function PopModule({
               processes={catalogs.processes}
               placeholder="Selecione um processo cadastrado"
               onSelect={(process) =>
-                selectDocumentProcess(process ? (process.code ? `${process.code} - ${process.name}` : process.name) : "")
+                selectDocumentProcess(
+                  process
+                    ? process.code
+                      ? `${process.code} - ${process.name}`
+                      : process.name
+                    : "",
+                )
               }
               displayName={(process) => process.name}
               onRequestCreate={(name) => setCreateProcessName(name)}
@@ -9942,231 +10743,244 @@ function PopModule({
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-muted text-muted-foreground">
               <Lock className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-xl font-bold text-foreground">Selecione um processo para começar</h2>
+            <h2 className="mt-4 text-xl font-bold text-foreground">
+              Selecione um processo para começar
+            </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               O preenchimento do documento será liberado após selecionar um processo cadastrado.
             </p>
           </div>
         </div>
       ) : (
-      <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <MappingSectionNav
-          sections={sections}
-          activeKey={activeSection}
-          onSelect={selectSection}
-          label="Índice do Documento"
-        />
-        <div className="grid gap-5">
-      <Panel
-        id="pop-sec-identification"
-        num="00"
-        title="Dados do documento"
-        progress={sectionProgress.identification}
-        defaultOpen
-        openSignal={openSignals.identification}
-      >
-        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
-          <div className="md:col-span-3">
-            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Identificação e governança
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Preencha apenas os dados que serão usados na codificação, apresentação e emissão do documento.
-            </p>
-          </div>
-          {autoCode ? (
-            <ReadOnlyField label="Código gerado do documento" value={visibleCode} />
-          ) : (
-            <Field
-              label="Código"
-              value={data.meta.codigo}
-              onChange={(codigo) => updateMeta({ codigo })}
-            />
-          )}
-          <Field
-            label="Versão"
-            value={data.meta.versao}
-            onChange={(versao) => updateMeta({ versao })}
+        <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <MappingSectionNav
+            sections={sections}
+            activeKey={activeSection}
+            onSelect={selectSection}
+            label="Índice do Documento"
           />
-          <Field
-            label={`Título do ${documentName}`}
-            value={data.meta.titulo}
-            onChange={(titulo) => updateMeta({ titulo })}
-          />
-          <Field
-            label="Público / classificação"
-            value={data.meta.publico}
-            onChange={(publico) => updateMeta({ publico })}
-          />
-          <ReadOnlyField label="Área do processo" value={selectedDocumentProcess?.department || data.meta.area} />
-          <ReadOnlyField label="Processo selecionado" value={selectedDocumentProcess?.name || data.meta.processo} />
-          <Field
-            label="Vigência"
-            type="date"
-            value={data.meta.vigencia}
-            onChange={(vigencia) => updateMeta({ vigencia })}
-          />
-          <Field
-            label="Elaborador"
-            value={data.meta.elaboracao}
-            onChange={(elaboracao) => updateMeta({ elaboracao })}
-          />
-          <Field
-            label="Revisor"
-            value={data.meta.revisor}
-            onChange={(revisor) => updateMeta({ revisor })}
-          />
-          <Field
-            label="Aprovador"
-            value={data.meta.aprovacao}
-            onChange={(aprovacao) => updateMeta({ aprovacao })}
-          />
-          <Field
-            label="Publicação"
-            type="date"
-            value={data.meta.publicacao}
-            onChange={(publicacao) => updateMeta({ publicacao })}
-          />
-          <SelectField
-            label="Status"
-            value={data.meta.status || "Em andamento"}
-            options={MODULE_STATUS_OPTIONS}
-            onChange={(status) => updateMeta({ status })}
-          />
-        </div>
-      </Panel>
-      <Panel
-        id="pop-sec-objective"
-        num="01"
-        title="Objetivo"
-        progress={sectionProgress.objective}
-        openSignal={openSignals.objective}
-      >
-        <div className="grid gap-4">
-          <TextArea
-            label="Objetivo"
-            value={data.purpose.objetivo}
-            onChange={(objetivo) => update({ ...data, purpose: { ...data.purpose, objetivo } })}
-          />
-        </div>
-      </Panel>
-      <Panel
-        id="pop-sec-scope"
-        num="02"
-        title="Abrangência"
-        progress={sectionProgress.scope}
-        openSignal={openSignals.scope}
-      >
-        <div className="grid gap-4">
-          <TextArea
-            label="Abrangência"
-            value={data.purpose.abrangencia}
-            onChange={(abrangencia) =>
-              update({ ...data, purpose: { ...data.purpose, abrangencia } })
-            }
-          />
-        </div>
-      </Panel>
-      <Panel
-        id="pop-sec-procedure"
-        num="03"
-        title={contentTitle}
-        progress={sectionProgress.sections}
-        openSignal={openSignals.procedure}
-      >
-        <div className="grid gap-3">
-          {data.sections.map((section) => (
-            <div key={section.id} className="rounded-lg border border-border bg-muted/20 p-3">
-              <div className="mb-3 grid gap-3 md:grid-cols-[100px_1fr_auto]">
+          <div className="grid gap-5">
+            <Panel
+              id="pop-sec-identification"
+              num="00"
+              title="Dados do documento"
+              progress={sectionProgress.identification}
+              defaultOpen
+              openSignal={openSignals.identification}
+            >
+              <div className="grid gap-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
+                <div className="md:col-span-3">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Identificação e governança
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Preencha apenas os dados que serão usados na codificação, apresentação e emissão
+                    do documento.
+                  </p>
+                </div>
+                {autoCode ? (
+                  <ReadOnlyField label="Código gerado do documento" value={visibleCode} />
+                ) : (
+                  <Field
+                    label="Código"
+                    value={data.meta.codigo}
+                    onChange={(codigo) => updateMeta({ codigo })}
+                  />
+                )}
                 <Field
-                  compact
-                  label="Item"
-                  value={section.code ?? ""}
-                  onChange={(code) => updateSection(section.id, { code })}
+                  label="Versão"
+                  value={data.meta.versao}
+                  onChange={(versao) => updateMeta({ versao })}
                 />
                 <Field
-                  compact
-                  label="Título do item"
-                  value={section.title.replace(/^3\.\d+\s*/, "")}
-                  onChange={(title) => updateSection(section.id, { title })}
+                  label={`Título do ${documentName}`}
+                  value={data.meta.titulo}
+                  onChange={(titulo) => updateMeta({ titulo })}
                 />
-                <IconButton
-                  label="Excluir item"
-                  onClick={() =>
-                    update({
-                      ...data,
-                      sections: data.sections.filter((item) => item.id !== section.id),
-                    })
-                  }
-                >
-                  <Trash2 className="h-4 w-4" />
-                </IconButton>
+                <Field
+                  label="Público / classificação"
+                  value={data.meta.publico}
+                  onChange={(publico) => updateMeta({ publico })}
+                />
+                <ReadOnlyField
+                  label="Área do processo"
+                  value={selectedDocumentProcess?.department || data.meta.area}
+                />
+                <ReadOnlyField
+                  label="Processo selecionado"
+                  value={selectedDocumentProcess?.name || data.meta.processo}
+                />
+                <Field
+                  label="Vigência"
+                  type="date"
+                  value={data.meta.vigencia}
+                  onChange={(vigencia) => updateMeta({ vigencia })}
+                />
+                <Field
+                  label="Elaborador"
+                  value={data.meta.elaboracao}
+                  onChange={(elaboracao) => updateMeta({ elaboracao })}
+                />
+                <Field
+                  label="Revisor"
+                  value={data.meta.revisor}
+                  onChange={(revisor) => updateMeta({ revisor })}
+                />
+                <Field
+                  label="Aprovador"
+                  value={data.meta.aprovacao}
+                  onChange={(aprovacao) => updateMeta({ aprovacao })}
+                />
+                <Field
+                  label="Publicação"
+                  type="date"
+                  value={data.meta.publicacao}
+                  onChange={(publicacao) => updateMeta({ publicacao })}
+                />
+                <SelectField
+                  label="Status"
+                  value={data.meta.status || "Em andamento"}
+                  options={MODULE_STATUS_OPTIONS}
+                  onChange={(status) => updateMeta({ status })}
+                />
               </div>
-              <div className="mb-3 grid gap-3 rounded-lg border border-border bg-card p-3">
+            </Panel>
+            <Panel
+              id="pop-sec-objective"
+              num="01"
+              title="Objetivo"
+              progress={sectionProgress.objective}
+              openSignal={openSignals.objective}
+            >
+              <div className="grid gap-4">
                 <TextArea
-                  label="Texto do item"
-                  value={section.body}
-                  rows={4}
-                  onChange={(body) => updateSection(section.id, { body })}
-                />
-                <ImageManager
-                  label="Imagens do item"
-                  images={section.images}
-                  onChange={(images) => updateSection(section.id, { images })}
+                  label="Objetivo"
+                  value={data.purpose.objetivo}
+                  onChange={(objetivo) =>
+                    update({ ...data, purpose: { ...data.purpose, objetivo } })
+                  }
                 />
               </div>
+            </Panel>
+            <Panel
+              id="pop-sec-scope"
+              num="02"
+              title="Abrangência"
+              progress={sectionProgress.scope}
+              openSignal={openSignals.scope}
+            >
+              <div className="grid gap-4">
+                <TextArea
+                  label="Abrangência"
+                  value={data.purpose.abrangencia}
+                  onChange={(abrangencia) =>
+                    update({ ...data, purpose: { ...data.purpose, abrangencia } })
+                  }
+                />
+              </div>
+            </Panel>
+            <Panel
+              id="pop-sec-procedure"
+              num="03"
+              title={contentTitle}
+              progress={sectionProgress.sections}
+              openSignal={openSignals.procedure}
+            >
               <div className="grid gap-3">
-                {(section.subitems ?? []).map((subitem) => (
-                  <div key={subitem.id} className="rounded-lg border border-border bg-card p-3">
-                    <div className="mb-3 grid gap-3 md:grid-cols-[120px_1fr_auto]">
+                {data.sections.map((section) => (
+                  <div key={section.id} className="rounded-lg border border-border bg-muted/20 p-3">
+                    <div className="mb-3 grid gap-3 md:grid-cols-[100px_1fr_auto]">
+                      <ReadOnlyField label="Item" value={section.code ?? ""} />
                       <Field
                         compact
-                        label="Subitem"
-                        value={subitem.code}
-                        onChange={(code) => updateProcedureSubitem(section.id, subitem.id, { code })}
-                      />
-                      <Field
-                        compact
-                        label="Título do subitem"
-                        value={subitem.title}
-                        onChange={(title) => updateProcedureSubitem(section.id, subitem.id, { title })}
+                        label="Título do item"
+                        value={section.title.replace(/^3\.\d+\s*/, "")}
+                        onChange={(title) => updateSection(section.id, { title })}
                       />
                       <IconButton
-                        label="Excluir subitem"
+                        label="Excluir item"
                         onClick={() =>
-                          updateSection(section.id, {
-                            subitems: (section.subitems ?? []).filter((item) => item.id !== subitem.id),
+                          update({
+                            ...data,
+                            sections: renumberPopSections(
+                              data.sections.filter((item) => item.id !== section.id),
+                            ),
                           })
                         }
                       >
                         <Trash2 className="h-4 w-4" />
                       </IconButton>
                     </div>
+                    <div className="mb-3 grid gap-3 rounded-lg border border-border bg-card p-3">
+                      <TextArea
+                        label="Texto do item"
+                        value={section.body}
+                        rows={4}
+                        onChange={(body) => updateSection(section.id, { body })}
+                      />
+                      <ImageManager
+                        label="Imagens do item"
+                        captionLabel="Legenda"
+                        showTitle={false}
+                        images={section.images}
+                        onChange={(images) => updateSection(section.id, { images })}
+                      />
+                    </div>
                     <div className="grid gap-3">
-                      {subitem.clauses.map((clause) => (
-                        <div key={clause.id} className="rounded-lg border border-border bg-muted/20 p-3">
-                          <div className="mb-3 grid gap-3 md:grid-cols-[80px_1fr_auto]">
+                      {(section.subitems ?? []).map((subitem) => (
+                        <div
+                          key={subitem.id}
+                          onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                            if (
+                              draggedProcedureSubitem?.sectionId === section.id &&
+                              draggedProcedureSubitem.subitemId !== subitem.id
+                            ) {
+                              event.preventDefault();
+                            }
+                          }}
+                          onDrop={(event: DragEvent<HTMLDivElement>) => {
+                            event.preventDefault();
+                            reorderProcedureSubitem(section.id, subitem.id);
+                          }}
+                          className={`rounded-lg border border-border bg-card p-3 transition ${
+                            draggedProcedureSubitem?.subitemId === subitem.id
+                              ? "opacity-60 ring-2 ring-[var(--gold)]/40"
+                              : ""
+                          }`}
+                        >
+                          <div className="mb-3 grid gap-3 md:grid-cols-[40px_120px_1fr_auto]">
+                            <button
+                              type="button"
+                              draggable
+                              onDragStart={() =>
+                                setDraggedProcedureSubitem({
+                                  sectionId: section.id,
+                                  subitemId: subitem.id,
+                                })
+                              }
+                              onDragEnd={() => setDraggedProcedureSubitem(null)}
+                              className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                              title="Mover subitem"
+                              aria-label="Mover subitem"
+                            >
+                              <ArrowDownUp className="h-4 w-4" />
+                            </button>
+                            <ReadOnlyField label="Subitem" value={subitem.code} />
                             <Field
                               compact
-                              label="Alínea"
-                              value={clause.letter}
-                              onChange={(letter) =>
-                                updateProcedureClause(section.id, subitem.id, clause.id, { letter })
-                              }
-                            />
-                            <TextArea
-                              label="Texto da alínea"
-                              value={clause.text}
-                              rows={3}
-                              onChange={(text) =>
-                                updateProcedureClause(section.id, subitem.id, clause.id, { text })
+                              label="Título do subitem"
+                              value={subitem.title}
+                              onChange={(title) =>
+                                updateProcedureSubitem(section.id, subitem.id, { title })
                               }
                             />
                             <IconButton
-                              label="Excluir alínea"
+                              label="Excluir subitem"
                               onClick={() =>
-                                updateProcedureSubitem(section.id, subitem.id, {
-                                  clauses: subitem.clauses.filter((item) => item.id !== clause.id),
+                                updateSection(section.id, {
+                                  subitems: (section.subitems ?? []).filter(
+                                    (item) => item.id !== subitem.id,
+                                  ),
                                 })
                               }
                             >
@@ -10174,74 +10988,252 @@ function PopModule({
                             </IconButton>
                           </div>
                           <div className="grid gap-3">
-                            {clause.alert || visibleClauseNotes[clause.id] ? (
-                              <div className="rounded-lg border border-primary/35 bg-primary/5 p-3">
-                                <div className="mb-2 flex items-center justify-between gap-3">
-                                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                    <TriangleAlert className="h-4 w-4 text-primary" />
-                                    Observação
+                            {subitem.clauses.map((clause) => {
+                              const blocks = procedureClauseBlocks(clause);
+                              return (
+                                <div
+                                  key={clause.id}
+                                  onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                                    if (
+                                      draggedProcedureClause?.sectionId === section.id &&
+                                      draggedProcedureClause.subitemId === subitem.id &&
+                                      draggedProcedureClause.clauseId !== clause.id
+                                    ) {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                    }
+                                  }}
+                                  onDrop={(event: DragEvent<HTMLDivElement>) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    reorderProcedureClause(section.id, subitem.id, clause.id);
+                                  }}
+                                  className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
+                                    draggedProcedureClause?.clauseId === clause.id
+                                      ? "opacity-60 ring-2 ring-[var(--gold)]/40"
+                                      : ""
+                                  }`}
+                                >
+                                  <div className="mb-3 flex items-end gap-3 border-b border-border pb-3">
+                                    <button
+                                      type="button"
+                                      draggable
+                                      onDragStart={(event) => {
+                                        event.stopPropagation();
+                                        setDraggedProcedureClause({
+                                          sectionId: section.id,
+                                          subitemId: subitem.id,
+                                          clauseId: clause.id,
+                                        });
+                                      }}
+                                      onDragEnd={() => setDraggedProcedureClause(null)}
+                                      className="grid h-9 w-9 shrink-0 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                                      title="Mover alínea"
+                                      aria-label="Mover alínea"
+                                    >
+                                      <ArrowDownUp className="h-4 w-4" />
+                                    </button>
+                                    <div className="w-24 shrink-0">
+                                      <ReadOnlyField label="Alínea" value={`${clause.letter})`} />
+                                    </div>
+                                    <div className="min-w-0 flex-1" />
+                                    <IconButton
+                                      label="Excluir alínea"
+                                      onClick={() =>
+                                        updateProcedureSubitem(section.id, subitem.id, {
+                                          clauses: subitem.clauses.filter(
+                                            (item) => item.id !== clause.id,
+                                          ),
+                                        })
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </IconButton>
                                   </div>
-                                  <IconButton
-                                    label="Remover observação"
-                                    onClick={() => {
-                                      updateProcedureClause(section.id, subitem.id, clause.id, {
-                                        alert: "",
-                                      });
-                                      setVisibleClauseNotes((current) => ({
-                                        ...current,
-                                        [clause.id]: false,
-                                      }));
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </IconButton>
+
+                                  <div className="grid gap-3">
+                                    {blocks.map((block, blockIndex) => (
+                                      <div
+                                        key={block.id}
+                                        className="rounded-lg border border-border bg-card p-3"
+                                      >
+                                        <div className="mb-3 flex items-center justify-between gap-3">
+                                          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                                            Trecho {String(blockIndex + 1).padStart(2, "0")}
+                                          </span>
+                                          {blocks.length > 1 ? (
+                                            <IconButton
+                                              label="Excluir trecho"
+                                              onClick={() =>
+                                                updateProcedureBlocks(
+                                                  section.id,
+                                                  subitem.id,
+                                                  clause.id,
+                                                  blocks.filter((item) => item.id !== block.id),
+                                                )
+                                              }
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </IconButton>
+                                          ) : null}
+                                        </div>
+                                        <div className="grid gap-3">
+                                          <TextArea
+                                            label="Texto"
+                                            value={block.text}
+                                            rows={3}
+                                            onChange={(text) =>
+                                              updateProcedureBlocks(
+                                                section.id,
+                                                subitem.id,
+                                                clause.id,
+                                                blocks.map((item) =>
+                                                  item.id === block.id ? { ...item, text } : item,
+                                                ),
+                                              )
+                                            }
+                                          />
+                                          <ImageManager
+                                            label="Imagens deste trecho"
+                                            captionLabel="Legenda"
+                                            showTitle={false}
+                                            images={block.images}
+                                            onChange={(images) =>
+                                              updateProcedureBlocks(
+                                                section.id,
+                                                subitem.id,
+                                                clause.id,
+                                                blocks.map((item) =>
+                                                  item.id === block.id ? { ...item, images } : item,
+                                                ),
+                                              )
+                                            }
+                                          />
+                                        </div>
+                                      </div>
+                                    ))}
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateProcedureBlocks(section.id, subitem.id, clause.id, [
+                                          ...blocks,
+                                          { id: id("clauseblock"), text: "", images: [] },
+                                        ])
+                                      }
+                                      className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] px-3 py-2 text-sm font-semibold text-[var(--gold)] transition hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)]"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                      Adicionar trecho
+                                    </button>
+
+                                    {clause.alert || visibleClauseNotes[clause.id] ? (
+                                      <div className="rounded-lg border border-primary/35 bg-primary/5 p-3">
+                                        <div className="mb-2 flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                            <TriangleAlert className="h-4 w-4 text-primary" />
+                                            Observação
+                                          </div>
+                                          <IconButton
+                                            label="Remover observação"
+                                            onClick={() => {
+                                              updateProcedureClause(
+                                                section.id,
+                                                subitem.id,
+                                                clause.id,
+                                                {
+                                                  alert: "",
+                                                },
+                                              );
+                                              setVisibleClauseNotes((current) => ({
+                                                ...current,
+                                                [clause.id]: false,
+                                              }));
+                                            }}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </IconButton>
+                                        </div>
+                                        <TextArea
+                                          label="Texto da observação"
+                                          value={clause.alert}
+                                          rows={2}
+                                          onChange={(alert) =>
+                                            updateProcedureClause(
+                                              section.id,
+                                              subitem.id,
+                                              clause.id,
+                                              {
+                                                alert,
+                                              },
+                                            )
+                                          }
+                                        />
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setVisibleClauseNotes((current) => ({
+                                            ...current,
+                                            [clause.id]: true,
+                                          }))
+                                        }
+                                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-primary/45 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+                                      >
+                                        <TriangleAlert className="h-4 w-4" />
+                                        Adicionar observação
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                                <TextArea
-                                  label="Texto da observação"
-                                  value={clause.alert}
-                                  rows={2}
-                                  onChange={(alert) =>
-                                    updateProcedureClause(section.id, subitem.id, clause.id, { alert })
-                                  }
-                                />
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setVisibleClauseNotes((current) => ({
-                                    ...current,
-                                    [clause.id]: true,
-                                  }))
-                                }
-                                className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-primary/45 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
-                              >
-                                <TriangleAlert className="h-4 w-4" />
-                                Adicionar observação
-                              </button>
-                            )}
-                            <ImageManager
-                              label="Imagens da alínea"
-                              images={clause.images}
-                              onChange={(images) =>
-                                updateProcedureClause(section.id, subitem.id, clause.id, { images })
+                              );
+                            })}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateProcedureSubitem(section.id, subitem.id, {
+                                  clauses: [
+                                    ...subitem.clauses,
+                                    {
+                                      id: id("clause"),
+                                      letter: procedureLetter(subitem.clauses.length),
+                                      text: "",
+                                      alert: "",
+                                      images: [],
+                                      blocks: [{ id: id("clauseblock"), text: "", images: [] }],
+                                    },
+                                  ],
+                                })
                               }
-                            />
+                              className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Adicionar alínea
+                            </button>
                           </div>
                         </div>
                       ))}
                       <button
                         type="button"
                         onClick={() =>
-                          updateProcedureSubitem(section.id, subitem.id, {
-                            clauses: [
-                              ...subitem.clauses,
+                          updateSection(section.id, {
+                            subitems: [
+                              ...(section.subitems ?? []),
                               {
-                                id: id("clause"),
-                                letter: nextClauseLetter(subitem.clauses),
-                                text: "",
-                                alert: "",
-                                images: [],
+                                id: id("sub"),
+                                code: `${section.code || `3.${data.sections.indexOf(section) + 1}`}.${(section.subitems ?? []).length + 1}`,
+                                title: "Novo subitem",
+                                clauses: [
+                                  {
+                                    id: id("clause"),
+                                    letter: "a",
+                                    text: "",
+                                    alert: "",
+                                    images: [],
+                                    blocks: [{ id: id("clauseblock"), text: "", images: [] }],
+                                  },
+                                ],
                               },
                             ],
                           })
@@ -10249,392 +11241,375 @@ function PopModule({
                         className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                       >
                         <Plus className="h-4 w-4" />
-                        Adicionar alínea
+                        Adicionar subitem
                       </button>
                     </div>
                   </div>
                 ))}
                 <button
-                  type="button"
                   onClick={() =>
-                    updateSection(section.id, {
-                      subitems: [
-                        ...(section.subitems ?? []),
+                    update({
+                      ...data,
+                      sections: renumberPopSections([
+                        ...data.sections,
                         {
-                          id: id("sub"),
-                          code: `${section.code || `3.${data.sections.indexOf(section) + 1}`}.${(section.subitems ?? []).length + 1}`,
-                          title: "Novo subitem",
-                          clauses: [{ id: id("clause"), letter: "a", text: "", alert: "", images: [] }],
+                          id: id("sec"),
+                          code: "",
+                          title: "Novo item",
+                          description: "",
+                          body: "",
+                          records: "",
+                          risks: "",
+                          images: [],
+                          subitems: [],
                         },
+                      ]),
+                    })
+                  }
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar item do procedimento
+                </button>
+              </div>
+            </Panel>
+            <Panel
+              id="pop-sec-responsibilities"
+              num="04"
+              title="Responsabilidades"
+              progress={sectionProgress.responsibilities}
+              openSignal={openSignals.responsibilities}
+            >
+              <div className="grid gap-3">
+                <div className="hidden rounded-t-lg border border-border bg-muted/50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground md:grid md:grid-cols-[220px_220px_1fr_44px]">
+                  <span>Área</span>
+                  <span>Cargo</span>
+                  <span>Responsabilidades</span>
+                  <span />
+                </div>
+                {data.responsibilities.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[220px_220px_1fr_auto]"
+                  >
+                    <CatalogSearchField
+                      label="Área"
+                      value={row.area}
+                      options={catalogs.departments.map((department) => department.name)}
+                      createLabel="Cadastrar área"
+                      onCreate={(initial) => {
+                        setQuickCatalog({ kind: "area", initial });
+                        setQuickAreaSigla(normalizeSigla(initial));
+                      }}
+                      onChange={(area) =>
+                        update({
+                          ...data,
+                          responsibilities: data.responsibilities.map((item) =>
+                            item.id === row.id ? { ...item, area } : item,
+                          ),
+                        })
+                      }
+                    />
+                    <CatalogSearchField
+                      label="Cargo"
+                      value={row.cargo ?? ""}
+                      options={catalogs.positions.map((position) => position.title)}
+                      createLabel="Cadastrar cargo"
+                      onCreate={(initial) => setQuickCatalog({ kind: "position", initial })}
+                      onChange={(cargo) =>
+                        update({
+                          ...data,
+                          responsibilities: data.responsibilities.map((item) =>
+                            item.id === row.id ? { ...item, cargo } : item,
+                          ),
+                        })
+                      }
+                    />
+                    <TextArea
+                      label="Responsabilidades"
+                      value={row.responsabilidade}
+                      onChange={(responsabilidade) =>
+                        update({
+                          ...data,
+                          responsibilities: data.responsibilities.map((item) =>
+                            item.id === row.id ? { ...item, responsabilidade } : item,
+                          ),
+                        })
+                      }
+                    />
+                    <IconButton
+                      label="Excluir"
+                      onClick={() =>
+                        update({
+                          ...data,
+                          responsibilities: data.responsibilities.filter(
+                            (item) => item.id !== row.id,
+                          ),
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    update({
+                      ...data,
+                      responsibilities: [
+                        ...data.responsibilities,
+                        { id: id("resp"), area: "", cargo: "", responsabilidade: "" },
                       ],
                     })
                   }
                   className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
-                  Adicionar subitem
+                  Adicionar responsabilidade
                 </button>
               </div>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                sections: [
-                  ...data.sections,
-                  {
-                    id: id("sec"),
-                    code: `3.${data.sections.length + 1}`,
-                    title: "Novo item",
-                    description: "",
-                    body: "",
-                    records: "",
-                    risks: "",
-                    images: [],
-                    subitems: [],
-                  },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar item do procedimento
-          </button>
-        </div>
-      </Panel>
-      <Panel
-        id="pop-sec-responsibilities"
-        num="04"
-        title="Responsabilidades"
-        progress={sectionProgress.responsibilities}
-        openSignal={openSignals.responsibilities}
-      >
-        <div className="grid gap-3">
-          <div className="hidden rounded-t-lg border border-border bg-muted/50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground md:grid md:grid-cols-[220px_220px_1fr_44px]">
-            <span>Área</span>
-            <span>Cargo</span>
-            <span>Responsabilidades</span>
-            <span />
-          </div>
-          {data.responsibilities.map((row) => (
-            <div
-              key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[220px_220px_1fr_auto]"
+            </Panel>
+            <Panel
+              id="pop-sec-references"
+              num="05"
+              title="Referências normativas"
+              progress={sectionProgress.references}
+              openSignal={openSignals.references}
             >
-              <CatalogSearchField
-                label="Área"
-                value={row.area}
-                options={catalogs.departments.map((department) => department.name)}
-                createLabel="Cadastrar área"
-                onCreate={(initial) => {
-                  setQuickCatalog({ kind: "area", initial });
-                  setQuickAreaSigla(normalizeSigla(initial));
-                }}
-                onChange={(area) =>
-                  update({
-                    ...data,
-                    responsibilities: data.responsibilities.map((item) =>
-                      item.id === row.id ? { ...item, area } : item,
-                    ),
-                  })
-                }
-              />
-              <CatalogSearchField
-                label="Cargo"
-                value={row.cargo ?? ""}
-                options={catalogs.positions.map((position) => position.title)}
-                createLabel="Cadastrar cargo"
-                onCreate={(initial) => setQuickCatalog({ kind: "position", initial })}
-                onChange={(cargo) =>
-                  update({
-                    ...data,
-                    responsibilities: data.responsibilities.map((item) =>
-                      item.id === row.id ? { ...item, cargo } : item,
-                    ),
-                  })
-                }
-              />
-              <TextArea
-                label="Responsabilidades"
-                value={row.responsabilidade}
-                onChange={(responsabilidade) =>
-                  update({
-                    ...data,
-                    responsibilities: data.responsibilities.map((item) =>
-                      item.id === row.id ? { ...item, responsabilidade } : item,
-                    ),
-                  })
-                }
-              />
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  update({
-                    ...data,
-                    responsibilities: data.responsibilities.filter((item) => item.id !== row.id),
-                  })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                responsibilities: [
-                  ...data.responsibilities,
-                  { id: id("resp"), area: "", cargo: "", responsabilidade: "" },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar responsabilidade
-          </button>
-        </div>
-      </Panel>
-      <Panel
-        id="pop-sec-references"
-        num="05"
-        title="Referências normativas"
-        progress={sectionProgress.references}
-        openSignal={openSignals.references}
-      >
-        <div className="grid gap-3">
-          {data.references.map((row) => (
-            <div
-              key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[1fr_auto]"
-            >
-              <div className="grid gap-3 md:grid-cols-[160px_1fr]">
-                <Field
-                  compact
-                  label="Código"
-                  value={row.codigo}
-                  onChange={(codigo) =>
+              <div className="grid gap-3">
+                {data.references.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[1fr_auto]"
+                  >
+                    <div className="grid gap-3 md:grid-cols-[160px_1fr]">
+                      <Field
+                        compact
+                        label="Código"
+                        value={row.codigo}
+                        onChange={(codigo) =>
+                          update({
+                            ...data,
+                            references: data.references.map((item) =>
+                              item.id === row.id ? { ...item, codigo } : item,
+                            ),
+                          })
+                        }
+                      />
+                      <Field
+                        compact
+                        label="Título"
+                        value={row.titulo}
+                        onChange={(titulo) =>
+                          update({
+                            ...data,
+                            references: data.references.map((item) =>
+                              item.id === row.id ? { ...item, titulo } : item,
+                            ),
+                          })
+                        }
+                      />
+                      <div className="md:col-span-2">
+                        <TextArea
+                          label="Aplicabilidade"
+                          value={row.aplicabilidade}
+                          rows={2}
+                          onChange={(aplicabilidade) =>
+                            update({
+                              ...data,
+                              references: data.references.map((item) =>
+                                item.id === row.id ? { ...item, aplicabilidade } : item,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <IconButton
+                      label="Excluir"
+                      onClick={() =>
+                        update({
+                          ...data,
+                          references: data.references.filter((item) => item.id !== row.id),
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
                     update({
                       ...data,
-                      references: data.references.map((item) =>
-                        item.id === row.id ? { ...item, codigo } : item,
-                      ),
+                      references: [
+                        ...data.references,
+                        { id: id("ref"), codigo: "", titulo: "", aplicabilidade: "" },
+                      ],
                     })
                   }
-                />
-                <Field
-                  compact
-                  label="Título"
-                  value={row.titulo}
-                  onChange={(titulo) =>
-                    update({
-                      ...data,
-                      references: data.references.map((item) =>
-                        item.id === row.id ? { ...item, titulo } : item,
-                      ),
-                    })
-                  }
-                />
-                <div className="md:col-span-2">
-                  <TextArea
-                    label="Aplicabilidade"
-                    value={row.aplicabilidade}
-                    rows={2}
-                    onChange={(aplicabilidade) =>
-                      update({
-                        ...data,
-                        references: data.references.map((item) =>
-                          item.id === row.id ? { ...item, aplicabilidade } : item,
-                        ),
-                      })
-                    }
-                  />
-                </div>
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar referência
+                </button>
               </div>
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  update({
-                    ...data,
-                    references: data.references.filter((item) => item.id !== row.id),
-                  })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              update({
-                ...data,
-                references: [
-                  ...data.references,
-                  { id: id("ref"), codigo: "", titulo: "", aplicabilidade: "" },
-                ],
-              })
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar referência
-          </button>
-        </div>
-      </Panel>
-      <Panel
-        id="pop-sec-history"
-        num="06"
-        title="Histórico e controle de alterações"
-        progress={sectionProgress.history}
-        openSignal={openSignals.history}
-      >
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Histórico</h3>
-        <div className="grid gap-3">
-          {data.history.map((row) => (
-            <div
-              key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[120px_100px_140px_1fr_1fr_1fr_auto]"
+            </Panel>
+            <Panel
+              id="pop-sec-history"
+              num="06"
+              title="Histórico e controle de alterações"
+              progress={sectionProgress.history}
+              openSignal={openSignals.history}
             >
-              <Field
-                compact
-                label="Código"
-                value={row.codigo}
-                onChange={(codigo) =>
-                  setHistory(
-                    data.history.map((item) =>
-                      item.id === row.id ? { ...item, codigo } : item,
-                    ),
-                  )
-                }
-              />
-              <ReadOnlyField label="Versão" value={historyVersion(data.history.findIndex((item) => item.id === row.id))} />
-              <Field
-                compact
-                label="Data"
-                type="date"
-                value={row.date}
-                onChange={(date) =>
-                  setHistory(
-                    data.history.map((item) =>
-                      item.id === row.id ? { ...item, date } : item,
-                    ),
-                  )
-                }
-              />
-              <Field
-                compact
-                label="Elaborador"
-                value={row.elaborador}
-                onChange={(elaborador) =>
-                  setHistory(
-                    data.history.map((item) =>
-                      item.id === row.id ? { ...item, elaborador } : item,
-                    ),
-                  )
-                }
-              />
-              <Field
-                compact
-                label="Revisor"
-                value={row.revisor}
-                onChange={(revisor) =>
-                  setHistory(
-                    data.history.map((item) =>
-                      item.id === row.id ? { ...item, revisor } : item,
-                    ),
-                  )
-                }
-              />
-              <Field
-                compact
-                label="Aprovador"
-                value={row.aprovador}
-                onChange={(aprovador) =>
-                  setHistory(
-                    data.history.map((item) =>
-                      item.id === row.id ? { ...item, aprovador } : item,
-                    ),
-                  )
-                }
-              />
-              <IconButton
-                label="Excluir"
-                onClick={() =>
-                  setHistory(data.history.filter((item) => item.id !== row.id))
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              setHistory([
-                ...data.history,
-                {
-                  id: id("rev"),
-                  codigo: "",
-                  version: historyVersion(data.history.length),
-                  date: today(),
-                  elaborador: "",
-                  revisor: "",
-                  aprovador: "",
-                },
-              ])
-            }
-            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar histórico
-          </button>
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Histórico</h3>
+              <div className="grid gap-3">
+                {data.history.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[120px_100px_140px_1fr_1fr_1fr_auto]"
+                  >
+                    <Field
+                      compact
+                      label="Código"
+                      value={row.codigo}
+                      onChange={(codigo) =>
+                        setHistory(
+                          data.history.map((item) =>
+                            item.id === row.id ? { ...item, codigo } : item,
+                          ),
+                        )
+                      }
+                    />
+                    <ReadOnlyField
+                      label="Versão"
+                      value={historyVersion(data.history.findIndex((item) => item.id === row.id))}
+                    />
+                    <Field
+                      compact
+                      label="Data"
+                      type="date"
+                      value={row.date}
+                      onChange={(date) =>
+                        setHistory(
+                          data.history.map((item) =>
+                            item.id === row.id ? { ...item, date } : item,
+                          ),
+                        )
+                      }
+                    />
+                    <Field
+                      compact
+                      label="Elaborador"
+                      value={row.elaborador}
+                      onChange={(elaborador) =>
+                        setHistory(
+                          data.history.map((item) =>
+                            item.id === row.id ? { ...item, elaborador } : item,
+                          ),
+                        )
+                      }
+                    />
+                    <Field
+                      compact
+                      label="Revisor"
+                      value={row.revisor}
+                      onChange={(revisor) =>
+                        setHistory(
+                          data.history.map((item) =>
+                            item.id === row.id ? { ...item, revisor } : item,
+                          ),
+                        )
+                      }
+                    />
+                    <Field
+                      compact
+                      label="Aprovador"
+                      value={row.aprovador}
+                      onChange={(aprovador) =>
+                        setHistory(
+                          data.history.map((item) =>
+                            item.id === row.id ? { ...item, aprovador } : item,
+                          ),
+                        )
+                      }
+                    />
+                    <IconButton
+                      label="Excluir"
+                      onClick={() => setHistory(data.history.filter((item) => item.id !== row.id))}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    setHistory([
+                      ...data.history,
+                      {
+                        id: id("rev"),
+                        codigo: "",
+                        version: historyVersion(data.history.length),
+                        date: today(),
+                        elaborador: "",
+                        revisor: "",
+                        aprovador: "",
+                      },
+                    ])
+                  }
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar histórico
+                </button>
+              </div>
+              <h3 className="mb-3 mt-6 text-sm font-semibold text-foreground">Alterações</h3>
+              <div className="grid gap-3">
+                {data.changes.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[120px_220px_1fr]"
+                  >
+                    <ReadOnlyField
+                      label="Versão"
+                      value={historyVersion(data.changes.findIndex((item) => item.id === row.id))}
+                    />
+                    <Field
+                      compact
+                      label="Local da revisão"
+                      value={row.local}
+                      onChange={(local) =>
+                        update({
+                          ...data,
+                          changes: data.changes.map((item) =>
+                            item.id === row.id ? { ...item, local } : item,
+                          ),
+                        })
+                      }
+                    />
+                    <Field
+                      compact
+                      label="Descrição"
+                      value={row.descricao}
+                      onChange={(descricao) =>
+                        update({
+                          ...data,
+                          changes: data.changes.map((item) =>
+                            item.id === row.id ? { ...item, descricao } : item,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  As linhas de alteração são geradas automaticamente a partir do histórico.
+                </p>
+              </div>
+            </Panel>
+            <div aria-hidden className="h-[35vh]" />
+          </div>
         </div>
-        <h3 className="mb-3 mt-6 text-sm font-semibold text-foreground">Alterações</h3>
-        <div className="grid gap-3">
-          {data.changes.map((row) => (
-            <div
-              key={row.id}
-              className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-[120px_220px_1fr]"
-            >
-              <ReadOnlyField label="Versão" value={historyVersion(data.changes.findIndex((item) => item.id === row.id))} />
-              <Field
-                compact
-                label="Local da revisão"
-                value={row.local}
-                onChange={(local) =>
-                  update({
-                    ...data,
-                    changes: data.changes.map((item) =>
-                      item.id === row.id ? { ...item, local } : item,
-                    ),
-                  })
-                }
-              />
-              <Field
-                compact
-                label="Descrição"
-                value={row.descricao}
-                onChange={(descricao) =>
-                  update({
-                    ...data,
-                    changes: data.changes.map((item) =>
-                      item.id === row.id ? { ...item, descricao } : item,
-                    ),
-                  })
-                }
-              />
-            </div>
-          ))}
-          <p className="text-xs text-muted-foreground">
-            As linhas de alteração são geradas automaticamente a partir do histórico.
-          </p>
-        </div>
-      </Panel>
-          <div aria-hidden className="h-[35vh]" />
-        </div>
-      </div>
       )}
       {quickCatalog ? (
         <Modal
@@ -10657,7 +11632,12 @@ function PopModule({
                 label="Sigla"
                 value={quickAreaSigla}
                 onChange={(value) =>
-                  setQuickAreaSigla(value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3))
+                  setQuickAreaSigla(
+                    value
+                      .replace(/[^A-Za-z]/g, "")
+                      .toUpperCase()
+                      .slice(0, 3),
+                  )
                 }
               />
             ) : (
@@ -10698,7 +11678,9 @@ const BPMN_LANE_LABEL_WIDTH = 82;
 const BPMN_LEFT_HEADER_WIDTH = BPMN_POOL_LABEL_WIDTH + BPMN_LANE_LABEL_WIDTH;
 
 function xmlChildren(element: Element, localName?: string) {
-  return Array.from(element.children).filter((child) => !localName || child.localName === localName);
+  return Array.from(element.children).filter(
+    (child) => !localName || child.localName === localName,
+  );
 }
 
 function xmlFirst(element: Element, localName: string) {
@@ -10734,12 +11716,15 @@ function normalizeImportedText(value: string, fallback: string) {
 }
 
 async function selectedBizagiDiagramName(zip: JSZip) {
-  const preferenceFile = Object.keys(zip.files).find((name) => name.endsWith("UserPreferences.xml"));
+  const preferenceFile = Object.keys(zip.files).find((name) =>
+    name.endsWith("UserPreferences.xml"),
+  );
   if (!preferenceFile) return null;
   const xml = await zip.files[preferenceFile].async("text");
   const doc = new DOMParser().parseFromString(xml, "text/xml");
   const selected = Array.from(doc.getElementsByTagName("ModelItem")).find(
-    (item) => item.getAttribute("ItemType") === "Diagram" && item.getAttribute("IsSelected") === "true",
+    (item) =>
+      item.getAttribute("ItemType") === "Diagram" && item.getAttribute("IsSelected") === "true",
   );
   const diagramId = selected?.getAttribute("DiagramId");
   return diagramId ? `${diagramId}.diag` : null;
@@ -10751,7 +11736,9 @@ async function importBpmnFile(file: File): Promise<BpmnState> {
   if (lowerName.endsWith(".bpm")) {
     const outer = await JSZip.loadAsync(buffer);
     const preferred = await selectedBizagiDiagramName(outer);
-    const diagName = (preferred && outer.file(preferred) ? preferred : null) ?? Object.keys(outer.files).find((name) => name.endsWith(".diag"));
+    const diagName =
+      (preferred && outer.file(preferred) ? preferred : null) ??
+      Object.keys(outer.files).find((name) => name.endsWith(".diag"));
     if (!diagName) throw new Error("Arquivo BPM sem diagrama importavel.");
     const inner = await JSZip.loadAsync(await outer.file(diagName)!.async("arraybuffer"));
     const diagram = inner.file("Diagram.xml");
@@ -10768,7 +11755,11 @@ function parseXpdlDiagram(xml: string): BpmnState {
   const packageElement = doc.documentElement;
   const pools = Array.from(doc.getElementsByTagNameNS("*", "Pool"));
   const pool =
-    pools.find((item) => item.getAttribute("BoundaryVisible") !== "false" && item.getElementsByTagNameNS("*", "Lane").length > 0) ??
+    pools.find(
+      (item) =>
+        item.getAttribute("BoundaryVisible") !== "false" &&
+        item.getElementsByTagNameNS("*", "Lane").length > 0,
+    ) ??
     pools.find((item) => item.getElementsByTagNameNS("*", "Lane").length > 0) ??
     pools[0];
   const lanesXml = pool ? Array.from(pool.getElementsByTagNameNS("*", "Lane")) : [];
@@ -10785,10 +11776,15 @@ function parseXpdlDiagram(xml: string): BpmnState {
   const lanes = laneSource.length ? laneSource.map((lane) => lane.name) : ["Raia 1"];
   const maxSourceWidth = Math.max(...laneSource.map((lane) => lane.sourceWidth), 1000);
   const scale = Math.min(1, 1180 / Math.max(maxSourceWidth, 1));
-  const laneHeights = laneSource.length ? laneSource.map((lane) => Math.max(140, Math.round(lane.sourceHeight * scale))) : [240];
-  const laneTargetY = (index: number) => BPMN_POOL_Y + laneHeights.slice(0, index).reduce((total, height) => total + height, 0);
+  const laneHeights = laneSource.length
+    ? laneSource.map((lane) => Math.max(140, Math.round(lane.sourceHeight * scale)))
+    : [240];
+  const laneTargetY = (index: number) =>
+    BPMN_POOL_Y + laneHeights.slice(0, index).reduce((total, height) => total + height, 0);
   const sourceLaneIndex = (sourceY: number) => {
-    const found = laneSource.findIndex((lane) => sourceY >= lane.sourceY && sourceY <= lane.sourceY + lane.sourceHeight);
+    const found = laneSource.findIndex(
+      (lane) => sourceY >= lane.sourceY && sourceY <= lane.sourceY + lane.sourceHeight,
+    );
     return found >= 0 ? found : 0;
   };
   const sourceMinX = Math.min(
@@ -10815,12 +11811,31 @@ function parseXpdlDiagram(xml: string): BpmnState {
     const target = sourceToTarget(sourceX, sourceY);
     const rawWidth = xmlNumber(graphics, "Width", type === "task" ? 120 : 44) * scale;
     const rawHeight = xmlNumber(graphics, "Height", type === "task" ? 70 : 44) * scale;
-    const width = type === "task" ? Math.max(100, rawWidth) : type === "gateway" ? Math.max(56, rawWidth) : Math.max(42, rawWidth);
-    const height = type === "task" ? Math.max(58, rawHeight) : type === "gateway" ? Math.max(56, rawHeight) : Math.max(42, rawHeight);
+    const width =
+      type === "task"
+        ? Math.max(100, rawWidth)
+        : type === "gateway"
+          ? Math.max(56, rawWidth)
+          : Math.max(42, rawWidth);
+    const height =
+      type === "task"
+        ? Math.max(58, rawHeight)
+        : type === "gateway"
+          ? Math.max(56, rawHeight)
+          : Math.max(42, rawHeight);
     return {
       id: xmlAttr(activity, "Id", id(type)),
       type,
-      label: normalizeImportedText(xmlAttr(activity, "Name"), type === "start" ? "Inicio" : type === "end" ? "Fim" : type === "gateway" ? "Decisao" : `Atividade ${index + 1}`),
+      label: normalizeImportedText(
+        xmlAttr(activity, "Name"),
+        type === "start"
+          ? "Inicio"
+          : type === "end"
+            ? "Fim"
+            : type === "gateway"
+              ? "Decisao"
+              : `Atividade ${index + 1}`,
+      ),
       x: Math.round(target.x),
       y: Math.round(target.y),
       lane: sourceLaneIndex(sourceY + xmlNumber(graphics, "Height", 0) / 2),
@@ -10834,8 +11849,12 @@ function parseXpdlDiagram(xml: string): BpmnState {
       const from = xmlAttr(transition, "From");
       const to = xmlAttr(transition, "To");
       if (!nodeIds.has(from) || !nodeIds.has(to)) return null;
-      const converted = Array.from(transition.getElementsByTagNameNS("*", "Coordinates")).map((coordinates) =>
-        sourceToTarget(xmlNumber(coordinates, "XCoordinate", 0), xmlNumber(coordinates, "YCoordinate", 0)),
+      const converted = Array.from(transition.getElementsByTagNameNS("*", "Coordinates")).map(
+        (coordinates) =>
+          sourceToTarget(
+            xmlNumber(coordinates, "XCoordinate", 0),
+            xmlNumber(coordinates, "YCoordinate", 0),
+          ),
       );
       const middle = converted.length > 2 ? converted.slice(1, -1) : converted;
       return {
@@ -10848,9 +11867,16 @@ function parseXpdlDiagram(xml: string): BpmnState {
       };
     })
     .filter(Boolean) as BpmnFlow[];
-  const maxX = Math.max(...nodes.map((node) => node.x + (node.width ?? 0)), ...flows.flatMap((flow) => flow.points ?? []).map((point) => point.x), 1000);
+  const maxX = Math.max(
+    ...nodes.map((node) => node.x + (node.width ?? 0)),
+    ...flows.flatMap((flow) => flow.points ?? []).map((point) => point.x),
+    1000,
+  );
   return {
-    poolName: normalizeImportedText(xmlAttr(pool, "Name"), xmlAttr(packageElement, "Name", "Processo importado")),
+    poolName: normalizeImportedText(
+      xmlAttr(pool, "Name"),
+      xmlAttr(packageElement, "Name", "Processo importado"),
+    ),
     codigo: xmlAttr(packageElement, "Id"),
     lanes,
     laneHeights,
@@ -10862,7 +11888,10 @@ function parseXpdlDiagram(xml: string): BpmnState {
 
 function parseBpmnXmlDiagram(xml: string): BpmnState {
   const doc = new DOMParser().parseFromString(xml, "text/xml");
-  const boundsByElement = new Map<string, { x: number; y: number; width: number; height: number }>();
+  const boundsByElement = new Map<
+    string,
+    { x: number; y: number; width: number; height: number }
+  >();
   Array.from(doc.getElementsByTagNameNS("*", "BPMNShape")).forEach((shape) => {
     const elementId = xmlAttr(shape, "bpmnElement");
     const bounds = Array.from(shape.getElementsByTagNameNS("*", "Bounds"))[0];
@@ -10886,17 +11915,41 @@ function parseBpmnXmlDiagram(xml: string): BpmnState {
     if (element.localName.toLowerCase().includes("gateway")) return "gateway";
     return "task";
   };
-  const names = ["startEvent", "endEvent", "task", "userTask", "serviceTask", "manualTask", "exclusiveGateway", "parallelGateway", "inclusiveGateway"];
+  const names = [
+    "startEvent",
+    "endEvent",
+    "task",
+    "userTask",
+    "serviceTask",
+    "manualTask",
+    "exclusiveGateway",
+    "parallelGateway",
+    "inclusiveGateway",
+  ];
   const nodeElements = names.flatMap((name) => Array.from(doc.getElementsByTagNameNS("*", name)));
   const nodes = nodeElements.map((element, index) => {
     const elementId = xmlAttr(element, "id", id("task"));
     const type = mapType(element);
-    const bounds = boundsByElement.get(elementId) ?? { x: 120 + index * 160, y: 120, width: type === "task" ? 130 : 50, height: type === "task" ? 72 : 50 };
+    const bounds = boundsByElement.get(elementId) ?? {
+      x: 120 + index * 160,
+      y: 120,
+      width: type === "task" ? 130 : 50,
+      height: type === "task" ? 72 : 50,
+    };
     const p = target(bounds.x, bounds.y);
     return {
       id: elementId,
       type,
-      label: normalizeImportedText(xmlAttr(element, "name"), type === "start" ? "Inicio" : type === "end" ? "Fim" : type === "gateway" ? "Decisao" : `Atividade ${index + 1}`),
+      label: normalizeImportedText(
+        xmlAttr(element, "name"),
+        type === "start"
+          ? "Inicio"
+          : type === "end"
+            ? "Fim"
+            : type === "gateway"
+              ? "Decisao"
+              : `Atividade ${index + 1}`,
+      ),
       x: p.x,
       y: p.y,
       lane: 0,
@@ -10910,7 +11963,14 @@ function parseBpmnXmlDiagram(xml: string): BpmnState {
       const from = xmlAttr(flow, "sourceRef");
       const to = xmlAttr(flow, "targetRef");
       if (!nodeIds.has(from) || !nodeIds.has(to)) return null;
-      return { id: xmlAttr(flow, "id", id("flow")), from, to, label: xmlAttr(flow, "name") || undefined, type: "sequence" as const, points: [] };
+      return {
+        id: xmlAttr(flow, "id", id("flow")),
+        from,
+        to,
+        label: xmlAttr(flow, "name") || undefined,
+        type: "sequence" as const,
+        points: [],
+      };
     })
     .filter(Boolean) as BpmnFlow[];
   const maxX = Math.max(...nodes.map((node) => node.x + (node.width ?? 0)), 1000);
@@ -10944,7 +12004,10 @@ function BpmnModuleV2({
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [connectFromAnchor, setConnectFromAnchor] = useState<BpmnEdgeAnchor | null>(null);
-  const [connectionTarget, setConnectionTarget] = useState<{ nodeId: string; anchor: BpmnEdgeAnchor } | null>(null);
+  const [connectionTarget, setConnectionTarget] = useState<{
+    nodeId: string;
+    anchor: BpmnEdgeAnchor;
+  } | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
   const [editingPool, setEditingPool] = useState(false);
@@ -10957,16 +12020,45 @@ function BpmnModuleV2({
   const [history, setHistory] = useState<BpmnState[]>([]);
   const [future, setFuture] = useState<BpmnState[]>([]);
   const [drag, setDrag] = useState<
-    | { kind: "node"; id: string; ids: string[]; dx: number; dy: number; start: { x: number; y: number }; moved: boolean }
+    | {
+        kind: "node";
+        id: string;
+        ids: string[];
+        dx: number;
+        dy: number;
+        start: { x: number; y: number };
+        moved: boolean;
+      }
     | { kind: "selection-box"; start: { x: number; y: number }; current: { x: number; y: number } }
-    | { kind: "node-size"; id: string; startX: number; startY: number; x: number; y: number; width: number; height: number; handle: BpmnResizeHandle }
+    | {
+        kind: "node-size";
+        id: string;
+        startX: number;
+        startY: number;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        handle: BpmnResizeHandle;
+      }
     | { kind: "pool-width"; startX: number; width: number }
     | { kind: "pool-height"; startY: number; laneHeights: number[] }
     | { kind: "lane-height"; lane: number; startY: number; laneHeights: number[] }
-    | { kind: "flow-segment"; flowId: string; firstPoint: number; secondPoint: number; axis: "x" | "y" }
+    | {
+        kind: "flow-segment";
+        flowId: string;
+        firstPoint: number;
+        secondPoint: number;
+        axis: "x" | "y";
+      }
     | { kind: "flow-anchor"; flowId: string; end: "from" | "to" }
     | { kind: "free-flow-end"; flowId: string; end: "from" | "to" }
-    | { kind: "new-flow"; fromId: string; fromAnchor: BpmnEdgeAnchor; current: { x: number; y: number } }
+    | {
+        kind: "new-flow";
+        fromId: string;
+        fromAnchor: BpmnEdgeAnchor;
+        current: { x: number; y: number };
+      }
     | null
   >(null);
 
@@ -10982,12 +12074,17 @@ function BpmnModuleV2({
   const leftHeaderWidth = BPMN_LEFT_HEADER_WIDTH;
   const maxNodeX = data.nodes.reduce((max, node) => Math.max(max, node.x + (node.width ?? 140)), 0);
   const poolWidth = Math.max(data.poolWidth ?? 1080, maxNodeX - poolX + 180, leftHeaderWidth + 720);
-  const poolHeight = Math.max(laneHeights.reduce((total, height) => total + height, 0), 260);
+  const poolHeight = Math.max(
+    laneHeights.reduce((total, height) => total + height, 0),
+    260,
+  );
   const canvasWidth = Math.max(poolX + poolWidth + 180, 1280);
   const canvasHeight = Math.max(poolY + poolHeight + 160, 760);
 
   useEffect(() => {
-    setSelectedNodeIds((current) => current.filter((nodeId) => data.nodes.some((node) => node.id === nodeId)));
+    setSelectedNodeIds((current) =>
+      current.filter((nodeId) => data.nodes.some((node) => node.id === nodeId)),
+    );
   }, [data.nodes]);
 
   useEffect(() => {
@@ -11089,17 +12186,34 @@ function BpmnModuleV2({
   }
 
   function isInsidePool(position: { x: number; y: number }) {
-    return hasPool && position.x >= poolX && position.x <= poolX + poolWidth && position.y >= poolY && position.y <= poolY + poolHeight;
+    return (
+      hasPool &&
+      position.x >= poolX &&
+      position.x <= poolX + poolWidth &&
+      position.y >= poolY &&
+      position.y <= poolY + poolHeight
+    );
   }
 
   function nodeAtPoint(position: { x: number; y: number }) {
     return data.nodes.find((node) => {
       const bounds = nodeBounds(node);
-      return position.x >= bounds.left && position.x <= bounds.right && position.y >= bounds.top && position.y <= bounds.bottom;
+      return (
+        position.x >= bounds.left &&
+        position.x <= bounds.right &&
+        position.y >= bounds.top &&
+        position.y <= bounds.bottom
+      );
     });
   }
 
-  function alignNodePosition(x: number, y: number, width: number, height: number, ignoreId?: string) {
+  function alignNodePosition(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    ignoreId?: string,
+  ) {
     const centerX = x + width / 2;
     const centerY = y + height / 2;
     const candidate = data.nodes.find((node) => {
@@ -11122,14 +12236,24 @@ function BpmnModuleV2({
     }
     const from = { x: snapValue(position.x - 80), y: snapValue(position.y) };
     const to = { x: snapValue(position.x + 80), y: snapValue(position.y) };
-    const next: BpmnFlow = { id: id("flow"), type: "sequence", freeFrom: from, freeTo: to, points: [] };
+    const next: BpmnFlow = {
+      id: id("flow"),
+      type: "sequence",
+      freeFrom: from,
+      freeTo: to,
+      points: [],
+    };
     commit({ ...data, lanes, flows: [...data.flows, next] });
     setSelectedFlowId(next.id);
     setSelectedId(null);
     setSelectedNodeIds([]);
   }
 
-  function startNodeConnector(event: React.PointerEvent<SVGCircleElement>, node: BpmnNode, anchor: BpmnEdgeAnchor) {
+  function startNodeConnector(
+    event: React.PointerEvent<SVGCircleElement>,
+    node: BpmnNode,
+    anchor: BpmnEdgeAnchor,
+  ) {
     const start = anchorPoint(node, anchor);
     svgRef.current?.setPointerCapture?.(event.pointerId);
     ignoreCanvasClickRef.current = true;
@@ -11140,20 +12264,37 @@ function BpmnModuleV2({
     setDrag({ kind: "new-flow", fromId: node.id, fromAnchor: anchor, current: start });
   }
 
-  function alignConnectedNodes(from: BpmnNode, to: BpmnNode, fromAnchor: BpmnEdgeAnchor, toAnchor: BpmnEdgeAnchor) {
+  function alignConnectedNodes(
+    from: BpmnNode,
+    to: BpmnNode,
+    fromAnchor: BpmnEdgeAnchor,
+    toAnchor: BpmnEdgeAnchor,
+  ) {
     const fromBounds = nodeBounds(from);
     const toBounds = nodeBounds(to);
-    const horizontal = (fromAnchor.side === "left" || fromAnchor.side === "right") && (toAnchor.side === "left" || toAnchor.side === "right");
-    const vertical = (fromAnchor.side === "top" || fromAnchor.side === "bottom") && (toAnchor.side === "top" || toAnchor.side === "bottom");
+    const horizontal =
+      (fromAnchor.side === "left" || fromAnchor.side === "right") &&
+      (toAnchor.side === "left" || toAnchor.side === "right");
+    const vertical =
+      (fromAnchor.side === "top" || fromAnchor.side === "bottom") &&
+      (toAnchor.side === "top" || toAnchor.side === "bottom");
     if (horizontal && from.lane === to.lane && Math.abs(fromBounds.cy - toBounds.cy) <= 48) {
       const height = to.height ?? 72;
-      const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(fromBounds.cy - height / 2)));
-      return data.nodes.map((node) => node.id === to.id ? { ...node, y, lane: laneIndexFromY(y + height / 2) } : node);
+      const y = Math.max(
+        poolY + 12,
+        Math.min(poolY + poolHeight - height - 12, snapValue(fromBounds.cy - height / 2)),
+      );
+      return data.nodes.map((node) =>
+        node.id === to.id ? { ...node, y, lane: laneIndexFromY(y + height / 2) } : node,
+      );
     }
     if (vertical && Math.abs(fromBounds.cx - toBounds.cx) <= 48) {
       const width = to.width ?? 140;
-      const x = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(fromBounds.cx - width / 2)));
-      return data.nodes.map((node) => node.id === to.id ? { ...node, x } : node);
+      const x = Math.max(
+        poolX + leftHeaderWidth + 16,
+        Math.min(poolX + poolWidth - width - 16, snapValue(fromBounds.cx - width / 2)),
+      );
+      return data.nodes.map((node) => (node.id === to.id ? { ...node, x } : node));
     }
     return data.nodes;
   }
@@ -11188,15 +12329,40 @@ function BpmnModuleV2({
       return;
     }
     const defaults = defaultNode(type);
-    const targetLane = position ? laneIndexFromY(position.y) : Math.min(Math.max(selected?.lane ?? 0, 0), lanes.length - 1);
+    const targetLane = position
+      ? laneIndexFromY(position.y)
+      : Math.min(Math.max(selected?.lane ?? 0, 0), lanes.length - 1);
     const x = position
-      ? Math.max(poolX + leftHeaderWidth + 20, Math.min(poolX + poolWidth - defaults.width - 20, snapValue(position.x - defaults.width / 2)))
+      ? Math.max(
+          poolX + leftHeaderWidth + 20,
+          Math.min(
+            poolX + poolWidth - defaults.width - 20,
+            snapValue(position.x - defaults.width / 2),
+          ),
+        )
       : poolX + leftHeaderWidth + 70 + data.nodes.length * 28;
     const y = position
-      ? Math.max(poolY + 16, Math.min(poolY + poolHeight - defaults.height - 16, snapValue(position.y - defaults.height / 2)))
-      : snapValue(laneY(targetLane) + Math.max(16, (laneHeights[targetLane] - defaults.height) / 2));
+      ? Math.max(
+          poolY + 16,
+          Math.min(
+            poolY + poolHeight - defaults.height - 16,
+            snapValue(position.y - defaults.height / 2),
+          ),
+        )
+      : snapValue(
+          laneY(targetLane) + Math.max(16, (laneHeights[targetLane] - defaults.height) / 2),
+        );
     const aligned = alignNodePosition(x, y, defaults.width, defaults.height);
-    const next: BpmnNode = { id: id(type), type, label: defaults.label, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + defaults.height / 2), width: defaults.width, height: defaults.height };
+    const next: BpmnNode = {
+      id: id(type),
+      type,
+      label: defaults.label,
+      x: aligned.x,
+      y: aligned.y,
+      lane: laneIndexFromY(aligned.y + defaults.height / 2),
+      width: defaults.width,
+      height: defaults.height,
+    };
     commit({ ...data, lanes, nodes: [...data.nodes, next] });
     setSelectedId(next.id);
     setSelectedNodeIds([next.id]);
@@ -11208,11 +12374,21 @@ function BpmnModuleV2({
       toast.error("Crie uma pool antes de adicionar raias.");
       return;
     }
-    commit({ ...data, lanes: [...lanes, `Raia ${lanes.length + 1}`], laneHeights: [...laneHeights, 170], poolWidth });
+    commit({
+      ...data,
+      lanes: [...lanes, `Raia ${lanes.length + 1}`],
+      laneHeights: [...laneHeights, 170],
+      poolWidth,
+    });
   }
 
   function updateLane(index: number, value: string) {
-    commit({ ...data, lanes: lanes.map((lane, laneIndex) => (laneIndex === index ? value : lane)), laneHeights, poolWidth });
+    commit({
+      ...data,
+      lanes: lanes.map((lane, laneIndex) => (laneIndex === index ? value : lane)),
+      laneHeights,
+      poolWidth,
+    });
   }
 
   function deleteSelected() {
@@ -11227,7 +12403,9 @@ function BpmnModuleV2({
       ...data,
       lanes,
       nodes: data.nodes.filter((node) => !idsToDelete.includes(node.id)),
-      flows: data.flows.filter((flow) => !idsToDelete.includes(flow.from ?? "") && !idsToDelete.includes(flow.to ?? "")),
+      flows: data.flows.filter(
+        (flow) => !idsToDelete.includes(flow.from ?? "") && !idsToDelete.includes(flow.to ?? ""),
+      ),
     });
     setSelectedId(null);
     setSelectedNodeIds([]);
@@ -11236,7 +12414,13 @@ function BpmnModuleV2({
 
   function duplicateSelected() {
     if (!selected) return;
-    const copyNode = { ...selected, id: id(selected.type), label: `${selected.label} cópia`, x: selected.x + 30, y: selected.y + 30 };
+    const copyNode = {
+      ...selected,
+      id: id(selected.type),
+      label: `${selected.label} cópia`,
+      x: selected.x + 30,
+      y: selected.y + 30,
+    };
     commit({ ...data, lanes, nodes: [...data.nodes, copyNode] });
     setSelectedId(copyNode.id);
     setSelectedFlowId(null);
@@ -11248,7 +12432,10 @@ function BpmnModuleV2({
     const nextLanes = [...lanes];
     const nextLaneHeights = [...laneHeights];
     [nextLanes[index], nextLanes[target]] = [nextLanes[target], nextLanes[index]];
-    [nextLaneHeights[index], nextLaneHeights[target]] = [nextLaneHeights[target], nextLaneHeights[index]];
+    [nextLaneHeights[index], nextLaneHeights[target]] = [
+      nextLaneHeights[target],
+      nextLaneHeights[index],
+    ];
     commit({ ...data, lanes: nextLanes, laneHeights: nextLaneHeights, poolWidth });
   }
 
@@ -11263,7 +12450,9 @@ function BpmnModuleV2({
       lanes: lanes.filter((_, laneIndex) => laneIndex !== index),
       laneHeights: laneHeights.filter((_, laneIndex) => laneIndex !== index),
       poolWidth,
-      nodes: data.nodes.map((node) => (node.lane > index ? { ...node, lane: node.lane - 1 } : node)),
+      nodes: data.nodes.map((node) =>
+        node.lane > index ? { ...node, lane: node.lane - 1 } : node,
+      ),
     });
   }
 
@@ -11278,7 +12467,10 @@ function BpmnModuleV2({
     );
     const y = Math.max(
       poolY + 12,
-      Math.min(poolY + poolHeight - defaults.height - 12, snapValue(node.y + nodeHeight / 2 - defaults.height / 2)),
+      Math.min(
+        poolY + poolHeight - defaults.height - 12,
+        snapValue(node.y + nodeHeight / 2 - defaults.height / 2),
+      ),
     );
     const nextNode: BpmnNode = {
       id: id(type),
@@ -11310,7 +12502,11 @@ function BpmnModuleV2({
   function commitNodeLabel(nodeId: string) {
     const label = editingLabel.trim();
     if (label) {
-      commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === nodeId ? { ...node, label } : node)) });
+      commit({
+        ...data,
+        lanes,
+        nodes: data.nodes.map((node) => (node.id === nodeId ? { ...node, label } : node)),
+      });
     }
     setEditingNodeId(null);
   }
@@ -11359,8 +12555,12 @@ function BpmnModuleV2({
       }
       if (connectFrom !== node.id) {
         const from = data.nodes.find((item) => item.id === connectFrom);
-        const fromAnchor = connectFromAnchor ?? (from ? edgeAnchorFromPoint(from, nodeCenter(node)) : { side: "right", offset: 0.5 });
-        const toAnchor = targetAnchor ?? edgeAnchorFromPoint(node, from ? nodeCenter(from) : pointer ?? nodeCenter(node));
+        const fromAnchor =
+          connectFromAnchor ??
+          (from ? edgeAnchorFromPoint(from, nodeCenter(node)) : { side: "right", offset: 0.5 });
+        const toAnchor =
+          targetAnchor ??
+          edgeAnchorFromPoint(node, from ? nodeCenter(from) : (pointer ?? nodeCenter(node)));
         commit({
           ...data,
           lanes,
@@ -11430,7 +12630,8 @@ function BpmnModuleV2({
       setTool("select");
       toast.success("Fluxograma importado.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Nao foi possivel importar o arquivo.";
+      const message =
+        error instanceof Error ? error.message : "Nao foi possivel importar o arquivo.";
       toast.error(message);
     }
   }
@@ -11448,28 +12649,52 @@ function BpmnModuleV2({
       if (!currentNode) return;
       const width = currentNode.width ?? 140;
       const height = currentNode.height ?? 64;
-      const x = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - width - 16, snapValue(p.x - drag.dx)));
-      const y = Math.max(poolY + 12, Math.min(poolY + poolHeight - height - 12, snapValue(p.y - drag.dy)));
+      const x = Math.max(
+        poolX + leftHeaderWidth + 16,
+        Math.min(poolX + poolWidth - width - 16, snapValue(p.x - drag.dx)),
+      );
+      const y = Math.max(
+        poolY + 12,
+        Math.min(poolY + poolHeight - height - 12, snapValue(p.y - drag.dy)),
+      );
       const aligned = alignNodePosition(x, y, width, height, currentNode.id);
-      const nextNode = { ...currentNode, x: aligned.x, y: aligned.y, lane: laneIndexFromY(aligned.y + height / 2) };
+      const nextNode = {
+        ...currentNode,
+        x: aligned.x,
+        y: aligned.y,
+        lane: laneIndexFromY(aligned.y + height / 2),
+      };
       const delta = { x: nextNode.x - currentNode.x, y: nextNode.y - currentNode.y };
       const nextNodes = data.nodes.map((node) => {
         if (!drag.ids.includes(node.id)) return node;
         if (node.id === drag.id) return nextNode;
         const nodeWidth = node.width ?? 140;
         const nodeHeight = node.height ?? 64;
-        const nextX = Math.max(poolX + leftHeaderWidth + 16, Math.min(poolX + poolWidth - nodeWidth - 16, node.x + delta.x));
-        const nextY = Math.max(poolY + 12, Math.min(poolY + poolHeight - nodeHeight - 12, node.y + delta.y));
+        const nextX = Math.max(
+          poolX + leftHeaderWidth + 16,
+          Math.min(poolX + poolWidth - nodeWidth - 16, node.x + delta.x),
+        );
+        const nextY = Math.max(
+          poolY + 12,
+          Math.min(poolY + poolHeight - nodeHeight - 12, node.y + delta.y),
+        );
         return { ...node, x: nextX, y: nextY, lane: laneIndexFromY(nextY + nodeHeight / 2) };
       });
       update({
         ...data,
         lanes,
         nodes: nextNodes,
-        flows: data.flows.map((flow) => drag.ids.reduce(
-          (nextFlow, nodeId) => refreshConnectorAfterNodeMove(moveConnectorWithNode(nextFlow, nodeId, delta), nextNodes, nodeId),
-          flow,
-        )),
+        flows: data.flows.map((flow) =>
+          drag.ids.reduce(
+            (nextFlow, nodeId) =>
+              refreshConnectorAfterNodeMove(
+                moveConnectorWithNode(nextFlow, nodeId, delta),
+                nextNodes,
+                nodeId,
+              ),
+            flow,
+          ),
+        ),
       });
     }
     if (drag.kind === "selection-box") {
@@ -11489,8 +12714,18 @@ function BpmnModuleV2({
           const resizesEast = drag.handle === "e" || drag.handle === "ne" || drag.handle === "se";
           const resizesNorth = drag.handle === "n" || drag.handle === "nw" || drag.handle === "ne";
           const resizesSouth = drag.handle === "s" || drag.handle === "sw" || drag.handle === "se";
-          const width = snapValue(Math.max(58, resizesWest ? drag.width - dx : resizesEast ? drag.width + dx : drag.width));
-          const height = snapValue(Math.max(44, resizesNorth ? drag.height - dy : resizesSouth ? drag.height + dy : drag.height));
+          const width = snapValue(
+            Math.max(
+              58,
+              resizesWest ? drag.width - dx : resizesEast ? drag.width + dx : drag.width,
+            ),
+          );
+          const height = snapValue(
+            Math.max(
+              44,
+              resizesNorth ? drag.height - dy : resizesSouth ? drag.height + dy : drag.height,
+            ),
+          );
           const x = resizesWest ? right - width : drag.x;
           const y = resizesNorth ? bottom - height : drag.y;
           return { ...node, x, y, width, height, lane: laneIndexFromY(y + height / 2) };
@@ -11498,7 +12733,12 @@ function BpmnModuleV2({
       });
     }
     if (drag.kind === "pool-width") {
-      update({ ...data, lanes, laneHeights, poolWidth: Math.max(720, snapValue(drag.width + p.x - drag.startX)) });
+      update({
+        ...data,
+        lanes,
+        laneHeights,
+        poolWidth: Math.max(720, snapValue(drag.width + p.x - drag.startX)),
+      });
     }
     if (drag.kind === "pool-height") {
       const last = laneHeights.length - 1;
@@ -11506,7 +12746,9 @@ function BpmnModuleV2({
         ...data,
         lanes,
         poolWidth,
-        laneHeights: drag.laneHeights.map((height, index) => (index === last ? Math.max(110, snapValue(height + p.y - drag.startY)) : height)),
+        laneHeights: drag.laneHeights.map((height, index) =>
+          index === last ? Math.max(110, snapValue(height + p.y - drag.startY)) : height,
+        ),
       });
     }
     if (drag.kind === "lane-height") {
@@ -11514,7 +12756,9 @@ function BpmnModuleV2({
         ...data,
         lanes,
         poolWidth,
-        laneHeights: drag.laneHeights.map((height, index) => (index === drag.lane ? Math.max(110, snapValue(height + p.y - drag.startY)) : height)),
+        laneHeights: drag.laneHeights.map((height, index) =>
+          index === drag.lane ? Math.max(110, snapValue(height + p.y - drag.startY)) : height,
+        ),
       });
     }
     if (drag.kind === "flow-segment") {
@@ -11543,35 +12787,60 @@ function BpmnModuleV2({
           if (!from || !to) return flow;
           const anchorNode = drag.end === "from" ? from : to;
           const anchor = edgeAnchorFromPoint(anchorNode, p);
-          const nextFlow = drag.end === "from" ? { ...flow, fromAnchor: anchor } : { ...flow, toAnchor: anchor };
+          const nextFlow =
+            drag.end === "from" ? { ...flow, fromAnchor: anchor } : { ...flow, toAnchor: anchor };
           return { ...nextFlow, points: [] };
         }),
       });
     }
     if (drag.kind === "free-flow-end") {
       const candidate = nodeAtPoint(p);
-      setConnectionTarget(candidate ? { nodeId: candidate.id, anchor: edgeAnchorFromPoint(candidate, p) } : null);
+      setConnectionTarget(
+        candidate ? { nodeId: candidate.id, anchor: edgeAnchorFromPoint(candidate, p) } : null,
+      );
       update({
         ...data,
         lanes,
         flows: data.flows.map((flow) => {
           if (flow.id !== drag.flowId) return flow;
           const candidate = nodeAtPoint(p);
-          const snapped = candidate ? anchorPoint(candidate, edgeAnchorFromPoint(candidate, p)) : { x: snapValue(p.x), y: snapValue(p.y) };
+          const snapped = candidate
+            ? anchorPoint(candidate, edgeAnchorFromPoint(candidate, p))
+            : { x: snapValue(p.x), y: snapValue(p.y) };
           if (drag.end === "from") {
             const target = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
-            const opposite = target ? anchorPoint(target, flow.toAnchor ?? { side: "left", offset: 0.5 }) : flow.freeTo ?? snapped;
-            return { ...flow, from: undefined, fromAnchor: undefined, freeFrom: snapped, points: editableConnectorPoints(snapped, opposite) };
+            const opposite = target
+              ? anchorPoint(target, flow.toAnchor ?? { side: "left", offset: 0.5 })
+              : (flow.freeTo ?? snapped);
+            return {
+              ...flow,
+              from: undefined,
+              fromAnchor: undefined,
+              freeFrom: snapped,
+              points: editableConnectorPoints(snapped, opposite),
+            };
           }
           const source = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
-          const opposite = source ? anchorPoint(source, flow.fromAnchor ?? { side: "right", offset: 0.5 }) : flow.freeFrom ?? snapped;
-          return { ...flow, to: undefined, toAnchor: undefined, freeTo: snapped, points: editableConnectorPoints(opposite, snapped) };
+          const opposite = source
+            ? anchorPoint(source, flow.fromAnchor ?? { side: "right", offset: 0.5 })
+            : (flow.freeFrom ?? snapped);
+          return {
+            ...flow,
+            to: undefined,
+            toAnchor: undefined,
+            freeTo: snapped,
+            points: editableConnectorPoints(opposite, snapped),
+          };
         }),
       });
     }
     if (drag.kind === "new-flow") {
       const candidate = nodeAtPoint(p);
-      setConnectionTarget(candidate && candidate.id !== drag.fromId ? { nodeId: candidate.id, anchor: edgeAnchorFromPoint(candidate, p) } : null);
+      setConnectionTarget(
+        candidate && candidate.id !== drag.fromId
+          ? { nodeId: candidate.id, anchor: edgeAnchorFromPoint(candidate, p) }
+          : null,
+      );
       setDrag({ ...drag, current: { x: snapValue(p.x), y: snapValue(p.y) } });
     }
   }
@@ -11580,17 +12849,20 @@ function BpmnModuleV2({
     const releasePoint = event ? point(event) : drag?.kind === "new-flow" ? drag.current : null;
     if (drag?.kind === "selection-box") {
       const box = selectionRect(drag.start, releasePoint ?? drag.current);
-      const ids = box.width < 5 && box.height < 5
-        ? []
-        : data.nodes
-          .filter((node) => {
-            const bounds = nodeBounds(node);
-            return bounds.right >= box.x
-              && bounds.left <= box.x + box.width
-              && bounds.bottom >= box.y
-              && bounds.top <= box.y + box.height;
-          })
-          .map((node) => node.id);
+      const ids =
+        box.width < 5 && box.height < 5
+          ? []
+          : data.nodes
+              .filter((node) => {
+                const bounds = nodeBounds(node);
+                return (
+                  bounds.right >= box.x &&
+                  bounds.left <= box.x + box.width &&
+                  bounds.bottom >= box.y &&
+                  bounds.top <= box.y + box.height
+                );
+              })
+              .map((node) => node.id);
       setSelectedNodeIds(ids);
       setSelectedId(ids.at(-1) ?? null);
       setSelectedFlowId(null);
@@ -11615,7 +12887,12 @@ function BpmnModuleV2({
             toAnchor: targetAnchor,
             points: [],
           };
-          update({ ...data, lanes, nodes: alignConnectedNodes(fromNode, target, drag.fromAnchor, targetAnchor), flows: [...data.flows, next] });
+          update({
+            ...data,
+            lanes,
+            nodes: alignConnectedNodes(fromNode, target, drag.fromAnchor, targetAnchor),
+            flows: [...data.flows, next],
+          });
           setSelectedFlowId(next.id);
           setSelectedId(null);
         } else {
@@ -11625,7 +12902,11 @@ function BpmnModuleV2({
             type: "sequence",
             fromAnchor: drag.fromAnchor,
             freeTo: endPoint,
-            points: editableConnectorPoints(anchorPoint(fromNode, drag.fromAnchor), endPoint, drag.fromAnchor),
+            points: editableConnectorPoints(
+              anchorPoint(fromNode, drag.fromAnchor),
+              endPoint,
+              drag.fromAnchor,
+            ),
           };
           update({ ...data, lanes, flows: [...data.flows, next] });
           setSelectedFlowId(next.id);
@@ -11645,7 +12926,13 @@ function BpmnModuleV2({
           flows: data.flows.map((flow) => {
             if (flow.id !== drag.flowId) return flow;
             if (drag.end === "from") {
-              return { ...flow, from: target.id, fromAnchor: anchor, freeFrom: undefined, points: [] };
+              return {
+                ...flow,
+                from: target.id,
+                fromAnchor: anchor,
+                freeFrom: undefined,
+                points: [],
+              };
             }
             return { ...flow, to: target.id, toAnchor: anchor, freeTo: undefined, points: [] };
           }),
@@ -11668,30 +12955,90 @@ function BpmnModuleV2({
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-[#f5f2ea] px-4 py-3 dark:bg-[#151a17]">
           <div className="min-w-[230px]">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">Processos - Fluxograma</div>
-            <h1 className="font-display text-xl font-semibold text-foreground">Editor de fluxograma</h1>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">
+              Processos - Fluxograma
+            </div>
+            <h1 className="font-display text-xl font-semibold text-foreground">
+              Editor de fluxograma
+            </h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input ref={importInputRef} type="file" accept=".bpm,.bpmn,.xml,.xpdl" className="hidden" onChange={handleImportFile} />
-            <ToolbarButton label="Importar" onClick={() => importInputRef.current?.click()} icon={<Upload className="h-4 w-4" />} />
-            <ToolbarButton label="Desfazer" onClick={undo} icon={<RotateCcw className="h-4 w-4" />} />
-            <ToolbarButton label="Refazer" onClick={redo} icon={<RotateCcw className="h-4 w-4 rotate-180" />} />
-            <ToolbarButton label="Excluir" onClick={deleteSelected} icon={<Trash2 className="h-4 w-4" />} />
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".bpm,.bpmn,.xml,.xpdl"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <ToolbarButton
+              label="Importar"
+              onClick={() => importInputRef.current?.click()}
+              icon={<Upload className="h-4 w-4" />}
+            />
+            <ToolbarButton
+              label="Desfazer"
+              onClick={undo}
+              icon={<RotateCcw className="h-4 w-4" />}
+            />
+            <ToolbarButton
+              label="Refazer"
+              onClick={redo}
+              icon={<RotateCcw className="h-4 w-4 rotate-180" />}
+            />
+            <ToolbarButton
+              label="Excluir"
+              onClick={deleteSelected}
+              icon={<Trash2 className="h-4 w-4" />}
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" title="Reduzir zoom" aria-label="Reduzir zoom" onClick={() => setZoom((value) => Math.max(60, value - 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">-</button>
+            <button
+              type="button"
+              title="Reduzir zoom"
+              aria-label="Reduzir zoom"
+              onClick={() => setZoom((value) => Math.max(60, value - 10))}
+              className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold"
+            >
+              -
+            </button>
             <span className="w-14 text-center font-data text-sm font-bold">{zoom}%</span>
-            <button type="button" title="Aumentar zoom" aria-label="Aumentar zoom" onClick={() => setZoom((value) => Math.min(160, value + 10))} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold">+</button>
-            <button type="button" title={showInspector ? "Ocultar painel de propriedades" : "Mostrar painel de propriedades"} aria-label={showInspector ? "Ocultar painel de propriedades" : "Mostrar painel de propriedades"} onClick={() => setShowInspector((value) => !value)} className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-foreground">
-              {showInspector ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            <button
+              type="button"
+              title="Aumentar zoom"
+              aria-label="Aumentar zoom"
+              onClick={() => setZoom((value) => Math.min(160, value + 10))}
+              className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card font-bold"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              title={
+                showInspector ? "Ocultar painel de propriedades" : "Mostrar painel de propriedades"
+              }
+              aria-label={
+                showInspector ? "Ocultar painel de propriedades" : "Mostrar painel de propriedades"
+              }
+              onClick={() => setShowInspector((value) => !value)}
+              className="grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-foreground"
+            >
+              {showInspector ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
 
-        <div className={`grid min-h-[calc(100vh-170px)] ${showInspector ? "xl:grid-cols-[190px_minmax(0,1fr)_280px]" : "xl:grid-cols-[190px_minmax(0,1fr)]"}`}>
+        <div
+          className={`grid min-h-[calc(100vh-170px)] ${showInspector ? "xl:grid-cols-[190px_minmax(0,1fr)_280px]" : "xl:grid-cols-[190px_minmax(0,1fr)]"}`}
+        >
           <aside className="border-b border-border bg-[#f8f8f5] p-4 dark:bg-[#111512] xl:border-b-0 xl:border-r">
             <div className="grid gap-3">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Estrutura</h3>
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Estrutura
+              </h3>
               <BpmnTool title="Pool" toolType="pool" disabled={false} onClick={createPool}>
                 <span className="grid h-12 w-20 grid-cols-[16px_1fr] overflow-hidden rounded-sm border-2 border-[#10251d] bg-white">
                   <span className="border-r border-[#10251d] bg-[#f8f3ea]" />
@@ -11701,7 +13048,12 @@ function BpmnModuleV2({
               <BpmnTool title="Raia" toolType="lane" disabled={!hasPool} onClick={addLane}>
                 <span className="h-8 w-20 rounded-sm border-2 border-[#06966f] bg-[#edf7f2]" />
               </BpmnTool>
-              <BpmnTool title="Conector" toolType="connector" disabled={!hasPool} onClick={() => setTool("connect")}>
+              <BpmnTool
+                title="Conector"
+                toolType="connector"
+                disabled={!hasPool}
+                onClick={() => setTool("connect")}
+              >
                 <span className="relative h-8 w-20">
                   <span className="absolute left-1 top-1/2 h-0.5 w-16 -translate-y-1/2 bg-[#26352f]" />
                   <span className="absolute right-1 top-1/2 h-0 w-0 -translate-y-1/2 border-y-[6px] border-l-[9px] border-y-transparent border-l-[#26352f]" />
@@ -11709,14 +13061,50 @@ function BpmnModuleV2({
               </BpmnTool>
             </div>
             <div className="mt-5 grid gap-3 border-t border-border pt-4">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Elementos</h3>
-              <BpmnTool title="Evento inicial" nodeType="start" disabled={!hasPool} onClick={() => addNode("start")}><span className="h-9 w-9 rounded-full border-2 border-[#06966f] bg-[#d8f3e8]" /></BpmnTool>
-              <BpmnTool title="Atividade" nodeType="task" disabled={!hasPool} onClick={() => addNode("task")}><span className="h-9 w-14 rounded-md border-2 border-[#008c95] bg-[#e6f5f3]" /></BpmnTool>
-              <BpmnTool title="Gateway" nodeType="gateway" disabled={!hasPool} onClick={() => addNode("gateway")}><span className="h-10 w-10 rotate-45 border-2 border-[#d39a20] bg-[#fff5d8]" /></BpmnTool>
-              <BpmnTool title="Evento final" nodeType="end" disabled={!hasPool} onClick={() => addNode("end")}><span className="h-9 w-9 rounded-full border-4 border-[#a82b2b] bg-[#ffe1df]" /></BpmnTool>
-              <BpmnTool title="Anotação" nodeType="annotation" disabled={!hasPool} onClick={() => addNode("annotation")}><span className="h-10 w-8 border-2 border-dashed border-[#06966f] bg-white" /></BpmnTool>
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Elementos
+              </h3>
+              <BpmnTool
+                title="Evento inicial"
+                nodeType="start"
+                disabled={!hasPool}
+                onClick={() => addNode("start")}
+              >
+                <span className="h-9 w-9 rounded-full border-2 border-[#06966f] bg-[#d8f3e8]" />
+              </BpmnTool>
+              <BpmnTool
+                title="Atividade"
+                nodeType="task"
+                disabled={!hasPool}
+                onClick={() => addNode("task")}
+              >
+                <span className="h-9 w-14 rounded-md border-2 border-[#008c95] bg-[#e6f5f3]" />
+              </BpmnTool>
+              <BpmnTool
+                title="Gateway"
+                nodeType="gateway"
+                disabled={!hasPool}
+                onClick={() => addNode("gateway")}
+              >
+                <span className="h-10 w-10 rotate-45 border-2 border-[#d39a20] bg-[#fff5d8]" />
+              </BpmnTool>
+              <BpmnTool
+                title="Evento final"
+                nodeType="end"
+                disabled={!hasPool}
+                onClick={() => addNode("end")}
+              >
+                <span className="h-9 w-9 rounded-full border-4 border-[#a82b2b] bg-[#ffe1df]" />
+              </BpmnTool>
+              <BpmnTool
+                title="Anotação"
+                nodeType="annotation"
+                disabled={!hasPool}
+                onClick={() => addNode("annotation")}
+              >
+                <span className="h-10 w-8 border-2 border-dashed border-[#06966f] bg-white" />
+              </BpmnTool>
             </div>
-
           </aside>
 
           <main className="min-w-0 bg-[#ebeee9]">
@@ -11756,26 +13144,98 @@ function BpmnModuleV2({
                   <pattern id="bpmn-grid-v2" width="20" height="20" patternUnits="userSpaceOnUse">
                     <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d3ded8" strokeWidth="0.6" />
                   </pattern>
-                  <marker id="arrow-v2" markerHeight="9" markerWidth="9" orient="auto" refX="8" refY="4.5">
+                  <marker
+                    id="arrow-v2"
+                    markerHeight="9"
+                    markerWidth="9"
+                    orient="auto"
+                    refX="8"
+                    refY="4.5"
+                  >
                     <path d="M0,0 L9,4.5 L0,9 Z" fill="#26352f" />
                   </marker>
                   <filter id="bpmn-tool-shadow" x="-25%" y="-15%" width="150%" height="140%">
-                    <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#10251d" floodOpacity="0.2" />
+                    <feDropShadow
+                      dx="0"
+                      dy="2"
+                      stdDeviation="2"
+                      floodColor="#10251d"
+                      floodOpacity="0.2"
+                    />
                   </filter>
                 </defs>
-                {showGrid ? <rect width={canvasWidth} height={canvasHeight} fill="url(#bpmn-grid-v2)" opacity="0.3" /> : null}
+                {showGrid ? (
+                  <rect
+                    width={canvasWidth}
+                    height={canvasHeight}
+                    fill="url(#bpmn-grid-v2)"
+                    opacity="0.3"
+                  />
+                ) : null}
                 {!hasPool ? (
                   <g>
-                    <rect x={poolX} y={poolY} width="720" height="260" rx="14" fill="#ffffff" stroke="#cfd8d4" strokeDasharray="8 8" />
-                    <text x={poolX + 360} y={poolY + 118} textAnchor="middle" fontSize="20" fontWeight="800" fill="#047a61">Crie uma pool para iniciar o desenho</text>
-                    <text x={poolX + 360} y={poolY + 152} textAnchor="middle" fontSize="13" fontWeight="600" fill="#64736e">Depois adicione raias, arraste elementos e conecte o fluxo.</text>
+                    <rect
+                      x={poolX}
+                      y={poolY}
+                      width="720"
+                      height="260"
+                      rx="14"
+                      fill="#ffffff"
+                      stroke="#cfd8d4"
+                      strokeDasharray="8 8"
+                    />
+                    <text
+                      x={poolX + 360}
+                      y={poolY + 118}
+                      textAnchor="middle"
+                      fontSize="20"
+                      fontWeight="800"
+                      fill="#047a61"
+                    >
+                      Crie uma pool para iniciar o desenho
+                    </text>
+                    <text
+                      x={poolX + 360}
+                      y={poolY + 152}
+                      textAnchor="middle"
+                      fontSize="13"
+                      fontWeight="600"
+                      fill="#64736e"
+                    >
+                      Depois adicione raias, arraste elementos e conecte o fluxo.
+                    </text>
                   </g>
                 ) : null}
-                {hasPool ? <rect x={poolX} y={poolY} width={poolWidth} height={poolHeight} fill="#ffffff" stroke="#10251d" strokeWidth="1.7" /> : null}
-                {hasPool ? <rect x={poolX} y={poolY} width={poolLabelWidth} height={poolHeight} fill="#f8f3ea" stroke="#10251d" strokeWidth="1.7" /> : null}
+                {hasPool ? (
+                  <rect
+                    x={poolX}
+                    y={poolY}
+                    width={poolWidth}
+                    height={poolHeight}
+                    fill="#ffffff"
+                    stroke="#10251d"
+                    strokeWidth="1.7"
+                  />
+                ) : null}
+                {hasPool ? (
+                  <rect
+                    x={poolX}
+                    y={poolY}
+                    width={poolLabelWidth}
+                    height={poolHeight}
+                    fill="#f8f3ea"
+                    stroke="#10251d"
+                    strokeWidth="1.7"
+                  />
+                ) : null}
                 {hasPool ? (
                   editingPool ? (
-                    <foreignObject x={poolX + 6} y={poolY + poolHeight / 2 - 55} width={poolLabelWidth - 12} height={110}>
+                    <foreignObject
+                      x={poolX + 6}
+                      y={poolY + poolHeight / 2 - 55}
+                      width={poolLabelWidth - 12}
+                      height={110}
+                    >
                       <textarea
                         autoFocus
                         value={editingText}
@@ -11811,295 +13271,559 @@ function BpmnModuleV2({
                     </text>
                   )
                 ) : null}
-                {hasPool ? lanes.map((lane, index) => (
-                  <g key={`${lane}-${index}`}>
-                    <rect x={poolX + poolLabelWidth} y={laneY(index)} width={laneLabelWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
-                    <rect x={poolX + leftHeaderWidth} y={laneY(index)} width={poolWidth - leftHeaderWidth} height={laneHeights[index]} fill="#ffffff" stroke="#10251d" strokeWidth="1" />
-                    {editingLaneIndex === index ? (
-                      <foreignObject x={poolX + poolLabelWidth + 5} y={laneY(index) + laneHeights[index] / 2 - 42} width={laneLabelWidth - 10} height={84}>
-                        <textarea
-                          autoFocus
-                          value={editingText}
-                          onChange={(event) => setEditingText(event.target.value)}
-                          onBlur={commitLaneEdit}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" && !event.shiftKey) {
-                              event.preventDefault();
-                              commitLaneEdit();
-                            }
-                            if (event.key === "Escape") setEditingLaneIndex(null);
-                          }}
-                          className="h-full w-full resize-none rounded-md border border-[#d39a20] bg-white px-2 py-1 text-center text-xs font-bold text-[#10251d] outline-none"
+                {hasPool
+                  ? lanes.map((lane, index) => (
+                      <g key={`${lane}-${index}`}>
+                        <rect
+                          x={poolX + poolLabelWidth}
+                          y={laneY(index)}
+                          width={laneLabelWidth}
+                          height={laneHeights[index]}
+                          fill="#ffffff"
+                          stroke="#10251d"
+                          strokeWidth="1"
                         />
-                      </foreignObject>
-                    ) : (
-                      <text
-                        x={poolX + poolLabelWidth + laneLabelWidth / 2}
-                        y={laneY(index) + laneHeights[index] / 2}
-                        textAnchor="middle"
-                        fontSize="13"
-                        fontWeight="800"
-                        fill="#10251d"
-                        transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}
-                        className="cursor-text"
-                        onDoubleClick={(event) => {
-                          event.stopPropagation();
-                          startLaneEdit(index);
-                        }}
-                      >
-                        {lane || `Raia ${index + 1}`}
-                      </text>
-                    )}
-                    {index < lanes.length - 1 ? (
-                      <rect x={poolX} y={laneY(index) + laneHeights[index] - 4} width={poolWidth} height="8" fill="transparent" className="cursor-row-resize" onPointerDown={(event) => {
-                        event.stopPropagation();
-                        setDrag({ kind: "lane-height", lane: index, startY: point(event as React.PointerEvent<SVGSVGElement>).y, laneHeights });
-                      }} />
-                    ) : null}
-                  </g>
-                )) : null}
-                {hasPool ? <rect x={poolX + poolWidth - 5} y={poolY} width="10" height={poolHeight} fill="transparent" className="cursor-col-resize" onPointerDown={(event) => {
-                  event.stopPropagation();
-                  setDrag({ kind: "pool-width", startX: point(event as React.PointerEvent<SVGSVGElement>).x, width: poolWidth });
-                }} /> : null}
-                {hasPool ? <rect x={poolX} y={poolY + poolHeight - 5} width={poolWidth} height="10" fill="transparent" className="cursor-row-resize" onPointerDown={(event) => {
-                  event.stopPropagation();
-                  setDrag({ kind: "pool-height", startY: point(event as React.PointerEvent<SVGSVGElement>).y, laneHeights });
-                }} /> : null}
-                {hasPool ? <rect x={poolX + poolWidth - 8} y={poolY + poolHeight - 8} width="16" height="16" fill="var(--gold)" className="cursor-nwse-resize" onPointerDown={(event) => {
-                  event.stopPropagation();
-                  setDrag({ kind: "pool-width", startX: point(event as React.PointerEvent<SVGSVGElement>).x, width: poolWidth });
-                }} /> : null}
-                {hasPool ? data.flows.map((flow) => {
-                  const from = flow.from ? data.nodes.find((node) => node.id === flow.from) : undefined;
-                  const to = flow.to ? data.nodes.find((node) => node.id === flow.to) : undefined;
-                  if ((!from && !flow.freeFrom) || (!to && !flow.freeTo)) return null;
-                  return (
-                    <BpmnConnectorV2
-                      key={flow.id}
-                      flow={flow}
-                      from={from}
-                      to={to}
-                      selected={flow.id === selectedFlowId}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        selectFlow(flow);
-                      }}
-                      onSegmentPointerDown={(event, routePoints, firstPoint, secondPoint, axis) => {
-                        event.stopPropagation();
-                        svgRef.current?.setPointerCapture?.(event.pointerId);
-                        ignoreCanvasClickRef.current = true;
-                        if (!(flow.points?.length)) {
-                          update({
-                            ...data,
-                            lanes,
-                            flows: data.flows.map((item) => item.id === flow.id ? { ...item, points: routePoints } : item),
-                          });
-                        }
-                        setDrag({ kind: "flow-segment", flowId: flow.id, firstPoint, secondPoint, axis });
-                        setSelectedFlowId(flow.id);
-                        setSelectedId(null);
-                      }}
-                      onAnchorPointerDown={(event, end) => {
-                        event.stopPropagation();
-                        const endpointNode = end === "from" ? from : to;
-                        const oppositeNode = end === "from" ? to : from;
-                        const fallback = end === "from" ? flow.freeFrom : flow.freeTo;
-                        const endpoint =
-                          endpointNode && oppositeNode
-                            ? resolveConnectorPoint(endpointNode, oppositeNode, end === "from" ? flow.fromAnchor : flow.toAnchor)
-                            : endpointNode
-                              ? anchorPoint(endpointNode, { side: "right", offset: 0.5 })
-                              : fallback;
-                        if (endpoint) {
-                          update({
-                            ...data,
-                            lanes,
-                            flows: data.flows.map((item) => {
-                              if (item.id !== flow.id) return item;
-                              return end === "from"
-                                ? { ...item, from: undefined, fromAnchor: undefined, freeFrom: endpoint }
-                                : { ...item, to: undefined, toAnchor: undefined, freeTo: endpoint };
-                            }),
-                          });
-                        }
-                        svgRef.current?.setPointerCapture?.(event.pointerId);
-                        setDrag({ kind: "free-flow-end", flowId: flow.id, end });
-                        setSelectedFlowId(flow.id);
-                        setSelectedId(null);
-                      }}
-                    />
-                  );
-                }) : null}
-                {drag?.kind === "selection-box" ? (() => {
-                  const box = selectionRect(drag.start, drag.current);
-                  return <rect x={box.x} y={box.y} width={box.width} height={box.height} fill="#009b7420" stroke="#008c68" strokeWidth="1.5" strokeDasharray="5 4" pointerEvents="none" />;
-                })() : null}
-                {hasPool && drag?.kind === "new-flow" ? (() => {
-                  const from = data.nodes.find((node) => node.id === drag.fromId);
-                  if (!from) return null;
-                  const target = nodeAtPoint(drag.current);
-                  const targetPoint = target && target.id !== from.id
-                    ? anchorPoint(target, edgeAnchorFromPoint(target, drag.current))
-                    : drag.current;
-                  return (
-                    <BpmnConnectorV2
-                      flow={{
-                        id: "preview-flow",
-                        from: from.id,
-                        fromAnchor: drag.fromAnchor,
-                        freeTo: targetPoint,
-                        type: "sequence",
-                        points: connectorRoutePoints(
-                          anchorPoint(from, drag.fromAnchor),
-                          targetPoint,
-                          drag.fromAnchor,
-                          target ? edgeAnchorFromPoint(target, drag.current) : undefined,
-                        ),
-                      }}
-                      from={from}
-                      selected
-                      preview
-                      onClick={(event) => event.stopPropagation()}
-                      onSegmentPointerDown={(event) => event.stopPropagation()}
-                      onAnchorPointerDown={(event) => event.stopPropagation()}
-                    />
-                  );
-                })() : null}
-                {hasPool && drag?.kind === "free-flow-end" && connectionTarget ? (() => {
-                  const original = data.flows.find((flow) => flow.id === drag.flowId);
-                  const candidate = data.nodes.find((node) => node.id === connectionTarget.nodeId);
-                  if (!original || !candidate) return null;
-                  const from = drag.end === "from"
-                    ? candidate
-                    : original.from ? data.nodes.find((node) => node.id === original.from) : undefined;
-                  const to = drag.end === "to"
-                    ? candidate
-                    : original.to ? data.nodes.find((node) => node.id === original.to) : undefined;
-                  const previewFlow = drag.end === "from"
-                    ? { ...original, from: candidate.id, fromAnchor: connectionTarget.anchor, freeFrom: undefined, points: [] }
-                    : { ...original, to: candidate.id, toAnchor: connectionTarget.anchor, freeTo: undefined, points: [] };
-                  return (
-                    <BpmnConnectorV2
-                      flow={previewFlow}
-                      from={from}
-                      to={to}
-                      selected
-                      preview
-                      onClick={(event) => event.stopPropagation()}
-                      onSegmentPointerDown={(event) => event.stopPropagation()}
-                      onAnchorPointerDown={(event) => event.stopPropagation()}
-                    />
-                  );
-                })() : null}
-                {hasPool ? data.nodes.map((node) => (
-                  <BpmnShapeV2
-                    key={node.id}
-                    node={node}
-                    selected={selectedNodeIds.includes(node.id)}
-                    primarySelected={node.id === selectedId}
-                    connecting={node.id === connectFrom || node.id === connectionTarget?.nodeId}
-                    canvasRight={poolX + poolWidth}
+                        <rect
+                          x={poolX + leftHeaderWidth}
+                          y={laneY(index)}
+                          width={poolWidth - leftHeaderWidth}
+                          height={laneHeights[index]}
+                          fill="#ffffff"
+                          stroke="#10251d"
+                          strokeWidth="1"
+                        />
+                        {editingLaneIndex === index ? (
+                          <foreignObject
+                            x={poolX + poolLabelWidth + 5}
+                            y={laneY(index) + laneHeights[index] / 2 - 42}
+                            width={laneLabelWidth - 10}
+                            height={84}
+                          >
+                            <textarea
+                              autoFocus
+                              value={editingText}
+                              onChange={(event) => setEditingText(event.target.value)}
+                              onBlur={commitLaneEdit}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" && !event.shiftKey) {
+                                  event.preventDefault();
+                                  commitLaneEdit();
+                                }
+                                if (event.key === "Escape") setEditingLaneIndex(null);
+                              }}
+                              className="h-full w-full resize-none rounded-md border border-[#d39a20] bg-white px-2 py-1 text-center text-xs font-bold text-[#10251d] outline-none"
+                            />
+                          </foreignObject>
+                        ) : (
+                          <text
+                            x={poolX + poolLabelWidth + laneLabelWidth / 2}
+                            y={laneY(index) + laneHeights[index] / 2}
+                            textAnchor="middle"
+                            fontSize="13"
+                            fontWeight="800"
+                            fill="#10251d"
+                            transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}
+                            className="cursor-text"
+                            onDoubleClick={(event) => {
+                              event.stopPropagation();
+                              startLaneEdit(index);
+                            }}
+                          >
+                            {lane || `Raia ${index + 1}`}
+                          </text>
+                        )}
+                        {index < lanes.length - 1 ? (
+                          <rect
+                            x={poolX}
+                            y={laneY(index) + laneHeights[index] - 4}
+                            width={poolWidth}
+                            height="8"
+                            fill="transparent"
+                            className="cursor-row-resize"
+                            onPointerDown={(event) => {
+                              event.stopPropagation();
+                              setDrag({
+                                kind: "lane-height",
+                                lane: index,
+                                startY: point(event as React.PointerEvent<SVGSVGElement>).y,
+                                laneHeights,
+                              });
+                            }}
+                          />
+                        ) : null}
+                      </g>
+                    ))
+                  : null}
+                {hasPool ? (
+                  <rect
+                    x={poolX + poolWidth - 5}
+                    y={poolY}
+                    width="10"
+                    height={poolHeight}
+                    fill="transparent"
+                    className="cursor-col-resize"
                     onPointerDown={(event) => {
                       event.stopPropagation();
-                      if (editingNodeId === node.id) return;
-                      if (tool === "connect") return;
-                      ignoreNodeClickRef.current = false;
-                      svgRef.current?.setPointerCapture?.(event.pointerId);
-                      ignoreCanvasClickRef.current = true;
-                      const p = point(event as React.PointerEvent<SVGSVGElement>);
-                      const ids = selectedNodeIds.includes(node.id) ? selectedNodeIds : [node.id];
-                      setSelectedId(node.id);
-                      setSelectedNodeIds(ids);
-                      setSelectedFlowId(null);
-                      setDrag({ kind: "node", id: node.id, ids, dx: p.x - node.x, dy: p.y - node.y, start: p, moved: false });
+                      setDrag({
+                        kind: "pool-width",
+                        startX: point(event as React.PointerEvent<SVGSVGElement>).x,
+                        width: poolWidth,
+                      });
                     }}
-                    onResizePointerDown={(event, handle) => {
-                      event.stopPropagation();
-                      svgRef.current?.setPointerCapture?.(event.pointerId);
-                      ignoreCanvasClickRef.current = true;
-                      const p = point(event as React.PointerEvent<SVGSVGElement>);
-                      setDrag({ kind: "node-size", id: node.id, startX: p.x, startY: p.y, x: node.x, y: node.y, width: node.width ?? 140, height: node.height ?? 64, handle });
-                    }}
-                    onConnectorPointerDown={(event, anchor) => {
-                      event.stopPropagation();
-                      startNodeConnector(event, node, anchor);
-                    }}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (ignoreNodeClickRef.current) {
-                        ignoreNodeClickRef.current = false;
-                        return;
-                      }
-                      handleNodeClick(node, pointFromClient(event.clientX, event.clientY));
-                    }}
-                    onDoubleClick={(event) => {
-                      event.stopPropagation();
-                      setTool("select");
-                      setSelectedId(node.id);
-                      setSelectedFlowId(null);
-                      setEditingNodeId(node.id);
-                      setEditingLabel(node.label);
-                    }}
-                    onQuickCreate={(type) => quickAddAfter(node, type)}
-                    editing={editingNodeId === node.id}
-                    editingValue={editingLabel}
-                    onEditingChange={setEditingLabel}
-                    onEditingCommit={() => commitNodeLabel(node.id)}
-                    onEditingCancel={() => setEditingNodeId(null)}
                   />
-                )) : null}
+                ) : null}
+                {hasPool ? (
+                  <rect
+                    x={poolX}
+                    y={poolY + poolHeight - 5}
+                    width={poolWidth}
+                    height="10"
+                    fill="transparent"
+                    className="cursor-row-resize"
+                    onPointerDown={(event) => {
+                      event.stopPropagation();
+                      setDrag({
+                        kind: "pool-height",
+                        startY: point(event as React.PointerEvent<SVGSVGElement>).y,
+                        laneHeights,
+                      });
+                    }}
+                  />
+                ) : null}
+                {hasPool ? (
+                  <rect
+                    x={poolX + poolWidth - 8}
+                    y={poolY + poolHeight - 8}
+                    width="16"
+                    height="16"
+                    fill="var(--gold)"
+                    className="cursor-nwse-resize"
+                    onPointerDown={(event) => {
+                      event.stopPropagation();
+                      setDrag({
+                        kind: "pool-width",
+                        startX: point(event as React.PointerEvent<SVGSVGElement>).x,
+                        width: poolWidth,
+                      });
+                    }}
+                  />
+                ) : null}
+                {hasPool
+                  ? data.flows.map((flow) => {
+                      const from = flow.from
+                        ? data.nodes.find((node) => node.id === flow.from)
+                        : undefined;
+                      const to = flow.to
+                        ? data.nodes.find((node) => node.id === flow.to)
+                        : undefined;
+                      if ((!from && !flow.freeFrom) || (!to && !flow.freeTo)) return null;
+                      return (
+                        <BpmnConnectorV2
+                          key={flow.id}
+                          flow={flow}
+                          from={from}
+                          to={to}
+                          selected={flow.id === selectedFlowId}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            selectFlow(flow);
+                          }}
+                          onSegmentPointerDown={(
+                            event,
+                            routePoints,
+                            firstPoint,
+                            secondPoint,
+                            axis,
+                          ) => {
+                            event.stopPropagation();
+                            svgRef.current?.setPointerCapture?.(event.pointerId);
+                            ignoreCanvasClickRef.current = true;
+                            if (!flow.points?.length) {
+                              update({
+                                ...data,
+                                lanes,
+                                flows: data.flows.map((item) =>
+                                  item.id === flow.id ? { ...item, points: routePoints } : item,
+                                ),
+                              });
+                            }
+                            setDrag({
+                              kind: "flow-segment",
+                              flowId: flow.id,
+                              firstPoint,
+                              secondPoint,
+                              axis,
+                            });
+                            setSelectedFlowId(flow.id);
+                            setSelectedId(null);
+                          }}
+                          onAnchorPointerDown={(event, end) => {
+                            event.stopPropagation();
+                            const endpointNode = end === "from" ? from : to;
+                            const oppositeNode = end === "from" ? to : from;
+                            const fallback = end === "from" ? flow.freeFrom : flow.freeTo;
+                            const endpoint =
+                              endpointNode && oppositeNode
+                                ? resolveConnectorPoint(
+                                    endpointNode,
+                                    oppositeNode,
+                                    end === "from" ? flow.fromAnchor : flow.toAnchor,
+                                  )
+                                : endpointNode
+                                  ? anchorPoint(endpointNode, { side: "right", offset: 0.5 })
+                                  : fallback;
+                            if (endpoint) {
+                              update({
+                                ...data,
+                                lanes,
+                                flows: data.flows.map((item) => {
+                                  if (item.id !== flow.id) return item;
+                                  return end === "from"
+                                    ? {
+                                        ...item,
+                                        from: undefined,
+                                        fromAnchor: undefined,
+                                        freeFrom: endpoint,
+                                      }
+                                    : {
+                                        ...item,
+                                        to: undefined,
+                                        toAnchor: undefined,
+                                        freeTo: endpoint,
+                                      };
+                                }),
+                              });
+                            }
+                            svgRef.current?.setPointerCapture?.(event.pointerId);
+                            setDrag({ kind: "free-flow-end", flowId: flow.id, end });
+                            setSelectedFlowId(flow.id);
+                            setSelectedId(null);
+                          }}
+                        />
+                      );
+                    })
+                  : null}
+                {drag?.kind === "selection-box"
+                  ? (() => {
+                      const box = selectionRect(drag.start, drag.current);
+                      return (
+                        <rect
+                          x={box.x}
+                          y={box.y}
+                          width={box.width}
+                          height={box.height}
+                          fill="#009b7420"
+                          stroke="#008c68"
+                          strokeWidth="1.5"
+                          strokeDasharray="5 4"
+                          pointerEvents="none"
+                        />
+                      );
+                    })()
+                  : null}
+                {hasPool && drag?.kind === "new-flow"
+                  ? (() => {
+                      const from = data.nodes.find((node) => node.id === drag.fromId);
+                      if (!from) return null;
+                      const target = nodeAtPoint(drag.current);
+                      const targetPoint =
+                        target && target.id !== from.id
+                          ? anchorPoint(target, edgeAnchorFromPoint(target, drag.current))
+                          : drag.current;
+                      return (
+                        <BpmnConnectorV2
+                          flow={{
+                            id: "preview-flow",
+                            from: from.id,
+                            fromAnchor: drag.fromAnchor,
+                            freeTo: targetPoint,
+                            type: "sequence",
+                            points: connectorRoutePoints(
+                              anchorPoint(from, drag.fromAnchor),
+                              targetPoint,
+                              drag.fromAnchor,
+                              target ? edgeAnchorFromPoint(target, drag.current) : undefined,
+                            ),
+                          }}
+                          from={from}
+                          selected
+                          preview
+                          onClick={(event) => event.stopPropagation()}
+                          onSegmentPointerDown={(event) => event.stopPropagation()}
+                          onAnchorPointerDown={(event) => event.stopPropagation()}
+                        />
+                      );
+                    })()
+                  : null}
+                {hasPool && drag?.kind === "free-flow-end" && connectionTarget
+                  ? (() => {
+                      const original = data.flows.find((flow) => flow.id === drag.flowId);
+                      const candidate = data.nodes.find(
+                        (node) => node.id === connectionTarget.nodeId,
+                      );
+                      if (!original || !candidate) return null;
+                      const from =
+                        drag.end === "from"
+                          ? candidate
+                          : original.from
+                            ? data.nodes.find((node) => node.id === original.from)
+                            : undefined;
+                      const to =
+                        drag.end === "to"
+                          ? candidate
+                          : original.to
+                            ? data.nodes.find((node) => node.id === original.to)
+                            : undefined;
+                      const previewFlow =
+                        drag.end === "from"
+                          ? {
+                              ...original,
+                              from: candidate.id,
+                              fromAnchor: connectionTarget.anchor,
+                              freeFrom: undefined,
+                              points: [],
+                            }
+                          : {
+                              ...original,
+                              to: candidate.id,
+                              toAnchor: connectionTarget.anchor,
+                              freeTo: undefined,
+                              points: [],
+                            };
+                      return (
+                        <BpmnConnectorV2
+                          flow={previewFlow}
+                          from={from}
+                          to={to}
+                          selected
+                          preview
+                          onClick={(event) => event.stopPropagation()}
+                          onSegmentPointerDown={(event) => event.stopPropagation()}
+                          onAnchorPointerDown={(event) => event.stopPropagation()}
+                        />
+                      );
+                    })()
+                  : null}
+                {hasPool
+                  ? data.nodes.map((node) => (
+                      <BpmnShapeV2
+                        key={node.id}
+                        node={node}
+                        selected={selectedNodeIds.includes(node.id)}
+                        primarySelected={node.id === selectedId}
+                        connecting={node.id === connectFrom || node.id === connectionTarget?.nodeId}
+                        canvasRight={poolX + poolWidth}
+                        onPointerDown={(event) => {
+                          event.stopPropagation();
+                          if (editingNodeId === node.id) return;
+                          if (tool === "connect") return;
+                          ignoreNodeClickRef.current = false;
+                          svgRef.current?.setPointerCapture?.(event.pointerId);
+                          ignoreCanvasClickRef.current = true;
+                          const p = point(event as React.PointerEvent<SVGSVGElement>);
+                          const ids = selectedNodeIds.includes(node.id)
+                            ? selectedNodeIds
+                            : [node.id];
+                          setSelectedId(node.id);
+                          setSelectedNodeIds(ids);
+                          setSelectedFlowId(null);
+                          setDrag({
+                            kind: "node",
+                            id: node.id,
+                            ids,
+                            dx: p.x - node.x,
+                            dy: p.y - node.y,
+                            start: p,
+                            moved: false,
+                          });
+                        }}
+                        onResizePointerDown={(event, handle) => {
+                          event.stopPropagation();
+                          svgRef.current?.setPointerCapture?.(event.pointerId);
+                          ignoreCanvasClickRef.current = true;
+                          const p = point(event as React.PointerEvent<SVGSVGElement>);
+                          setDrag({
+                            kind: "node-size",
+                            id: node.id,
+                            startX: p.x,
+                            startY: p.y,
+                            x: node.x,
+                            y: node.y,
+                            width: node.width ?? 140,
+                            height: node.height ?? 64,
+                            handle,
+                          });
+                        }}
+                        onConnectorPointerDown={(event, anchor) => {
+                          event.stopPropagation();
+                          startNodeConnector(event, node, anchor);
+                        }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (ignoreNodeClickRef.current) {
+                            ignoreNodeClickRef.current = false;
+                            return;
+                          }
+                          handleNodeClick(node, pointFromClient(event.clientX, event.clientY));
+                        }}
+                        onDoubleClick={(event) => {
+                          event.stopPropagation();
+                          setTool("select");
+                          setSelectedId(node.id);
+                          setSelectedFlowId(null);
+                          setEditingNodeId(node.id);
+                          setEditingLabel(node.label);
+                        }}
+                        onQuickCreate={(type) => quickAddAfter(node, type)}
+                        editing={editingNodeId === node.id}
+                        editingValue={editingLabel}
+                        onEditingChange={setEditingLabel}
+                        onEditingCommit={() => commitNodeLabel(node.id)}
+                        onEditingCancel={() => setEditingNodeId(null)}
+                      />
+                    ))
+                  : null}
               </svg>
             </div>
           </main>
 
-          {showInspector ? <aside className="border-t border-border bg-card p-4 xl:border-l xl:border-t-0">
-            <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Propriedades</h3>
-            <div className="grid gap-3">
-              <Field label="Nome da pool" value={data.poolName} onChange={(poolName) => commit({ ...data, lanes, poolName })} />
-            </div>
-            <div className="mt-5 border-t border-border pt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h4 className="text-sm font-bold text-foreground">Raias</h4>
-                <button type="button" onClick={addLane} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"><Plus className="h-3.5 w-3.5" />Nova</button>
+          {showInspector ? (
+            <aside className="border-t border-border bg-card p-4 xl:border-l xl:border-t-0">
+              <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Propriedades
+              </h3>
+              <div className="grid gap-3">
+                <Field
+                  label="Nome da pool"
+                  value={data.poolName}
+                  onChange={(poolName) => commit({ ...data, lanes, poolName })}
+                />
               </div>
-              <div className="grid gap-2">
-                {lanes.map((lane, index) => (
-                  <div key={`${lane}-${index}`} className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-border bg-muted/20 p-2">
-                    <Field compact label={`Raia ${index + 1}`} value={lane} onChange={(value) => updateLane(index, value)} />
-                    <div className="flex items-end gap-1">
-                      <IconButton label="Subir" onClick={() => moveLane(index, -1)}><ArrowUp className="h-4 w-4" /></IconButton>
-                      <IconButton label="Descer" onClick={() => moveLane(index, 1)}><ArrowDown className="h-4 w-4" /></IconButton>
-                      <IconButton label="Excluir raia" onClick={() => deleteLane(index)}><Trash2 className="h-4 w-4" /></IconButton>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {selected ? (
               <div className="mt-5 border-t border-border pt-4">
-                <h4 className="mb-3 text-sm font-bold text-foreground">Elemento</h4>
-                <div className="grid gap-3">
-                  <Field label="Texto" value={selected.label} onChange={(label) => commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === selected.id ? { ...node, label } : node)) })} />
-                  <TextArea label="Descrição" rows={3} value={selected.description ?? ""} onChange={(description) => commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === selected.id ? { ...node, description } : node)) })} />
-                  <Field label="Responsável" value={selected.responsible ?? ""} onChange={(responsible) => commit({ ...data, lanes, nodes: data.nodes.map((node) => (node.id === selected.id ? { ...node, responsible } : node)) })} />
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-foreground">Raias</h4>
+                  <button
+                    type="button"
+                    onClick={addLane}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Nova
+                  </button>
+                </div>
+                <div className="grid gap-2">
+                  {lanes.map((lane, index) => (
+                    <div
+                      key={`${lane}-${index}`}
+                      className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-border bg-muted/20 p-2"
+                    >
+                      <Field
+                        compact
+                        label={`Raia ${index + 1}`}
+                        value={lane}
+                        onChange={(value) => updateLane(index, value)}
+                      />
+                      <div className="flex items-end gap-1">
+                        <IconButton label="Subir" onClick={() => moveLane(index, -1)}>
+                          <ArrowUp className="h-4 w-4" />
+                        </IconButton>
+                        <IconButton label="Descer" onClick={() => moveLane(index, 1)}>
+                          <ArrowDown className="h-4 w-4" />
+                        </IconButton>
+                        <IconButton label="Excluir raia" onClick={() => deleteLane(index)}>
+                          <Trash2 className="h-4 w-4" />
+                        </IconButton>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ) : selectedFlow ? (
-              <div className="mt-5 border-t border-border pt-4">
-                <h4 className="mb-3 text-sm font-bold text-foreground">Conector</h4>
-                <Field label="Rótulo / condição" value={selectedFlow.label ?? ""} onChange={(label) => commit({ ...data, lanes, flows: data.flows.map((flow) => (flow.id === selectedFlow.id ? { ...flow, label } : flow)) })} />
-                <button type="button" onClick={() => commit({ ...data, lanes, flows: data.flows.map((flow) => flow.id === selectedFlow.id ? { ...flow, points: [] } : flow) })} className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted">
-                  Limpar pontos manuais
-                </button>
-              </div>
-            ) : (
-              <div className="mt-5 rounded-lg border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
-                Selecione um elemento ou conector.
-              </div>
-            )}
-          </aside> : null}
+              {selected ? (
+                <div className="mt-5 border-t border-border pt-4">
+                  <h4 className="mb-3 text-sm font-bold text-foreground">Elemento</h4>
+                  <div className="grid gap-3">
+                    <Field
+                      label="Texto"
+                      value={selected.label}
+                      onChange={(label) =>
+                        commit({
+                          ...data,
+                          lanes,
+                          nodes: data.nodes.map((node) =>
+                            node.id === selected.id ? { ...node, label } : node,
+                          ),
+                        })
+                      }
+                    />
+                    <TextArea
+                      label="Descrição"
+                      rows={3}
+                      value={selected.description ?? ""}
+                      onChange={(description) =>
+                        commit({
+                          ...data,
+                          lanes,
+                          nodes: data.nodes.map((node) =>
+                            node.id === selected.id ? { ...node, description } : node,
+                          ),
+                        })
+                      }
+                    />
+                    <Field
+                      label="Responsável"
+                      value={selected.responsible ?? ""}
+                      onChange={(responsible) =>
+                        commit({
+                          ...data,
+                          lanes,
+                          nodes: data.nodes.map((node) =>
+                            node.id === selected.id ? { ...node, responsible } : node,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              ) : selectedFlow ? (
+                <div className="mt-5 border-t border-border pt-4">
+                  <h4 className="mb-3 text-sm font-bold text-foreground">Conector</h4>
+                  <Field
+                    label="Rótulo / condição"
+                    value={selectedFlow.label ?? ""}
+                    onChange={(label) =>
+                      commit({
+                        ...data,
+                        lanes,
+                        flows: data.flows.map((flow) =>
+                          flow.id === selectedFlow.id ? { ...flow, label } : flow,
+                        ),
+                      })
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      commit({
+                        ...data,
+                        lanes,
+                        flows: data.flows.map((flow) =>
+                          flow.id === selectedFlow.id ? { ...flow, points: [] } : flow,
+                        ),
+                      })
+                    }
+                    className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"
+                  >
+                    Limpar pontos manuais
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-lg border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+                  Selecione um elemento ou conector.
+                </div>
+              )}
+            </aside>
+          ) : null}
         </div>
       </div>
     </div>
@@ -12121,65 +13845,142 @@ function BpmnConnectorV2({
   to?: BpmnNode;
   selected: boolean;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
-  onSegmentPointerDown: (event: React.PointerEvent<SVGGElement>, routePoints: Array<{ x: number; y: number }>, firstPoint: number, secondPoint: number, axis: "x" | "y") => void;
+  onSegmentPointerDown: (
+    event: React.PointerEvent<SVGGElement>,
+    routePoints: Array<{ x: number; y: number }>,
+    firstPoint: number,
+    secondPoint: number,
+    axis: "x" | "y",
+  ) => void;
   onAnchorPointerDown: (event: React.PointerEvent<SVGCircleElement>, end: "from" | "to") => void;
   preview?: boolean;
 }) {
   const freeA = flow.freeFrom ?? { x: 0, y: 0 };
   const freeB = flow.freeTo ?? { x: freeA.x + 120, y: freeA.y };
-  const fromAnchor = flow.fromAnchor ?? (from ? edgeAnchorFromPoint(from, to ? nodeCenter(to) : freeB) : undefined);
-  const a = from
-    ? anchorPoint(from, fromAnchor ?? { side: "right", offset: 0.5 })
-    : freeA;
-  const toAnchor = flow.toAnchor ?? (to ? edgeAnchorFromPoint(to, from ? nodeCenter(from) : a) : undefined);
-  const b = to
-    ? anchorPoint(to, toAnchor ?? { side: "left", offset: 0.5 })
-    : freeB;
+  const fromAnchor =
+    flow.fromAnchor ?? (from ? edgeAnchorFromPoint(from, to ? nodeCenter(to) : freeB) : undefined);
+  const a = from ? anchorPoint(from, fromAnchor ?? { side: "right", offset: 0.5 }) : freeA;
+  const toAnchor =
+    flow.toAnchor ?? (to ? edgeAnchorFromPoint(to, from ? nodeCenter(from) : a) : undefined);
+  const b = to ? anchorPoint(to, toAnchor ?? { side: "left", offset: 0.5 }) : freeB;
   const points = flow.points ?? [];
   // A rota automatica tambem nasce com uma alca central. Assim, ao puxar a
   // alca o usuario passa a controlar a mesma linha que ja estava vendo.
-  const defaultPoints = points.length > 0 ? points : editableConnectorPoints(a, b, fromAnchor, toAnchor);
+  const defaultPoints =
+    points.length > 0 ? points : editableConnectorPoints(a, b, fromAnchor, toAnchor);
   const route = orthogonalRoute(a, defaultPoints, b, fromAnchor?.side, toAnchor?.side);
-  const path = route.map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`).join(" ");
+  const path = route
+    .map((item, index) => `${index === 0 ? "M" : "L"} ${item.x} ${item.y}`)
+    .join(" ");
   const labelPoint = points[0] ?? defaultPoints[0] ?? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   const controlSegment = connectorControlSegment(defaultPoints);
   return (
-    <g onPointerDown={(event) => event.stopPropagation()} onClick={onClick} className={preview ? "pointer-events-none" : "cursor-pointer"}>
+    <g
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={onClick}
+      className={preview ? "pointer-events-none" : "cursor-pointer"}
+    >
       {!preview ? <path d={path} fill="none" stroke="transparent" strokeWidth="14" /> : null}
-      <path d={path} fill="none" stroke={preview ? "#06966f" : selected ? "#d39a20" : "#26352f"} strokeWidth={preview ? 3.4 : selected ? 3 : 2.2} strokeDasharray={preview ? "8 6" : undefined} markerEnd="url(#arrow-v2)" pointerEvents="none" />
-      {flow.label ? <text x={labelPoint.x + 8} y={labelPoint.y - 8} fontSize="12" fontWeight="800" fill="#26352f">{flow.label}</text> : null}
+      <path
+        d={path}
+        fill="none"
+        stroke={preview ? "#06966f" : selected ? "#d39a20" : "#26352f"}
+        strokeWidth={preview ? 3.4 : selected ? 3 : 2.2}
+        strokeDasharray={preview ? "8 6" : undefined}
+        markerEnd="url(#arrow-v2)"
+        pointerEvents="none"
+      />
+      {flow.label ? (
+        <text
+          x={labelPoint.x + 8}
+          y={labelPoint.y - 8}
+          fontSize="12"
+          fontWeight="800"
+          fill="#26352f"
+        >
+          {flow.label}
+        </text>
+      ) : null}
       {selected && !preview ? (
         <>
-          <circle cx={a.x} cy={a.y} r="7.5" fill="#dcfce7" stroke="#4f9d1a" strokeWidth="2.2" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "from")} />
-          <circle cx={b.x} cy={b.y} r="7.5" fill="#ffe4e6" stroke="#d24a5a" strokeWidth="2.2" className="cursor-crosshair" onPointerDown={(event) => onAnchorPointerDown(event, "to")} />
+          <circle
+            cx={a.x}
+            cy={a.y}
+            r="7.5"
+            fill="#dcfce7"
+            stroke="#4f9d1a"
+            strokeWidth="2.2"
+            className="cursor-crosshair"
+            onPointerDown={(event) => onAnchorPointerDown(event, "from")}
+          />
+          <circle
+            cx={b.x}
+            cy={b.y}
+            r="7.5"
+            fill="#ffe4e6"
+            stroke="#d24a5a"
+            strokeWidth="2.2"
+            className="cursor-crosshair"
+            onPointerDown={(event) => onAnchorPointerDown(event, "to")}
+          />
         </>
       ) : null}
-      {selected && !preview && controlSegment ? (() => {
-        const first = defaultPoints[controlSegment.firstPoint];
-        const second = defaultPoints[controlSegment.secondPoint];
-        const x = (first.x + second.x) / 2;
-        const y = (first.y + second.y) / 2;
-        const horizontal = controlSegment.axis === "y";
-        return (
-          <g
-            className={horizontal ? "cursor-ns-resize" : "cursor-ew-resize"}
-            onPointerDown={(event) => onSegmentPointerDown(event, defaultPoints, controlSegment.firstPoint, controlSegment.secondPoint, controlSegment.axis)}
-          >
-            <rect
-              x={x - (horizontal ? 13 : 6)}
-              y={y - (horizontal ? 6 : 13)}
-              width={horizontal ? "26" : "12"}
-              height={horizontal ? "12" : "26"}
-              rx="6"
-              fill="#ffffff"
-              stroke="#2583ab"
-              strokeWidth="2"
-              filter="url(#bpmn-tool-shadow)"
-            />
-            {horizontal ? [x - 5, x, x + 5].map((dot) => <circle key={dot} cx={dot} cy={y} r="1.25" fill="#2583ab" pointerEvents="none" />) : [y - 5, y, y + 5].map((dot) => <circle key={dot} cx={x} cy={dot} r="1.25" fill="#2583ab" pointerEvents="none" />)}
-          </g>
-        );
-      })() : null}
+      {selected && !preview && controlSegment
+        ? (() => {
+            const first = defaultPoints[controlSegment.firstPoint];
+            const second = defaultPoints[controlSegment.secondPoint];
+            const x = (first.x + second.x) / 2;
+            const y = (first.y + second.y) / 2;
+            const horizontal = controlSegment.axis === "y";
+            return (
+              <g
+                className={horizontal ? "cursor-ns-resize" : "cursor-ew-resize"}
+                onPointerDown={(event) =>
+                  onSegmentPointerDown(
+                    event,
+                    defaultPoints,
+                    controlSegment.firstPoint,
+                    controlSegment.secondPoint,
+                    controlSegment.axis,
+                  )
+                }
+              >
+                <rect
+                  x={x - (horizontal ? 13 : 6)}
+                  y={y - (horizontal ? 6 : 13)}
+                  width={horizontal ? "26" : "12"}
+                  height={horizontal ? "12" : "26"}
+                  rx="6"
+                  fill="#ffffff"
+                  stroke="#2583ab"
+                  strokeWidth="2"
+                  filter="url(#bpmn-tool-shadow)"
+                />
+                {horizontal
+                  ? [x - 5, x, x + 5].map((dot) => (
+                      <circle
+                        key={dot}
+                        cx={dot}
+                        cy={y}
+                        r="1.25"
+                        fill="#2583ab"
+                        pointerEvents="none"
+                      />
+                    ))
+                  : [y - 5, y, y + 5].map((dot) => (
+                      <circle
+                        key={dot}
+                        cx={x}
+                        cy={dot}
+                        r="1.25"
+                        fill="#2583ab"
+                        pointerEvents="none"
+                      />
+                    ))}
+              </g>
+            );
+          })()
+        : null}
     </g>
   );
 }
@@ -12208,8 +14009,14 @@ function BpmnShapeV2({
   connecting: boolean;
   canvasRight: number;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
-  onResizePointerDown: (event: React.PointerEvent<SVGCircleElement>, handle: BpmnResizeHandle) => void;
-  onConnectorPointerDown: (event: React.PointerEvent<SVGCircleElement>, anchor: BpmnEdgeAnchor) => void;
+  onResizePointerDown: (
+    event: React.PointerEvent<SVGCircleElement>,
+    handle: BpmnResizeHandle,
+  ) => void;
+  onConnectorPointerDown: (
+    event: React.PointerEvent<SVGCircleElement>,
+    anchor: BpmnEdgeAnchor,
+  ) => void;
   onQuickCreate: (type: BpmnNodeType) => void;
   onClick: (event: React.MouseEvent<SVGGElement>) => void;
   onDoubleClick: (event: React.MouseEvent<SVGGElement>) => void;
@@ -12219,8 +14026,12 @@ function BpmnShapeV2({
   onEditingCommit: () => void;
   onEditingCancel: () => void;
 }) {
-  const width = node.width ?? (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 150);
-  const height = node.height ?? (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 72);
+  const width =
+    node.width ??
+    (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 150);
+  const height =
+    node.height ??
+    (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 72);
   const stroke = connecting ? "#d39a20" : selected ? "#06966f" : "#26352f";
   const fill = node.color ?? (node.type === "annotation" ? "#fff7df" : "#ffffff");
   const common = { fill, stroke, strokeWidth: selected || connecting ? 3 : 2 };
@@ -12243,8 +14054,15 @@ function BpmnShapeV2({
     { handle: "w", x: node.x, y: node.y + height / 2, cursor: "ew-resize" },
   ];
   return (
-    <g onPointerDown={onPointerDown} onClick={onClick} onDoubleClick={onDoubleClick} className={editing ? "cursor-text" : "cursor-move"}>
-      {node.type === "task" ? <rect x={node.x} y={node.y} width={width} height={height} rx="10" {...common} /> : null}
+    <g
+      onPointerDown={onPointerDown}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      className={editing ? "cursor-text" : "cursor-move"}
+    >
+      {node.type === "task" ? (
+        <rect x={node.x} y={node.y} width={width} height={height} rx="10" {...common} />
+      ) : null}
       {node.type === "annotation" ? (
         <path
           d={`M${node.x},${node.y} H${node.x + width - 18} L${node.x + width},${node.y + 18} V${node.y + height} H${node.x} Z`}
@@ -12255,12 +14073,41 @@ function BpmnShapeV2({
         />
       ) : null}
       {node.type === "gateway" ? (
-        <path d={`M${node.x + width / 2},${node.y} L${node.x + width},${node.y + height / 2} L${node.x + width / 2},${node.y + height} L${node.x},${node.y + height / 2} Z`} {...common} />
+        <path
+          d={`M${node.x + width / 2},${node.y} L${node.x + width},${node.y + height / 2} L${node.x + width / 2},${node.y + height} L${node.x},${node.y + height / 2} Z`}
+          {...common}
+        />
       ) : null}
-      {node.type === "start" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 4} fill="#d8f3a7" stroke={selected || connecting ? stroke : "#66a80f"} strokeWidth={selected ? 3 : 2.5} /> : null}
-      {node.type === "end" ? <circle cx={node.x + width / 2} cy={node.y + height / 2} r={Math.min(width, height) / 2 - 5} fill="#f4c2bf" stroke={selected || connecting ? stroke : "#a40000"} strokeWidth={selected ? 5 : 4} /> : null}
+      {node.type === "start" ? (
+        <circle
+          cx={node.x + width / 2}
+          cy={node.y + height / 2}
+          r={Math.min(width, height) / 2 - 4}
+          fill="#d8f3a7"
+          stroke={selected || connecting ? stroke : "#66a80f"}
+          strokeWidth={selected ? 3 : 2.5}
+        />
+      ) : null}
+      {node.type === "end" ? (
+        <circle
+          cx={node.x + width / 2}
+          cy={node.y + height / 2}
+          r={Math.min(width, height) / 2 - 5}
+          fill="#f4c2bf"
+          stroke={selected || connecting ? stroke : "#a40000"}
+          strokeWidth={selected ? 5 : 4}
+        />
+      ) : null}
       {isEvent && !editing ? (
-        <text x={node.x + width / 2} y={node.y + height + 22} textAnchor="middle" fontSize="12" fontWeight="700" fill="#10251d" pointerEvents="none">
+        <text
+          x={node.x + width / 2}
+          y={node.y + height + 22}
+          textAnchor="middle"
+          fontSize="12"
+          fontWeight="700"
+          fill="#10251d"
+          pointerEvents="none"
+        >
           {node.label}
         </text>
       ) : null}
@@ -12286,80 +14133,132 @@ function BpmnShapeV2({
           />
         </foreignObject>
       ) : null}
-      {!isEvent && !editing ? <foreignObject x={node.x + 8} y={node.y + Math.max(8, height / 2 - 22)} width={Math.max(30, width - 16)} height={44} pointerEvents="none">
-        <div className="flex h-full items-center justify-center text-center text-[12px] font-bold leading-tight text-[#10251d]">
-          {node.label}
-        </div>
-      </foreignObject> : null}
+      {!isEvent && !editing ? (
+        <foreignObject
+          x={node.x + 8}
+          y={node.y + Math.max(8, height / 2 - 22)}
+          width={Math.max(30, width - 16)}
+          height={44}
+          pointerEvents="none"
+        >
+          <div className="flex h-full items-center justify-center text-center text-[12px] font-bold leading-tight text-[#10251d]">
+            {node.label}
+          </div>
+        </foreignObject>
+      ) : null}
       {selected ? (
         <>
-          <rect x={node.x - 4} y={node.y - 4} width={width + 8} height={height + 8} rx="12" fill="none" stroke="#d39a20" strokeDasharray="5 5" strokeWidth="1.5" pointerEvents="none" />
-          {primarySelected ? <>
-          {resizeHandles.map((handle) => (
-            <circle
-              key={`${node.id}-resize-${handle.handle}`}
-              cx={handle.x}
-              cy={handle.y}
-              r="4.5"
-              fill="#ffffff"
-              stroke="#2583ab"
-              strokeWidth="2"
-              className={handle.cursor}
-              onPointerDown={(event) => onResizePointerDown(event, handle.handle)}
-            />
-          ))}
-          {connectionHandles.map((anchor) => {
-            const handle = anchorPoint(node, anchor);
-            return (
-              <circle
-                key={`${node.id}-${anchor.side}`}
-                cx={handle.x}
-                cy={handle.y}
-                r="6"
-                fill="#ffffff"
-                stroke="#06966f"
-                strokeWidth="2.5"
-                className="cursor-crosshair"
-                onPointerDown={(event) => onConnectorPointerDown(event, anchor)}
-              />
-            );
-          })}
-          {!editing ? (
-            <g transform={`translate(${quickToolsX} ${node.y + Math.max(0, height / 2 - 43)})`}>
-              <rect x="0" y="0" width="34" height="102" rx="6" fill="#ffffff" stroke="#b9c7c0" strokeWidth="1" filter="url(#bpmn-tool-shadow)" />
-              <g
-                className="cursor-pointer"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onQuickCreate("task");
-                }}
-              >
-                <rect x="7" y="7" width="20" height="18" rx="4" fill="#e6f5f3" stroke="#008c95" strokeWidth="1.8" />
-              </g>
-              <g
-                className="cursor-pointer"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onQuickCreate("gateway");
-                }}
-              >
-                <path d="M17 37 L27 47 L17 57 L7 47 Z" fill="#fff5d8" stroke="#c49314" strokeWidth="1.8" />
-              </g>
-              <g
-                className="cursor-pointer"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onQuickCreate("end");
-                }}
-              >
-                <circle cx="17" cy="78" r="10" fill="#ffe1df" stroke="#a82b2b" strokeWidth="3" />
-              </g>
-            </g>
+          <rect
+            x={node.x - 4}
+            y={node.y - 4}
+            width={width + 8}
+            height={height + 8}
+            rx="12"
+            fill="none"
+            stroke="#d39a20"
+            strokeDasharray="5 5"
+            strokeWidth="1.5"
+            pointerEvents="none"
+          />
+          {primarySelected ? (
+            <>
+              {resizeHandles.map((handle) => (
+                <circle
+                  key={`${node.id}-resize-${handle.handle}`}
+                  cx={handle.x}
+                  cy={handle.y}
+                  r="4.5"
+                  fill="#ffffff"
+                  stroke="#2583ab"
+                  strokeWidth="2"
+                  className={handle.cursor}
+                  onPointerDown={(event) => onResizePointerDown(event, handle.handle)}
+                />
+              ))}
+              {connectionHandles.map((anchor) => {
+                const handle = anchorPoint(node, anchor);
+                return (
+                  <circle
+                    key={`${node.id}-${anchor.side}`}
+                    cx={handle.x}
+                    cy={handle.y}
+                    r="6"
+                    fill="#ffffff"
+                    stroke="#06966f"
+                    strokeWidth="2.5"
+                    className="cursor-crosshair"
+                    onPointerDown={(event) => onConnectorPointerDown(event, anchor)}
+                  />
+                );
+              })}
+              {!editing ? (
+                <g transform={`translate(${quickToolsX} ${node.y + Math.max(0, height / 2 - 43)})`}>
+                  <rect
+                    x="0"
+                    y="0"
+                    width="34"
+                    height="102"
+                    rx="6"
+                    fill="#ffffff"
+                    stroke="#b9c7c0"
+                    strokeWidth="1"
+                    filter="url(#bpmn-tool-shadow)"
+                  />
+                  <g
+                    className="cursor-pointer"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onQuickCreate("task");
+                    }}
+                  >
+                    <rect
+                      x="7"
+                      y="7"
+                      width="20"
+                      height="18"
+                      rx="4"
+                      fill="#e6f5f3"
+                      stroke="#008c95"
+                      strokeWidth="1.8"
+                    />
+                  </g>
+                  <g
+                    className="cursor-pointer"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onQuickCreate("gateway");
+                    }}
+                  >
+                    <path
+                      d="M17 37 L27 47 L17 57 L7 47 Z"
+                      fill="#fff5d8"
+                      stroke="#c49314"
+                      strokeWidth="1.8"
+                    />
+                  </g>
+                  <g
+                    className="cursor-pointer"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onQuickCreate("end");
+                    }}
+                  >
+                    <circle
+                      cx="17"
+                      cy="78"
+                      r="10"
+                      fill="#ffe1df"
+                      stroke="#a82b2b"
+                      strokeWidth="3"
+                    />
+                  </g>
+                </g>
+              ) : null}
+            </>
           ) : null}
-          </> : null}
         </>
       ) : null}
     </g>
@@ -12369,28 +14268,77 @@ function BpmnShapeV2({
 function validateBpmnDiagram(
   data: BpmnState,
   lanes: string[],
-  bounds: { poolX: number; poolY: number; laneLabelWidth: number; poolWidth: number; laneHeights: number[] },
+  bounds: {
+    poolX: number;
+    poolY: number;
+    laneLabelWidth: number;
+    poolWidth: number;
+    laneHeights: number[];
+  },
 ) {
-  const issues: Array<{ id: string; kind: "Erro" | "Alerta" | "Recomendação"; message: string; nodeId?: string }> = [];
-  const poolHeight = Math.max(bounds.laneHeights.reduce((total, height) => total + height, 0), 220);
-  if (!data.nodes.some((node) => node.type === "start")) issues.push({ id: "missing-start", kind: "Erro", message: "Processo sem evento inicial." });
-  if (!data.nodes.some((node) => node.type === "end")) issues.push({ id: "missing-end", kind: "Erro", message: "Processo sem evento final." });
+  const issues: Array<{
+    id: string;
+    kind: "Erro" | "Alerta" | "Recomendação";
+    message: string;
+    nodeId?: string;
+  }> = [];
+  const poolHeight = Math.max(
+    bounds.laneHeights.reduce((total, height) => total + height, 0),
+    220,
+  );
+  if (!data.nodes.some((node) => node.type === "start"))
+    issues.push({ id: "missing-start", kind: "Erro", message: "Processo sem evento inicial." });
+  if (!data.nodes.some((node) => node.type === "end"))
+    issues.push({ id: "missing-end", kind: "Erro", message: "Processo sem evento final." });
   lanes.forEach((lane, index) => {
-    if (!lane.trim()) issues.push({ id: `lane-${index}`, kind: "Alerta", message: `Raia ${index + 1} sem identificação.` });
+    if (!lane.trim())
+      issues.push({
+        id: `lane-${index}`,
+        kind: "Alerta",
+        message: `Raia ${index + 1} sem identificação.`,
+      });
   });
   data.nodes.forEach((node) => {
     const width = node.width ?? 140;
     const height = node.height ?? 64;
-    if (!node.label.trim()) issues.push({ id: `${node.id}-label`, kind: "Alerta", message: "Elemento sem nome.", nodeId: node.id });
-    const insideX = node.x >= bounds.poolX + bounds.laneLabelWidth && node.x + width <= bounds.poolX + bounds.poolWidth;
+    if (!node.label.trim())
+      issues.push({
+        id: `${node.id}-label`,
+        kind: "Alerta",
+        message: "Elemento sem nome.",
+        nodeId: node.id,
+      });
+    const insideX =
+      node.x >= bounds.poolX + bounds.laneLabelWidth &&
+      node.x + width <= bounds.poolX + bounds.poolWidth;
     const insideY = node.y >= bounds.poolY && node.y + height <= bounds.poolY + poolHeight;
-    if (node.type !== "annotation" && (!insideX || !insideY)) issues.push({ id: `${node.id}-outside`, kind: "Alerta", message: "Elemento BPMN fora dos limites da piscina.", nodeId: node.id });
-    if (node.type !== "start" && !data.flows.some((flow) => flow.to === node.id)) issues.push({ id: `${node.id}-in`, kind: "Recomendação", message: "Elemento sem entrada.", nodeId: node.id });
-    if (node.type !== "end" && !data.flows.some((flow) => flow.from === node.id)) issues.push({ id: `${node.id}-out`, kind: "Recomendação", message: "Elemento sem saída.", nodeId: node.id });
+    if (node.type !== "annotation" && (!insideX || !insideY))
+      issues.push({
+        id: `${node.id}-outside`,
+        kind: "Alerta",
+        message: "Elemento BPMN fora dos limites da piscina.",
+        nodeId: node.id,
+      });
+    if (node.type !== "start" && !data.flows.some((flow) => flow.to === node.id))
+      issues.push({
+        id: `${node.id}-in`,
+        kind: "Recomendação",
+        message: "Elemento sem entrada.",
+        nodeId: node.id,
+      });
+    if (node.type !== "end" && !data.flows.some((flow) => flow.from === node.id))
+      issues.push({
+        id: `${node.id}-out`,
+        kind: "Recomendação",
+        message: "Elemento sem saída.",
+        nodeId: node.id,
+      });
   });
   data.flows.forEach((flow) => {
-    if (flow.from && !data.nodes.some((node) => node.id === flow.from)) issues.push({ id: `${flow.id}-from`, kind: "Erro", message: "Conector sem origem." });
-    if (flow.to && !data.nodes.some((node) => node.id === flow.to)) issues.push({ id: `${flow.id}-to`, kind: "Erro", message: "Conector sem destino." });
+    if (flow.from && !data.nodes.some((node) => node.id === flow.from))
+      issues.push({ id: `${flow.id}-from`, kind: "Erro", message: "Conector sem origem." });
+    if (flow.to && !data.nodes.some((node) => node.id === flow.to))
+      issues.push({ id: `${flow.id}-to`, kind: "Erro", message: "Conector sem destino." });
   });
   return issues;
 }
@@ -12454,9 +14402,12 @@ function clampRatio(value: number) {
 
 function anchorPoint(node: BpmnNode, anchor: BpmnEdgeAnchor) {
   const bounds = nodeBounds(node);
-  if (anchor.side === "top") return { x: bounds.left + (bounds.right - bounds.left) * anchor.offset, y: bounds.top };
-  if (anchor.side === "bottom") return { x: bounds.left + (bounds.right - bounds.left) * anchor.offset, y: bounds.bottom };
-  if (anchor.side === "left") return { x: bounds.left, y: bounds.top + (bounds.bottom - bounds.top) * anchor.offset };
+  if (anchor.side === "top")
+    return { x: bounds.left + (bounds.right - bounds.left) * anchor.offset, y: bounds.top };
+  if (anchor.side === "bottom")
+    return { x: bounds.left + (bounds.right - bounds.left) * anchor.offset, y: bounds.bottom };
+  if (anchor.side === "left")
+    return { x: bounds.left, y: bounds.top + (bounds.bottom - bounds.top) * anchor.offset };
   return { x: bounds.right, y: bounds.top + (bounds.bottom - bounds.top) * anchor.offset };
 }
 
@@ -12470,9 +14421,15 @@ function edgeAnchorFromPoint(node: BpmnNode, point: { x: number; y: number }): B
   ].sort((a, b) => a.value - b.value);
   const side = distances[0]?.side ?? "right";
   if (side === "top" || side === "bottom") {
-    return { side, offset: clampRatio((point.x - bounds.left) / Math.max(1, bounds.right - bounds.left)) };
+    return {
+      side,
+      offset: clampRatio((point.x - bounds.left) / Math.max(1, bounds.right - bounds.left)),
+    };
   }
-  return { side, offset: clampRatio((point.y - bounds.top) / Math.max(1, bounds.bottom - bounds.top)) };
+  return {
+    side,
+    offset: clampRatio((point.y - bounds.top) / Math.max(1, bounds.bottom - bounds.top)),
+  };
 }
 
 function resolveConnectorPoint(from: BpmnNode, to: BpmnNode, anchor?: BpmnEdgeAnchor) {
@@ -12515,12 +14472,15 @@ function orthogonalRoute(
       const firstMustBeVertical = firstSegment && fromSide && !horizontalSide(fromSide);
       const lastMustBeHorizontal = lastSegment && horizontalSide(toSide);
       const lastMustBeVertical = lastSegment && toSide && !horizontalSide(toSide);
-      const preferHorizontal = firstMustBeHorizontal || lastMustBeVertical
-        ? true
-        : firstMustBeVertical || lastMustBeHorizontal
-          ? false
-          : Math.abs(target.x - previous.x) >= Math.abs(target.y - previous.y);
-      route.push(preferHorizontal ? { x: target.x, y: previous.y } : { x: previous.x, y: target.y });
+      const preferHorizontal =
+        firstMustBeHorizontal || lastMustBeVertical
+          ? true
+          : firstMustBeVertical || lastMustBeHorizontal
+            ? false
+            : Math.abs(target.x - previous.x) >= Math.abs(target.y - previous.y);
+      route.push(
+        preferHorizontal ? { x: target.x, y: previous.y } : { x: previous.x, y: target.y },
+      );
     }
     route.push(target);
   }
@@ -12545,29 +14505,17 @@ function editableConnectorPoints(
   const toVector = edgeVector(toAnchor?.side);
   const distance = 30;
   const exit = { x: a.x + fromVector.x * distance, y: a.y + fromVector.y * distance };
-  const entry = toAnchor
-    ? { x: b.x + toVector.x * distance, y: b.y + toVector.y * distance }
-    : b;
+  const entry = toAnchor ? { x: b.x + toVector.x * distance, y: b.y + toVector.y * distance } : b;
   const horizontal = fromVector.x !== 0;
 
   // The two middle points form one explicit, draggable bend. Keeping them even
   // when aligned makes a straight connection become an orthogonal one smoothly.
   if (horizontal) {
     const y = Math.abs(exit.y - entry.y) < 1 ? exit.y : (exit.y + entry.y) / 2;
-    return [
-      exit,
-      { x: exit.x, y },
-      { x: entry.x, y },
-      entry,
-    ];
+    return [exit, { x: exit.x, y }, { x: entry.x, y }, entry];
   }
   const x = Math.abs(exit.x - entry.x) < 1 ? exit.x : (exit.x + entry.x) / 2;
-  return [
-    exit,
-    { x, y: exit.y },
-    { x, y: entry.y },
-    entry,
-  ];
+  return [exit, { x, y: exit.y }, { x, y: entry.y }, entry];
 }
 
 function connectorControlSegment(points: Array<{ x: number; y: number }>) {
@@ -12579,7 +14527,7 @@ function connectorControlSegment(points: Array<{ x: number; y: number }>) {
     return {
       firstPoint,
       secondPoint,
-      axis: Math.abs(first.y - second.y) < 1 ? "y" as const : "x" as const,
+      axis: Math.abs(first.y - second.y) < 1 ? ("y" as const) : ("x" as const),
     };
   }
   if (points.length < 2) return null;
@@ -12601,12 +14549,17 @@ function connectorControlSegment(points: Array<{ x: number; y: number }>) {
   return {
     firstPoint,
     secondPoint,
-    axis: Math.abs(first.y - second.y) < 1 ? "y" as const : "x" as const,
+    axis: Math.abs(first.y - second.y) < 1 ? ("y" as const) : ("x" as const),
   };
 }
 
 function moveConnectorWithNode(flow: BpmnFlow, nodeId: string, delta: { x: number; y: number }) {
-  if ((!delta.x && !delta.y) || !flow.points?.length || (flow.from !== nodeId && flow.to !== nodeId)) return flow;
+  if (
+    (!delta.x && !delta.y) ||
+    !flow.points?.length ||
+    (flow.from !== nodeId && flow.to !== nodeId)
+  )
+    return flow;
   const points = flow.points.map((point) => ({ ...point }));
   const movePoint = (index: number, x = 0, y = 0) => {
     if (!points[index]) return;
@@ -12633,7 +14586,10 @@ function moveConnectorWithNode(flow: BpmnFlow, nodeId: string, delta: { x: numbe
   return { ...flow, points };
 }
 
-function smartConnectorAnchors(from: BpmnNode, to: BpmnNode): { fromAnchor: BpmnEdgeAnchor; toAnchor: BpmnEdgeAnchor } {
+function smartConnectorAnchors(
+  from: BpmnNode,
+  to: BpmnNode,
+): { fromAnchor: BpmnEdgeAnchor; toAnchor: BpmnEdgeAnchor } {
   const source = nodeBounds(from);
   const target = nodeBounds(to);
   const dx = target.cx - source.cx;
@@ -12644,21 +14600,29 @@ function smartConnectorAnchors(from: BpmnNode, to: BpmnNode): { fromAnchor: Bpmn
       fromAnchor: { side: dx >= 0 ? "right" : "left", offset: 0.5 },
       // With an appreciable vertical displacement, approach the target from
       // above or below. This keeps the last segment perpendicular to the node.
-      toAnchor: Math.abs(dy) > 24
-        ? { side: dy >= 0 ? "top" : "bottom", offset: 0.5 }
-        : { side: dx >= 0 ? "left" : "right", offset: 0.5 },
+      toAnchor:
+        Math.abs(dy) > 24
+          ? { side: dy >= 0 ? "top" : "bottom", offset: 0.5 }
+          : { side: dx >= 0 ? "left" : "right", offset: 0.5 },
     };
   }
   return {
     fromAnchor: { side: dy >= 0 ? "bottom" : "top", offset: 0.5 },
-    toAnchor: Math.abs(dx) > 24
-      ? { side: dx >= 0 ? "left" : "right", offset: 0.5 }
-      : { side: dy >= 0 ? "top" : "bottom", offset: 0.5 },
+    toAnchor:
+      Math.abs(dx) > 24
+        ? { side: dx >= 0 ? "left" : "right", offset: 0.5 }
+        : { side: dy >= 0 ? "top" : "bottom", offset: 0.5 },
   };
 }
 
 function refreshConnectorAfterNodeMove(flow: BpmnFlow, nodes: BpmnNode[], movedNodeId: string) {
-  if (flow.points?.length || (flow.from !== movedNodeId && flow.to !== movedNodeId) || !flow.from || !flow.to) return flow;
+  if (
+    flow.points?.length ||
+    (flow.from !== movedNodeId && flow.to !== movedNodeId) ||
+    !flow.from ||
+    !flow.to
+  )
+    return flow;
   const from = nodes.find((node) => node.id === flow.from);
   const to = nodes.find((node) => node.id === flow.to);
   if (!from || !to) return flow;
@@ -12685,14 +14649,28 @@ function connectorRoutePoints(
   const entry = { x: b.x + toVector.x * distance, y: b.y + toVector.y * distance };
   const sourceHorizontal = fromVector.x !== 0;
   const targetHorizontal = toVector.x !== 0;
-  const points = sourceHorizontal === targetHorizontal
-    ? sourceHorizontal
-      ? [exit, { x: (exit.x + entry.x) / 2, y: exit.y }, { x: (exit.x + entry.x) / 2, y: entry.y }, entry]
-      : [exit, { x: exit.x, y: (exit.y + entry.y) / 2 }, { x: entry.x, y: (exit.y + entry.y) / 2 }, entry]
-    : sourceHorizontal
-      ? [exit, { x: entry.x, y: exit.y }, entry]
-      : [exit, { x: exit.x, y: entry.y }, entry];
-  return points.filter((point, index, list) => index === 0 || point.x !== list[index - 1].x || point.y !== list[index - 1].y);
+  const points =
+    sourceHorizontal === targetHorizontal
+      ? sourceHorizontal
+        ? [
+            exit,
+            { x: (exit.x + entry.x) / 2, y: exit.y },
+            { x: (exit.x + entry.x) / 2, y: entry.y },
+            entry,
+          ]
+        : [
+            exit,
+            { x: exit.x, y: (exit.y + entry.y) / 2 },
+            { x: entry.x, y: (exit.y + entry.y) / 2 },
+            entry,
+          ]
+      : sourceHorizontal
+        ? [exit, { x: entry.x, y: exit.y }, entry]
+        : [exit, { x: exit.x, y: entry.y }, entry];
+  return points.filter(
+    (point, index, list) =>
+      index === 0 || point.x !== list[index - 1].x || point.y !== list[index - 1].y,
+  );
 }
 
 function connectorPoint(from: BpmnNode, to: BpmnNode) {
@@ -12895,7 +14873,9 @@ function FlowCommandBar({
           </div>
           <h1 className="mt-0.5 flex items-baseline gap-2.5 font-display text-lg font-bold text-foreground md:text-xl">
             {title}
-            {code ? <span className="font-data text-xs font-semibold text-muted-foreground">{code}</span> : null}
+            {code ? (
+              <span className="font-data text-xs font-semibold text-muted-foreground">{code}</span>
+            ) : null}
           </h1>
         </div>
 
@@ -12909,11 +14889,7 @@ function FlowCommandBar({
                 title={`${s.num} ${s.title} · ${s.pct}%`}
                 className={[
                   "h-2 w-3.5 rounded-[3px] transition-colors",
-                  s.pct >= 100
-                    ? "bg-emerald-500"
-                    : s.pct > 0
-                      ? "bg-[var(--gold)]"
-                      : "bg-border",
+                  s.pct >= 100 ? "bg-emerald-500" : s.pct > 0 ? "bg-[var(--gold)]" : "bg-border",
                 ].join(" ")}
               />
             ))}
@@ -13653,11 +15629,13 @@ function TextArea({
 function ImageManager({
   label = "Imagens",
   captionLabel = "Legenda",
+  showTitle = true,
   images,
   onChange,
 }: {
   label?: string;
   captionLabel?: string;
+  showTitle?: boolean;
   images: ModuleImage[];
   onChange: (images: ModuleImage[]) => void;
 }) {
@@ -13714,16 +15692,18 @@ function ImageManager({
                 <img src={image.src} alt={image.titulo} className="h-32 w-full object-contain" />
               </div>
               <div className="grid gap-3">
-                <Field
-                  compact
-                  label="Título da imagem"
-                  value={image.titulo}
-                  onChange={(titulo) =>
-                    onChange(
-                      images.map((item) => (item.id === image.id ? { ...item, titulo } : item)),
-                    )
-                  }
-                />
+                {showTitle ? (
+                  <Field
+                    compact
+                    label="Título da imagem"
+                    value={image.titulo}
+                    onChange={(titulo) =>
+                      onChange(
+                        images.map((item) => (item.id === image.id ? { ...item, titulo } : item)),
+                      )
+                    }
+                  />
+                ) : null}
                 <Field
                   compact
                   label={captionLabel}
@@ -13813,9 +15793,7 @@ function ListEditor({
               onChange={(event) =>
                 onChange(
                   items.map((current) =>
-                    current.id === item.id
-                      ? { ...current, prazo: event.target.value }
-                      : current,
+                    current.id === item.id ? { ...current, prazo: event.target.value } : current,
                   ),
                 )
               }
@@ -13831,7 +15809,9 @@ function ListEditor({
         ))}
         <button
           type="button"
-          onClick={() => onChange([...items, { id: id("item"), text: "", responsavel: "", prazo: "" }])}
+          onClick={() =>
+            onChange([...items, { id: id("item"), text: "", responsavel: "", prazo: "" }])
+          }
           className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
         >
           <Plus className="h-4 w-4" />
