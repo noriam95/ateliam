@@ -14167,6 +14167,94 @@ function BpmnModuleV2({
     setEditingLaneIndex(null);
   }
 
+  async function exportDiagramPng() {
+    if (!hasPool || !svgRef.current) {
+      toast.error("Selecione um processo e crie o diagrama antes de exportar.");
+      return;
+    }
+
+    const previousSelection = {
+      selectedId,
+      selectedNodeIds,
+      selectedFlowId,
+    };
+
+    if (editingNodeId) commitNodeLabel(editingNodeId);
+    if (editingLaneIndex !== null) commitLaneEdit();
+    setSelectedId(null);
+    setSelectedNodeIds([]);
+    setSelectedFlowId(null);
+    setContextMenu(null);
+
+    try {
+      // Wait for React to remove editing and selection controls from the SVG.
+      await nextPaint();
+      const source = svgRef.current;
+      if (!source) throw new Error("Área de desenho indisponível.");
+
+      const margin = 18;
+      const exportX = poolX - margin;
+      const exportY = poolY - margin;
+      const exportWidth = poolWidth + margin * 2;
+      const exportHeight = poolHeight + margin * 2;
+      const clone = source.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("xmlns:xhtml", "http://www.w3.org/1999/xhtml");
+      clone.setAttribute("viewBox", `${exportX} ${exportY} ${exportWidth} ${exportHeight}`);
+      clone.setAttribute("width", String(exportWidth));
+      clone.setAttribute("height", String(exportHeight));
+      clone.removeAttribute("class");
+      inlineSvgExportStyles(source, clone);
+      clone.querySelectorAll('[data-export-ignore="true"]').forEach((element) => element.remove());
+
+      const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      background.setAttribute("x", String(exportX));
+      background.setAttribute("y", String(exportY));
+      background.setAttribute("width", String(exportWidth));
+      background.setAttribute("height", String(exportHeight));
+      background.setAttribute("fill", getComputedStyle(source).backgroundColor || "#ffffff");
+      const defs = clone.querySelector("defs");
+      defs?.insertAdjacentElement("afterend", background);
+
+      const serialized = new XMLSerializer().serializeToString(clone);
+      const blob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
+      const imageUrl = URL.createObjectURL(blob);
+      const image = new Image();
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Não foi possível renderizar o diagrama."));
+        image.src = imageUrl;
+      });
+
+      const maxSide = Math.max(exportWidth, exportHeight);
+      const scale = Math.max(1, Math.min(2.5, 8192 / maxSide));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(exportWidth * scale);
+      canvas.height = Math.round(exportHeight * scale);
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas indisponível para exportação.");
+      context.scale(scale, scale);
+      context.drawImage(image, 0, 0, exportWidth, exportHeight);
+      URL.revokeObjectURL(imageUrl);
+
+      const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!png) throw new Error("Não foi possível gerar o arquivo PNG.");
+      const downloadUrl = URL.createObjectURL(png);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `${safeFileName(data.poolName || "fluxograma")}.png`;
+      link.click();
+      URL.revokeObjectURL(downloadUrl);
+      toast.success("Diagrama exportado em PNG.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao exportar o diagrama.");
+    } finally {
+      setSelectedId(previousSelection.selectedId);
+      setSelectedNodeIds(previousSelection.selectedNodeIds);
+      setSelectedFlowId(previousSelection.selectedFlowId);
+    }
+  }
+
   function selectFlow(flow: BpmnFlow) {
     setSelectedFlowId(flow.id);
     setSelectedId(null);
@@ -14629,6 +14717,11 @@ function BpmnModuleV2({
               icon={<Upload className="h-4 w-4" />}
             />
             <ToolbarButton
+              label="Exportar imagem (PNG)"
+              onClick={exportDiagramPng}
+              icon={<Download className="h-4 w-4" />}
+            />
+            <ToolbarButton
               label="Desfazer"
               onClick={undo}
               icon={<RotateCcw className="h-4 w-4" />}
@@ -14834,6 +14927,7 @@ function BpmnModuleV2({
                 </defs>
                 {showGrid ? (
                   <rect
+                    data-export-ignore="true"
                     width={canvasWidth}
                     height={canvasHeight}
                     fill="url(#bpmn-grid-v2)"
@@ -15580,6 +15674,87 @@ function BpmnModuleV2({
         : null}
     </div>
   );
+}
+
+function nextPaint() {
+  return new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
+}
+
+function safeFileName(value: string) {
+  return (
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "fluxograma"
+  );
+}
+
+function inlineSvgExportStyles(source: SVGSVGElement, clone: SVGSVGElement) {
+  const sourceElements = [source, ...Array.from(source.querySelectorAll("*"))];
+  const cloneElements = [clone, ...Array.from(clone.querySelectorAll("*"))];
+  const commonProperties = [
+    "color",
+    "background-color",
+    "border-top-color",
+    "border-right-color",
+    "border-bottom-color",
+    "border-left-color",
+    "border-top-style",
+    "border-right-style",
+    "border-bottom-style",
+    "border-left-style",
+    "border-top-width",
+    "border-right-width",
+    "border-bottom-width",
+    "border-left-width",
+    "border-radius",
+    "box-sizing",
+    "display",
+    "align-items",
+    "justify-content",
+    "font-family",
+    "font-size",
+    "font-style",
+    "font-weight",
+    "letter-spacing",
+    "line-height",
+    "text-align",
+    "text-transform",
+    "white-space",
+  ];
+  const svgProperties = [
+    "fill",
+    "fill-opacity",
+    "stroke",
+    "stroke-width",
+    "stroke-opacity",
+    "stroke-dasharray",
+    "opacity",
+    "paint-order",
+  ];
+
+  sourceElements.forEach((sourceElement, index) => {
+    const cloneElement = cloneElements[index] as HTMLElement | SVGElement | undefined;
+    if (!cloneElement) return;
+    const computed = getComputedStyle(sourceElement);
+    const properties =
+      sourceElement.namespaceURI === "http://www.w3.org/2000/svg"
+        ? [...commonProperties, ...svgProperties]
+        : commonProperties;
+    properties.forEach((property) => {
+      const value = computed.getPropertyValue(property);
+      if (value) cloneElement.style.setProperty(property, value);
+    });
+    if (sourceElement.namespaceURI === "http://www.w3.org/1999/xhtml") {
+      cloneElement.style.setProperty("width", computed.width);
+      cloneElement.style.setProperty("height", computed.height);
+      cloneElement.style.setProperty("padding", computed.padding);
+    }
+  });
 }
 
 function BpmnConnectorV2({
