@@ -380,7 +380,10 @@ async function runMobileSmoke(browser, logs) {
     fallback: hasFallback(body),
     forbidden: forbiddenTexts.filter((text) => normalizedBody.includes(text)),
     hasBadEncoding: hasMojibake(body),
-    authVisible: normalizedBody.includes("entrar no workspace"),
+    authVisible:
+      normalizedBody.includes("bf flow") &&
+      normalizedBody.includes("e-mail ou usuario") &&
+      normalizedBody.includes("entrar"),
     dashboardVisible:
       normalizedBody.includes("visao operacional") || normalizedBody.includes("pagina inicial"),
   };
