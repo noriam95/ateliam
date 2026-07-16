@@ -72,6 +72,7 @@ import {
   type WorkspaceRailArea,
 } from "@/components/workspace-navigation";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
+import { parseDocxDocument, type DocxDocumentImport } from "@/lib/docx-document-import";
 import {
   ProcessRegistrationDialog,
   SystemRegistrationDialog,
@@ -10324,6 +10325,9 @@ function PopModule({
     subitemId: string;
     clauseId: string;
   } | null>(null);
+  const [docxImport, setDocxImport] = useState<DocxDocumentImport | null>(null);
+  const [importingDocx, setImportingDocx] = useState(false);
+  const docxInputRef = useRef<HTMLInputElement>(null);
   const documentName = documentationTypeName(data.meta.tipo);
   const contentTitle = documentationContentTitle(data.meta.tipo);
   const visibleCode = data.meta.codigo || codePreview;
@@ -10833,6 +10837,130 @@ function PopModule({
     addProcedureClause(sectionId, subitem, true);
   }
 
+  async function handleDocxImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImportingDocx(true);
+    try {
+      const parsed = await parseDocxDocument(file);
+      if (isEditing && parsed.type && parsed.type !== data.meta.tipo) {
+        parsed.warnings.push(
+          `O DOCX foi identificado como ${parsed.type}, mas este registro é ${data.meta.tipo}. O tipo atual será mantido.`,
+        );
+      }
+      setDocxImport(parsed);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível interpretar o DOCX.");
+    } finally {
+      setImportingDocx(false);
+    }
+  }
+
+  function applyDocxImport() {
+    if (!docxImport) return;
+    const importedType = docxImport.type ?? data.meta.tipo;
+    const importedSections = docxImport.items.map((item) => ({
+      id: id("sec"),
+      code: "",
+      title: item.title,
+      description: "",
+      body: item.body,
+      records: "",
+      risks: "",
+      images: item.images.map((image) => ({
+        id: id("popimg"),
+        titulo: "",
+        legenda: "",
+        src: image.src,
+      })),
+      subitems: item.subitems.map((subitem) => ({
+        id: id("sub"),
+        code: "",
+        title: subitem.title,
+        clauses: subitem.clauses.map((clause, clauseIndex) => ({
+          id: id("clause"),
+          letter: procedureLetter(clauseIndex),
+          text: clause.text,
+          alert: clause.alert,
+          images: clause.images.map((image) => ({
+            id: id("popimg"),
+            titulo: "",
+            legenda: "",
+            src: image.src,
+          })),
+          blocks: [
+            {
+              id: id("clauseblock"),
+              text: clause.text,
+              images: clause.images.map((image) => ({
+                id: id("popimg"),
+                titulo: "",
+                legenda: "",
+                src: image.src,
+              })),
+            },
+          ],
+        })),
+      })),
+    }));
+    const importedHistory = docxImport.history.map((row, index) => ({
+      id: id("rev"),
+      codigo: row.code,
+      version: String(index).padStart(2, "0"),
+      date: dateInputValue(row.date),
+      elaborador: row.author,
+      revisor: row.reviewer,
+      aprovador: row.approver,
+    }));
+    const nextHistory = importedHistory.length ? importedHistory : data.history;
+    const importedChanges = docxImport.changes.map((row, index) => ({
+      id: id("change"),
+      versao: String(index).padStart(2, "0"),
+      local: row.location,
+      descricao: row.description,
+    }));
+    update({
+      ...data,
+      meta: {
+        ...data.meta,
+        tipo: isEditing ? data.meta.tipo : importedType,
+        codigo: data.meta.codigo,
+        titulo: docxImport.title || data.meta.titulo,
+        versao: docxImport.version || data.meta.versao,
+        elaboracao: nextHistory[0]?.elaborador || data.meta.elaboracao,
+        revisor: nextHistory[0]?.revisor || data.meta.revisor,
+        aprovacao: nextHistory[0]?.aprovador || data.meta.aprovacao,
+      },
+      purpose: {
+        ...data.purpose,
+        objetivo: docxImport.objective,
+        abrangencia: docxImport.scope,
+      },
+      sections: importedSections.length ? renumberPopSections(importedSections) : data.sections,
+      responsibilities: docxImport.responsibilities.length
+        ? docxImport.responsibilities.map((row) => ({
+            id: id("resp"),
+            area: row.area,
+            cargo: row.cargo,
+            responsabilidade: row.responsibility,
+          }))
+        : data.responsibilities,
+      references: docxImport.references.length
+        ? docxImport.references.map((row) => ({
+            id: id("ref"),
+            codigo: row.code,
+            titulo: row.title,
+            aplicabilidade: row.applicability,
+          }))
+        : data.references,
+      history: nextHistory,
+      changes: importedChanges.length ? importedChanges : syncHistoryChanges(nextHistory, []),
+    });
+    setDocxImport(null);
+    toast.success("Conteúdo do DOCX aplicado. Revise os campos antes de salvar.");
+  }
+
   return (
     <div className="grid gap-5">
       {createProcessName !== null ? (
@@ -10851,6 +10979,81 @@ function PopModule({
           }}
         />
       ) : null}
+      {docxImport ? (
+        <Modal
+          title="Revisar importação do DOCX"
+          subtitle="Confira o reconhecimento antes de preencher o formulário. Nenhuma alteração foi salva."
+          onClose={() => setDocxImport(null)}
+        >
+          <div className="grid gap-4">
+            <div className="grid gap-3 rounded-lg border border-border bg-muted/35 p-4 sm:grid-cols-3">
+              <div className="sm:col-span-2">
+                <div className={fieldLabelClass}>Documento identificado</div>
+                <div className="mt-1 font-bold text-foreground">
+                  {docxImport.title || docxImport.fileName}
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {[docxImport.type, docxImport.code, `versão ${docxImport.version}`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              </div>
+              <div>
+                <div className={fieldLabelClass}>Estrutura</div>
+                <div className="mt-1 text-sm font-semibold text-foreground">
+                  {docxImport.stats.items} itens · {docxImport.stats.subitems} subitens
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {docxImport.stats.clauses} alíneas · {docxImport.stats.images} imagens
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                ["Objetivo", docxImport.objective],
+                ["Abrangência", docxImport.scope],
+                ["Responsabilidades", `${docxImport.responsibilities.length} registro(s)`],
+                ["Referências", `${docxImport.references.length} registro(s)`],
+                ["Histórico", `${docxImport.history.length} registro(s)`],
+                ["Alterações", `${docxImport.changes.length} registro(s)`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-border px-3 py-2">
+                  <div className={fieldLabelClass}>{label}</div>
+                  <div className="mt-1 line-clamp-2 text-sm text-foreground">
+                    {value || "Não identificado"}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {docxImport.warnings.length ? (
+              <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/25 dark:text-amber-100">
+                <div className="flex items-center gap-2 font-bold">
+                  <TriangleAlert className="h-4 w-4" /> Pontos para revisão
+                </div>
+                <ul className="mt-2 grid gap-1 pl-5">
+                  {docxImport.warnings.map((warning) => (
+                    <li key={warning} className="list-disc">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDocxImport(null)}
+                className={secondaryButtonClass}
+              >
+                Cancelar
+              </button>
+              <button type="button" onClick={applyDocxImport} className={primaryButtonClass}>
+                Aplicar ao formulário
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
       <FlowCommandBar
         code={visibleCode}
         sections={sections}
@@ -10864,7 +11067,7 @@ function PopModule({
         saveTitle="Salvar documento"
         previewTitle="Visualizar documento"
         processControl={
-          <div className="grid gap-3 lg:grid-cols-[300px_minmax(320px,1fr)]">
+          <div className="grid items-end gap-3 lg:grid-cols-[260px_minmax(320px,1fr)_auto]">
             <div className="grid gap-1">
               <span className={fieldLabelClass}>Tipo de documento</span>
               <div className="inline-flex w-fit rounded-lg border border-border bg-card p-1">
@@ -10914,6 +11117,25 @@ function PopModule({
               displayName={(process) => process.name}
               onRequestCreate={(name) => setCreateProcessName(name)}
             />
+            <div>
+              <input
+                ref={docxInputRef}
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="sr-only"
+                onChange={handleDocxImport}
+              />
+              <button
+                type="button"
+                disabled={!canEditDocument || importingDocx}
+                onClick={() => docxInputRef.current?.click()}
+                className={`${secondaryButtonClass} h-10 disabled:cursor-not-allowed disabled:opacity-50`}
+                title="Ler um documento Word e sugerir o preenchimento"
+              >
+                <Upload className="h-4 w-4" />
+                {importingDocx ? "Lendo DOCX..." : "Importar DOCX"}
+              </button>
+            </div>
           </div>
         }
       />
