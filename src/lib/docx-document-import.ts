@@ -29,6 +29,12 @@ export type DocxDocumentImport = {
   code: string;
   title: string;
   version: string;
+  classification: string;
+  effectiveDate: string;
+  author: string;
+  reviewer: string;
+  approver: string;
+  publicationDate: string;
   objective: string;
   scope: string;
   items: DocxImportItem[];
@@ -333,6 +339,12 @@ export async function parseDocxDocument(file: File): Promise<DocxDocumentImport>
   const result: DocxDocumentImport = {
     fileName: file.name,
     ...metadata,
+    classification: "",
+    effectiveDate: "",
+    author: "",
+    reviewer: "",
+    approver: "",
+    publicationDate: "",
     objective: "",
     scope: "",
     items: [],
@@ -459,5 +471,197 @@ export async function parseDocxDocument(file: File): Promise<DocxDocumentImport>
       `${result.stats.ignoredImages} imagem(ns) fora da seção 03 não serão importadas.`,
     );
   }
+  return result;
+}
+
+export function parseStructuredDocumentText(rawText: string): DocxDocumentImport {
+  const text = rawText.replace(/\r\n?/g, "\n").trim();
+  if (!text) throw new Error("Cole o conteúdo estruturado antes de analisar.");
+  const lines = text
+    .split("\n")
+    .map((line) => line.replace(/\u00a0/g, " ").trim())
+    .filter(Boolean);
+  const metadata = detectMetadata("Texto colado.docx", text);
+  const codeLine = lines.find((line) => metadata.code && line.includes(metadata.code));
+  const inferredTitle = codeLine
+    ?.replace(metadata.code, "")
+    .replace(/^\s*[-–—:|]+\s*/, "")
+    .trim();
+  const result: DocxDocumentImport = {
+    fileName: "Texto estruturado",
+    ...metadata,
+    title: inferredTitle || "",
+    classification: "",
+    effectiveDate: "",
+    author: "",
+    reviewer: "",
+    approver: "",
+    publicationDate: "",
+    objective: "",
+    scope: "",
+    items: [],
+    responsibilities: [],
+    references: [],
+    history: [],
+    changes: [],
+    warnings: [],
+    stats: { items: 0, subitems: 0, clauses: 0, images: 0, ignoredImages: 0 },
+  };
+  let mainSection = 0;
+  let currentItem: DocxImportItem | null = null;
+  let currentSubitem: DocxImportSubitem | null = null;
+  let currentClause: DocxImportClause | null = null;
+  let changesSection = false;
+  let lastResponsibility: DocxDocumentImport["responsibilities"][number] | null = null;
+
+  for (const line of lines) {
+    const labeledValue = line.match(/^([^:]+):\s*(.+)$/);
+    if (!mainSection && labeledValue) {
+      const label = normalized(labeledValue[1]);
+      const value = labeledValue[2].trim();
+      if (label === "classificacao") result.classification = value;
+      else if (label === "codigo") result.code = value.toUpperCase();
+      else if (label === "titulo") result.title = value;
+      else if (label === "vigencia") result.effectiveDate = value;
+      else if (label === "versao") result.version = value.padStart(2, "0");
+      else if (label === "elaboracao" || label === "elaborador") result.author = value;
+      else if (label === "revisor") result.reviewer = value;
+      else if (label === "aprovacao" || label === "aprovador") result.approver = value;
+      else if (label === "publicacao") result.publicationDate = value;
+      continue;
+    }
+    const subitemHeading = line.match(/^3\.(\d+)\.(\d+)\.?\s+(.+)$/);
+    const itemHeading = line.match(/^3\.(\d+)\.?\s+(.+)$/);
+    const mainHeadingCandidate = line.match(/^(\d+)\.?\s+(.+)$/);
+    const mainHeading =
+      mainHeadingCandidate &&
+      /^(objetivo|abrangencia|procedimento|responsabilidades|referencias|historico)/.test(
+        normalized(mainHeadingCandidate[2]),
+      )
+        ? mainHeadingCandidate
+        : null;
+    const clauseHeading = line.match(/^([a-z])\)\s*(.*)$/i);
+
+    if (/^6\.1\.?\s+/i.test(line)) {
+      mainSection = 6;
+      changesSection = true;
+      continue;
+    }
+
+    if (subitemHeading) {
+      mainSection = 3;
+      if (!currentItem) {
+        currentItem = { title: "Procedimento", body: "", images: [], subitems: [] };
+        result.items.push(currentItem);
+      }
+      currentSubitem = { title: subitemHeading[3].trim(), clauses: [] };
+      currentItem.subitems.push(currentSubitem);
+      currentClause = null;
+      continue;
+    }
+    if (itemHeading) {
+      mainSection = 3;
+      currentItem = { title: itemHeading[2].trim(), body: "", images: [], subitems: [] };
+      result.items.push(currentItem);
+      currentSubitem = null;
+      currentClause = null;
+      continue;
+    }
+    if (mainHeading) {
+      mainSection = Number(mainHeading[1]);
+      changesSection = false;
+      currentItem = null;
+      currentSubitem = null;
+      currentClause = null;
+      continue;
+    }
+
+    if (mainSection === 1) {
+      result.objective = appendText(result.objective, line);
+      continue;
+    }
+    if (mainSection === 2) {
+      result.scope = appendText(result.scope, line);
+      continue;
+    }
+    if (mainSection === 3) {
+      if (clauseHeading) {
+        if (!currentItem) {
+          currentItem = { title: "Procedimento", body: "", images: [], subitems: [] };
+          result.items.push(currentItem);
+        }
+        if (!currentSubitem) {
+          currentSubitem = { title: "Orientações", clauses: [] };
+          currentItem.subitems.push(currentSubitem);
+        }
+        currentClause = { text: clauseHeading[2].trim(), alert: "", images: [] };
+        currentSubitem.clauses.push(currentClause);
+      } else if (currentClause) currentClause.text = appendText(currentClause.text, line);
+      else if (currentSubitem) {
+        currentClause = { text: line, alert: "", images: [] };
+        currentSubitem.clauses.push(currentClause);
+      } else if (currentItem) currentItem.body = appendText(currentItem.body, line);
+      continue;
+    }
+
+    const cells = line.split(/[|\t]/).map((cell) => cell.trim());
+    const normalizedLine = normalized(line);
+    const tableHeader =
+      (mainSection === 4 && /area cargo.*responsabilidade/.test(normalizedLine)) ||
+      (mainSection === 5 && /codigo.*titulo.*aplicabilidade/.test(normalizedLine)) ||
+      (mainSection === 6 && /versao.*local.*descricao/.test(normalizedLine)) ||
+      (mainSection === 6 && /codigo.*versao.*data.*elaborador/.test(normalizedLine));
+    if (tableHeader) {
+      continue;
+    }
+    if (mainSection === 4) {
+      if (cells.length >= 2) {
+        const [area, cargo, ...responsibilityParts] =
+          cells.length >= 3 ? cells : ["", cells[0], cells[1]];
+        lastResponsibility = {
+          area,
+          cargo,
+          responsibility: responsibilityParts.join(" | "),
+        };
+        result.responsibilities.push(lastResponsibility);
+      } else if (lastResponsibility) {
+        lastResponsibility.responsibility = appendText(lastResponsibility.responsibility, line);
+      }
+    } else if (mainSection === 5 && cells.length >= 3) {
+      result.references.push({
+        code: cells[0],
+        title: cells[1],
+        applicability: cells.slice(2).join(" | "),
+      });
+    } else if (mainSection === 6 && changesSection && cells.length >= 3) {
+      result.changes.push({
+        version: cells[0],
+        location: cells[1],
+        description: cells.slice(2).join(" | "),
+      });
+    } else if (mainSection === 6 && cells.length >= 6) {
+      result.history.push({
+        code: cells[0],
+        version: cells[1],
+        date: cells[2],
+        author: cells[3],
+        reviewer: cells[4],
+        approver: cells[5],
+      });
+    }
+  }
+
+  result.stats.items = result.items.length;
+  result.stats.subitems = result.items.reduce((sum, item) => sum + item.subitems.length, 0);
+  result.stats.clauses = result.items.reduce(
+    (sum, item) =>
+      sum + item.subitems.reduce((subtotal, subitem) => subtotal + subitem.clauses.length, 0),
+    0,
+  );
+  if (!result.type)
+    result.warnings.push("O tipo não foi identificado. Informe POP, NOR ou IT junto ao código.");
+  if (!result.objective) result.warnings.push("A seção 1 - Objetivo não foi identificada.");
+  if (!result.scope) result.warnings.push("A seção 2 - Abrangência não foi identificada.");
+  if (!result.items.length) result.warnings.push("Nenhum item 3.x foi identificado.");
   return result;
 }

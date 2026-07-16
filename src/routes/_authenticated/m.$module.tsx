@@ -46,6 +46,7 @@ import {
   TriangleAlert,
   Trash2,
   Upload,
+  WandSparkles,
   Workflow,
   X,
 } from "lucide-react";
@@ -72,7 +73,11 @@ import {
   type WorkspaceRailArea,
 } from "@/components/workspace-navigation";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
-import { parseDocxDocument, type DocxDocumentImport } from "@/lib/docx-document-import";
+import {
+  parseDocxDocument,
+  parseStructuredDocumentText,
+  type DocxDocumentImport,
+} from "@/lib/docx-document-import";
 import {
   ProcessRegistrationDialog,
   SystemRegistrationDialog,
@@ -10327,6 +10332,9 @@ function PopModule({
   } | null>(null);
   const [docxImport, setDocxImport] = useState<DocxDocumentImport | null>(null);
   const [importingDocx, setImportingDocx] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantMode, setAssistantMode] = useState<"docx" | "text">("docx");
+  const [assistantText, setAssistantText] = useState("");
   const docxInputRef = useRef<HTMLInputElement>(null);
   const documentName = documentationTypeName(data.meta.tipo);
   const contentTitle = documentationContentTitle(data.meta.tipo);
@@ -10850,10 +10858,26 @@ function PopModule({
         );
       }
       setDocxImport(parsed);
+      setAssistantOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível interpretar o DOCX.");
     } finally {
       setImportingDocx(false);
+    }
+  }
+
+  function handleStructuredTextImport() {
+    try {
+      const parsed = parseStructuredDocumentText(assistantText);
+      if (isEditing && parsed.type && parsed.type !== data.meta.tipo) {
+        parsed.warnings.push(
+          `O texto foi identificado como ${parsed.type}, mas este registro é ${data.meta.tipo}. O tipo atual será mantido.`,
+        );
+      }
+      setDocxImport(parsed);
+      setAssistantOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível interpretar o texto.");
     }
   }
 
@@ -10928,9 +10952,12 @@ function PopModule({
         codigo: data.meta.codigo,
         titulo: docxImport.title || data.meta.titulo,
         versao: docxImport.version || data.meta.versao,
-        elaboracao: nextHistory[0]?.elaborador || data.meta.elaboracao,
-        revisor: nextHistory[0]?.revisor || data.meta.revisor,
-        aprovacao: nextHistory[0]?.aprovador || data.meta.aprovacao,
+        publico: docxImport.classification || data.meta.publico,
+        vigencia: dateInputValue(docxImport.effectiveDate) || data.meta.vigencia,
+        elaboracao: docxImport.author || nextHistory[0]?.elaborador || data.meta.elaboracao,
+        revisor: docxImport.reviewer || nextHistory[0]?.revisor || data.meta.revisor,
+        aprovacao: docxImport.approver || nextHistory[0]?.aprovador || data.meta.aprovacao,
+        publicacao: dateInputValue(docxImport.publicationDate) || data.meta.publicacao,
       },
       purpose: {
         ...data.purpose,
@@ -10979,9 +11006,94 @@ function PopModule({
           }}
         />
       ) : null}
+      {assistantOpen ? (
+        <Modal
+          title="Assistente de preenchimento"
+          subtitle="Escolha a origem do conteúdo. O resultado será apresentado para conferência antes de preencher o formulário."
+          onClose={() => setAssistantOpen(false)}
+        >
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 rounded-lg border border-border bg-muted/40 p-1">
+              {(
+                [
+                  ["docx", "Importar DOCX", FileText],
+                  ["text", "Colar texto", ListChecks],
+                ] as const
+              ).map(([mode, label, Icon]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setAssistantMode(mode)}
+                  className={[
+                    "inline-flex h-10 items-center justify-center gap-2 rounded-md text-sm font-semibold transition",
+                    assistantMode === mode
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+            {assistantMode === "docx" ? (
+              <button
+                type="button"
+                disabled={importingDocx}
+                onClick={() => docxInputRef.current?.click()}
+                className="grid min-h-44 place-items-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center transition hover:border-primary/60 hover:bg-primary/5 disabled:opacity-50"
+              >
+                <span>
+                  <span className="mx-auto grid h-11 w-11 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <Upload className="h-5 w-5" />
+                  </span>
+                  <span className="mt-3 block font-bold text-foreground">
+                    {importingDocx ? "Lendo documento..." : "Selecionar arquivo DOCX"}
+                  </span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    O arquivo é processado localmente e não é enviado a serviços externos.
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <div className="grid gap-3">
+                <label className="grid gap-1.5">
+                  <span className={fieldLabelClass}>Conteúdo estruturado</span>
+                  <textarea
+                    value={assistantText}
+                    onChange={(event) => setAssistantText(event.target.value)}
+                    placeholder={
+                      "POP.SEP.001 — Título do documento\n\n1. Objetivo\nTexto do objetivo...\n\n2. Abrangência\nTexto da abrangência...\n\n3. Procedimento Operacional\n3.1 Item\n3.1.1 Subitem\na) Orientação..."
+                    }
+                    className={`${fieldInputBase} min-h-64 resize-y p-3 leading-6`}
+                  />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAssistantOpen(false)}
+                    className={secondaryButtonClass}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStructuredTextImport}
+                    disabled={!assistantText.trim()}
+                    className={`${primaryButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    <WandSparkles className="h-4 w-4" />
+                    Analisar estrutura
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+      ) : null}
       {docxImport ? (
         <Modal
-          title="Revisar importação do DOCX"
+          title="Revisar preenchimento sugerido"
           subtitle="Confira o reconhecimento antes de preencher o formulário. Nenhuma alteração foi salva."
           onClose={() => setDocxImport(null)}
         >
@@ -11128,12 +11240,12 @@ function PopModule({
               <button
                 type="button"
                 disabled={!canEditDocument || importingDocx}
-                onClick={() => docxInputRef.current?.click()}
+                onClick={() => setAssistantOpen(true)}
                 className={`${secondaryButtonClass} h-10 disabled:cursor-not-allowed disabled:opacity-50`}
-                title="Ler um documento Word e sugerir o preenchimento"
+                title="Preencher a partir de DOCX ou texto estruturado"
               >
-                <Upload className="h-4 w-4" />
-                {importingDocx ? "Lendo DOCX..." : "Importar DOCX"}
+                <WandSparkles className="h-4 w-4" />
+                Assistente de preenchimento
               </button>
             </div>
           </div>
