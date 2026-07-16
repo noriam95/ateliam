@@ -13657,6 +13657,7 @@ function BpmnModuleV2({
         firstPoint: number;
         secondPoint: number;
         axis: "x" | "y";
+        points: Array<{ x: number; y: number }>;
       }
     | { kind: "flow-anchor"; flowId: string; end: "from" | "to" }
     | { kind: "free-flow-end"; flowId: string; end: "from" | "to" }
@@ -14402,7 +14403,10 @@ function BpmnModuleV2({
         lanes,
         flows: data.flows.map((flow) => {
           if (flow.id !== drag.flowId) return flow;
-          const points = [...(flow.points ?? [])];
+          // Keep the geometry captured when the gesture started. Reading the
+          // just-updated flow here made the handle briefly operate on an empty
+          // route and produced broken segments during the first movement.
+          const points = drag.points.map((routePoint) => ({ ...routePoint }));
           const value = snapValue(drag.axis === "x" ? p.x : p.y);
           points[drag.firstPoint] = { ...points[drag.firstPoint], [drag.axis]: value };
           points[drag.secondPoint] = { ...points[drag.secondPoint], [drag.axis]: value };
@@ -14907,7 +14911,7 @@ function BpmnModuleV2({
                 ) : null}
                 {hasPool
                   ? lanes.map((lane, index) => (
-                      <g key={`${lane}-${index}`}>
+                      <g key={`lane-canvas-${index}`}>
                         <rect
                           x={poolX + poolLabelWidth}
                           y={laneY(index)}
@@ -14917,6 +14921,7 @@ function BpmnModuleV2({
                           stroke="var(--foreground)"
                           strokeWidth="1"
                           className="cursor-text"
+                          onPointerDown={(event) => event.stopPropagation()}
                           onDoubleClick={(event) => {
                             event.stopPropagation();
                             startLaneEdit(index);
@@ -14933,10 +14938,16 @@ function BpmnModuleV2({
                         />
                         {editingLaneIndex === index ? (
                           <foreignObject
-                            x={poolX + leftHeaderWidth + 16}
-                            y={laneY(index) + 12}
-                            width={Math.min(380, poolWidth - leftHeaderWidth - 32)}
-                            height={42}
+                            x={
+                              poolX +
+                              poolLabelWidth +
+                              laneLabelWidth / 2 -
+                              Math.min(laneHeights[index] - 24, 260) / 2
+                            }
+                            y={laneY(index) + laneHeights[index] / 2 - 19}
+                            width={Math.min(laneHeights[index] - 24, 260)}
+                            height={38}
+                            transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}
                           >
                             <input
                               autoFocus
@@ -14954,7 +14965,7 @@ function BpmnModuleV2({
                                 }
                                 if (event.key === "Escape") setEditingLaneIndex(null);
                               }}
-                              className="h-full w-full rounded-md border-2 border-primary bg-card px-3 text-sm font-semibold text-foreground shadow-lg outline-none ring-4 ring-primary/10"
+                              className="h-full w-full rounded-md border-2 border-primary bg-card px-3 text-center text-sm font-semibold text-foreground shadow-lg outline-none ring-4 ring-primary/10"
                             />
                           </foreignObject>
                         ) : (
@@ -14968,6 +14979,7 @@ function BpmnModuleV2({
                               fill="var(--foreground)"
                               transform={`rotate(-90 ${poolX + poolLabelWidth + laneLabelWidth / 2} ${laneY(index) + laneHeights[index] / 2})`}
                               className="cursor-text"
+                              onPointerDown={(event) => event.stopPropagation()}
                               onDoubleClick={(event) => {
                                 event.stopPropagation();
                                 startLaneEdit(index);
@@ -15119,6 +15131,7 @@ function BpmnModuleV2({
                               firstPoint,
                               secondPoint,
                               axis,
+                              points: routePoints.map((routePoint) => ({ ...routePoint })),
                             });
                             setSelectedFlowId(flow.id);
                             setSelectedId(null);
@@ -15391,7 +15404,7 @@ function BpmnModuleV2({
                 <div className="grid gap-2">
                   {lanes.map((lane, index) => (
                     <div
-                      key={`${lane}-${index}`}
+                      key={`lane-inspector-${index}`}
                       className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-border bg-muted/20 p-2"
                     >
                       <Field
