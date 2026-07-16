@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { clearLegacyDemoData, isDemoSessionActive } from "@/lib/demo-session";
+import { clearLegacyDemoData } from "@/lib/demo-session";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -8,12 +8,10 @@ export const Route = createFileRoute("/_authenticated")({
     clearLegacyDemoData();
     try {
       const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user) return { isDemo: false, user: data.user };
+      if (!error && data.user) return { user: data.user };
     } catch {
-      // Fall back to the explicit local demo session below.
+      // Authentication failures are handled by the redirect below.
     }
-
-    if (isDemoSessionActive()) return { isDemo: true, user: null };
 
     throw redirect({ to: "/auth", reloadDocument: true });
   },

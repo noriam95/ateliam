@@ -1,7 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -40,14 +49,11 @@ import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { TreeButton, WorkspaceModulesTree, WorkspaceRail } from "@/components/workspace-navigation";
-import { WorkspaceSystemSettings } from "@/components/workspace-system-settings";
 import {
   WorkspaceProcessRegistrations,
   type ProcessRegistrationView,
   DEMO_REGISTRY,
 } from "@/components/workspace-process-registrations";
-import { WorkspaceReports } from "@/components/workspace-reports";
-import { endDemoSession, isDemoSessionActive } from "@/lib/demo-session";
 import {
   getMe,
   getOrganizationDashboard,
@@ -56,6 +62,17 @@ import {
 } from "@/lib/config.functions";
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
 import type { CodeSettings } from "@/lib/code-generation";
+
+const WorkspaceSystemSettings = lazy(() =>
+  import("@/components/workspace-system-settings").then((module) => ({
+    default: module.WorkspaceSystemSettings,
+  })),
+);
+const WorkspaceReports = lazy(() =>
+  import("@/components/workspace-reports").then((module) => ({
+    default: module.WorkspaceReports,
+  })),
+);
 
 export const Route = createFileRoute("/_authenticated/")({
   component: WorkspaceHome,
@@ -292,7 +309,7 @@ function WorkspaceHome() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [isDemo] = useState(() => isDemoSessionActive());
+  const isDemo = false;
   const [demoOrganizations, setDemoOrganizations] = useState<AccessibleOrganization[]>(() => {
     const defaults: AccessibleOrganization[] = [
       {
@@ -733,12 +750,6 @@ function WorkspaceHome() {
   }, [isDemo]);
 
   async function signOut() {
-    if (isDemo) {
-      endDemoSession();
-      navigate({ to: "/auth", replace: true });
-      return;
-    }
-
     try {
       await supabase.auth.signOut();
     } catch {
@@ -2205,17 +2216,23 @@ function WorkspaceContent({
 
   if (view === "users" || view === "organizations" || view === "document-models") {
     return (
-      <WorkspaceSystemSettings
-        view={view === "document-models" ? "organizations" : view}
-        isDemo={isDemo}
-        organizationName={organizationName}
-        organizationId={organizationId}
-      />
+      <Suspense fallback={<LoadingSkeleton />}>
+        <WorkspaceSystemSettings
+          view={view === "document-models" ? "organizations" : view}
+          isDemo={isDemo}
+          organizationName={organizationName}
+          organizationId={organizationId}
+        />
+      </Suspense>
     );
   }
 
   if (view === "value-chain-report") {
-    return <WorkspaceReports view={view} organizationId={organizationId} isDemo={isDemo} />;
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <WorkspaceReports view={view} organizationId={organizationId} isDemo={isDemo} />
+      </Suspense>
+    );
   }
 
   if (

@@ -62,7 +62,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import JSZip from "jszip";
+import type JSZip from "jszip";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
@@ -73,16 +73,8 @@ import {
   type WorkspaceRailArea,
 } from "@/components/workspace-navigation";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
-import {
-  parseDocxDocument,
-  parseStructuredDocumentText,
-  type DocxDocumentImport,
-} from "@/lib/docx-document-import";
-import {
-  parseDocxMapping,
-  parseStructuredMappingText,
-  type MappingDocumentImport,
-} from "@/lib/docx-mapping-import";
+import type { DocxDocumentImport } from "@/lib/docx-document-import";
+import type { MappingDocumentImport } from "@/lib/docx-mapping-import";
 import {
   ProcessRegistrationDialog,
   SystemRegistrationDialog,
@@ -128,8 +120,6 @@ import {
   deleteDemoWorkspaceVersions,
   getDemoWorkspaceVersion,
   getDemoWorkspaceVersionContent,
-  isDemoSessionActive,
-  endDemoSession,
   listDemoWorkspaceVersions,
   restoreDemoWorkspaceState,
   saveDemoWorkspaceVersion,
@@ -5394,7 +5384,7 @@ function ModuleWorkspacePage() {
   const moduleId = module as AteliamModule;
   const navigate = useNavigate();
   const moduleInfo = MODULES.find((item) => item.id === moduleId)!;
-  const [isDemo] = useState(() => isDemoSessionActive());
+  const isDemo = false;
   const [workspace, setWorkspace] = useState<WorkspaceState>(() => defaultWorkspace());
   const [loaded, setLoaded] = useState(false);
   const [railArea, setRailArea] = useState<RailArea>("modules");
@@ -6189,8 +6179,7 @@ function ModuleWorkspacePage() {
   }
 
   async function signOut() {
-    if (isDemo) endDemoSession();
-    else await supabase.auth.signOut();
+    await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
 
@@ -9872,6 +9861,7 @@ function DdpModule({
     if (!file) return;
     setMappingAssistantBusy(true);
     try {
+      const { parseDocxMapping } = await import("@/lib/docx-mapping-import");
       setMappingImport(await parseDocxMapping(file));
       setMappingAssistantOpen(false);
     } catch (error) {
@@ -9881,8 +9871,9 @@ function DdpModule({
     }
   }
 
-  function handleMappingTextImport() {
+  async function handleMappingTextImport() {
     try {
+      const { parseStructuredMappingText } = await import("@/lib/docx-mapping-import");
       setMappingImport(parseStructuredMappingText(mappingAssistantText));
       setMappingAssistantOpen(false);
     } catch (error) {
@@ -11825,6 +11816,7 @@ function PopModule({
     if (!file) return;
     setImportingDocx(true);
     try {
+      const { parseDocxDocument } = await import("@/lib/docx-document-import");
       const parsed = await parseDocxDocument(file);
       if (isEditing && parsed.type && parsed.type !== data.meta.tipo) {
         parsed.warnings.push(
@@ -11840,8 +11832,9 @@ function PopModule({
     }
   }
 
-  function handleStructuredTextImport() {
+  async function handleStructuredTextImport() {
     try {
+      const { parseStructuredDocumentText } = await import("@/lib/docx-document-import");
       const parsed = parseStructuredDocumentText(assistantText);
       if (isEditing && parsed.type && parsed.type !== data.meta.tipo) {
         parsed.warnings.push(
@@ -13326,13 +13319,14 @@ async function importBpmnFile(file: File): Promise<BpmnState> {
   const buffer = await file.arrayBuffer();
   const lowerName = file.name.toLowerCase();
   if (lowerName.endsWith(".bpm")) {
-    const outer = await JSZip.loadAsync(buffer);
+    const { default: JSZipRuntime } = await import("jszip");
+    const outer = await JSZipRuntime.loadAsync(buffer);
     const preferred = await selectedBizagiDiagramName(outer);
     const diagName =
       (preferred && outer.file(preferred) ? preferred : null) ??
       Object.keys(outer.files).find((name) => name.endsWith(".diag"));
     if (!diagName) throw new Error("Arquivo BPM sem diagrama importavel.");
-    const inner = await JSZip.loadAsync(await outer.file(diagName)!.async("arraybuffer"));
+    const inner = await JSZipRuntime.loadAsync(await outer.file(diagName)!.async("arraybuffer"));
     const diagram = inner.file("Diagram.xml");
     if (!diagram) throw new Error("Diagrama Bizagi sem Diagram.xml.");
     return parseXpdlDiagram(await diagram.async("text"));

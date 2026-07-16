@@ -108,6 +108,21 @@ export default defineConfig({
       "@tanstack/query-core",
     ],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("@supabase")) return "vendor-supabase";
+          if (id.includes("@tanstack")) return "vendor-tanstack";
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
+            return "vendor-react";
+          }
+          if (id.includes("lucide-react")) return "vendor-icons";
+        },
+      },
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 3000,

@@ -437,7 +437,7 @@ function PorterDiagram({
   const [expanded, setExpanded] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
-  const outputItems = Array.isArray(outputs) ? outputs : [];
+  const outputItems = outputs;
   const shownOutputs = outputItems.slice(0, 5);
   const expandedImageSrc = useMemo(
     () =>
@@ -670,30 +670,6 @@ function PorterDiagram({
               className="pointer-events-none absolute rounded-lg border-2 border-[#d49a21] bg-[#d49a21]/15 shadow-[0_0_0_999px_rgba(0,0,0,.18)] transition-all duration-150"
               style={zoomMapWindowStyle()}
             />
-          </div>
-        </div>
-      ) : null}
-      {false && expanded ? (
-        <div className="fixed inset-0 z-[80] grid bg-slate-950/50 p-4 backdrop-blur-[2px]">
-          <div className="grid max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-            <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-              <div>
-                <div className="font-display text-lg font-bold">Cadeia de Valor</div>
-                <div className="text-xs text-muted-foreground">Visualização expandida do desenho</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setExpanded(false)}
-                className="ml-auto grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Fechar"
-                aria-label="Fechar visualização expandida"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="overflow-auto p-4">
-              {renderDiagram(true)}
-            </div>
           </div>
         </div>
       ) : null}

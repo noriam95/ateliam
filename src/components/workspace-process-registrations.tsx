@@ -196,6 +196,8 @@ const STRUCTURAL_PROCESS_TYPES: ProcessType[] = [
   { id: "type-task", code: "tarefa", label: "Tarefa", active: true },
 ];
 
+// Fixture shared by the isolated demo fallbacks retained for compatibility.
+// eslint-disable-next-line react-refresh/only-export-components
 export const DEMO_REGISTRY: RegistryData = {
   areas: [
     { id: "area-ti", name: "Tecnologia da Informação", sigla: "TIN" },
