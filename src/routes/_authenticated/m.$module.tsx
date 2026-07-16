@@ -11403,6 +11403,7 @@ function PopModule({
                                                 label="Imagens deste trecho"
                                                 captionLabel="Legenda"
                                                 showTitle={false}
+                                                compactAddButton
                                                 images={block.images}
                                                 onChange={(images) =>
                                                   updateProcedureBlocks(
@@ -11421,24 +11422,44 @@ function PopModule({
                                           </div>
                                         ))}
 
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            updateProcedureBlocks(
-                                              section.id,
-                                              subitem.id,
-                                              clause.id,
-                                              [
-                                                ...blocks,
-                                                { id: id("clauseblock"), text: "", images: [] },
-                                              ],
-                                            )
-                                          }
-                                          className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] px-3 py-2 text-sm font-semibold text-[var(--gold)] transition hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)]"
-                                        >
-                                          <Plus className="h-4 w-4" />
-                                          Adicionar trecho
-                                        </button>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            type="button"
+                                            title="Adicionar trecho"
+                                            aria-label="Adicionar trecho"
+                                            onClick={() =>
+                                              updateProcedureBlocks(
+                                                section.id,
+                                                subitem.id,
+                                                clause.id,
+                                                [
+                                                  ...blocks,
+                                                  { id: id("clauseblock"), text: "", images: [] },
+                                                ],
+                                              )
+                                            }
+                                            className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                                          >
+                                            <Plus className="h-3.5 w-3.5" />
+                                          </button>
+
+                                          {!clause.alert && !visibleClauseNotes[clause.id] ? (
+                                            <button
+                                              type="button"
+                                              title="Adicionar observação"
+                                              aria-label="Adicionar observação"
+                                              onClick={() =>
+                                                setVisibleClauseNotes((current) => ({
+                                                  ...current,
+                                                  [clause.id]: true,
+                                                }))
+                                              }
+                                              className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                                            >
+                                              <TriangleAlert className="h-3.5 w-3.5" />
+                                            </button>
+                                          ) : null}
+                                        </div>
 
                                         {clause.alert || visibleClauseNotes[clause.id] ? (
                                           <div className="rounded-lg border border-primary/35 bg-primary/5 p-3">
@@ -11483,21 +11504,7 @@ function PopModule({
                                               }
                                             />
                                           </div>
-                                        ) : (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setVisibleClauseNotes((current) => ({
-                                                ...current,
-                                                [clause.id]: true,
-                                              }))
-                                            }
-                                            className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-primary/45 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
-                                          >
-                                            <TriangleAlert className="h-4 w-4" />
-                                            Adicionar observação
-                                          </button>
-                                        )}
+                                        ) : null}
                                       </div>
                                     </details>
                                   );
@@ -15885,12 +15892,14 @@ function ImageManager({
   label = "Imagens",
   captionLabel = "Legenda",
   showTitle = true,
+  compactAddButton = false,
   images,
   onChange,
 }: {
   label?: string;
   captionLabel?: string;
   showTitle?: boolean;
+  compactAddButton?: boolean;
   images: ModuleImage[];
   onChange: (images: ModuleImage[]) => void;
 }) {
@@ -15921,9 +15930,21 @@ function ImageManager({
             {images.length ? `${images.length} imagem(ns) incorporada(s)` : "Nenhuma imagem ainda"}
           </div>
         </div>
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted">
+        <label
+          title="Adicionar imagem"
+          aria-label="Adicionar imagem"
+          className={
+            compactAddButton
+              ? "grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+              : "inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+          }
+        >
           <ImagePlus className="h-4 w-4" />
-          Adicionar imagem
+          {compactAddButton ? (
+            <span className="sr-only">Adicionar imagem</span>
+          ) : (
+            "Adicionar imagem"
+          )}
           <input
             type="file"
             accept="image/*"
