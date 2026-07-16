@@ -43,6 +43,7 @@ import {
   Search,
   Settings,
   Square,
+  TriangleAlert,
   Trash2,
   Upload,
   Workflow,
@@ -157,6 +158,12 @@ function documentationTypeDescription(tipo: PopState["meta"]["tipo"]) {
   if (tipo === "Norma") return "Diretrizes, regras e critérios de aplicação obrigatória.";
   if (tipo === "IT") return "Instruções detalhadas para execução de uma atividade específica.";
   return "Procedimento operacional padronizado para execução do processo.";
+}
+
+function documentationContentTitle(tipo: PopState["meta"]["tipo"]) {
+  if (tipo === "Norma") return "Diretrizes";
+  if (tipo === "IT") return "Instrução de Trabalho";
+  return "Procedimento Operacional";
 }
 // Lê a organização demo ativa (id, slug, code_settings) do localStorage.
 function readActiveDemoOrganization(): {
@@ -2151,7 +2158,15 @@ type ExportNextStep = { title: string; description: string; owner: string; due: 
 type ExportPopSection = {
   title: string;
   description: string;
-  items: Array<{ text: string; note: string; images: ExportImage[] }>;
+  body: string;
+  images: ExportImage[];
+  items: Array<{
+    kind: "subitem" | "clause" | "paragraph";
+    label: string;
+    text: string;
+    note: string;
+    images: ExportImage[];
+  }>;
 };
 type DocxParagraphOptions = {
   style?: string;
@@ -2414,11 +2429,15 @@ function getPopExportModel(data: PopState) {
       section.subitems?.flatMap((subitem) => [
         {
           text: `${subitem.code} ${subitem.title}`.trim(),
+          kind: "subitem" as const,
+          label: "",
           note: "",
           images: [],
         },
         ...subitem.clauses.map((clause) => ({
-          text: `${clause.letter}) ${clause.text}`.trim(),
+          text: clause.text,
+          kind: "clause" as const,
+          label: `${clause.letter}) `,
           note: clause.alert,
           images: clause.images.map((image) => ({
             title: image.titulo,
@@ -2427,31 +2446,24 @@ function getPopExportModel(data: PopState) {
           })),
         })),
       ]) ?? [];
-    const legacyItems = [
-      ...splitText(section.body || section.records || section.risks).map((line) => ({
+    const legacyItems = splitText(section.records || section.risks).map((line) => ({
         text: line,
+        kind: "paragraph" as const,
+        label: "",
         note: "",
         images: [],
-      })),
-      ...(section.images.length
-        ? [
-            {
-              text: "Imagens e evidências",
-              note: "",
-              images: section.images.map((image) => ({
-                title: image.titulo,
-                caption: image.legenda,
-                src: image.src,
-              })),
-            },
-          ]
-        : []),
-    ];
+      }));
     return {
-        title: section.title,
-        description: section.description,
-        items: nestedItems.length ? nestedItems : legacyItems,
-      };
+      title: section.title,
+      description: section.description,
+      body: section.body,
+      images: section.images.map((image) => ({
+        title: image.titulo,
+        caption: image.legenda,
+        src: image.src,
+      })),
+      items: nestedItems.length ? nestedItems : legacyItems,
+    };
   });
 
   return {
@@ -2462,12 +2474,7 @@ function getPopExportModel(data: PopState) {
         : data.meta.tipo === "IT"
           ? "Instrução de Trabalho - IT"
           : "Procedimento Operacional Padrão - POP",
-    contentTitle:
-      data.meta.tipo === "Norma"
-        ? "Diretrizes"
-        : data.meta.tipo === "IT"
-          ? "Instrução de Trabalho"
-          : "Procedimento Operacional",
+    contentTitle: documentationContentTitle(data.meta.tipo),
     purpose: data.purpose,
     sections,
     responsibilities: data.responsibilities,
@@ -3311,6 +3318,8 @@ function createDocxContext(params: {
     gray300: "D1D5DB",
     gray100: "F3F4F6",
     gray50: "F9FAFB",
+    warning: "D49A21",
+    warningFill: "FFF7E1",
     white: "FFFFFF",
   };
   const PAGE_W = 11906;
@@ -3546,6 +3555,27 @@ function createDocxContext(params: {
     })}</w:p>`;
   }
 
+  function notice(text: string) {
+    return table(
+      [
+        [
+          {
+            xml: p("!", { size: 15, bold: true, color: C.white, align: "center", after: 0 }),
+            fill: C.warning,
+            valign: "center",
+          },
+          {
+            xml: labelValue("Observação", text),
+            fill: C.warningFill,
+            valign: "center",
+          },
+        ],
+      ],
+      [650, CONTENT_W - 650],
+      { full: true, border: C.warning },
+    );
+  }
+
   function sectionTitle(title: string) {
     return `<w:p><w:pPr><w:spacing w:before="0" w:after="${twip(
       12,
@@ -3658,6 +3688,7 @@ function createDocxContext(params: {
     headerCell,
     bodyCell,
     labelValue,
+    notice,
     sectionTitle,
     subTitle,
     tocLine,
@@ -4008,12 +4039,24 @@ function buildPopDocxModern(data: PopState, brand?: OrganizationBrand) {
   model.sections.forEach((section, sectionIndex) => {
     parts.push(doc.subTitle(`3.${sectionIndex + 1} - ${section.title || "Seção"}`));
     if (section.description) parts.push(doc.p(section.description, { align: "both", line: 1.05 }));
-    section.items.forEach((item, itemIndex) => {
-      parts.push(doc.mixedP(`${String.fromCharCode(97 + itemIndex)}) `, item.text));
-      if (item.note)
-        parts.push(
-          doc.p(`Observação: ${item.note}`, { size: 9.5, color: doc.C.gray500, left: 360 }),
-        );
+    if (section.body) parts.push(doc.p(section.body, { align: "both", line: 1.05 }));
+    section.images.forEach((image, imageIndex) => {
+      if (!image.src) return;
+      parts.push(
+        doc.imageParagraph(image.src, image.title || `Figura ${imageIndex + 1}`, 6.5, 4.2),
+      );
+      parts.push(
+        doc.p(
+          `Figura ${imageIndex + 1} - ${image.caption || image.title || "Imagem do documento"}`,
+          { size: 8.5, align: "center", color: doc.C.gray500 },
+        ),
+      );
+    });
+    section.items.forEach((item) => {
+      if (item.kind === "subitem") parts.push(doc.subTitle(item.text));
+      else if (item.kind === "clause") parts.push(doc.mixedP(item.label, item.text));
+      else parts.push(doc.p(item.text, { align: "both", line: 1.05 }));
+      if (item.note) parts.push(doc.notice(item.note));
       item.images.forEach((image, imageIndex) => {
         if (!image.src) return;
         parts.push(
@@ -4246,11 +4289,12 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
     typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
   const title = pop.meta.titulo || documentationTypeName(pop.meta.tipo);
   const code = pop.meta.codigo || pop.meta.tipo;
+  const contentTitle = documentationContentTitle(pop.meta.tipo);
   const nav = [
     ["capa", "00 Capa"],
     ["objetivo", "01 Objetivo"],
     ["abrangencia", "02 Abrangência"],
-    ["procedimento", "03 Procedimento operacional"],
+    ["procedimento", `03 ${contentTitle}`],
     ["responsabilidades", "04 Responsabilidades"],
     ["referencias", "05 Referências normativas"],
     ["historico", "06 Histórico e alterações"],
@@ -4287,7 +4331,11 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
                     html((clause.letter || "a") + ")") +
                     "</span><div>" +
                     (clause.text ? "<p>" + html(clause.text) + "</p>" : "") +
-                    (clause.alert ? '<aside>' + html(clause.alert) + "</aside>" : "") +
+                    (clause.alert
+                      ? '<aside style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--gold);border-radius:12px"><span class="alert-icon" style="display:grid;width:28px;height:28px;place-items:center;border-radius:999px;background:var(--gold);color:#fff;font-weight:950">!</span><div><strong style="display:block;color:var(--gold);font-size:11px;letter-spacing:.12em;text-transform:uppercase">Observação</strong><p>' +
+                        html(clause.alert) +
+                        "</p></div></aside>"
+                      : "") +
                     imageCards(clause.images) +
                     "</div></article>",
                 )
@@ -4450,7 +4498,7 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
     '<article class="text-panel"><span class="icon">02</span><div><h3>Abrangência</h3><p>' +
     html(pop.purpose.abrangencia || "Não informada.") +
     '</p></div></article></section><section class="slide" id="procedimento">' +
-    sectionHead("03", "Procedimento operacional", "Sequência de atividades, subitens e orientações.") +
+    sectionHead("03", contentTitle, "Sequência de atividades, subitens e orientações.") +
     '<div class="procedure-stack">' +
     procedure +
     '</div></section><section class="slide alt" id="responsabilidades">' +
@@ -9514,7 +9562,9 @@ function PopModule({
   const [quickPositionDescription, setQuickPositionDescription] = useState("");
   const [activeSection, setActiveSection] = useState("identification");
   const [openSignals, setOpenSignals] = useState<Record<string, number>>({});
+  const [visibleClauseNotes, setVisibleClauseNotes] = useState<Record<string, boolean>>({});
   const documentName = documentationTypeName(data.meta.tipo);
+  const contentTitle = documentationContentTitle(data.meta.tipo);
   const visibleCode = data.meta.codigo || codePreview;
   const selectedDocumentProcess =
     catalogs.processes.find((process) => {
@@ -9547,6 +9597,8 @@ function PopModule({
       data.sections.flatMap((section) => [
         section.code,
         section.title,
+        section.body,
+        section.images,
         ...(section.subitems ?? []).flatMap((subitem) => [
           subitem.code,
           subitem.title,
@@ -9581,7 +9633,7 @@ function PopModule({
     { key: "identification", num: "00", title: "Dados do documento", pct: sectionProgress.identification },
     { key: "objective", num: "01", title: "Objetivo", pct: sectionProgress.objective },
     { key: "scope", num: "02", title: "Abrangência", pct: sectionProgress.scope },
-    { key: "procedure", num: "03", title: "Procedimento operacional", pct: sectionProgress.sections },
+    { key: "procedure", num: "03", title: contentTitle, pct: sectionProgress.sections },
     { key: "responsibilities", num: "04", title: "Responsabilidades", pct: sectionProgress.responsibilities },
     { key: "references", num: "05", title: "Referências normativas", pct: sectionProgress.references },
     { key: "history", num: "06", title: "Histórico e alterações", pct: sectionProgress.history },
@@ -10018,7 +10070,7 @@ function PopModule({
       <Panel
         id="pop-sec-procedure"
         num="03"
-        title="Procedimento operacional"
+        title={contentTitle}
         progress={sectionProgress.sections}
         openSignal={openSignals.procedure}
       >
@@ -10049,6 +10101,19 @@ function PopModule({
                 >
                   <Trash2 className="h-4 w-4" />
                 </IconButton>
+              </div>
+              <div className="mb-3 grid gap-3 rounded-lg border border-border bg-card p-3">
+                <TextArea
+                  label="Texto do item"
+                  value={section.body}
+                  rows={4}
+                  onChange={(body) => updateSection(section.id, { body })}
+                />
+                <ImageManager
+                  label="Imagens do item"
+                  images={section.images}
+                  onChange={(images) => updateSection(section.id, { images })}
+                />
               </div>
               <div className="grid gap-3">
                 {(section.subitems ?? []).map((subitem) => (
@@ -10109,14 +10174,52 @@ function PopModule({
                             </IconButton>
                           </div>
                           <div className="grid gap-3">
-                            <TextArea
-                              label="Alerta / observação crítica"
-                              value={clause.alert}
-                              rows={2}
-                              onChange={(alert) =>
-                                updateProcedureClause(section.id, subitem.id, clause.id, { alert })
-                              }
-                            />
+                            {clause.alert || visibleClauseNotes[clause.id] ? (
+                              <div className="rounded-lg border border-primary/35 bg-primary/5 p-3">
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                    <TriangleAlert className="h-4 w-4 text-primary" />
+                                    Observação
+                                  </div>
+                                  <IconButton
+                                    label="Remover observação"
+                                    onClick={() => {
+                                      updateProcedureClause(section.id, subitem.id, clause.id, {
+                                        alert: "",
+                                      });
+                                      setVisibleClauseNotes((current) => ({
+                                        ...current,
+                                        [clause.id]: false,
+                                      }));
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </IconButton>
+                                </div>
+                                <TextArea
+                                  label="Texto da observação"
+                                  value={clause.alert}
+                                  rows={2}
+                                  onChange={(alert) =>
+                                    updateProcedureClause(section.id, subitem.id, clause.id, { alert })
+                                  }
+                                />
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setVisibleClauseNotes((current) => ({
+                                    ...current,
+                                    [clause.id]: true,
+                                  }))
+                                }
+                                className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-primary/45 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+                              >
+                                <TriangleAlert className="h-4 w-4" />
+                                Adicionar observação
+                              </button>
+                            )}
                             <ImageManager
                               label="Imagens da alínea"
                               images={clause.images}
