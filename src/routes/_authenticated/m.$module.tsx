@@ -79,6 +79,11 @@ import {
   type DocxDocumentImport,
 } from "@/lib/docx-document-import";
 import {
+  parseDocxMapping,
+  parseStructuredMappingText,
+  type MappingDocumentImport,
+} from "@/lib/docx-mapping-import";
+import {
   ProcessRegistrationDialog,
   SystemRegistrationDialog,
   WorkspaceProcessRegistrations,
@@ -8889,6 +8894,12 @@ function DdpModule({
     stepId: string;
     query: string;
   } | null>(null);
+  const [mappingAssistantOpen, setMappingAssistantOpen] = useState(false);
+  const [mappingAssistantSource, setMappingAssistantSource] = useState<"docx" | "text">("docx");
+  const [mappingAssistantText, setMappingAssistantText] = useState("");
+  const [mappingAssistantBusy, setMappingAssistantBusy] = useState(false);
+  const [mappingImport, setMappingImport] = useState<MappingDocumentImport | null>(null);
+  const mappingDocxInputRef = useRef<HTMLInputElement>(null);
   const [libraryCauseRows, setLibraryCauseRows] = useState<Record<string, boolean>>({});
   const [causeSearch, setCauseSearch] = useState<Record<string, string>>({});
   const selectedProcess = useMemo(
@@ -8918,6 +8929,16 @@ function DdpModule({
     }
     return base.filter((process) => branchIds.has(process.id));
   }, [catalogs.processes, selectedProcess]);
+  const unmatchedImportedSteps = useMemo(
+    () =>
+      mappingImport?.steps.filter(
+        (step) =>
+          !flowProcessOptions.some(
+            (process) => normalizeLabel(process.name) === normalizeLabel(step.title),
+          ),
+      ) ?? [],
+    [flowProcessOptions, mappingImport],
+  );
 
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
@@ -9109,7 +9130,6 @@ function DdpModule({
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onScroll);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mappingReady]);
 
   // Estado de salvamento honesto: marca "não salvo" ao editar; limpa quando o
@@ -9154,7 +9174,6 @@ function DdpModule({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSave, mappingReady]);
 
   function updateStep(stepId: string, patch: Partial<DdpFlowStep>) {
@@ -9280,6 +9299,165 @@ function DdpModule({
     if (selected) applySharedCauseToGap(gapId, selected.id);
   }
 
+  async function handleMappingDocxImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setMappingAssistantBusy(true);
+    try {
+      setMappingImport(await parseDocxMapping(file));
+      setMappingAssistantOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível interpretar o DOCX.");
+    } finally {
+      setMappingAssistantBusy(false);
+    }
+  }
+
+  function handleMappingTextImport() {
+    try {
+      setMappingImport(parseStructuredMappingText(mappingAssistantText));
+      setMappingAssistantOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível interpretar o texto.");
+    }
+  }
+
+  function mappingImage(image: { name: string; src: string }): ModuleImage {
+    return { id: id("mapimg"), titulo: "", legenda: "", src: image.src };
+  }
+
+  function applyMappingImport() {
+    if (!mappingImport) return;
+    const unmatchedSteps: string[] = [];
+    const importedSteps = mappingImport.steps.flatMap((step): DdpFlowStep[] => {
+      const process = flowProcessOptions.find(
+        (item) => normalizeLabel(item.name) === normalizeLabel(step.title),
+      );
+      if (!process) {
+        unmatchedSteps.push(step.title);
+        return [];
+      }
+      return [
+        {
+          id: id("step"),
+          processId: process.id,
+          processVersion: 1,
+          etapa: process.name,
+          responsavel: step.responsible || process.owner || "",
+          entrada: step.input,
+          atividade: step.activity || process.description || "",
+          saida: step.output,
+          sistema: step.system,
+          risco: step.risk,
+          observacoes: step.notes,
+          images: step.images.map(mappingImage),
+          substeps: step.substeps.map((substep, substepIndex) => ({
+            id: id("substep"),
+            processId: "",
+            processVersion: 1,
+            codigo: `1.${substepIndex + 1}`,
+            titulo: substep.title,
+            descricao: substep.description,
+            images: substep.images.map(mappingImage),
+          })),
+        },
+      ];
+    });
+    const importedSystems = mappingImport.systems.map((system) => {
+      const catalogSystem = catalogs.systems.find(
+        (item) => normalizeLabel(item.name) === normalizeLabel(system.name),
+      );
+      return {
+        id: id("sys"),
+        systemId: catalogSystem?.id ?? "",
+        nome: catalogSystem?.name ?? system.name,
+        tipo: "",
+        dono: "",
+        criticidade: "Média",
+        descricao: system.description || catalogSystem?.description || "",
+      };
+    });
+    const nextState: DdpState = {
+      ...data,
+      meta: {
+        ...data.meta,
+        titulo: mappingImport.title || data.meta.titulo,
+        modalidade: mappingImport.modality || data.meta.modalidade,
+        data: dateInputValue(mappingImport.date) || data.meta.data,
+        elaborador: mappingImport.author || data.meta.elaborador,
+        revisor: mappingImport.reviewer || data.meta.revisor,
+      },
+      overview: {
+        ...data.overview,
+        objetivo: mappingImport.objective || data.overview.objetivo,
+        escopo: mappingImport.scope || data.overview.escopo,
+        kpis: mappingImport.context || data.overview.kpis,
+      },
+      systems: importedSystems.length ? importedSystems : data.systems,
+      sipocRows: mappingImport.sipoc.length
+        ? mappingImport.sipoc.map((row) => ({
+            id: id("sipoc"),
+            fornecedores: row.suppliers,
+            entradas: row.inputs,
+            processo: row.process,
+            saidas: row.outputs,
+            clientes: row.customers,
+          }))
+        : data.sipocRows,
+      macroprocess: mappingImport.macroImages.length
+        ? {
+            ...data.macroprocess,
+            titulo: "Diagrama do processo",
+            legenda: "",
+            src: mappingImport.macroImages[0].src,
+          }
+        : data.macroprocess,
+      steps: importedSteps.length ? renumberFlowSteps(importedSteps) : data.steps,
+      gaps: mappingImport.gaps.length
+        ? mappingImport.gaps.map((gap) => ({
+            id: id("gap"),
+            sharedCauseId: "",
+            causa: gap.cause,
+            descricao: gap.description,
+            impacto: gap.impact,
+            acao: gap.action,
+            responsavel: gap.responsible,
+            prazo: gap.deadline,
+            prioridade: CAUSE_PRIORITY_OPTIONS.includes(gap.priority as never)
+              ? gap.priority
+              : "Média",
+            status: CAUSE_STATUS_OPTIONS.includes(gap.status as never) ? gap.status : "Pendente",
+            comentarios: [],
+          }))
+        : data.gaps,
+      nextSteps: mappingImport.nextSteps.length
+        ? mappingImport.nextSteps.map((item) => ({
+            id: id("next"),
+            text: item.text,
+            responsavel: item.responsible,
+            prazo: dateInputValue(item.deadline) || item.deadline,
+          }))
+        : data.nextSteps,
+      glossary: mappingImport.glossary.length
+        ? mappingImport.glossary.map((item) => ({
+            id: id("gloss"),
+            termo: item.term,
+            definicao: item.definition,
+          }))
+        : data.glossary,
+    };
+    update(nextState);
+    setMappingImport(null);
+    if (unmatchedSteps.length) {
+      toast.warning(
+        `${unmatchedSteps.length} etapa(s) não foram aplicadas porque não correspondem a processos cadastrados.`,
+      );
+    } else {
+      toast.success("Conteúdo aplicado. Revise os campos antes de salvar o mapeamento.");
+    }
+  }
+
   function requestStatusChange(status: string) {
     if (status === (data.meta.status || "Em andamento")) return;
     setPendingStatus(status);
@@ -9332,6 +9510,190 @@ function DdpModule({
           }}
         />
       ) : null}
+      <input
+        ref={mappingDocxInputRef}
+        type="file"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={handleMappingDocxImport}
+        className="hidden"
+      />
+      {mappingAssistantOpen ? (
+        <Modal
+          title="Assistente de preenchimento"
+          subtitle="Importe um DOCX ou cole um mapeamento estruturado. O conteúdo será conferido antes de preencher o formulário."
+          onClose={() => setMappingAssistantOpen(false)}
+        >
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 rounded-lg border border-border bg-muted/40 p-1">
+              {(
+                [
+                  ["docx", "Importar DOCX", FileText],
+                  ["text", "Colar texto", ListChecks],
+                ] as const
+              ).map(([source, label, Icon]) => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => setMappingAssistantSource(source)}
+                  className={[
+                    "inline-flex h-10 items-center justify-center gap-2 rounded-md text-sm font-semibold transition",
+                    mappingAssistantSource === source
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+            {mappingAssistantSource === "docx" ? (
+              <button
+                type="button"
+                disabled={mappingAssistantBusy}
+                onClick={() => mappingDocxInputRef.current?.click()}
+                className="grid min-h-44 place-items-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center transition hover:border-primary/60 hover:bg-primary/5 disabled:opacity-50"
+              >
+                <span>
+                  <span className="mx-auto grid h-11 w-11 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <Upload className="h-5 w-5" />
+                  </span>
+                  <span className="mt-3 block font-bold text-foreground">
+                    {mappingAssistantBusy ? "Lendo mapeamento..." : "Selecionar arquivo DOCX"}
+                  </span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    O processamento ocorre no navegador, sem envio para serviços externos.
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <div className="grid gap-3">
+                <label className="grid gap-1.5">
+                  <span className={fieldLabelClass}>Mapeamento estruturado</span>
+                  <textarea
+                    value={mappingAssistantText}
+                    onChange={(event) => setMappingAssistantText(event.target.value)}
+                    placeholder={
+                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n05 Gaps e causas-raiz\nGap: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n06 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n07 Glossário\nSLA | Acordo de nível de serviço"
+                    }
+                    className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
+                  />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMappingAssistantOpen(false)}
+                    className={secondaryButtonClass}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!mappingAssistantText.trim()}
+                    onClick={handleMappingTextImport}
+                    className={`${primaryButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    <WandSparkles className="h-4 w-4" />
+                    Analisar estrutura
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+      ) : null}
+      {mappingImport ? (
+        <Modal
+          title="Revisar preenchimento sugerido"
+          subtitle="Confira o reconhecimento antes de aplicar. O processo selecionado, o código e os vínculos cadastrais serão preservados."
+          onClose={() => setMappingImport(null)}
+        >
+          <div className="grid gap-4">
+            <div className="grid gap-3 rounded-lg border border-border bg-muted/35 p-4 sm:grid-cols-[1fr_auto]">
+              <div>
+                <div className={fieldLabelClass}>Mapeamento identificado</div>
+                <div className="mt-1 font-bold text-foreground">
+                  {mappingImport.title || mappingImport.fileName}
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {[mappingImport.modality, mappingImport.date, mappingImport.author]
+                    .filter(Boolean)
+                    .join(" · ") || "Metadados não identificados"}
+                </div>
+              </div>
+              <div className="min-w-44">
+                <div className={fieldLabelClass}>Estrutura reconhecida</div>
+                <div className="mt-1 text-sm font-semibold text-foreground">
+                  {mappingImport.stats.sections} seções · {mappingImport.stats.steps} etapas
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {mappingImport.stats.substeps} subetapas · {mappingImport.stats.images} imagens
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                [
+                  "Visão geral",
+                  [mappingImport.objective, mappingImport.scope, mappingImport.context].filter(
+                    Boolean,
+                  ).length,
+                  "3 campos",
+                ],
+                ["Sistemas", mappingImport.systems.length, "registros"],
+                ["SIPOC", mappingImport.sipoc.length, "linhas"],
+                ["Etapas", mappingImport.steps.length, "registros"],
+                ["Gaps", mappingImport.gaps.length, "registros"],
+                ["Próximos passos", mappingImport.nextSteps.length, "registros"],
+                ["Glossário", mappingImport.glossary.length, "termos"],
+                ["Imagens", mappingImport.stats.images, "arquivos"],
+              ].map(([label, count, suffix]) => (
+                <div key={String(label)} className="rounded-lg border border-border px-3 py-2">
+                  <div className={fieldLabelClass}>{label}</div>
+                  <div className="mt-1 text-sm font-semibold text-foreground">
+                    {count} {suffix}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {mappingImport.warnings.length ? (
+              <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/25 dark:text-amber-100">
+                <div className="flex items-center gap-2 font-bold">
+                  <TriangleAlert className="h-4 w-4" /> Pontos para revisão
+                </div>
+                <ul className="mt-2 grid gap-1 pl-5">
+                  {mappingImport.warnings.map((warning) => (
+                    <li key={warning} className="list-disc">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {unmatchedImportedSteps.length ? (
+              <div className="rounded-lg border border-border bg-muted/35 p-3 text-sm text-foreground">
+                <div className="font-bold">Etapas sem processo correspondente</div>
+                <p className="mt-1 text-muted-foreground">
+                  Estas etapas não serão aplicadas até que exista um processo cadastrado com o mesmo
+                  nome: {unmatchedImportedSteps.map((step) => step.title).join(", ")}.
+                </p>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMappingImport(null)}
+                className={secondaryButtonClass}
+              >
+                Cancelar
+              </button>
+              <button type="button" onClick={applyMappingImport} className={primaryButtonClass}>
+                Aplicar ao formulário
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
       <FlowCommandBar
         code={data.meta.codigo}
         sections={sections}
@@ -9345,16 +9707,32 @@ function DdpModule({
         saveTitle="Salvar o preenchimento do mapeamento"
         previewTitle="Visualizar o que está sendo preenchido"
         processControl={
-          <RegisteredProcessSelect
-            required
-            label="Processo do mapeamento"
-            value={data.macroprocess.processId ?? ""}
-            processes={primaryProcessOptions}
-            placeholder="Selecione o processo que será mapeado"
-            onSelect={selectPrimaryProcess}
-            displayName={(process) => process.name}
-            onRequestCreate={(name) => setCreateProcessName(name)}
-          />
+          <div className="grid items-end gap-2 sm:grid-cols-[minmax(280px,1fr)_auto]">
+            <RegisteredProcessSelect
+              required
+              label="Processo do mapeamento"
+              value={data.macroprocess.processId ?? ""}
+              processes={primaryProcessOptions}
+              placeholder="Selecione o processo que será mapeado"
+              onSelect={selectPrimaryProcess}
+              displayName={(process) => process.name}
+              onRequestCreate={(name) => setCreateProcessName(name)}
+            />
+            <button
+              type="button"
+              disabled={!mappingReady}
+              onClick={() => setMappingAssistantOpen(true)}
+              className={`${secondaryButtonClass} h-10 disabled:cursor-not-allowed disabled:opacity-50`}
+              title={
+                mappingReady
+                  ? "Preencher a partir de DOCX ou texto"
+                  : "Selecione um processo primeiro"
+              }
+            >
+              <WandSparkles className="h-4 w-4" />
+              Assistente de preenchimento
+            </button>
+          </div>
         }
       />
       {!mappingReady ? (
