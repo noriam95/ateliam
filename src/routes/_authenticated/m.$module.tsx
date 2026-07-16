@@ -15803,6 +15803,10 @@ function RegisteredSystemSelect({
 // aparência e a consistência entre as seções.
 const fieldLabelClass =
   "mb-1.5 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground/90";
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90";
+const secondaryButtonClass =
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted";
 const fieldInputBase =
   "w-full rounded-lg border border-input bg-background text-sm text-foreground outline-none transition placeholder:text-muted-foreground/50 hover:border-[color-mix(in_oklab,var(--foreground)_22%,var(--input))] focus:border-[var(--gold)] focus:ring-[3px] focus:ring-[var(--gold)]/18";
 
