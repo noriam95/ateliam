@@ -2736,6 +2736,7 @@ type OrganizationCause = {
   priority: string;
   status?: string;
   responsible?: string | null;
+  process_id?: string | null;
   due_date?: string | null;
   comments?: CauseComment[] | null;
   organization_id?: string;
@@ -6165,6 +6166,7 @@ function ModuleWorkspacePage() {
         priority: cause.priority,
         status: normalizeCauseStatus(cause.status),
         responsible: cause.responsible ?? null,
+        process_id: cause.process_id ?? null,
         due_date: cause.due_date ?? null,
         comments: cause.comments ?? [],
       },
@@ -6372,7 +6374,7 @@ function ModuleWorkspacePage() {
     await cloudDocsQ.refetch();
   }
 
-  async function createStandaloneCause(gap: GapItem) {
+  async function createStandaloneCause(gap: GapItem, processId?: string | null) {
     if (isDemo) {
       const row: OrganizationCause = {
         id: id("cause"),
@@ -6383,6 +6385,7 @@ function ModuleWorkspacePage() {
         priority: gap.prioridade,
         status: normalizeCauseStatus(gap.status),
         responsible: gap.responsavel || null,
+        process_id: processId || null,
         due_date: gap.prazo || null,
         comments: gap.comentarios,
       };
@@ -6399,6 +6402,7 @@ function ModuleWorkspacePage() {
         priority: gap.prioridade,
         status: normalizeCauseStatus(gap.status),
         responsible: gap.responsavel || null,
+        process_id: processId || null,
         due_date: gap.prazo || null,
         comments: gap.comentarios,
       },
@@ -6723,6 +6727,7 @@ function ModuleWorkspacePage() {
             <DdpCausesModuleV2
               mappingCauses={mappingCauseRecords}
               standaloneCauses={organizationCatalogs.causes}
+              processes={organizationCatalogs.processes}
               loading={cloudDocsQ.isLoading || catalogsQ.isLoading}
               onCreateStandaloneCause={createStandaloneCause}
               onUpdateStandaloneCause={updateCauseCatalog}
@@ -8867,6 +8872,7 @@ function DdpCausesModuleLegacy({
 function DdpCausesModuleV2({
   mappingCauses,
   standaloneCauses,
+  processes,
   loading,
   onCreateStandaloneCause,
   onUpdateStandaloneCause,
@@ -8877,8 +8883,9 @@ function DdpCausesModuleV2({
 }: {
   mappingCauses: MappingCauseRecord[];
   standaloneCauses: OrganizationCause[];
+  processes: OrganizationProcess[];
   loading: boolean;
-  onCreateStandaloneCause: (gap: GapItem) => Promise<OrganizationCause>;
+  onCreateStandaloneCause: (gap: GapItem, processId?: string | null) => Promise<OrganizationCause>;
   onUpdateStandaloneCause: (cause: OrganizationCause) => Promise<OrganizationCause>;
   onDeleteStandaloneCause: (causeId: string) => Promise<void>;
   onUpdateMappingCause: (
@@ -8897,7 +8904,12 @@ function DdpCausesModuleV2({
     standalone?: OrganizationCause;
     updatedAt?: string;
   };
-  type CauseDraft = { source: "mapping" | "standalone"; gap: GapItem; row?: CauseRow };
+  type CauseDraft = {
+    source: "mapping" | "standalone";
+    gap: GapItem;
+    processId: string;
+    row?: CauseRow;
+  };
 
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -8907,6 +8919,10 @@ function DdpCausesModuleV2({
   const [statusSavingId, setStatusSavingId] = useState("");
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const initializedNew = useRef(false);
+  const processesById = useMemo(
+    () => new Map(processes.map((process) => [process.id, process])),
+    [processes],
+  );
 
   const rows = useMemo<CauseRow[]>(() => {
     const mappingRows = mappingCauses.map((cause) => ({
@@ -8942,11 +8958,14 @@ function DdpCausesModuleV2({
           row.gap.status,
           row.mapping?.mappingCode,
           row.mapping?.mappingTitle,
+          row.standalone?.process_id
+            ? processesById.get(row.standalone.process_id)?.name
+            : "",
           row.source === "mapping" ? "Mapeamento" : "Avulsa",
         ].join(" "),
       ).includes(normalized),
     );
-  }, [query, rows]);
+  }, [processesById, query, rows]);
 
   function emptyCause(): GapItem {
     return {
@@ -8965,12 +8984,17 @@ function DdpCausesModuleV2({
   }
 
   function openNewCause() {
-    setDraft({ source: "standalone", gap: emptyCause() });
+    setDraft({ source: "standalone", gap: emptyCause(), processId: "" });
     setCommentDraft("");
   }
 
   function openRow(row: CauseRow) {
-    setDraft({ source: row.source, gap: { ...row.gap, comentarios: [...row.gap.comentarios] }, row });
+    setDraft({
+      source: row.source,
+      gap: { ...row.gap, comentarios: [...row.gap.comentarios] },
+      processId: row.standalone?.process_id ?? "",
+      row,
+    });
     setCommentDraft("");
   }
 
@@ -9011,10 +9035,13 @@ function DdpCausesModuleV2({
         comentarios: commentsForSave(),
       };
       if (draft.row?.standalone) {
-        await onUpdateStandaloneCause(organizationCauseFromGap(normalized, draft.row.standalone));
+        await onUpdateStandaloneCause({
+          ...organizationCauseFromGap(normalized, draft.row.standalone),
+          process_id: draft.processId || null,
+        });
         toast.success("Causa avulsa atualizada.");
       } else {
-        await onCreateStandaloneCause(normalized);
+        await onCreateStandaloneCause(normalized, draft.processId || null);
         toast.success("Causa avulsa cadastrada.");
       }
       setDraft(null);
@@ -9135,7 +9162,7 @@ function DdpCausesModuleV2({
                 <th className="w-12 px-4 py-3" />
                 <th className="px-3 py-3">Origem</th>
                 <th className="px-3 py-3">Causa</th>
-                <th className="px-3 py-3">Mapeamento</th>
+                <th className="px-3 py-3">Vínculo</th>
                 <th className="px-3 py-3">Impacto</th>
                 <th className="px-3 py-3">Ação proposta</th>
                 <th className="px-3 py-3">Responsável</th>
@@ -9173,7 +9200,23 @@ function DdpCausesModuleV2({
                     <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{row.gap.descricao || "-"}</div>
                   </td>
                   <td className="max-w-[220px] px-3 py-3 text-xs leading-5">
-                    {row.mapping ? <><div className="font-semibold text-foreground">{row.mapping.mappingCode}</div><div className="text-muted-foreground">{row.mapping.mappingTitle}</div></> : <span className="text-muted-foreground">Não vinculada</span>}
+                    {row.mapping ? (
+                      <>
+                        <div className="font-semibold text-foreground">{row.mapping.mappingCode}</div>
+                        <div className="text-muted-foreground">{row.mapping.mappingTitle}</div>
+                      </>
+                    ) : row.standalone?.process_id && processesById.get(row.standalone.process_id) ? (
+                      <>
+                        <div className="font-semibold text-foreground">
+                          {processesById.get(row.standalone.process_id)?.code || "Processo"}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {processesById.get(row.standalone.process_id)?.name}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">Sem processo relacionado</span>
+                    )}
                   </td>
                   <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">{row.gap.impacto || "-"}</td>
                   <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">{row.gap.acao || "-"}</td>
@@ -9240,44 +9283,59 @@ function DdpCausesModuleV2({
                 </div>
               ) : null}
 
-              <section className="grid gap-4 rounded-lg border border-border p-4">
-                <div className="flex items-center gap-2 border-b border-border pb-3">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Identificação e controle</h3>
-                </div>
-                <Field label="Causa" value={draft.gap.causa} onChange={(causa) => updateDraft({ causa })} disabled={draft.source === "mapping"} />
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Field label="Responsável" value={draft.gap.responsavel} onChange={(responsavel) => updateDraft({ responsavel })} disabled={draft.source === "mapping"} />
-                  <SelectField label="Status" value={normalizeCauseStatus(draft.gap.status)} options={[...CAUSE_STATUS_OPTIONS]} onChange={(status) => updateDraft({ status })} />
-                  <SelectField label="Prioridade" value={draft.gap.prioridade} options={[...CAUSE_PRIORITY_OPTIONS]} onChange={(prioridade) => updateDraft({ prioridade })} disabled={draft.source === "mapping"} />
-                </div>
-              </section>
-
-              <section className="grid gap-4 rounded-lg border border-border p-4">
-                <div className="flex items-center gap-2 border-b border-border pb-3">
-                  <TriangleAlert className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Análise e tratamento</h3>
-                </div>
-                <TextArea label="Descrição" value={draft.gap.descricao} onChange={(descricao) => updateDraft({ descricao })} rows={3} disabled={draft.source === "mapping"} />
-                <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)] lg:items-start">
+                <section className="grid gap-4 rounded-lg border border-border p-4">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <ListChecks className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Contexto da causa</h3>
+                  </div>
+                  <Field label="Causa" value={draft.gap.causa} onChange={(causa) => updateDraft({ causa })} disabled={draft.source === "mapping"} />
+                  {draft.source === "standalone" ? (
+                    <RegisteredProcessSelect
+                      label="Processo relacionado (opcional)"
+                      value={draft.processId}
+                      processes={processes}
+                      placeholder="Pesquisar por código ou nome do processo"
+                      displayName={(process) => `${process.code ? `${process.code} · ` : ""}${process.name}`}
+                      onSelect={(process) =>
+                        setDraft((current) =>
+                          current ? { ...current, processId: process?.id ?? "" } : current,
+                        )
+                      }
+                    />
+                  ) : null}
+                  <TextArea label="Descrição" value={draft.gap.descricao} onChange={(descricao) => updateDraft({ descricao })} rows={3} disabled={draft.source === "mapping"} />
                   <TextArea label="Impacto" value={draft.gap.impacto} onChange={(impacto) => updateDraft({ impacto })} rows={4} disabled={draft.source === "mapping"} />
-                  <TextArea label="Ação proposta" value={draft.gap.acao} onChange={(acao) => updateDraft({ acao })} rows={4} disabled={draft.source === "mapping"} />
-                </div>
-              </section>
+                </section>
+
+                <section className="grid gap-4 rounded-lg border border-border p-4">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <GitBranch className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Tratamento</h3>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <SelectField label="Status" value={normalizeCauseStatus(draft.gap.status)} options={[...CAUSE_STATUS_OPTIONS]} onChange={(status) => updateDraft({ status })} />
+                    <SelectField label="Prioridade" value={draft.gap.prioridade} options={[...CAUSE_PRIORITY_OPTIONS]} onChange={(prioridade) => updateDraft({ prioridade })} disabled={draft.source === "mapping"} />
+                  </div>
+                  <Field label="Responsável" value={draft.gap.responsavel} onChange={(responsavel) => updateDraft({ responsavel })} disabled={draft.source === "mapping"} />
+                  <DateRangeField label="Prazo" value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} disabled={draft.source === "mapping"} />
+                  <TextArea label="Ação proposta" value={draft.gap.acao} onChange={(acao) => updateDraft({ acao })} rows={5} disabled={draft.source === "mapping"} />
+                </section>
+              </div>
 
               <section className="grid gap-4 rounded-lg border border-border p-4">
                 <div className="flex items-center gap-2 border-b border-border pb-3">
-                  <CalendarDays className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Prazo e acompanhamento</h3>
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Acompanhamento</h3>
+                    <p className="text-xs text-muted-foreground">Registre decisões, avanços e impedimentos.</p>
+                  </div>
                 </div>
-                <div className="max-w-md">
-                  <DateRangeField label="Prazo" value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} disabled={draft.source === "mapping"} />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commentDraft.trim()) { event.preventDefault(); addComment(); } }} placeholder="Adicionar comentário" className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
+                  <button type="button" onClick={addComment} disabled={!commentDraft.trim()} className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-40">Adicionar</button>
                 </div>
-                <div className="rounded-lg bg-muted/35 p-3">
-                  <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold"><MessageSquare className="h-4 w-4" /> Comentários</h4>
-                  <div className="flex flex-col gap-2 sm:flex-row"><input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commentDraft.trim()) { event.preventDefault(); addComment(); } }} placeholder="Registrar comentário de acompanhamento" className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" /><button type="button" onClick={addComment} disabled={!commentDraft.trim()} className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-40">Adicionar</button></div>
-                  <div className="mt-3 grid gap-2">{draft.gap.comentarios.length ? draft.gap.comentarios.map((comment) => <div key={comment.id} className="rounded-md border border-border bg-background p-3 text-sm"><div>{comment.text}</div>{comment.createdAt ? <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeBr(comment.createdAt)}</div> : null}</div>) : <div className="py-2 text-sm text-muted-foreground">Nenhum comentário registrado.</div>}</div>
-                </div>
+                <div className="grid gap-2 sm:grid-cols-2">{draft.gap.comentarios.length ? draft.gap.comentarios.map((comment) => <div key={comment.id} className="rounded-md border border-border bg-muted/25 p-3 text-sm"><div>{comment.text}</div>{comment.createdAt ? <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeBr(comment.createdAt)}</div> : null}</div>) : <div className="col-span-full py-2 text-sm text-muted-foreground">Nenhum comentário registrado.</div>}</div>
               </section>
             </div>
             <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-card px-6 py-4">

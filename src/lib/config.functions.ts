@@ -96,6 +96,7 @@ const catalogCauseSchema = z.object({
     .optional()
     .default("Não iniciada"),
   responsible: z.string().trim().max(180).optional().nullable(),
+  process_id: z.string().uuid().optional().nullable(),
   due_date: z.string().trim().max(40).optional().nullable(),
   comments: z
     .array(
@@ -154,7 +155,7 @@ const positionRegistrationSchema = organizationScopeSchema.extend({
 });
 
 function isMissingExtendedCauseColumn(message: string) {
-  return /organization_causes|status|responsible|due_date|comments/i.test(message) &&
+  return /organization_causes|status|responsible|process_id|due_date|comments/i.test(message) &&
     /column|schema cache|could not find/i.test(message);
 }
 const ownerRegistrationSchema = organizationScopeSchema.extend({
@@ -543,7 +544,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       context.supabase
         .from("organization_causes")
         .select(
-          "id, title, description, impact, action, priority, status, responsible, due_date, comments, organization_id, created_at, updated_at",
+          "id, title, description, impact, action, priority, status, responsible, process_id, due_date, comments, organization_id, created_at, updated_at",
         )
         .eq("organization_id", organizationId)
         .order("title", { ascending: true }),
@@ -591,6 +592,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
         ...cause,
         status: "Não iniciada",
         responsible: null,
+        process_id: null,
         due_date: null,
         comments: [],
       }));
@@ -1141,11 +1143,12 @@ export const createOrganizationCause = createServerFn({ method: "POST" })
         ...basePayload,
         status: data.status,
         responsible: data.responsible ?? null,
+        process_id: data.process_id ?? null,
         due_date: data.due_date ?? null,
         comments: data.comments,
       })
       .select(
-        "id, title, description, impact, action, priority, status, responsible, due_date, comments, organization_id, created_at, updated_at",
+        "id, title, description, impact, action, priority, status, responsible, process_id, due_date, comments, organization_id, created_at, updated_at",
       )
       .single();
     if (error && isMissingExtendedCauseColumn(error.message)) {
@@ -1159,6 +1162,7 @@ export const createOrganizationCause = createServerFn({ method: "POST" })
         ...legacyResult.data,
         status: data.status,
         responsible: data.responsible ?? null,
+        process_id: null,
         due_date: data.due_date ?? null,
         comments: data.comments,
       };
@@ -1187,13 +1191,14 @@ export const updateOrganizationCause = createServerFn({ method: "POST" })
         ...basePayload,
         status: data.status,
         responsible: data.responsible ?? null,
+        process_id: data.process_id ?? null,
         due_date: data.due_date ?? null,
         comments: data.comments,
       })
       .eq("id", data.id)
       .eq("organization_id", access.organizationId)
       .select(
-        "id, title, description, impact, action, priority, status, responsible, due_date, comments, organization_id, created_at, updated_at",
+        "id, title, description, impact, action, priority, status, responsible, process_id, due_date, comments, organization_id, created_at, updated_at",
       )
       .single();
     if (error && isMissingExtendedCauseColumn(error.message)) {
@@ -1209,6 +1214,7 @@ export const updateOrganizationCause = createServerFn({ method: "POST" })
         ...legacyResult.data,
         status: data.status,
         responsible: data.responsible ?? null,
+        process_id: null,
         due_date: data.due_date ?? null,
         comments: data.comments,
       };

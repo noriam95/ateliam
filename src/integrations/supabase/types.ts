@@ -435,6 +435,7 @@ export type Database = {
           impact: string | null;
           organization_id: string;
           priority: string;
+          process_id: string | null;
           status: string;
           responsible: string | null;
           due_date: string | null;
@@ -451,6 +452,7 @@ export type Database = {
           impact?: string | null;
           organization_id: string;
           priority?: string;
+          process_id?: string | null;
           status?: string;
           responsible?: string | null;
           due_date?: string | null;
@@ -467,6 +469,7 @@ export type Database = {
           impact?: string | null;
           organization_id?: string;
           priority?: string;
+          process_id?: string | null;
           status?: string;
           responsible?: string | null;
           due_date?: string | null;
@@ -480,6 +483,13 @@ export type Database = {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "organization_causes_process_id_fkey";
+            columns: ["process_id"];
+            isOneToOne: false;
+            referencedRelation: "organization_processes";
             referencedColumns: ["id"];
           },
         ];
