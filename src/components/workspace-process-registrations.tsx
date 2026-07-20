@@ -2741,12 +2741,14 @@ export function SystemRegistrationDialog({
   organizationId,
   isDemo,
   initialName = "",
+  deferPersistence = false,
   onClose,
   onCreated,
 }: {
   organizationId: string | null;
   isDemo: boolean;
   initialName?: string;
+  deferPersistence?: boolean;
   onClose: () => void;
   onCreated: (system: SystemItem) => void;
 }) {
@@ -2757,6 +2759,13 @@ export function SystemRegistrationDialog({
 
   const mutation = useMutation({
     mutationFn: async (): Promise<SystemItem> => {
+      if (deferPersistence) {
+        return {
+          id: `pending-system-${crypto.randomUUID()}`,
+          name: name.trim(),
+          description,
+        };
+      }
       if (isDemo) {
         return { id: `demo-system-${Date.now()}`, name: name.trim(), description };
       }
@@ -2766,7 +2775,11 @@ export function SystemRegistrationDialog({
       return { id: row.id, name: row.name, description: row.description ?? "" };
     },
     onSuccess: (system) => {
-      toast.success("Sistema cadastrado.");
+      toast.success(
+        deferPersistence
+          ? "Sistema preparado. O cadastro será concluído ao salvar o mapeamento."
+          : "Sistema cadastrado.",
+      );
       onCreated(system);
     },
     onError: (error: Error) => toast.error(error.message),

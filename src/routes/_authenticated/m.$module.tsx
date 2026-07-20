@@ -105,6 +105,7 @@ import {
   reserveCode,
   saveProcessArea,
   saveProcessRegistration,
+  saveSystemRegistration,
   savePositionRegistration,
   saveModuleDocument,
   updateOrganizationCause,
@@ -5541,6 +5542,7 @@ function ModuleWorkspacePage() {
   const updateSharedCause = useServerFn(updateOrganizationCause);
   const removeSharedCause = useServerFn(deleteOrganizationCause);
   const saveSuggestedProcess = useServerFn(saveProcessRegistration);
+  const saveSuggestedSystem = useServerFn(saveSystemRegistration);
   const [demoCatalogs, setDemoCatalogs] = useState<OrganizationCatalogs>(DEMO_CATALOGS);
   // Alteração de status do documento na tela de consulta (Em andamento, etc.).
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
@@ -6130,6 +6132,65 @@ function ModuleWorkspacePage() {
     };
   }
 
+  async function persistMappingSystems(ws: WorkspaceState) {
+    if (moduleId !== "ddp") return ws;
+
+    const rows = ws.ddp.systems.filter((system) => system.nome.trim());
+    if (!rows.length) return ws;
+
+    const resolvedByName = new Map(
+      organizationCatalogs.systems.map((system) => [normalizeLabel(system.name), system]),
+    );
+    const replacements = new Map<string, OrganizationSystem>();
+
+    for (const system of rows) {
+      const normalizedName = normalizeLabel(system.nome);
+      const catalogSystem =
+        organizationCatalogs.systems.find((item) => item.id === system.systemId) ??
+        resolvedByName.get(normalizedName);
+
+      if (catalogSystem) {
+        replacements.set(system.id, catalogSystem);
+        continue;
+      }
+
+      const saved = isDemo
+        ? {
+            id: `demo-system-${crypto.randomUUID()}`,
+            name: system.nome.trim(),
+            description: system.descricao.trim(),
+          }
+        : ((await saveSuggestedSystem({
+            data: {
+              organizationId: codeOrganizationId,
+              name: system.nome.trim(),
+              description: system.descricao.trim() || null,
+            },
+          })) as OrganizationSystem);
+
+      resolvedByName.set(normalizedName, saved);
+      replacements.set(system.id, saved);
+    }
+
+    return {
+      ...ws,
+      ddp: {
+        ...ws.ddp,
+        systems: ws.ddp.systems.map((system) => {
+          const resolved = replacements.get(system.id);
+          return resolved
+            ? {
+                ...system,
+                systemId: resolved.id,
+                nome: resolved.name,
+                descricao: system.descricao || resolved.description || "",
+              }
+            : system;
+        }),
+      },
+    };
+  }
+
   const saveMut = useMutation({
     mutationFn: async () => {
       if (moduleId === "ddp" && !workspace.ddp.macroprocess.processId) {
@@ -6142,6 +6203,7 @@ function ModuleWorkspacePage() {
       let workspaceToSave = workspace;
       if (moduleId === "ddp") {
         workspaceToSave = await persistSuggestedMappingProcesses(workspaceToSave);
+        workspaceToSave = await persistMappingSystems(workspaceToSave);
         workspaceToSave = await syncDdpGapsToCatalog(workspaceToSave);
       }
       if (isAutoCodeModule && !currentModuleCode(workspaceToSave)) {
@@ -6922,16 +6984,6 @@ function ModuleWorkspacePage() {
                   ...current.filter((item) => item.id !== process.id),
                   process,
                 ]);
-              }}
-              onSystemCreated={async (system) => {
-                if (isDemo) {
-                  setDemoCatalogs((current) => ({
-                    ...current,
-                    systems: [...current.systems, system],
-                  }));
-                } else {
-                  await catalogsQ.refetch();
-                }
               }}
             />
           )
@@ -9953,7 +10005,6 @@ function DdpModule({
   codeSettings,
   onProcessCreated,
   onSuggestedProcessPrepared,
-  onSystemCreated,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
@@ -9972,8 +10023,6 @@ function DdpModule({
   // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
   onSuggestedProcessPrepared: (process: CreatedProcess) => Promise<void> | void;
-  // Idem, para o sistema recém-cadastrado a partir de "Sistemas envolvidos".
-  onSystemCreated: (system: OrganizationSystem) => Promise<void> | void;
 }) {
   const [createProcessName, setCreateProcessName] = useState<string | null>(null);
   const [createSystemRequest, setCreateSystemRequest] = useState<{
@@ -10639,9 +10688,9 @@ function DdpModule({
           organizationId={organizationId}
           isDemo={isDemo}
           initialName={createSystemRequest.query}
+          deferPersistence
           onClose={() => setCreateSystemRequest(null)}
-          onCreated={async (system) => {
-            await onSystemCreated(system);
+          onCreated={(system) => {
             const { stepId } = createSystemRequest;
             update({
               ...data,
