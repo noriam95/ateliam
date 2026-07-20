@@ -27,6 +27,7 @@ type ChainDraft = {
   category: ChainCategory;
   description: string;
   status: string;
+  relatedChainIds: string[];
 };
 
 type ValueChain = {
@@ -35,6 +36,11 @@ type ValueChain = {
   category: ChainCategory;
   description: string | null;
   status: string;
+};
+
+type ValueChainRelation = {
+  output_id: string;
+  chain_id: string;
 };
 
 type ProcessRecord = {
@@ -140,6 +146,13 @@ function ValueChainReport({
     if (isDemo) return demoChains;
     return (catalogsQ.data?.valueChains ?? []) as unknown as ValueChain[];
   }, [isDemo, demoChains, catalogsQ.data]);
+  const valueChainRelations: ValueChainRelation[] = useMemo(
+    () =>
+      isDemo
+        ? []
+        : ((catalogsQ.data?.valueChainRelations ?? []) as unknown as ValueChainRelation[]),
+    [isDemo, catalogsQ.data],
+  );
 
   // Filtro compartilhado entre a tabela e o diagrama. Por padrão exibe os ativos.
   const processes: ProcessRecord[] = useMemo(() => {
@@ -197,6 +210,7 @@ function ValueChainReport({
           status: (draft.status.toLowerCase().startsWith("ativ") ? "Ativa" : "Inativa") as
             | "Ativa"
             | "Inativa",
+          relatedChainIds: draft.category === "output" ? draft.relatedChainIds : [],
         },
       });
     },
@@ -238,6 +252,12 @@ function ValueChainReport({
           category: chain.category,
           description: chain.description,
           status,
+          relatedChainIds:
+            chain.category === "output"
+              ? valueChainRelations
+                  .filter((relation) => relation.output_id === chain.id)
+                  .map((relation) => relation.chain_id)
+              : [],
         },
       });
     },
@@ -265,10 +285,28 @@ function ValueChainReport({
   }, [chains, query, statusFilter]);
 
   // Diagrama reflete o que está filtrado na tabela.
-  const primary = filteredChains.filter((c) => c.category === "primary");
-  const support = filteredChains.filter((c) => c.category === "support");
-  const management = filteredChains.filter((c) => c.category === "management");
-  const outputs = filteredChains.filter((c) => c.category === "output");
+  const selectedChain = chains.find((chain) => chain.id === selectedChainId) ?? null;
+  const relatedChainIds = useMemo(
+    () =>
+      new Set(
+        selectedChain?.category === "output"
+          ? valueChainRelations
+              .filter((relation) => relation.output_id === selectedChain.id)
+              .map((relation) => relation.chain_id)
+          : [],
+      ),
+    [selectedChain, valueChainRelations],
+  );
+  const diagramChains = useMemo(() => {
+    if (selectedChain?.category !== "output") return filteredChains;
+    return filteredChains.filter(
+      (chain) => chain.id === selectedChain.id || relatedChainIds.has(chain.id),
+    );
+  }, [filteredChains, relatedChainIds, selectedChain]);
+  const primary = diagramChains.filter((c) => c.category === "primary");
+  const support = diagramChains.filter((c) => c.category === "support");
+  const management = diagramChains.filter((c) => c.category === "management");
+  const outputs = diagramChains.filter((c) => c.category === "output");
 
   return (
     <section className="grid gap-4">
@@ -294,8 +332,9 @@ function ValueChainReport({
             organizationName={organizationName}
             selectedChainId={selectedChainId}
             onSelectChain={(chain) => {
-              setSelectedChainId(chain.id);
-              setActiveTab("processes");
+              const nextId = selectedChainId === chain.id ? null : chain.id;
+              setSelectedChainId(nextId);
+              setActiveTab(chain.category === "output" ? "value-chain" : "processes");
             }}
             onExportPng={() => exportPNG(primary, support, management, outputs, organizationName)}
           />
@@ -318,6 +357,7 @@ function ValueChainReport({
                 category: "primary",
                 description: "",
                 status: "Ativa",
+                relatedChainIds: [],
               })
             }
             onEditChain={(chain) =>
@@ -327,6 +367,9 @@ function ValueChainReport({
                 category: chain.category,
                 description: chain.description ?? "",
                 status: chain.status,
+                relatedChainIds: valueChainRelations
+                  .filter((relation) => relation.output_id === chain.id)
+                  .map((relation) => relation.chain_id),
               })
             }
             onDeleteChain={(chain) => setPendingAction({ type: "delete", chain })}
@@ -337,6 +380,7 @@ function ValueChainReport({
       {editingChain ? (
         <ValueChainForm
           draft={editingChain}
+          chains={chains}
           saving={saveMutation.isPending}
           onChange={setEditingChain}
           onCancel={() => setEditingChain(null)}
@@ -1511,25 +1555,33 @@ function ChainStatusSwitch({
 // Formulário de cadastro/edição de cadeia de valor exibido em modal.
 function ValueChainForm({
   draft,
+  chains,
   saving,
   onChange,
   onCancel,
   onSubmit,
 }: {
   draft: ChainDraft;
+  chains: ValueChain[];
   saving: boolean;
   onChange: (draft: ChainDraft) => void;
   onCancel: () => void;
   onSubmit: () => void;
 }) {
   const valid = draft.name.trim().length >= 2;
+  const relationGroups = VALUE_CHAIN_CATEGORY_OPTIONS.filter(
+    (option) => option.value !== "output",
+  ).map((option) => ({
+    ...option,
+    items: chains.filter((chain) => chain.category === option.value && chain.id !== draft.id),
+  }));
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-xl">
         <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
           <h2 className="font-display text-lg font-bold">
             {draft.id ? "Editar Macroprocesso" : "Novo Macroprocesso"}
@@ -1564,7 +1616,14 @@ function ValueChainForm({
             <span className="text-xs font-semibold text-muted-foreground">Categoria</span>
             <select
               value={draft.category}
-              onChange={(e) => onChange({ ...draft, category: e.target.value as ChainCategory })}
+              onChange={(e) => {
+                const category = e.target.value as ChainCategory;
+                onChange({
+                  ...draft,
+                  category,
+                  relatedChainIds: category === "output" ? draft.relatedChainIds : [],
+                });
+              }}
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
             >
               {VALUE_CHAIN_CATEGORY_OPTIONS.map((option) => (
@@ -1574,6 +1633,62 @@ function ValueChainForm({
               ))}
             </select>
           </label>
+          {draft.category === "output" ? (
+            <fieldset className="grid gap-3 rounded-md border border-border bg-muted/20 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <legend className="text-sm font-semibold text-foreground">
+                    Macroprocessos relacionados
+                  </legend>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Selecione os itens que contribuem para esta saída.
+                  </p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                  {draft.relatedChainIds.length} selecionado(s)
+                </span>
+              </div>
+              <div className="max-h-64 space-y-3 overflow-y-auto rounded-md border border-border bg-background p-3">
+                {relationGroups.map((group) => (
+                  <div key={group.value} className="grid gap-1.5">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                      {group.label}
+                    </div>
+                    {group.items.length ? (
+                      group.items.map((chain) => {
+                        const checked = draft.relatedChainIds.includes(chain.id);
+                        return (
+                          <label
+                            key={chain.id}
+                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                onChange({
+                                  ...draft,
+                                  relatedChainIds: checked
+                                    ? draft.relatedChainIds.filter((id) => id !== chain.id)
+                                    : [...draft.relatedChainIds, chain.id],
+                                })
+                              }
+                              className="h-4 w-4 accent-primary"
+                            />
+                            <span className="min-w-0 flex-1">{chain.name}</span>
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <div className="px-2 py-1 text-xs text-muted-foreground">
+                        Nenhum item cadastrado.
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
           <label className="grid gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground">Descrição</span>
             <textarea

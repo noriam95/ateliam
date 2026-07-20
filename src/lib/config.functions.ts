@@ -140,6 +140,7 @@ const valueChainSchema = organizationScopeSchema.extend({
   category: z.enum(["primary", "support", "management", "output"]),
   description: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["Ativa", "Inativa"]).default("Ativa"),
+  relatedChainIds: z.array(z.string().uuid()).default([]),
 });
 const systemRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
@@ -617,7 +618,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
     const organizationId = access.organizationId;
-    const [areas, owners, types, valueChains, processes, systems, positions] = await Promise.all([
+    const [areas, owners, types, valueChains, processes, systems, positions, valueChainRelations] = await Promise.all([
       context.supabase
         .from("organization_departments")
         .select("*")
@@ -659,6 +660,13 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
         data: { id: string; title: string; description: string | null }[] | null;
         error: { message: string } | null;
       }>,
+      (context.supabase as any)
+        .from("organization_value_chain_output_relations")
+        .select("output_id, chain_id")
+        .eq("organization_id", organizationId) as Promise<{
+        data: { output_id: string; chain_id: string }[] | null;
+        error: { message: string } | null;
+      }>,
     ]);
     for (const result of [areas, owners, types, valueChains, processes]) {
       if (result.error) throw new Error(result.error.message);
@@ -667,6 +675,9 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
     // aplicada; não deixa a falta dela derrubar o resto dos catálogos.
     if (systems.error) console.error("organization_systems:", systems.error.message);
     if (positions.error) console.error("organization_positions:", positions.error.message);
+    if (valueChainRelations.error) {
+      console.error("organization_value_chain_output_relations:", valueChainRelations.error.message);
+    }
     return {
       organizationId,
       areas: areas.data ?? [],
@@ -676,6 +687,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
       processes: (processes.data ?? []).filter((process) => process.type !== "macroprocess"),
       systems: systems.data ?? [],
       positions: positions.data ?? [],
+      valueChainRelations: valueChainRelations.data ?? [],
     };
   });
 
@@ -868,6 +880,39 @@ export const saveValueChainRegistration = createServerFn({ method: "POST" })
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
+    const relations = context.supabase as any;
+    const { error: deleteRelationsError } = await relations
+      .from("organization_value_chain_output_relations")
+      .delete()
+      .eq("output_id", row.id)
+      .eq("organization_id", access.organizationId);
+    if (deleteRelationsError) throw new Error(deleteRelationsError.message);
+
+    if (data.category === "output" && data.relatedChainIds.length) {
+      const uniqueRelatedIds = [...new Set(data.relatedChainIds)];
+      const { data: relatedChains, error: relatedChainsError } = await context.supabase
+        .from("organization_value_chains")
+        .select("id, category")
+        .eq("organization_id", access.organizationId)
+        .in("id", uniqueRelatedIds);
+      if (relatedChainsError) throw new Error(relatedChainsError.message);
+      const validIds = (relatedChains ?? [])
+        .filter((chain) => chain.category !== "output")
+        .map((chain) => chain.id);
+      if (validIds.length !== uniqueRelatedIds.length) {
+        throw new Error("Uma ou mais relações da saída são inválidas.");
+      }
+      const { error: insertRelationsError } = await relations
+        .from("organization_value_chain_output_relations")
+        .insert(
+          validIds.map((chainId) => ({
+            organization_id: access.organizationId,
+            output_id: row.id,
+            chain_id: chainId,
+          })),
+        );
+      if (insertRelationsError) throw new Error(insertRelationsError.message);
+    }
     return row;
   });
 
