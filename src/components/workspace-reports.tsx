@@ -462,18 +462,20 @@ function PorterDiagram({
 
   const renderDiagram = (large = false) => (
     <div
-      className={`rounded-lg border border-border bg-[#f4fbf8] shadow-sm dark:bg-[#0d1714] ${
-        large ? "p-3 sm:p-5" : "p-3 sm:p-4"
+      className={`overflow-x-auto rounded-lg border border-border bg-[#f4fbf8] shadow-sm dark:bg-[#0d1714] ${
+        large ? "p-3 sm:p-5" : "p-4"
       }`}
     >
-      <div className="space-y-1">
+      <div className={`${large ? "w-full" : "min-w-[1040px]"} space-y-1`}>
         <div className="rounded-md bg-[#005f4b] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
           Cadeia de valor
         </div>
         <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos de Gestão
         </div>
-        <div className="grid min-h-14 auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-1">
+        <div
+          className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1`}
+        >
           {management.length ? (
             management.map((item) =>
               chainButton(
@@ -494,14 +496,26 @@ function PorterDiagram({
         <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos Finalísticos
         </div>
-        <div className="min-h-28 rounded-md bg-[#004c3e] p-3 text-white sm:p-5">
-          <div className="grid h-full min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,4fr)_minmax(260px,1fr)] xl:items-stretch">
-            <div className="grid min-w-0 auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,160px),1fr))] gap-1">
+        <div
+          className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#004c3e] p-5 text-white`}
+        >
+          <div
+            className={`grid h-full items-center gap-3 ${
+              large
+                ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)]"
+                : "grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)]"
+            }`}
+          >
+            <div className="flex min-w-0 items-stretch">
               {primary.length ? (
-                primary.map((item) =>
+                primary.map((item, index) =>
                   chainButton(
                     item,
-                    "relative grid min-h-16 w-full place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] [clip-path:polygon(0_0,calc(100%-20px)_0,100%_50%,calc(100%-20px)_100%,0_100%,20px_50%)]",
+                    `relative grid min-h-16 flex-1 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] ${
+                      index === 0
+                        ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
+                        : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
+                    }`,
                     "bg-[#e7f5ef] text-black ring-2 ring-white/40",
                   ),
                 )
@@ -511,31 +525,33 @@ function PorterDiagram({
                 </div>
               )}
             </div>
-            <div className="min-w-0 rounded-md border border-white/15 bg-black/10 p-3">
-              <div className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-white">
-                Saídas
-              </div>
-              <div className="grid min-w-0 gap-1 text-[11px] font-semibold leading-snug text-white/90 sm:grid-cols-2 xl:grid-cols-1">
-                {outputItems.length ? (
-                  outputItems.map((item) =>
-                    chainButton(
-                      item,
-                      "flex w-full items-start gap-2 rounded px-2 py-1.5 text-left transition hover:bg-white/10",
-                      "bg-white/15 ring-1 ring-white/40",
-                      <>
-                        <span className="shrink-0 text-[#8debc6]">›</span>
-                        <span className="min-w-0 break-words">{item.name}</span>
-                      </>,
-                    ),
-                  )
-                ) : (
-                  <div className="text-white/65">Nenhuma saída cadastrada.</div>
-                )}
-              </div>
+            <div className="text-center text-sm font-black">Saídas</div>
+            <div
+              className={`grid min-w-0 gap-1 text-[11px] font-semibold leading-snug text-white/90 ${
+                large ? "sm:grid-cols-2 lg:grid-cols-1" : "grid-cols-1"
+              }`}
+            >
+              {outputItems.length ? (
+                outputItems.map((item) =>
+                  chainButton(
+                    item,
+                    "flex w-full items-start gap-2 rounded px-1 py-0.5 text-left transition hover:bg-white/10",
+                    "bg-white/15 ring-1 ring-white/40",
+                    <>
+                      <span className="shrink-0 text-[#8debc6]">›</span>
+                      <span className="min-w-0 break-words">{item.name}</span>
+                    </>,
+                  ),
+                )
+              ) : (
+                <div className="text-white/65">Nenhuma saída cadastrada.</div>
+              )}
             </div>
           </div>
         </div>
-        <div className="grid min-h-14 auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-1 pt-3">
+        <div
+          className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1 pt-3`}
+        >
           {support.length ? (
             support.map((item) =>
               chainButton(
