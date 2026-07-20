@@ -116,6 +116,7 @@ type WorkspaceView =
   | "value-chains"
   | "process-types"
   | "areas"
+  | "positions"
   | "owners"
   | "owner-users"
   | "causes"
@@ -2239,6 +2240,7 @@ function WorkspaceContent({
     view === "value-chains" ||
     view === "processes" ||
     view === "areas" ||
+    view === "positions" ||
     view === "owners" ||
     view === "owner-users" ||
     view === "systems" ||
@@ -2621,6 +2623,20 @@ function WorkspaceContent({
         </ExpandableCard>
       </section>
     </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <section className="grid gap-4" aria-busy="true" aria-label="Carregando conteúdo">
+      <div className="h-32 animate-pulse rounded-lg border border-border bg-card" />
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="h-24 animate-pulse rounded-lg border border-border bg-card" />
+        <div className="h-24 animate-pulse rounded-lg border border-border bg-card" />
+        <div className="h-24 animate-pulse rounded-lg border border-border bg-card" />
+      </div>
+      <div className="h-72 animate-pulse rounded-lg border border-border bg-card" />
+    </section>
   );
 }
 
