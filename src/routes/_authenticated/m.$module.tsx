@@ -10006,7 +10006,8 @@ function DdpModule({
     const base = catalogs.processes.filter(
       (process) => process.status !== "Arquivado" && allowedTypes.has(process.type),
     );
-    if (!selectedProcess) return base;
+    const prepared = Object.values(assistantCreatedProcesses) as unknown as OrganizationProcess[];
+    if (!selectedProcess) return [...base, ...prepared];
     const branchIds = new Set([selectedProcess.id]);
     let added = true;
     while (added) {
@@ -10018,8 +10019,11 @@ function DdpModule({
         }
       });
     }
-    return base.filter((process) => branchIds.has(process.id));
-  }, [catalogs.processes, selectedProcess]);
+    return [
+      ...base.filter((process) => branchIds.has(process.id)),
+      ...prepared.filter((process) => !base.some((item) => item.id === process.id)),
+    ];
+  }, [assistantCreatedProcesses, catalogs.processes, selectedProcess]);
   const unmatchedImportedSteps = useMemo(
     () =>
       mappingImport?.steps.filter(
@@ -10427,13 +10431,31 @@ function DdpModule({
 
   function applyMappingImport(importResult: MappingDocumentImport | null = mappingImport) {
     if (!importResult) return;
-    const unmatchedSteps: string[] = [];
+    const preparedProcesses: Record<string, CreatedProcess> = {};
+    const nowIso = new Date().toISOString();
     const importedSteps = importResult.steps.map((step): DdpFlowStep => {
-      const process =
+      let process =
         assistantCreatedProcesses[normalizeLabel(step.title)] ??
         flowProcessOptions.find((item) => normalizeLabel(item.name) === normalizeLabel(step.title));
       if (!process) {
-        unmatchedSteps.push(step.title);
+        process = {
+          id: `pending-process:${crypto.randomUUID()}`,
+          organization_id: organizationId ?? "",
+          current_version: 1,
+          code: null,
+          name: step.title,
+          type: "subprocess",
+          value_chain_id: selectedProcess?.value_chain_id ?? null,
+          parent_process_id: selectedProcess?.id ?? data.macroprocess.processId ?? null,
+          department: selectedProcess?.department ?? null,
+          owner: step.responsible || selectedProcess?.owner || null,
+          description: step.activity || step.notes || null,
+          status: "Ativo",
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+        preparedProcesses[normalizeLabel(step.title)] = process;
+        void onSuggestedProcessPrepared(process);
       }
       return {
         id: id("step"),
@@ -10542,11 +10564,14 @@ function DdpModule({
           }))
         : data.glossary,
     };
+    if (Object.keys(preparedProcesses).length) {
+      setAssistantCreatedProcesses((current) => ({ ...current, ...preparedProcesses }));
+    }
     update(nextState);
     setMappingImport(importResult);
-    if (unmatchedSteps.length) {
+    if (Object.keys(preparedProcesses).length) {
       toast.warning(
-        `Conteúdo aplicado com ${unmatchedSteps.length} etapa(s) sem processo correspondente. Revise antes de salvar.`,
+        `Conteúdo aplicado com ${Object.keys(preparedProcesses).length} subprocesso(s) preparado(s). Revise antes de salvar.`,
       );
     } else {
       toast.success("Conteúdo aplicado. Revise os campos antes de salvar o mapeamento.");
