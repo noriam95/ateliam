@@ -73,6 +73,7 @@ import {
   type WorkspaceRailArea,
 } from "@/components/workspace-navigation";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
+import { cn } from "@/lib/utils";
 import type { DocxDocumentImport } from "@/lib/docx-document-import";
 import type { MappingDocumentImport } from "@/lib/docx-mapping-import";
 import {
@@ -13268,6 +13269,19 @@ const BPMN_POOL_LABEL_WIDTH = 62;
 const BPMN_LANE_LABEL_WIDTH = 82;
 const BPMN_LEFT_HEADER_WIDTH = BPMN_POOL_LABEL_WIDTH + BPMN_LANE_LABEL_WIDTH;
 
+function bpmnLaneHeightsForTitle(title: string, current: number[] | undefined) {
+  const laneHeights = current?.length ? [...current] : [260];
+  const requiredPoolHeight = Math.max(
+    260,
+    Math.min(560, Math.ceil(title.trim().length * 8.5 + 48)),
+  );
+  const currentPoolHeight = laneHeights.reduce((total, height) => total + height, 0);
+  if (currentPoolHeight < requiredPoolHeight) {
+    laneHeights[0] += requiredPoolHeight - currentPoolHeight;
+  }
+  return laneHeights;
+}
+
 function xmlChildren(element: Element, localName?: string) {
   return Array.from(element.children).filter(
     (child) => !localName || child.localName === localName,
@@ -13953,13 +13967,14 @@ function BpmnModuleV2({
       toast.error("O processo não pode ser trocado enquanto houver elementos no desenho.");
       return;
     }
+    const nextLaneHeights = bpmnLaneHeightsForTitle(process.name, data.laneHeights);
     commit({
       ...data,
       processId: process.id,
       poolName: process.name,
       area: process.department ?? "",
       lanes: data.lanes.length ? data.lanes : ["Raia 1"],
-      laneHeights: data.laneHeights?.length ? data.laneHeights : [260],
+      laneHeights: nextLaneHeights,
       poolWidth: data.poolWidth ?? 1100,
     });
   }
