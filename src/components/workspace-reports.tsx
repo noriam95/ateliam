@@ -1,16 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  ImageDown,
-  Maximize2,
-  Network,
-  Pencil,
-  Plus,
-  Save,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ImageDown, Maximize2, Network, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteProcessRegistration,
@@ -101,7 +92,9 @@ export function ValueChainMacro({
 
   if (catalogsQ.isLoading && !isDemo) return <LoadingSkeleton />;
   if (chains.length === 0) return <EmptyState />;
-  return <PorterDiagram primary={primary} support={support} management={management} outputs={outputs} />;
+  return (
+    <PorterDiagram primary={primary} support={support} management={management} outputs={outputs} />
+  );
 }
 
 function ValueChainReport({
@@ -216,9 +209,7 @@ function ValueChainReport({
     mutationFn: async (chain: ValueChain) => {
       const status = isActiveChain(chain) ? "Inativa" : "Ativa";
       if (isDemo) {
-        setDemoChains((current) =>
-          current.map((c) => (c.id === chain.id ? { ...c, status } : c)),
-        );
+        setDemoChains((current) => current.map((c) => (c.id === chain.id ? { ...c, status } : c)));
         return;
       }
       await saveChainFn({
@@ -435,45 +426,14 @@ function PorterDiagram({
   onExportPng?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [zoomScale, setZoomScale] = useState(1);
-  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const outputItems = outputs;
-  const shownOutputs = outputItems.slice(0, 5);
-  const expandedImageSrc = useMemo(
-    () =>
-      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-        buildDiagramSVG(primary, support, management, outputItems),
-      )}`,
-    [primary, support, management, outputItems],
-  );
-
-  function setExpandedZoom(next: number) {
-    setZoomScale(Math.max(1, Math.min(3, next)));
-  }
 
   function openExpanded() {
-    setExpandedZoom(1);
-    setZoomOrigin({ x: 50, y: 50 });
     setExpanded(true);
   }
 
   function closeExpanded() {
     setExpanded(false);
-    setExpandedZoom(1);
-    setZoomOrigin({ x: 50, y: 50 });
-  }
-
-  function zoomMapWindowStyle() {
-    const padding = 8;
-    const width = 174;
-    const height = 110;
-    const visible = 1 / zoomScale;
-    return {
-      left: Math.max(padding, Math.min(padding + width - width * visible, padding + (zoomOrigin.x / 100) * width - (width * visible) / 2)),
-      top: Math.max(padding, Math.min(padding + height - height * visible, padding + (zoomOrigin.y / 100) * height - (height * visible) / 2)),
-      width: width * visible,
-      height: height * visible,
-    };
   }
 
   const chainButton = (
@@ -491,7 +451,7 @@ function PorterDiagram({
         onClick={() => onSelectChain?.(item)}
         title={item.description ?? undefined}
         aria-pressed={selected}
-        className={`${className} ${
+        className={`min-w-0 overflow-hidden break-words ${className} ${
           selected ? selectedClassName : ""
         } ${onSelectChain ? "cursor-pointer hover:-translate-y-0.5 active:translate-y-0" : "cursor-default"}`}
       >
@@ -501,15 +461,19 @@ function PorterDiagram({
   };
 
   const renderDiagram = (large = false) => (
-    <div className="overflow-x-auto rounded-lg border border-border bg-[#f4fbf8] p-4 shadow-sm dark:bg-[#0d1714]">
-      <div className={`${large ? "min-w-[1280px]" : "min-w-[1040px]"} space-y-1`}>
+    <div
+      className={`rounded-lg border border-border bg-[#f4fbf8] shadow-sm dark:bg-[#0d1714] ${
+        large ? "p-3 sm:p-5" : "p-3 sm:p-4"
+      }`}
+    >
+      <div className="space-y-1">
         <div className="rounded-md bg-[#005f4b] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
           Cadeia de valor
         </div>
         <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos de Gestão
         </div>
-        <div className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1`}>
+        <div className="grid min-h-14 auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-1">
           {management.length ? (
             management.map((item) =>
               chainButton(
@@ -530,18 +494,14 @@ function PorterDiagram({
         <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos Finalísticos
         </div>
-        <div className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#004c3e] p-5 text-white`}>
-          <div className="grid h-full grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)] items-center gap-3">
-            <div className="flex min-w-0 items-stretch">
+        <div className="min-h-28 rounded-md bg-[#004c3e] p-3 text-white sm:p-5">
+          <div className="grid h-full min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,4fr)_minmax(260px,1fr)] xl:items-stretch">
+            <div className="grid min-w-0 auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,160px),1fr))] gap-1">
               {primary.length ? (
-                primary.map((item, index) =>
+                primary.map((item) =>
                   chainButton(
                     item,
-                    `relative grid min-h-16 flex-1 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] ${
-                      index === 0
-                        ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
-                        : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
-                    }`,
+                    "relative grid min-h-16 w-full place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] [clip-path:polygon(0_0,calc(100%-20px)_0,100%_50%,calc(100%-20px)_100%,0_100%,20px_50%)]",
                     "bg-[#e7f5ef] text-black ring-2 ring-white/40",
                   ),
                 )
@@ -551,22 +511,31 @@ function PorterDiagram({
                 </div>
               )}
             </div>
-            <div className="text-center text-sm font-black">Saídas</div>
-            <ul className="grid gap-1 text-[11px] font-semibold leading-snug text-white/90">
-              {shownOutputs.length ? (
-                shownOutputs.map((item) => (
-                  <li key={item.id} className="flex gap-2" title={item.description ?? undefined}>
-                    <span className="text-[#8debc6]">›</span>
-                    <span className="line-clamp-1">{item.name}</span>
-                  </li>
-                ))
-              ) : (
-                <li className="text-white/65">Nenhuma saída cadastrada.</li>
-              )}
-            </ul>
+            <div className="min-w-0 rounded-md border border-white/15 bg-black/10 p-3">
+              <div className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-white">
+                Saídas
+              </div>
+              <div className="grid min-w-0 gap-1 text-[11px] font-semibold leading-snug text-white/90 sm:grid-cols-2 xl:grid-cols-1">
+                {outputItems.length ? (
+                  outputItems.map((item) =>
+                    chainButton(
+                      item,
+                      "flex w-full items-start gap-2 rounded px-2 py-1.5 text-left transition hover:bg-white/10",
+                      "bg-white/15 ring-1 ring-white/40",
+                      <>
+                        <span className="shrink-0 text-[#8debc6]">›</span>
+                        <span className="min-w-0 break-words">{item.name}</span>
+                      </>,
+                    ),
+                  )
+                ) : (
+                  <div className="text-white/65">Nenhuma saída cadastrada.</div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-        <div className={`grid ${large ? "min-h-16" : "min-h-14"} auto-rows-fr grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1 pt-3`}>
+        <div className="grid min-h-14 auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-1 pt-3">
           {support.length ? (
             support.map((item) =>
               chainButton(
@@ -595,81 +564,43 @@ function PorterDiagram({
           type="button"
           onClick={openExpanded}
           title="Expandir desenho"
-          className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          aria-label="Expandir desenho"
+          className="inline-grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <Maximize2 className="h-4 w-4" />
-          Expandir
         </button>
         {onExportPng ? (
           <button
             type="button"
             onClick={onExportPng}
             title="Exportar imagem (PNG)"
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+            aria-label="Exportar imagem em PNG"
+            className="inline-grid h-9 w-9 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <ImageDown className="h-4 w-4" />
-            Exportar imagem (PNG)
           </button>
         ) : null}
       </div>
       {renderDiagram(false)}
       {expanded ? (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center overflow-hidden bg-black/90 p-7"
-          onClick={closeExpanded}
-        >
-          <div className="fixed left-7 top-5 z-10 text-sm font-black uppercase tracking-[0.18em] text-white">
-            Cadeia de Valor
-          </div>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              closeExpanded();
-            }}
-            className="fixed right-7 top-5 z-10 rounded-lg border border-white/35 bg-transparent px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+        <div className="fixed inset-0 z-[90] bg-black/85 p-2 sm:p-5" onClick={closeExpanded}>
+          <div
+            className="mx-auto flex h-full w-full max-w-[1920px] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
           >
-            Fechar
-          </button>
-          <img
-            src={expandedImageSrc}
-            alt="Cadeia de Valor ampliada"
-            className="max-h-[86vh] max-w-[94vw] bg-white shadow-[0_20px_70px_rgba(0,0,0,.55)] transition-transform duration-150"
-            style={{ transform: `scale(${zoomScale})`, transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` }}
-            onClick={(event) => {
-              event.stopPropagation();
-              const rect = event.currentTarget.getBoundingClientRect();
-              setZoomOrigin({
-                x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
-                y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
-              });
-              setExpandedZoom(zoomScale + 0.25);
-            }}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              const rect = event.currentTarget.getBoundingClientRect();
-              setZoomOrigin({
-                x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
-                y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
-              });
-              setExpandedZoom(zoomScale - 0.25);
-            }}
-          />
-          <div className="fixed bottom-6 left-7 text-xs text-white/75">
-            Clique para ampliar. Botão direito para reduzir.
-          </div>
-          <div className="fixed bottom-6 right-7 h-[126px] w-[190px] overflow-hidden rounded-xl border border-white/35 bg-white/10 p-2">
-            <img
-              src={expandedImageSrc}
-              alt="Miniatura da Cadeia de Valor"
-              className="h-full w-full rounded-lg bg-white object-contain"
-            />
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute rounded-lg border-2 border-[#d49a21] bg-[#d49a21]/15 shadow-[0_0_0_999px_rgba(0,0,0,.18)] transition-all duration-150"
-              style={zoomMapWindowStyle()}
-            />
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+              <div className="font-display text-base font-bold">Cadeia de Valor</div>
+              <button
+                type="button"
+                onClick={closeExpanded}
+                title="Fechar"
+                aria-label="Fechar visualização expandida"
+                className="inline-grid h-9 w-9 place-items-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-2 sm:p-4">{renderDiagram(true)}</div>
           </div>
         </div>
       ) : null}
@@ -755,8 +686,9 @@ function ConsultationTable({
   const [sortField, setSortField] = useState<SortField>("index");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [processQuery, setProcessQuery] = useState("");
-  const [processStatusFilter, setProcessStatusFilter] =
-    useState<"all" | "active" | "inactive">("active");
+  const [processStatusFilter, setProcessStatusFilter] = useState<"all" | "active" | "inactive">(
+    "active",
+  );
   const [processSortField, setProcessSortField] = useState<ProcessSortField>("index");
   const [processSortDir, setProcessSortDir] = useState<SortDir>("asc");
 
@@ -796,10 +728,7 @@ function ConsultationTable({
     return result;
   }, [ordered, query, statusFilter, sortField, sortDir]);
 
-  const chainById = useMemo(
-    () => new Map(chains.map((chain) => [chain.id, chain])),
-    [chains],
-  );
+  const chainById = useMemo(() => new Map(chains.map((chain) => [chain.id, chain])), [chains]);
 
   const orderedProcesses = useMemo(
     () => processes.map((process, i) => ({ process, index: i + 1 })),
@@ -807,7 +736,7 @@ function ConsultationTable({
   );
 
   const activeProcessCount = orderedProcesses.filter((r) => isActiveProcess(r.process)).length;
-  const selectedChain = selectedChainId ? chainById.get(selectedChainId) ?? null : null;
+  const selectedChain = selectedChainId ? (chainById.get(selectedChainId) ?? null) : null;
 
   const processRows = useMemo(() => {
     const q = processQuery.trim().toLowerCase();
@@ -967,9 +896,8 @@ function ConsultationTable({
           <p className="mt-0.5 text-xs text-muted-foreground">
             {activeTab === "value-chain" ? (
               <>
-                {ordered.length} {ordered.length === 1 ? "registro" : "registros"} ·{" "}
-                {activeCount} {activeCount === 1 ? "ativo" : "ativos"} ·{" "}
-                {ordered.length - activeCount} inativo
+                {ordered.length} {ordered.length === 1 ? "registro" : "registros"} · {activeCount}{" "}
+                {activeCount === 1 ? "ativo" : "ativos"} · {ordered.length - activeCount} inativo
                 {ordered.length - activeCount === 1 ? "" : "s"}
               </>
             ) : (
@@ -1027,7 +955,9 @@ function ConsultationTable({
               </select>
               <select
                 value={processStatusFilter}
-                onChange={(e) => setProcessStatusFilter(e.target.value as "all" | "active" | "inactive")}
+                onChange={(e) =>
+                  setProcessStatusFilter(e.target.value as "all" | "active" | "inactive")
+                }
                 className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
               >
                 <option value="all">Todos os status</option>
@@ -1053,7 +983,9 @@ function ConsultationTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
-                <SortHeader field="index" className="w-16">#</SortHeader>
+                <SortHeader field="index" className="w-16">
+                  #
+                </SortHeader>
                 <SortHeader field="name">Nome</SortHeader>
                 <SortHeader field="category">Categoria</SortHeader>
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1086,11 +1018,7 @@ function ConsultationTable({
                       {chain.description ?? <span className="italic opacity-50">-</span>}
                     </td>
                     <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                      <ChainStatusSwitch
-                        chain={chain}
-                        disabled={busy}
-                        onToggle={onToggleChain}
-                      />
+                      <ChainStatusSwitch chain={chain} disabled={busy} onToggle={onToggleChain} />
                     </td>
                     <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
@@ -1130,7 +1058,9 @@ function ConsultationTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
-                <ProcessSortHeader field="index" className="w-16">#</ProcessSortHeader>
+                <ProcessSortHeader field="index" className="w-16">
+                  #
+                </ProcessSortHeader>
                 <ProcessSortHeader field="code">Código</ProcessSortHeader>
                 <ProcessSortHeader field="name">Processo</ProcessSortHeader>
                 <ProcessSortHeader field="type">Tipo</ProcessSortHeader>
@@ -1149,9 +1079,14 @@ function ConsultationTable({
                 const active = isActiveProcess(process);
                 const chain = process.value_chain_id ? chainById.get(process.value_chain_id) : null;
                 return (
-                  <tr key={process.id} className={`hover:bg-muted/30 transition-colors ${active ? "" : "opacity-60"}`}>
+                  <tr
+                    key={process.id}
+                    className={`hover:bg-muted/30 transition-colors ${active ? "" : "opacity-60"}`}
+                  >
                     <td className="px-5 py-3 tabular-nums text-muted-foreground">{index}</td>
-                    <td className="px-5 py-3 font-medium text-muted-foreground">{process.code || "-"}</td>
+                    <td className="px-5 py-3 font-medium text-muted-foreground">
+                      {process.code || "-"}
+                    </td>
                     <td className="px-5 py-3 font-medium text-foreground">{process.name}</td>
                     <td className="px-5 py-3 text-muted-foreground">
                       {PROCESS_TYPE_LABELS[process.type] ?? process.type}
@@ -1217,8 +1152,27 @@ function buildDiagramSVG(
   const flowGrid = gridMetrics(primaryItems.length, FLOW_W - 48, 235, 5);
   const managementH = managementGrid.rows * CARD_H + Math.max(0, managementGrid.rows - 1) * ROW_GAP;
   const supportH = supportGrid.rows * CARD_H + Math.max(0, supportGrid.rows - 1) * ROW_GAP;
-  const FLOW_H = Math.max(132, flowGrid.rows * FLOW_ROW_H + 22);
-  const H = PAD + TOP_H + ROW_GAP + BAND_H + ROW_GAP + managementH + ROW_GAP + 16 + ROW_GAP + BAND_H + ROW_GAP + FLOW_H + SUPPORT_TOP_GAP + supportH + ROW_GAP + BAND_H + PAD;
+  const OUTPUT_LINE_H = 19;
+  const outputContentH = 44 + Math.max(1, outputItems.length) * OUTPUT_LINE_H;
+  const FLOW_H = Math.max(132, flowGrid.rows * FLOW_ROW_H + 22, outputContentH);
+  const H =
+    PAD +
+    TOP_H +
+    ROW_GAP +
+    BAND_H +
+    ROW_GAP +
+    managementH +
+    ROW_GAP +
+    16 +
+    ROW_GAP +
+    BAND_H +
+    ROW_GAP +
+    FLOW_H +
+    SUPPORT_TOP_GAP +
+    supportH +
+    ROW_GAP +
+    BAND_H +
+    PAD;
   const C = {
     bg: "#F4FBF8",
     dark: "#005F4B",
@@ -1234,7 +1188,9 @@ function buildDiagramSVG(
   };
 
   function wrapLabel(value: unknown, max = 24) {
-    const words = String(value ?? "").split(/\s+/).filter(Boolean);
+    const words = String(value ?? "")
+      .split(/\s+/)
+      .filter(Boolean);
     const lines: string[] = [];
     let line = "";
     words.forEach((word) => {
@@ -1250,7 +1206,14 @@ function buildDiagramSVG(
     return lines.slice(0, 3);
   }
 
-  function textLines(lines: string[], x: number, y: number, color: string, size = 15, weight = 700) {
+  function textLines(
+    lines: string[],
+    x: number,
+    y: number,
+    color: string,
+    size = 15,
+    weight = 700,
+  ) {
     const lineH = size + 4;
     const startY = y - ((lines.length - 1) * lineH) / 2;
     return lines
@@ -1268,7 +1231,14 @@ function buildDiagramSVG(
     return { cols, rows: Math.ceil(count / cols) };
   }
 
-  function renderRow(items: ValueChain[], x: number, y: number, width: number, emptyText: string, minCardWidth = 245) {
+  function renderRow(
+    items: ValueChain[],
+    x: number,
+    y: number,
+    width: number,
+    emptyText: string,
+    minCardWidth = 245,
+  ) {
     if (items.length === 0) {
       return `<rect x="${x}" y="${y}" width="${width}" height="${CARD_H}" rx="8" fill="${C.white}" stroke="#8DBDAD" stroke-dasharray="5 5"/><text x="${x + width / 2}" y="${y + CARD_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-style="italic" fill="${C.muted}">${escapeSvg(emptyText)}</text>`;
     }
@@ -1283,7 +1253,14 @@ function buildDiagramSVG(
         const cardY = y + row * (CARD_H + ROW_GAP);
         return [
           `<rect x="${cardX}" y="${cardY}" width="${cardW}" height="${CARD_H}" rx="8" fill="${C.card}" stroke="#DED6CA"/>`,
-          textLines(wrapLabel(item.name, Math.max(18, Math.floor(cardW / 9))), cardX + cardW / 2, cardY + CARD_H / 2, C.text, 13, 650),
+          textLines(
+            wrapLabel(item.name, Math.max(18, Math.floor(cardW / 9))),
+            cardX + cardW / 2,
+            cardY + CARD_H / 2,
+            C.text,
+            13,
+            650,
+          ),
         ].join("");
       })
       .join("\n");
@@ -1313,13 +1290,19 @@ function buildDiagramSVG(
         ].join(" ");
         return [
           `<polygon points="${points}" fill="${C.arrow}" stroke="${C.teal}" stroke-width="4"/>`,
-          textLines(wrapLabel(item.name, Math.max(17, Math.floor(itemW / 9))), left + itemW / 2 + 6, rowY + FLOW_ROW_H / 2 - 6, C.text, 12, 700),
+          textLines(
+            wrapLabel(item.name, Math.max(17, Math.floor(itemW / 9))),
+            left + itemW / 2 + 6,
+            rowY + FLOW_ROW_H / 2 - 6,
+            C.text,
+            12,
+            700,
+          ),
         ].join("");
       })
       .join("\n");
   }
 
-  const shownOutputs = outputItems.slice(0, 5);
   let y = PAD;
 
   const parts: string[] = [
@@ -1334,7 +1317,9 @@ function buildDiagramSVG(
     `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos de Gestão</text>`,
   );
   y += BAND_H + ROW_GAP;
-  parts.push(renderRow(managementItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de gestão cadastrado", 245));
+  parts.push(
+    renderRow(managementItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de gestão cadastrado", 245),
+  );
   y += managementH + ROW_GAP;
   parts.push(
     `<polygon points="${W / 2 - 14},${y} ${W / 2 + 14},${y} ${W / 2},${y + 16}" fill="${C.dark}"/>`,
@@ -1345,17 +1330,34 @@ function buildDiagramSVG(
     `<text x="${W / 2}" y="${y + BAND_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="900" fill="${C.white}">Macroprocessos Finalísticos</text>`,
   );
   y += BAND_H + ROW_GAP;
-  parts.push(`<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${FLOW_H}" rx="8" fill="${C.teal}"/>`);
+  parts.push(
+    `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${FLOW_H}" rx="8" fill="${C.teal}"/>`,
+  );
   parts.push(renderFlow(primaryItems, PAD + 48, y, FLOW_W - 48));
-  parts.push(`<text x="${PAD + FLOW_W + 28}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`);
-  (shownOutputs.length ? shownOutputs : [{ id: "empty-output", name: "Nenhuma saída cadastrada.", category: "output" as ChainCategory, description: null, status: "Ativa" }]).forEach((item, index) => {
-    const lineY = y + 25 + index * 19;
+  parts.push(
+    `<text x="${PAD + FLOW_W + 28}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`,
+  );
+  (outputItems.length
+    ? outputItems
+    : [
+        {
+          id: "empty-output",
+          name: "Nenhuma saída cadastrada.",
+          category: "output" as ChainCategory,
+          description: null,
+          status: "Ativa",
+        },
+      ]
+  ).forEach((item, index) => {
+    const lineY = y + 25 + index * OUTPUT_LINE_H;
     parts.push(
       `<text x="${PAD + FLOW_W + OUTPUT_GAP + 8}" y="${lineY}" font-size="12" font-weight="700" fill="${C.white}"><tspan fill="${C.cyan}">›</tspan> ${escapeSvg(item.name.length > 56 ? `${item.name.slice(0, 53)}...` : item.name)}</text>`,
     );
   });
   y += FLOW_H + SUPPORT_TOP_GAP;
-  parts.push(renderRow(supportItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de suporte cadastrado", 215));
+  parts.push(
+    renderRow(supportItems, PAD, y, CONTENT_W, "Nenhum macroprocesso de suporte cadastrado", 215),
+  );
   y += supportH + ROW_GAP;
   parts.push(
     `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${BAND_H}" rx="8" fill="${C.green}"/>`,
@@ -1411,18 +1413,15 @@ function exportPNG(
     if (!ctx) return;
     ctx.scale(scale, scale);
     ctx.drawImage(img, 0, 0);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const pngUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = pngUrl;
-        a.download = "cadeia-de-valor.png";
-        a.click();
-        URL.revokeObjectURL(pngUrl);
-      },
-      "image/png",
-    );
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const pngUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = pngUrl;
+      a.download = "cadeia-de-valor.png";
+      a.click();
+      URL.revokeObjectURL(pngUrl);
+    }, "image/png");
     URL.revokeObjectURL(url);
   };
   img.src = url;
@@ -1598,7 +1597,8 @@ function EmptyState() {
         <Network className="h-10 w-10 text-muted-foreground/40" />
         <p className="text-sm font-semibold text-foreground">Nenhum Macroprocesso cadastrado</p>
         <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-          Acesse Cadeia de Valor, Cadastro, para adicionar processos de gestão, finalísticos e suporte.
+          Acesse Cadeia de Valor, Cadastro, para adicionar processos de gestão, finalísticos e
+          suporte.
         </p>
       </div>
     </div>
