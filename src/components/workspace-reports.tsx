@@ -54,14 +54,22 @@ type ProcessRecord = {
 export function WorkspaceReports({
   view,
   organizationId,
+  organizationName,
   isDemo,
 }: {
   view: string;
   organizationId: string | null;
+  organizationName: string;
   isDemo: boolean;
 }) {
   if (view === "value-chain-report") {
-    return <ValueChainReport organizationId={organizationId} isDemo={isDemo} />;
+    return (
+      <ValueChainReport
+        organizationId={organizationId}
+        organizationName={organizationName}
+        isDemo={isDemo}
+      />
+    );
   }
   return null;
 }
@@ -70,9 +78,11 @@ export function WorkspaceReports({
 // como na página inicial. Mostra apenas as cadeias ativas, igual ao relatório.
 export function ValueChainMacro({
   organizationId,
+  organizationName = "Organização",
   isDemo,
 }: {
   organizationId: string | null;
+  organizationName?: string;
   isDemo: boolean;
 }) {
   const fn = useServerFn(listProcessRegistrationData);
@@ -93,15 +103,23 @@ export function ValueChainMacro({
   if (catalogsQ.isLoading && !isDemo) return <LoadingSkeleton />;
   if (chains.length === 0) return <EmptyState />;
   return (
-    <PorterDiagram primary={primary} support={support} management={management} outputs={outputs} />
+    <PorterDiagram
+      primary={primary}
+      support={support}
+      management={management}
+      outputs={outputs}
+      organizationName={organizationName}
+    />
   );
 }
 
 function ValueChainReport({
   organizationId,
+  organizationName,
   isDemo,
 }: {
   organizationId: string | null;
+  organizationName: string;
   isDemo: boolean;
 }) {
   const fn = useServerFn(listProcessRegistrationData);
@@ -273,12 +291,13 @@ function ValueChainReport({
             support={support}
             management={management}
             outputs={outputs}
+            organizationName={organizationName}
             selectedChainId={selectedChainId}
             onSelectChain={(chain) => {
               setSelectedChainId(chain.id);
               setActiveTab("processes");
             }}
-            onExportPng={() => exportPNG(primary, support, management, outputs)}
+            onExportPng={() => exportPNG(primary, support, management, outputs, organizationName)}
           />
           <ConsultationTable
             chains={chains}
@@ -413,6 +432,7 @@ function PorterDiagram({
   support,
   management,
   outputs,
+  organizationName,
   selectedChainId,
   onSelectChain,
   onExportPng,
@@ -421,6 +441,7 @@ function PorterDiagram({
   support: ValueChain[];
   management: ValueChain[];
   outputs: ValueChain[];
+  organizationName: string;
   selectedChainId?: string | null;
   onSelectChain?: (chain: ValueChain) => void;
   onExportPng?: () => void;
@@ -468,7 +489,7 @@ function PorterDiagram({
     >
       <div className={`${large ? "w-full" : "min-w-[1040px]"} space-y-1`}>
         <div className="rounded-md bg-[#005f4b] px-4 py-3 text-center font-display text-lg font-bold text-white shadow-sm">
-          Cadeia de valor
+          {organizationName}
         </div>
         <div className="rounded-md bg-[#009b72] px-4 py-1.5 text-center text-xs font-black text-white">
           Macroprocessos de Gestão
@@ -1146,6 +1167,7 @@ function buildDiagramSVG(
   support: ValueChain[],
   management: ValueChain[],
   outputs: ValueChain[],
+  organizationName: string,
 ): string {
   const primaryItems = sanitizeValueChains(primary);
   const supportItems = sanitizeValueChains(support);
@@ -1159,8 +1181,9 @@ function buildDiagramSVG(
   const CARD_H = 72;
   const ROW_GAP = 8;
   const FLOW_ROW_H = 92;
-  const OUTPUT_W = 330;
-  const OUTPUT_GAP = 22;
+  const OUTPUT_W = 410;
+  const OUTPUT_GAP = 12;
+  const OUTPUT_LABEL_W = 76;
   const FLOW_W = CONTENT_W - OUTPUT_W - OUTPUT_GAP;
   const SUPPORT_TOP_GAP = 14;
   const managementGrid = gridMetrics(managementItems.length, CONTENT_W, 245);
@@ -1325,7 +1348,7 @@ function buildDiagramSVG(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="system-ui, sans-serif">`,
     `<rect width="${W}" height="${H}" fill="${C.bg}"/>`,
     `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${TOP_H}" rx="8" fill="${C.dark}"/>`,
-    `<text x="${W / 2}" y="${y + TOP_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="19" font-weight="800" fill="${C.white}">Cadeia de valor</text>`,
+    `<text x="${W / 2}" y="${y + TOP_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="19" font-weight="800" fill="${C.white}">${escapeSvg(organizationName)}</text>`,
   ];
   y += TOP_H + ROW_GAP;
   parts.push(
@@ -1350,8 +1373,12 @@ function buildDiagramSVG(
     `<rect x="${PAD}" y="${y}" width="${CONTENT_W}" height="${FLOW_H}" rx="8" fill="${C.teal}"/>`,
   );
   parts.push(renderFlow(primaryItems, PAD + 48, y, FLOW_W - 48));
+  const outputStartX = PAD + FLOW_W + OUTPUT_GAP;
+  const outputLabelX = outputStartX + OUTPUT_LABEL_W / 2;
+  const outputTextX = outputStartX + OUTPUT_LABEL_W + 10;
   parts.push(
-    `<text x="${PAD + FLOW_W + 28}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`,
+    `<line x1="${outputStartX + OUTPUT_LABEL_W}" y1="${y + 16}" x2="${outputStartX + OUTPUT_LABEL_W}" y2="${y + FLOW_H - 16}" stroke="rgba(255,255,255,.2)"/>`,
+    `<text x="${outputLabelX}" y="${y + 25}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`,
   );
   (outputItems.length
     ? outputItems
@@ -1366,8 +1393,9 @@ function buildDiagramSVG(
       ]
   ).forEach((item, index) => {
     const lineY = y + 25 + index * OUTPUT_LINE_H;
+    const outputLabel = item.name.length > 42 ? `${item.name.slice(0, 39)}...` : item.name;
     parts.push(
-      `<text x="${PAD + FLOW_W + OUTPUT_GAP + 8}" y="${lineY}" font-size="12" font-weight="700" fill="${C.white}"><tspan fill="${C.cyan}">›</tspan> ${escapeSvg(item.name.length > 56 ? `${item.name.slice(0, 53)}...` : item.name)}</text>`,
+      `<text x="${outputTextX}" y="${lineY}" font-size="12" font-weight="700" fill="${C.white}"><tspan fill="${C.cyan}">›</tspan> ${escapeSvg(outputLabel)}</text>`,
     );
   });
   y += FLOW_H + SUPPORT_TOP_GAP;
@@ -1415,8 +1443,9 @@ function exportPNG(
   support: ValueChain[],
   management: ValueChain[],
   outputs: ValueChain[],
+  organizationName: string,
 ) {
-  const svg = buildDiagramSVG(primary, support, management, outputs);
+  const svg = buildDiagramSVG(primary, support, management, outputs, organizationName);
   const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(svgBlob);
   const img = new Image();

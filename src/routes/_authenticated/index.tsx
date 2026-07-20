@@ -2231,7 +2231,12 @@ function WorkspaceContent({
   if (view === "value-chain-report") {
     return (
       <Suspense fallback={<LoadingSkeleton />}>
-        <WorkspaceReports view={view} organizationId={organizationId} isDemo={isDemo} />
+        <WorkspaceReports
+          view={view}
+          organizationId={organizationId}
+          organizationName={organizationName}
+          isDemo={isDemo}
+        />
       </Suspense>
     );
   }
