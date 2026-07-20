@@ -230,7 +230,7 @@ function detectSection(value: string): MappingSection {
   if (/^sistemas envolvidos$/.test(text)) return "systems";
   if (/^(analise )?sipoc( do processo)?$/.test(text)) return "sipoc";
   if (/^(etapas do processo|fluxo as is|fluxo to be)$/.test(text)) return "steps";
-  if (/^gaps? e causas? raiz$/.test(text)) return "gaps";
+  if (/^(gaps? e causas? raiz|causas? raiz e planos? de acao)$/.test(text)) return "gaps";
   if (/^proximos passos$/.test(text)) return "nextSteps";
   if (/^glossario$/.test(text)) return "glossary";
   return null;
@@ -249,12 +249,39 @@ function headerIndex(headers: string[], fragments: string[]) {
   return headers.findIndex((header) => fragments.some((fragment) => header.includes(fragment)));
 }
 
-function mapTable(result: MappingDocumentImport, table: string[][]) {
+function applyMetadataField(result: MappingDocumentImport, rawLabel: string, value: string) {
+  const label = normalized(rawLabel);
+  if (label === "titulo" || label === "titulo do mapeamento") result.title = value;
+  else if (label === "modalidade")
+    result.modality = /to be/i.test(value) ? "TO BE" : /as is/i.test(value) ? "AS IS" : null;
+  else if (label === "data") result.date = value;
+  else if (label === "elaborador") result.author = value;
+  else if (label === "revisor") result.reviewer = value;
+}
+
+function mapTable(
+  result: MappingDocumentImport,
+  table: string[][],
+  context?: {
+    section: MappingSection;
+    currentStep: MappingImportStep | null;
+    currentGap: MappingImportGap | null;
+  },
+) {
   const rows = table.filter((row) => row.some((cell) => cell.trim()));
   if (rows.length < 2) return false;
   const headers = rows[0].map(normalized);
   const dataRows = rows.slice(1);
   const at = (row: string[], index: number) => (index >= 0 ? row[index]?.trim() || "" : "");
+
+  const metadataField = headerIndex(headers, ["campo"]);
+  const metadataValue = headerIndex(headers, ["informacao", "valor"]);
+  if (context?.section === "metadata" && metadataField >= 0 && metadataValue >= 0) {
+    dataRows.forEach((row) =>
+      applyMetadataField(result, at(row, metadataField), at(row, metadataValue)),
+    );
+    return true;
+  }
 
   const supplier = headerIndex(headers, ["fornecedor"]);
   const inputs = headerIndex(headers, ["entrada"]);
@@ -280,6 +307,40 @@ function mapTable(result: MappingDocumentImport, table: string[][]) {
     dataRows.forEach((row) =>
       result.systems.push({ name: at(row, system), description: at(row, description) }),
     );
+    return true;
+  }
+
+  const rowId = headerIndex(headers, ["id", "codigo"]);
+  const activityTitle = headerIndex(headers, ["atividade"]);
+  const activityDescription = headerIndex(headers, ["descricao"]);
+  if (context?.section === "steps" && context.currentStep && rowId >= 0 && activityTitle >= 0) {
+    dataRows.forEach((row) => {
+      const title = at(row, activityTitle);
+      const descriptionValue = at(row, activityDescription);
+      if (!title && !descriptionValue) return;
+      context.currentStep?.substeps.push({
+        title: title || at(row, rowId),
+        description: descriptionValue,
+        images: [],
+      });
+    });
+    return true;
+  }
+
+  const gapPriority = headerIndex(headers, ["prioridade"]);
+  const gapResponsible = headerIndex(headers, ["responsavel"]);
+  const gapDeadline = headerIndex(headers, ["prazo"]);
+  const gapStatus = headerIndex(headers, ["status"]);
+  if (
+    context?.section === "gaps" &&
+    context.currentGap &&
+    [gapPriority, gapResponsible, gapDeadline, gapStatus].some((index) => index >= 0)
+  ) {
+    const row = dataRows[0] ?? [];
+    context.currentGap.priority = at(row, gapPriority);
+    context.currentGap.responsible = at(row, gapResponsible);
+    context.currentGap.deadline = at(row, gapDeadline);
+    context.currentGap.status = at(row, gapStatus);
     return true;
   }
 
@@ -370,11 +431,12 @@ function parseEntries(
   let currentStep: MappingImportStep | null = null;
   let currentSubstep: MappingImportSubstep | null = null;
   let currentGap: MappingImportGap | null = null;
+  let gapField: "description" | "impact" | "action" | null = null;
   let currentNext: MappingDocumentImport["nextSteps"][number] | null = null;
 
   for (const entry of entries) {
     if (entry.kind === "table") {
-      mapTable(result, entry.value);
+      mapTable(result, entry.value, { section, currentStep, currentGap });
       continue;
     }
     const line = entry.value.text.trim();
@@ -391,6 +453,7 @@ function parseEntries(
       currentStep = null;
       currentSubstep = null;
       currentGap = null;
+      gapField = null;
       currentNext = null;
       continue;
     }
@@ -400,16 +463,21 @@ function parseEntries(
     const label = labeled?.label || "";
     const value = labeled?.value || "";
     if (section === "metadata" || !section) {
-      if (label === "titulo" || label === "titulo do mapeamento") result.title = value;
-      else if (label === "modalidade")
-        result.modality = /to be/i.test(value) ? "TO BE" : /as is/i.test(value) ? "AS IS" : null;
-      else if (label === "data") result.date = value;
-      else if (label === "elaborador") result.author = value;
-      else if (label === "revisor") result.reviewer = value;
+      const cells = cellsFromLine(line);
+      if (cells.length >= 2 && normalized(cells[0]) !== "campo")
+        applyMetadataField(result, cells[0], cells.slice(1).join(" | "));
+      else if (labeled) applyMetadataField(result, labeled.label, value);
       continue;
     }
     if (section === "overview") {
-      if (label === "objetivo") {
+      const heading = normalized(line);
+      if (heading === "objetivo") {
+        overviewField = "objective";
+      } else if (heading === "escopo" || heading === "abrangencia") {
+        overviewField = "scope";
+      } else if (heading === "contexto" || heading === "indicadores") {
+        overviewField = "context";
+      } else if (label === "objetivo") {
         result.objective = value;
         overviewField = "objective";
       } else if (label === "escopo" || label === "abrangencia") {
@@ -422,7 +490,14 @@ function parseEntries(
       continue;
     }
     if (section === "systems") {
-      if (label === "sistema" || label === "ferramenta") {
+      const cells = cellsFromLine(line);
+      if (
+        cells.length >= 2 &&
+        !["sistema", "sistema ou controle", "ferramenta"].includes(normalized(cells[0]))
+      ) {
+        result.systems.push({ name: cells[0], description: cells.slice(1).join(" | ") });
+        currentSystem = result.systems.at(-1) ?? null;
+      } else if (label === "sistema" || label === "ferramenta") {
         currentSystem = { name: value, description: "" };
         result.systems.push(currentSystem);
       } else if (label.includes("descricao") || label.includes("uso no processo")) {
@@ -448,8 +523,27 @@ function parseEntries(
       continue;
     }
     if (section === "steps") {
-      const stepHeading = line.match(/^(?:etapa\s*)?(\d+)\s*[-.:)]\s*(.+)$/i);
-      const substepHeading = line.match(/^(?:subetapa\s*)?(\d+)\.(\d+)\s*[-.:)]\s*(.+)$/i);
+      const cells = cellsFromLine(line);
+      if (currentStep && cells.length >= 3 && /^\d+\.\d+$/.test(cells[0])) {
+        currentSubstep = {
+          title: cells[1],
+          description: cells.slice(2).join(" | "),
+          images,
+        };
+        currentStep.substeps.push(currentSubstep);
+        continue;
+      }
+      if (
+        cells.length >= 3 &&
+        normalized(cells[0]) === "id" &&
+        normalized(cells[1]) === "atividade"
+      ) {
+        continue;
+      }
+      const stepHeading = line.match(/^(?:etapa\s*)?(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i);
+      const substepHeading = line.match(
+        /^(?:subetapa\s*)?(\d+)\.(\d+)\s*[-\u2013\u2014.:)]?\s*(.+)$/i,
+      );
       if (substepHeading) {
         if (!currentStep) {
           currentStep = {
@@ -502,6 +596,8 @@ function parseEntries(
         if (!currentStep) continue;
         currentSubstep = { title: value, description: "", images };
         currentStep.substeps.push(currentSubstep);
+      } else if (currentStep && (label === "observacoes" || label === "observacao")) {
+        currentStep.notes = append(currentStep.notes, value);
       } else if (currentSubstep && (label === "descricao" || !labeled)) {
         currentSubstep.description = append(currentSubstep.description, labeled ? value : line);
         currentSubstep.images.push(...images);
@@ -519,9 +615,12 @@ function parseEntries(
       continue;
     }
     if (section === "gaps") {
-      if (label === "gap" || label === "causa" || label === "causa raiz") {
+      const gapHeading = line.match(/^(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i);
+      const heading = normalized(line.replace(/:$/, ""));
+      const cells = cellsFromLine(line);
+      if (gapHeading || label === "gap" || label === "causa" || label === "causa raiz") {
         currentGap = {
-          cause: value,
+          cause: gapHeading?.[2]?.trim() || value,
           description: "",
           impact: "",
           action: "",
@@ -531,21 +630,51 @@ function parseEntries(
           status: "",
         };
         result.gaps.push(currentGap);
+        gapField = null;
       } else if (currentGap) {
-        if (label === "descricao") currentGap.description = value;
-        else if (label === "impacto") currentGap.impact = value;
+        if (cells.length >= 4 && !cells.map(normalized).includes("prioridade") && !labeled) {
+          currentGap.priority = cells[0];
+          currentGap.responsible = cells[1];
+          currentGap.deadline = cells[2];
+          currentGap.status = cells[3];
+        } else if (heading === "descricao e causa raiz" || heading === "descricao") {
+          gapField = "description";
+        } else if (heading === "efeito" || heading === "efeitos") {
+          gapField = "impact";
+        } else if (heading === "acao proposta") {
+          gapField = "action";
+        } else if (heading === "como implementar") {
+          gapField = "action";
+          currentGap.action = append(currentGap.action, "Como implementar:");
+        } else if (heading === "impacto esperado") {
+          gapField = "impact";
+          currentGap.impact = append(currentGap.impact, "Impacto esperado:");
+        } else if (label === "descricao") currentGap.description = value;
+        else if (label === "impacto" || label === "efeito") currentGap.impact = value;
         else if (label === "acao" || label === "acao proposta") currentGap.action = value;
         else if (label === "responsavel") currentGap.responsible = value;
         else if (label === "prazo") currentGap.deadline = value;
         else if (label === "prioridade") currentGap.priority = value;
         else if (label === "status") currentGap.status = value;
+        else if (gapField) currentGap[gapField] = append(currentGap[gapField], line);
         else currentGap.description = append(currentGap.description, line);
       }
       continue;
     }
     if (section === "nextSteps") {
+      const cells = cellsFromLine(line);
       const numbered = line.match(/^\d+[.)-]\s*(.+)$/);
-      if (label === "acao" || label === "proximo passo" || numbered) {
+      if (
+        cells.length >= 3 &&
+        !["acao", "proximo passo", "atividade"].includes(normalized(cells[0]))
+      ) {
+        result.nextSteps.push({
+          text: cells[0],
+          responsible: cells[1],
+          deadline: cells.slice(2).join(" | "),
+        });
+        currentNext = result.nextSteps.at(-1) ?? null;
+      } else if (label === "acao" || label === "proximo passo" || numbered) {
         currentNext = { text: value || numbered?.[1] || "", responsible: "", deadline: "" };
         result.nextSteps.push(currentNext);
       } else if (currentNext && label === "responsavel") currentNext.responsible = value;

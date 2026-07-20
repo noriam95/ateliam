@@ -378,35 +378,105 @@ function BpmnNotationIcon({
     return (
       <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
         <path d="M16 2 30 16 16 30 2 16Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        {value === "exclusive" ? <path d="m11 11 10 10m0-10L11 21" stroke="currentColor" strokeWidth="2.4" /> : null}
-        {value === "parallel" ? <path d="M16 9v14M9 16h14" stroke="currentColor" strokeWidth="2.4" /> : null}
-        {value === "inclusive" ? <circle cx="16" cy="16" r="6" fill="none" stroke="currentColor" strokeWidth="2.2" /> : null}
+        {value === "exclusive" ? (
+          <path d="m11 11 10 10m0-10L11 21" stroke="currentColor" strokeWidth="2.4" />
+        ) : null}
+        {value === "parallel" ? (
+          <path d="M16 9v14M9 16h14" stroke="currentColor" strokeWidth="2.4" />
+        ) : null}
+        {value === "inclusive" ? (
+          <circle cx="16" cy="16" r="6" fill="none" stroke="currentColor" strokeWidth="2.2" />
+        ) : null}
         {value === "event-based" ? (
           <>
             <circle cx="16" cy="16" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
             <path d="m16 10 5 4-2 6h-6l-2-6Z" fill="none" stroke="currentColor" strokeWidth="1.4" />
           </>
         ) : null}
-        {value === "complex" ? <path d="M16 9v14m-6-3.5 12-7m-12 0 12 7" stroke="currentColor" strokeWidth="2" /> : null}
+        {value === "complex" ? (
+          <path d="M16 9v14m-6-3.5 12-7m-12 0 12 7" stroke="currentColor" strokeWidth="2" />
+        ) : null}
       </svg>
     );
   }
 
   return (
     <svg viewBox={framed ? "0 0 72 48" : "0 0 20 20"} className={className} aria-hidden="true">
-      {framed ? <rect x="2" y="3" width="68" height="42" rx="5" fill="none" stroke="currentColor" strokeWidth="1.8" /> : null}
+      {framed ? (
+        <rect
+          x="2"
+          y="3"
+          width="68"
+          height="42"
+          rx="5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+      ) : null}
       <g transform={framed ? "translate(7 7)" : "translate(1 1)"}>
         {value === "user" ? (
-          <><circle cx="8" cy="4" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M3.5 15c.4-4 2.2-6.5 4.5-6.5s4.1 2.5 4.5 6.5M5 9l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" /></>
+          <>
+            <circle cx="8" cy="4" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path
+              d="M3.5 15c.4-4 2.2-6.5 4.5-6.5s4.1 2.5 4.5 6.5M5 9l3 3 3-3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+          </>
         ) : null}
         {value === "service" ? (
-          <><circle cx="7" cy="9" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.5" /><circle cx="13" cy="4" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M7 3v2m0 8v2M1 9h2m8 0h2m0-9v1.5m0 5V8M9.5 4H11m4 0h1.5" stroke="currentColor" strokeWidth="1.3" /></>
+          <>
+            <circle cx="7" cy="9" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="13" cy="4" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            <path
+              d="M7 3v2m0 8v2M1 9h2m8 0h2m0-9v1.5m0 5V8M9.5 4H11m4 0h1.5"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+          </>
         ) : null}
-        {value === "manual" ? <path d="M1.5 12.5h4L4 9.5c-.7-1.5 1.2-2.3 2-.9l1.3 2.2V4.7c0-1.5 2-1.5 2 0v4-5c0-1.4 2-1.4 2 0v5-4c0-1.4 2-1.3 2 .1v5.7c0 3-2 5.5-5.5 5.5H5.5Z" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round" /> : null}
-        {value === "script" ? <path d="M4 1.5h9v15H4c2-2 2-4 0-6 2-2 2-4 0-6 1-.8 1.4-1.8 0-3Zm3 4h4M7 9h4m-4 3.5h3" fill="none" stroke="currentColor" strokeWidth="1.35" /> : null}
-        {value === "business-rule" ? <path d="M1.5 2.5h15v12h-15Zm0 4h15m-10-4v12m5-8v8" fill="none" stroke="currentColor" strokeWidth="1.4" /> : null}
+        {value === "manual" ? (
+          <path
+            d="M1.5 12.5h4L4 9.5c-.7-1.5 1.2-2.3 2-.9l1.3 2.2V4.7c0-1.5 2-1.5 2 0v4-5c0-1.4 2-1.4 2 0v5-4c0-1.4 2-1.3 2 .1v5.7c0 3-2 5.5-5.5 5.5H5.5Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            strokeLinejoin="round"
+          />
+        ) : null}
+        {value === "script" ? (
+          <path
+            d="M4 1.5h9v15H4c2-2 2-4 0-6 2-2 2-4 0-6 1-.8 1.4-1.8 0-3Zm3 4h4M7 9h4m-4 3.5h3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.35"
+          />
+        ) : null}
+        {value === "business-rule" ? (
+          <path
+            d="M1.5 2.5h15v12h-15Zm0 4h15m-10-4v12m5-8v8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+          />
+        ) : null}
         {value === "send" || value === "receive" ? (
-          <><path d="M1.5 4h15v10h-15Z" fill={value === "send" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" /><path d="m2 4.5 7 5 7-5" fill="none" stroke={value === "send" ? "var(--card)" : "currentColor"} strokeWidth="1.4" /></>
+          <>
+            <path
+              d="M1.5 4h15v10h-15Z"
+              fill={value === "send" ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="1.4"
+            />
+            <path
+              d="m2 4.5 7 5 7-5"
+              fill="none"
+              stroke={value === "send" ? "var(--card)" : "currentColor"}
+              strokeWidth="1.4"
+            />
+          </>
         ) : null}
       </g>
     </svg>
@@ -5552,7 +5622,9 @@ function ModuleWorkspacePage() {
         },
       }),
     enabled:
-      (showLibrary || moduleSurface === "consult" || (moduleId === "ddp" && ddpView === "causes")) &&
+      (showLibrary ||
+        moduleSurface === "consult" ||
+        (moduleId === "ddp" && ddpView === "causes")) &&
       !isDemo,
   });
   const draftKey = isDemo ? DRAFT_KEY : `${DRAFT_KEY}_${wsQ.data?.id ?? "cloud"}`;
@@ -9033,9 +9105,7 @@ function DdpCausesModuleV2({
           row.gap.status,
           row.mapping?.mappingCode,
           row.mapping?.mappingTitle,
-          row.standalone?.process_id
-            ? processesById.get(row.standalone.process_id)?.name
-            : "",
+          row.standalone?.process_id ? processesById.get(row.standalone.process_id)?.name : "",
           row.source === "mapping" ? "Mapeamento" : "Avulsa",
         ].join(" "),
       ).includes(normalized),
@@ -9084,14 +9154,14 @@ function DdpCausesModuleV2({
 
   useEffect(() => {
     setSelectedIds((current) =>
-      current.filter((recordId) => rows.some((row) => row.id === recordId && row.source === "standalone")),
+      current.filter((recordId) =>
+        rows.some((row) => row.id === recordId && row.source === "standalone"),
+      ),
     );
   }, [rows]);
 
   function updateDraft(patch: Partial<GapItem>) {
-    setDraft((current) =>
-      current ? { ...current, gap: { ...current.gap, ...patch } } : current,
-    );
+    setDraft((current) => (current ? { ...current, gap: { ...current.gap, ...patch } } : current));
   }
 
   async function saveDraft() {
@@ -9179,10 +9249,7 @@ function DdpCausesModuleV2({
     if (!draft) return [];
     const text = commentDraft.trim();
     return text
-      ? [
-          ...draft.gap.comentarios,
-          { id: id("comment"), text, createdAt: new Date().toISOString() },
-        ]
+      ? [...draft.gap.comentarios, { id: id("comment"), text, createdAt: new Date().toISOString() }]
       : draft.gap.comentarios;
   }
 
@@ -9249,9 +9316,17 @@ function DdpCausesModuleV2({
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">Carregando causas...</td></tr>
+                <tr>
+                  <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
+                    Carregando causas...
+                  </td>
+                </tr>
               ) : !filtered.length ? (
-                <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">Nenhuma causa encontrada.</td></tr>
+                <tr>
+                  <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
+                    Nenhuma causa encontrada.
+                  </td>
+                </tr>
               ) : null}
               {filtered.map((row) => (
                 <tr key={row.id} className="border-t border-border bg-card hover:bg-muted/45">
@@ -9261,26 +9336,41 @@ function DdpCausesModuleV2({
                         type="checkbox"
                         aria-label={`Selecionar ${row.gap.causa}`}
                         checked={selectedIds.includes(row.id)}
-                        onChange={() => setSelectedIds((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])}
+                        onChange={() =>
+                          setSelectedIds((current) =>
+                            current.includes(row.id)
+                              ? current.filter((id) => id !== row.id)
+                              : [...current, row.id],
+                          )
+                        }
                       />
                     ) : null}
                   </td>
                   <td className="px-3 py-3">
-                    <span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${row.source === "mapping" ? "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200" : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"}`}>
+                    <span
+                      className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${row.source === "mapping" ? "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200" : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"}`}
+                    >
                       {row.source === "mapping" ? "Mapeamento" : "Avulsa"}
                     </span>
                   </td>
                   <td className="max-w-[250px] px-3 py-3">
-                    <div className="font-semibold text-foreground">{row.gap.causa || "Causa sem nome"}</div>
-                    <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{row.gap.descricao || "-"}</div>
+                    <div className="font-semibold text-foreground">
+                      {row.gap.causa || "Causa sem nome"}
+                    </div>
+                    <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                      {row.gap.descricao || "-"}
+                    </div>
                   </td>
                   <td className="max-w-[220px] px-3 py-3 text-xs leading-5">
                     {row.mapping ? (
                       <>
-                        <div className="font-semibold text-foreground">{row.mapping.mappingCode}</div>
+                        <div className="font-semibold text-foreground">
+                          {row.mapping.mappingCode}
+                        </div>
                         <div className="text-muted-foreground">{row.mapping.mappingTitle}</div>
                       </>
-                    ) : row.standalone?.process_id && processesById.get(row.standalone.process_id) ? (
+                    ) : row.standalone?.process_id &&
+                      processesById.get(row.standalone.process_id) ? (
                       <>
                         <div className="font-semibold text-foreground">
                           {processesById.get(row.standalone.process_id)?.code || "Processo"}
@@ -9293,8 +9383,12 @@ function DdpCausesModuleV2({
                       <span className="text-muted-foreground">Sem processo relacionado</span>
                     )}
                   </td>
-                  <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">{row.gap.impacto || "-"}</td>
-                  <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">{row.gap.acao || "-"}</td>
+                  <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">
+                    {row.gap.impacto || "-"}
+                  </td>
+                  <td className="max-w-[220px] px-3 py-3 text-xs leading-5 text-muted-foreground">
+                    {row.gap.acao || "-"}
+                  </td>
                   <td className="px-3 py-3">{row.gap.responsavel || "-"}</td>
                   <td className="px-3 py-3">{formatGapDateRangeBr(row.gap.prazo) || "-"}</td>
                   <td className="px-3 py-3">{row.gap.prioridade || "Média"}</td>
@@ -9305,27 +9399,52 @@ function DdpCausesModuleV2({
                       onChange={(event) => changeStatus(row, event.target.value)}
                       className="h-9 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
                     >
-                      {CAUSE_STATUS_OPTIONS.map((status) => <option key={status}>{status}</option>)}
+                      {CAUSE_STATUS_OPTIONS.map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
                     </select>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1.5">
                       <button
                         type="button"
-                        title={row.mapping ? "Acompanhar causa sem abrir o mapeamento" : "Abrir causa"}
+                        title={
+                          row.mapping ? "Acompanhar causa sem abrir o mapeamento" : "Abrir causa"
+                        }
                         onClick={() => openRow(row)}
                         className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted"
                       >
-                        {row.mapping ? <MessageSquare className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {row.mapping ? (
+                          <MessageSquare className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                         {row.mapping ? "Acompanhar" : "Abrir"}
                       </button>
                       <button
                         type="button"
                         title={row.mapping ? "Editar no mapeamento" : "Editar causa"}
-                        onClick={() => row.mapping ? onOpenMapping(row.mapping).catch((error) => toast.error(error.message)) : openRow(row)}
+                        onClick={() =>
+                          row.mapping
+                            ? onOpenMapping(row.mapping).catch((error) =>
+                                toast.error(error.message),
+                              )
+                            : openRow(row)
+                        }
                         className="grid h-8 w-8 place-items-center rounded-md border border-border hover:bg-muted"
-                      ><Pencil className="h-4 w-4" /></button>
-                      {row.standalone ? <button type="button" title="Excluir" onClick={() => setPendingDeleteIds([row.id])} className="grid h-8 w-8 place-items-center rounded-md border border-border text-destructive hover:bg-destructive/5"><Trash2 className="h-4 w-4" /></button> : null}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      {row.standalone ? (
+                        <button
+                          type="button"
+                          title="Excluir"
+                          onClick={() => setPendingDeleteIds([row.id])}
+                          className="grid h-8 w-8 place-items-center rounded-md border border-border text-destructive hover:bg-destructive/5"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -9334,12 +9453,16 @@ function DdpCausesModuleV2({
           </table>
         </div>
         <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
-          {filtered.length} registro(s) · {mappingCauses.length} de mapeamentos · {standaloneCauses.length} avulsa(s)
+          {filtered.length} registro(s) · {mappingCauses.length} de mapeamentos ·{" "}
+          {standaloneCauses.length} avulsa(s)
         </footer>
       </section>
 
       {draft ? (
-        <div className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/35 p-4 backdrop-blur-[2px]" onClick={(event) => event.target === event.currentTarget && setDraft(null)}>
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/35 p-4 backdrop-blur-[2px]"
+          onClick={(event) => event.target === event.currentTarget && setDraft(null)}
+        >
           <div className="my-auto max-h-[92vh] w-full max-w-5xl overflow-auto rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]">
             <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-card px-6 py-5">
               <div className="flex items-start gap-3">
@@ -9348,21 +9471,43 @@ function DdpCausesModuleV2({
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-bold text-foreground">{draft.source === "mapping" ? "Acompanhar causa do mapeamento" : draft.row ? "Editar causa avulsa" : "Nova causa avulsa"}</h2>
+                    <h2 className="text-lg font-bold text-foreground">
+                      {draft.source === "mapping"
+                        ? "Acompanhar causa do mapeamento"
+                        : draft.row
+                          ? "Editar causa avulsa"
+                          : "Nova causa avulsa"}
+                    </h2>
                     <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       {draft.source === "mapping" ? "Mapeamento" : "Avulsa"}
                     </span>
                   </div>
-                  {draft.row?.mapping ? <p className="mt-1 text-sm text-muted-foreground">{draft.row.mapping.mappingCode} · {draft.row.mapping.mappingTitle}</p> : <p className="mt-1 text-sm text-muted-foreground">Registre a causa, seus efeitos e o tratamento proposto.</p>}
+                  {draft.row?.mapping ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {draft.row.mapping.mappingCode} · {draft.row.mapping.mappingTitle}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Registre a causa, seus efeitos e o tratamento proposto.
+                    </p>
+                  )}
                 </div>
               </div>
-              <button type="button" onClick={() => setDraft(null)} className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted" aria-label="Fechar"><X className="h-4 w-4" /></button>
+              <button
+                type="button"
+                onClick={() => setDraft(null)}
+                className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
             <div className="grid gap-5 p-6">
               {draft.source === "mapping" ? (
                 <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/35 dark:text-sky-100">
-                  Esta janela não altera os dados técnicos do mapeamento. Atualize somente o período de acompanhamento, o status e os comentários.
+                  Esta janela não altera os dados técnicos do mapeamento. Atualize somente o período
+                  de acompanhamento, o status e os comentários.
                 </div>
               ) : null}
 
@@ -9372,14 +9517,21 @@ function DdpCausesModuleV2({
                     <ListChecks className="h-4 w-4 text-primary" />
                     <h3 className="text-sm font-semibold text-foreground">Contexto da causa</h3>
                   </div>
-                  <Field label="Causa" value={draft.gap.causa} onChange={(causa) => updateDraft({ causa })} disabled={draft.source === "mapping"} />
+                  <Field
+                    label="Causa"
+                    value={draft.gap.causa}
+                    onChange={(causa) => updateDraft({ causa })}
+                    disabled={draft.source === "mapping"}
+                  />
                   {draft.source === "standalone" ? (
                     <RegisteredProcessSelect
                       label="Processo relacionado (opcional)"
                       value={draft.processId}
                       processes={processes}
                       placeholder="Pesquisar por código ou nome do processo"
-                      displayName={(process) => `${process.code ? `${process.code} · ` : ""}${process.name}`}
+                      displayName={(process) =>
+                        `${process.code ? `${process.code} · ` : ""}${process.name}`
+                      }
                       onSelect={(process) =>
                         setDraft((current) =>
                           current ? { ...current, processId: process?.id ?? "" } : current,
@@ -9387,8 +9539,20 @@ function DdpCausesModuleV2({
                       }
                     />
                   ) : null}
-                  <TextArea label="Descrição" value={draft.gap.descricao} onChange={(descricao) => updateDraft({ descricao })} rows={3} disabled={draft.source === "mapping"} />
-                  <TextArea label="Impacto" value={draft.gap.impacto} onChange={(impacto) => updateDraft({ impacto })} rows={4} disabled={draft.source === "mapping"} />
+                  <TextArea
+                    label="Descrição"
+                    value={draft.gap.descricao}
+                    onChange={(descricao) => updateDraft({ descricao })}
+                    rows={3}
+                    disabled={draft.source === "mapping"}
+                  />
+                  <TextArea
+                    label="Impacto"
+                    value={draft.gap.impacto}
+                    onChange={(impacto) => updateDraft({ impacto })}
+                    rows={4}
+                    disabled={draft.source === "mapping"}
+                  />
                 </section>
 
                 <section className="grid gap-4 rounded-lg border border-border p-4">
@@ -9397,12 +9561,38 @@ function DdpCausesModuleV2({
                     <h3 className="text-sm font-semibold text-foreground">Tratamento</h3>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <SelectField label="Status" value={normalizeCauseStatus(draft.gap.status)} options={[...CAUSE_STATUS_OPTIONS]} onChange={(status) => updateDraft({ status })} />
-                    <SelectField label="Prioridade" value={draft.gap.prioridade} options={[...CAUSE_PRIORITY_OPTIONS]} onChange={(prioridade) => updateDraft({ prioridade })} disabled={draft.source === "mapping"} />
+                    <SelectField
+                      label="Status"
+                      value={normalizeCauseStatus(draft.gap.status)}
+                      options={[...CAUSE_STATUS_OPTIONS]}
+                      onChange={(status) => updateDraft({ status })}
+                    />
+                    <SelectField
+                      label="Prioridade"
+                      value={draft.gap.prioridade}
+                      options={[...CAUSE_PRIORITY_OPTIONS]}
+                      onChange={(prioridade) => updateDraft({ prioridade })}
+                      disabled={draft.source === "mapping"}
+                    />
                   </div>
-                  <Field label="Responsável" value={draft.gap.responsavel} onChange={(responsavel) => updateDraft({ responsavel })} disabled={draft.source === "mapping"} />
-                  <DateRangeField label={draft.source === "mapping" ? "Período de acompanhamento" : "Prazo"} value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} />
-                  <TextArea label="Ação proposta" value={draft.gap.acao} onChange={(acao) => updateDraft({ acao })} rows={5} disabled={draft.source === "mapping"} />
+                  <Field
+                    label="Responsável"
+                    value={draft.gap.responsavel}
+                    onChange={(responsavel) => updateDraft({ responsavel })}
+                    disabled={draft.source === "mapping"}
+                  />
+                  <DateRangeField
+                    label={draft.source === "mapping" ? "Período de acompanhamento" : "Prazo"}
+                    value={draft.gap.prazo}
+                    onChange={(prazo) => updateDraft({ prazo })}
+                  />
+                  <TextArea
+                    label="Ação proposta"
+                    value={draft.gap.acao}
+                    onChange={(acao) => updateDraft({ acao })}
+                    rows={5}
+                    disabled={draft.source === "mapping"}
+                  />
                 </section>
               </div>
 
@@ -9411,29 +9601,142 @@ function DdpCausesModuleV2({
                   <MessageSquare className="h-4 w-4 text-primary" />
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Acompanhamento</h3>
-                    <p className="text-xs text-muted-foreground">Registre decisões, avanços e impedimentos.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Registre decisões, avanços e impedimentos.
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commentDraft.trim()) { event.preventDefault(); addComment(); } }} placeholder="Adicionar comentário" className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
-                  <button type="button" onClick={addComment} disabled={!commentDraft.trim()} className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-40">Adicionar</button>
+                  <input
+                    value={commentDraft}
+                    onChange={(event) => setCommentDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && commentDraft.trim()) {
+                        event.preventDefault();
+                        addComment();
+                      }
+                    }}
+                    placeholder="Adicionar comentário"
+                    className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  />
+                  <button
+                    type="button"
+                    onClick={addComment}
+                    disabled={!commentDraft.trim()}
+                    className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-40"
+                  >
+                    Adicionar
+                  </button>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">{draft.gap.comentarios.length ? draft.gap.comentarios.map((comment) => <div key={comment.id} className="rounded-md border border-border bg-muted/25 p-3 text-sm"><div>{comment.text}</div>{comment.createdAt ? <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeBr(comment.createdAt)}</div> : null}</div>) : <div className="col-span-full py-2 text-sm text-muted-foreground">Nenhum comentário registrado.</div>}</div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {draft.gap.comentarios.length ? (
+                    draft.gap.comentarios.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="rounded-md border border-border bg-muted/25 p-3 text-sm"
+                      >
+                        <div>{comment.text}</div>
+                        {comment.createdAt ? (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {formatDateTimeBr(comment.createdAt)}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-2 text-sm text-muted-foreground">
+                      Nenhum comentário registrado.
+                    </div>
+                  )}
+                </div>
               </section>
             </div>
             <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-card px-6 py-4">
-              <button type="button" onClick={() => setDraft(null)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Cancelar</button>
-              {draft.source === "mapping" && draft.row?.mapping ? <><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { await onUpdateMappingCause(draft.row!.mapping!, { status: draft.gap.status, prazo: draft.gap.prazo, comentarios: commentsForSave() }); setDraft(null); toast.success("Acompanhamento da causa atualizado."); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a causa."); } finally { setSaving(false); } }} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Salvar acompanhamento</button><button type="button" onClick={() => onOpenMapping(draft.row!.mapping!).catch((error) => toast.error(error.message))} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Editar dados no mapeamento</button></> : <button type="button" disabled={saving} onClick={saveDraft} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">Salvar causa</button>}
+              <button
+                type="button"
+                onClick={() => setDraft(null)}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+              >
+                Cancelar
+              </button>
+              {draft.source === "mapping" && draft.row?.mapping ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        await onUpdateMappingCause(draft.row!.mapping!, {
+                          status: draft.gap.status,
+                          prazo: draft.gap.prazo,
+                          comentarios: commentsForSave(),
+                        });
+                        setDraft(null);
+                        toast.success("Acompanhamento da causa atualizado.");
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Não foi possível atualizar a causa.",
+                        );
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    className="rounded-lg border border-border px-4 py-2 text-sm font-semibold"
+                  >
+                    Salvar acompanhamento
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenMapping(draft.row!.mapping!).catch((error) =>
+                        toast.error(error.message),
+                      )
+                    }
+                    className="rounded-lg border border-border px-4 py-2 text-sm font-semibold"
+                  >
+                    Editar dados no mapeamento
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={saveDraft}
+                  className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                >
+                  Salvar causa
+                </button>
+              )}
             </div>
           </div>
         </div>
       ) : null}
 
       {pendingDeleteIds.length ? (
-        <Modal title="Excluir causas avulsas" subtitle={`Confirma excluir ${pendingDeleteIds.length} causa(s) avulsa(s)?`} onClose={() => setPendingDeleteIds([])}>
+        <Modal
+          title="Excluir causas avulsas"
+          subtitle={`Confirma excluir ${pendingDeleteIds.length} causa(s) avulsa(s)?`}
+          onClose={() => setPendingDeleteIds([])}
+        >
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setPendingDeleteIds([])} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Cancelar</button>
-            <button type="button" disabled={saving} onClick={confirmDelete} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-destructive disabled:opacity-50">Excluir</button>
+            <button
+              type="button"
+              onClick={() => setPendingDeleteIds([])}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={confirmDelete}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-destructive disabled:opacity-50"
+            >
+              Excluir
+            </button>
           </div>
         </Modal>
       ) : null}
@@ -9682,6 +9985,7 @@ function DdpModule({
   const [mappingAssistantText, setMappingAssistantText] = useState("");
   const [mappingAssistantBusy, setMappingAssistantBusy] = useState(false);
   const [mappingImport, setMappingImport] = useState<MappingDocumentImport | null>(null);
+  const showMappingImportReview = false;
   const [assistantProcessStepTitle, setAssistantProcessStepTitle] = useState<string | null>(null);
   const [assistantCreatedProcesses, setAssistantCreatedProcesses] = useState<
     Record<string, CreatedProcess>
@@ -9941,6 +10245,8 @@ function DdpModule({
     if (!savedNonce) return;
     justSaved.current = true;
     setDirty(false);
+    setMappingImport(null);
+    setAssistantCreatedProcesses({});
   }, [savedNonce]);
 
   const saveState: "idle" | "dirty" | "saving" | "saved" = saving
@@ -10095,7 +10401,7 @@ function DdpModule({
     try {
       const { parseDocxMapping } = await import("@/lib/docx-mapping-import");
       setAssistantCreatedProcesses({});
-      setMappingImport(await parseDocxMapping(file));
+      applyMappingImport(await parseDocxMapping(file));
       setMappingAssistantOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível interpretar o DOCX.");
@@ -10108,7 +10414,7 @@ function DdpModule({
     try {
       const { parseStructuredMappingText } = await import("@/lib/docx-mapping-import");
       setAssistantCreatedProcesses({});
-      setMappingImport(parseStructuredMappingText(mappingAssistantText));
+      applyMappingImport(parseStructuredMappingText(mappingAssistantText));
       setMappingAssistantOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível interpretar o texto.");
@@ -10119,46 +10425,41 @@ function DdpModule({
     return { id: id("mapimg"), titulo: "", legenda: "", src: image.src };
   }
 
-  function applyMappingImport() {
-    if (!mappingImport) return;
+  function applyMappingImport(importResult: MappingDocumentImport | null = mappingImport) {
+    if (!importResult) return;
     const unmatchedSteps: string[] = [];
-    const importedSteps = mappingImport.steps.flatMap((step): DdpFlowStep[] => {
+    const importedSteps = importResult.steps.map((step): DdpFlowStep => {
       const process =
         assistantCreatedProcesses[normalizeLabel(step.title)] ??
-        flowProcessOptions.find(
-          (item) => normalizeLabel(item.name) === normalizeLabel(step.title),
-        );
+        flowProcessOptions.find((item) => normalizeLabel(item.name) === normalizeLabel(step.title));
       if (!process) {
         unmatchedSteps.push(step.title);
-        return [];
       }
-      return [
-        {
-          id: id("step"),
-          processId: process.id,
+      return {
+        id: id("step"),
+        processId: process?.id ?? "",
+        processVersion: 1,
+        etapa: process?.name ?? step.title,
+        responsavel: step.responsible || process?.owner || "",
+        entrada: step.input,
+        atividade: step.activity || process?.description || "",
+        saida: step.output,
+        sistema: step.system,
+        risco: step.risk,
+        observacoes: step.notes,
+        images: step.images.map(mappingImage),
+        substeps: step.substeps.map((substep, substepIndex) => ({
+          id: id("substep"),
+          processId: "",
           processVersion: 1,
-          etapa: process.name,
-          responsavel: step.responsible || process.owner || "",
-          entrada: step.input,
-          atividade: step.activity || process.description || "",
-          saida: step.output,
-          sistema: step.system,
-          risco: step.risk,
-          observacoes: step.notes,
-          images: step.images.map(mappingImage),
-          substeps: step.substeps.map((substep, substepIndex) => ({
-            id: id("substep"),
-            processId: "",
-            processVersion: 1,
-            codigo: `1.${substepIndex + 1}`,
-            titulo: substep.title,
-            descricao: substep.description,
-            images: substep.images.map(mappingImage),
-          })),
-        },
-      ];
+          codigo: `1.${substepIndex + 1}`,
+          titulo: substep.title,
+          descricao: substep.description,
+          images: substep.images.map(mappingImage),
+        })),
+      };
     });
-    const importedSystems = mappingImport.systems.map((system) => {
+    const importedSystems = importResult.systems.map((system) => {
       const catalogSystem = catalogs.systems.find(
         (item) => normalizeLabel(item.name) === normalizeLabel(system.name),
       );
@@ -10176,21 +10477,21 @@ function DdpModule({
       ...data,
       meta: {
         ...data.meta,
-        titulo: mappingImport.title || data.meta.titulo,
-        modalidade: mappingImport.modality || data.meta.modalidade,
-        data: dateInputValue(mappingImport.date) || data.meta.data,
-        elaborador: mappingImport.author || data.meta.elaborador,
-        revisor: mappingImport.reviewer || data.meta.revisor,
+        titulo: importResult.title || data.meta.titulo,
+        modalidade: importResult.modality || data.meta.modalidade,
+        data: dateInputValue(importResult.date) || data.meta.data,
+        elaborador: importResult.author || data.meta.elaborador,
+        revisor: importResult.reviewer || data.meta.revisor,
       },
       overview: {
         ...data.overview,
-        objetivo: mappingImport.objective || data.overview.objetivo,
-        escopo: mappingImport.scope || data.overview.escopo,
-        kpis: mappingImport.context || data.overview.kpis,
+        objetivo: importResult.objective || data.overview.objetivo,
+        escopo: importResult.scope || data.overview.escopo,
+        kpis: importResult.context || data.overview.kpis,
       },
       systems: importedSystems.length ? importedSystems : data.systems,
-      sipocRows: mappingImport.sipoc.length
-        ? mappingImport.sipoc.map((row) => ({
+      sipocRows: importResult.sipoc.length
+        ? importResult.sipoc.map((row) => ({
             id: id("sipoc"),
             fornecedores: row.suppliers,
             entradas: row.inputs,
@@ -10199,17 +10500,17 @@ function DdpModule({
             clientes: row.customers,
           }))
         : data.sipocRows,
-      macroprocess: mappingImport.macroImages.length
+      macroprocess: importResult.macroImages.length
         ? {
             ...data.macroprocess,
             titulo: "Diagrama do processo",
             legenda: "",
-            src: mappingImport.macroImages[0].src,
+            src: importResult.macroImages[0].src,
           }
         : data.macroprocess,
       steps: importedSteps.length ? renumberFlowSteps(importedSteps) : data.steps,
-      gaps: mappingImport.gaps.length
-        ? mappingImport.gaps.map((gap) => ({
+      gaps: importResult.gaps.length
+        ? importResult.gaps.map((gap) => ({
             id: id("gap"),
             sharedCauseId: "",
             causa: gap.cause,
@@ -10225,16 +10526,16 @@ function DdpModule({
             comentarios: [],
           }))
         : data.gaps,
-      nextSteps: mappingImport.nextSteps.length
-        ? mappingImport.nextSteps.map((item) => ({
+      nextSteps: importResult.nextSteps.length
+        ? importResult.nextSteps.map((item) => ({
             id: id("next"),
             text: item.text,
             responsavel: item.responsible,
             prazo: dateInputValue(item.deadline) || item.deadline,
           }))
         : data.nextSteps,
-      glossary: mappingImport.glossary.length
-        ? mappingImport.glossary.map((item) => ({
+      glossary: importResult.glossary.length
+        ? importResult.glossary.map((item) => ({
             id: id("gloss"),
             termo: item.term,
             definicao: item.definition,
@@ -10242,11 +10543,10 @@ function DdpModule({
         : data.glossary,
     };
     update(nextState);
-    setMappingImport(null);
-    setAssistantCreatedProcesses({});
+    setMappingImport(importResult);
     if (unmatchedSteps.length) {
       toast.warning(
-        `${unmatchedSteps.length} etapa(s) não foram aplicadas porque não correspondem a processos cadastrados.`,
+        `Conteúdo aplicado com ${unmatchedSteps.length} etapa(s) sem processo correspondente. Revise antes de salvar.`,
       );
     } else {
       toast.success("Conteúdo aplicado. Revise os campos antes de salvar o mapeamento.");
@@ -10281,6 +10581,22 @@ function DdpModule({
             const importedStepTitle = assistantProcessStepTitle;
             if (importedStepTitle) {
               await onSuggestedProcessPrepared(process);
+              update({
+                ...data,
+                steps: renumberFlowSteps(
+                  data.steps.map((step) =>
+                    normalizeLabel(step.etapa) === normalizeLabel(importedStepTitle)
+                      ? {
+                          ...step,
+                          processId: process.id,
+                          processVersion: 1,
+                          etapa: process.name,
+                          responsavel: step.responsavel || process.owner || "",
+                        }
+                      : step,
+                  ),
+                ),
+              });
               setAssistantCreatedProcesses((current) => ({
                 ...current,
                 [normalizeLabel(importedStepTitle)]: process,
@@ -10329,7 +10645,7 @@ function DdpModule({
       {mappingAssistantOpen ? (
         <Modal
           title="Assistente de preenchimento"
-          subtitle="Importe um DOCX ou cole um mapeamento estruturado. O conteúdo será conferido antes de preencher o formulário."
+          subtitle="Importe um DOCX ou cole um mapeamento estruturado. O conteúdo será aplicado diretamente ao formulário para revisão."
           onClose={() => setMappingAssistantOpen(false)}
         >
           <div className="grid gap-4">
@@ -10403,7 +10719,7 @@ function DdpModule({
                     className={`${primaryButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                   >
                     <WandSparkles className="h-4 w-4" />
-                    Analisar estrutura
+                    Preencher formulário
                   </button>
                 </div>
               </div>
@@ -10411,7 +10727,7 @@ function DdpModule({
           </div>
         </Modal>
       ) : null}
-      {mappingImport ? (
+      {showMappingImportReview && mappingImport ? (
         <Modal
           title="Revisar preenchimento sugerido"
           subtitle="Confira o reconhecimento antes de aplicar. O processo selecionado, o código e os vínculos cadastrais serão preservados."
@@ -10592,6 +10908,63 @@ function DdpModule({
           </div>
         }
       />
+      {mappingImport ? (
+        <div className="grid gap-3 rounded-lg border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/25 dark:text-amber-100">
+          <div className="flex items-start gap-3">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="font-bold">Preenchimento sugerido aplicado</div>
+              <p className="mt-0.5 text-xs opacity-80">
+                Revise todas as seções antes de salvar. Foram reconhecidas{" "}
+                {mappingImport.stats.steps} etapa(s) e {mappingImport.stats.substeps} subetapa(s).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMappingImport(null)}
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10"
+              aria-label="Fechar aviso de revisão"
+              title="Fechar aviso"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {mappingImport.warnings.length ? (
+            <ul className="grid gap-1 border-t border-amber-300/60 pt-2 text-xs dark:border-amber-800">
+              {mappingImport.warnings.map((warning) => (
+                <li key={warning}>• {warning}</li>
+              ))}
+            </ul>
+          ) : null}
+          {unmatchedImportedSteps.length ? (
+            <div className="grid gap-2 border-t border-amber-300/60 pt-2 dark:border-amber-800">
+              <div className="text-xs font-bold">
+                Etapas sem processo correspondente ({unmatchedImportedSteps.length})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {unmatchedImportedSteps.map((step) => (
+                  <button
+                    key={step.title}
+                    type="button"
+                    onClick={() => {
+                      setAssistantProcessStepTitle(step.title);
+                      setCreateProcessName(step.title);
+                    }}
+                    className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-amber-400/70 bg-card px-2.5 py-1.5 text-left text-xs font-semibold text-foreground hover:border-primary"
+                    title={`Cadastrar processo: ${step.title}`}
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                    <span className="max-w-72 truncate">{step.title}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs opacity-75">
+                Os processos sugeridos só serão gravados quando o mapeamento for salvo.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {!mappingReady ? (
         <div className="mt-2 grid place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
           <div className="grid max-w-sm gap-2">
@@ -14299,9 +14672,7 @@ function BpmnModuleV2({
     commit({
       ...data,
       lanes,
-      flows: data.flows.map((flow) =>
-        flow.id === selectedFlowId ? { ...flow, ...patch } : flow,
-      ),
+      flows: data.flows.map((flow) => (flow.id === selectedFlowId ? { ...flow, ...patch } : flow)),
     });
   }
 
@@ -15828,43 +16199,43 @@ function BpmnModuleV2({
                     </div>
                   </div>
                   <div className="mt-5 border-t border-border pt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-foreground">Raias</h4>
-                  <button
-                    type="button"
-                    onClick={addLane}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Nova
-                  </button>
-                </div>
-                <div className="grid gap-2">
-                  {lanes.map((lane, index) => (
-                    <div
-                      key={`lane-inspector-${index}`}
-                      className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-border bg-muted/20 p-2"
-                    >
-                      <Field
-                        compact
-                        label={`Raia ${index + 1}`}
-                        value={lane}
-                        onChange={(value) => updateLane(index, value)}
-                      />
-                      <div className="flex items-end gap-1">
-                        <IconButton label="Subir" onClick={() => moveLane(index, -1)}>
-                          <ArrowUp className="h-4 w-4" />
-                        </IconButton>
-                        <IconButton label="Descer" onClick={() => moveLane(index, 1)}>
-                          <ArrowDown className="h-4 w-4" />
-                        </IconButton>
-                        <IconButton label="Excluir raia" onClick={() => deleteLane(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </IconButton>
-                      </div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-foreground">Raias</h4>
+                      <button
+                        type="button"
+                        onClick={addLane}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Nova
+                      </button>
                     </div>
-                  ))}
-                </div>
+                    <div className="grid gap-2">
+                      {lanes.map((lane, index) => (
+                        <div
+                          key={`lane-inspector-${index}`}
+                          className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-border bg-muted/20 p-2"
+                        >
+                          <Field
+                            compact
+                            label={`Raia ${index + 1}`}
+                            value={lane}
+                            onChange={(value) => updateLane(index, value)}
+                          />
+                          <div className="flex items-end gap-1">
+                            <IconButton label="Subir" onClick={() => moveLane(index, -1)}>
+                              <ArrowUp className="h-4 w-4" />
+                            </IconButton>
+                            <IconButton label="Descer" onClick={() => moveLane(index, 1)}>
+                              <ArrowDown className="h-4 w-4" />
+                            </IconButton>
+                            <IconButton label="Excluir raia" onClick={() => deleteLane(index)}>
+                              <Trash2 className="h-4 w-4" />
+                            </IconButton>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </>
               ) : null}
@@ -15941,7 +16312,9 @@ function BpmnModuleV2({
                     <BpmnStyleControls
                       lineColor={selected.strokeColor ?? defaultBpmnNodeStroke(selected)}
                       lineWidth={selected.strokeWidth ?? defaultBpmnNodeStrokeWidth(selected)}
-                      fillColor={selected.fillColor ?? selected.color ?? defaultBpmnNodeFill(selected)}
+                      fillColor={
+                        selected.fillColor ?? selected.color ?? defaultBpmnNodeFill(selected)
+                      }
                       showFill
                       onLineColorChange={(strokeColor) => updateSelectedNodeStyle({ strokeColor })}
                       onLineWidthChange={(strokeWidth) => updateSelectedNodeStyle({ strokeWidth })}
@@ -16029,7 +16402,13 @@ function BpmnModuleV2({
                     <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                       {node.type === "task" ? "Tipo de tarefa" : "Tipo de gateway"}
                     </div>
-                    <div className={node.type === "task" ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-3 gap-1.5"}>
+                    <div
+                      className={
+                        node.type === "task"
+                          ? "grid grid-cols-2 gap-1.5"
+                          : "grid grid-cols-3 gap-1.5"
+                      }
+                    >
                       {options.map((option) => (
                         <button
                           key={option.value}
@@ -16207,9 +16586,7 @@ function BpmnStyleControls({
   return (
     <div className="grid gap-4">
       <label className="grid gap-2">
-        <span className="text-xs font-semibold text-foreground">
-          Espessura da linha
-        </span>
+        <span className="text-xs font-semibold text-foreground">Espessura da linha</span>
         <span className="flex items-center gap-3">
           <input
             type="range"
@@ -16701,15 +17078,14 @@ function BpmnShapeV2({
         </foreignObject>
       ) : null}
       {node.type === "task" && node.taskType && node.taskType !== "none" && !editing ? (
-        <foreignObject
-          x={node.x + 7}
-          y={node.y + 6}
-          width="22"
-          height="22"
-          pointerEvents="none"
-        >
+        <foreignObject x={node.x + 7} y={node.y + 6} width="22" height="22" pointerEvents="none">
           <div className="text-foreground">
-            <BpmnNotationIcon kind="task" value={node.taskType} framed={false} className="h-[20px] w-[20px]" />
+            <BpmnNotationIcon
+              kind="task"
+              value={node.taskType}
+              framed={false}
+              className="h-[20px] w-[20px]"
+            />
           </div>
         </foreignObject>
       ) : null}
