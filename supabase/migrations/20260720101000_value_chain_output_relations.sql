@@ -24,14 +24,35 @@ drop policy if exists "Organization read value chain output relations"
 create policy "Organization read value chain output relations"
   on public.organization_value_chain_output_relations
   for select to authenticated
-  using (public.user_has_org_access(organization_id));
+  using (
+    public.is_maestro(auth.uid())
+    or organization_id = public.current_user_organization_id()
+  );
 
 drop policy if exists "Organization editors maintain value chain output relations"
   on public.organization_value_chain_output_relations;
 create policy "Organization editors maintain value chain output relations"
   on public.organization_value_chain_output_relations
   for all to authenticated
-  using (public.user_has_org_role(organization_id, array['admin', 'editor']))
-  with check (public.user_has_org_role(organization_id, array['admin', 'editor']));
+  using (
+    public.is_maestro(auth.uid())
+    or (
+      organization_id = public.current_user_organization_id()
+      and (
+        public.has_role(auth.uid(), 'admin')
+        or public.has_role(auth.uid(), 'editor')
+      )
+    )
+  )
+  with check (
+    public.is_maestro(auth.uid())
+    or (
+      organization_id = public.current_user_organization_id()
+      and (
+        public.has_role(auth.uid(), 'admin')
+        or public.has_role(auth.uid(), 'editor')
+      )
+    )
+  );
 
 notify pgrst, 'reload schema';
