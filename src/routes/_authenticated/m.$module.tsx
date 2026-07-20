@@ -11297,7 +11297,7 @@ function DdpModule({
               <div className="grid gap-5">
                 <div>
                   <h3 className="mb-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Macroprocesso
+                    Processo
                   </h3>
                   <div className="grid gap-4">
                     <RegisteredProcessSelect
