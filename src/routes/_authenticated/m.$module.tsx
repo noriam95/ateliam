@@ -6322,7 +6322,7 @@ function ModuleWorkspacePage() {
 
   async function updateMappingCause(
     record: MappingCauseRecord,
-    patch: { status?: string; comentarios?: CauseComment[] },
+    patch: { status?: string; prazo?: string; comentarios?: CauseComment[] },
   ) {
     const document = (cloudDocsQ.data as CloudModuleDocument[] | undefined)?.find(
       (item) => item.id === record.documentId,
@@ -6343,6 +6343,7 @@ function ModuleWorkspacePage() {
             ? {
                 ...gap,
                 status: nextStatus,
+                prazo: patch.prazo ?? gap.prazo,
                 comentarios: patch.comentarios ?? gap.comentarios,
               }
             : gap,
@@ -8890,7 +8891,7 @@ function DdpCausesModuleV2({
   onDeleteStandaloneCause: (causeId: string) => Promise<void>;
   onUpdateMappingCause: (
     record: MappingCauseRecord,
-    patch: { status?: string; comentarios?: CauseComment[] },
+    patch: { status?: string; prazo?: string; comentarios?: CauseComment[] },
   ) => Promise<void>;
   onOpenMapping: (record: MappingCauseRecord) => Promise<void>;
   mode?: "new" | "consult" | "edit";
@@ -9169,7 +9170,7 @@ function DdpCausesModuleV2({
                 <th className="px-3 py-3">Prazo</th>
                 <th className="px-3 py-3">Prioridade</th>
                 <th className="px-3 py-3">Status</th>
-                <th className="w-[150px] px-4 py-3 text-right">Ações</th>
+                <th className="w-[220px] px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -9235,7 +9236,15 @@ function DdpCausesModuleV2({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1.5">
-                      <button type="button" title="Visualizar" onClick={() => openRow(row)} className="grid h-8 w-8 place-items-center rounded-md border border-border hover:bg-muted"><Eye className="h-4 w-4" /></button>
+                      <button
+                        type="button"
+                        title={row.mapping ? "Acompanhar causa sem abrir o mapeamento" : "Abrir causa"}
+                        onClick={() => openRow(row)}
+                        className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted"
+                      >
+                        {row.mapping ? <MessageSquare className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {row.mapping ? "Acompanhar" : "Abrir"}
+                      </button>
                       <button
                         type="button"
                         title={row.mapping ? "Editar no mapeamento" : "Editar causa"}
@@ -9265,7 +9274,7 @@ function DdpCausesModuleV2({
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-bold text-foreground">{draft.source === "mapping" ? "Causa do mapeamento" : draft.row ? "Editar causa avulsa" : "Nova causa avulsa"}</h2>
+                    <h2 className="text-lg font-bold text-foreground">{draft.source === "mapping" ? "Acompanhar causa do mapeamento" : draft.row ? "Editar causa avulsa" : "Nova causa avulsa"}</h2>
                     <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       {draft.source === "mapping" ? "Mapeamento" : "Avulsa"}
                     </span>
@@ -9279,7 +9288,7 @@ function DdpCausesModuleV2({
             <div className="grid gap-5 p-6">
               {draft.source === "mapping" ? (
                 <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/35 dark:text-sky-100">
-                  Os dados técnicos são mantidos no mapeamento. Aqui podem ser atualizados o status e os comentários de acompanhamento.
+                  Esta janela não altera os dados técnicos do mapeamento. Atualize somente o período de acompanhamento, o status e os comentários.
                 </div>
               ) : null}
 
@@ -9318,7 +9327,7 @@ function DdpCausesModuleV2({
                     <SelectField label="Prioridade" value={draft.gap.prioridade} options={[...CAUSE_PRIORITY_OPTIONS]} onChange={(prioridade) => updateDraft({ prioridade })} disabled={draft.source === "mapping"} />
                   </div>
                   <Field label="Responsável" value={draft.gap.responsavel} onChange={(responsavel) => updateDraft({ responsavel })} disabled={draft.source === "mapping"} />
-                  <DateRangeField label="Prazo" value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} disabled={draft.source === "mapping"} />
+                  <DateRangeField label={draft.source === "mapping" ? "Período de acompanhamento" : "Prazo"} value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} />
                   <TextArea label="Ação proposta" value={draft.gap.acao} onChange={(acao) => updateDraft({ acao })} rows={5} disabled={draft.source === "mapping"} />
                 </section>
               </div>
@@ -9340,7 +9349,7 @@ function DdpCausesModuleV2({
             </div>
             <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-card px-6 py-4">
               <button type="button" onClick={() => setDraft(null)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Cancelar</button>
-              {draft.source === "mapping" && draft.row?.mapping ? <><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { await onUpdateMappingCause(draft.row!.mapping!, { status: draft.gap.status, comentarios: commentsForSave() }); setDraft(null); toast.success("Acompanhamento da causa atualizado."); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a causa."); } finally { setSaving(false); } }} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Salvar acompanhamento</button><button type="button" onClick={() => onOpenMapping(draft.row!.mapping!).catch((error) => toast.error(error.message))} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Editar no mapeamento</button></> : <button type="button" disabled={saving} onClick={saveDraft} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">Salvar causa</button>}
+              {draft.source === "mapping" && draft.row?.mapping ? <><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { await onUpdateMappingCause(draft.row!.mapping!, { status: draft.gap.status, prazo: draft.gap.prazo, comentarios: commentsForSave() }); setDraft(null); toast.success("Acompanhamento da causa atualizado."); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a causa."); } finally { setSaving(false); } }} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Salvar acompanhamento</button><button type="button" onClick={() => onOpenMapping(draft.row!.mapping!).catch((error) => toast.error(error.message))} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Editar dados no mapeamento</button></> : <button type="button" disabled={saving} onClick={saveDraft} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">Salvar causa</button>}
             </div>
           </div>
         </div>
