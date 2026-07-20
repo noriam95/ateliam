@@ -104,6 +104,7 @@ import {
   listOrganizationDocumentModels,
   reserveCode,
   saveProcessArea,
+  saveProcessRegistration,
   savePositionRegistration,
   saveModuleDocument,
   updateOrganizationCause,
@@ -5423,6 +5424,7 @@ function ModuleWorkspacePage() {
   });
 
   const [showSave, setShowSave] = useState(false);
+  const [pendingMappingProcesses, setPendingMappingProcesses] = useState<CreatedProcess[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [comment, setComment] = useState("");
   // Incrementa a cada salvamento concluído — informa ao formulário de mapeamento
@@ -5468,6 +5470,7 @@ function ModuleWorkspacePage() {
   const removeCloudDocument = useServerFn(deleteModuleDocument);
   const updateSharedCause = useServerFn(updateOrganizationCause);
   const removeSharedCause = useServerFn(deleteOrganizationCause);
+  const saveSuggestedProcess = useServerFn(saveProcessRegistration);
   const [demoCatalogs, setDemoCatalogs] = useState<OrganizationCatalogs>(DEMO_CATALOGS);
   // Alteração de status do documento na tela de consulta (Em andamento, etc.).
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
@@ -5993,6 +5996,68 @@ function ModuleWorkspacePage() {
     }
   }
 
+  async function persistSuggestedMappingProcesses(ws: WorkspaceState) {
+    if (moduleId !== "ddp" || !pendingMappingProcesses.length) {
+      return ws;
+    }
+    const referencedIds = new Set(
+      ws.ddp.steps
+        .flatMap((step) => [step.processId, ...step.substeps.map((substep) => substep.processId)])
+        .filter(Boolean),
+    );
+    const pending = pendingMappingProcesses.filter((process) => referencedIds.has(process.id));
+    if (!pending.length) return ws;
+
+    const replacements = new Map<string, CreatedProcess>();
+    for (const process of pending) {
+      let code = process.code;
+      const processRule = normalizeRule(codeSettings?.processo);
+      const department = organizationCatalogs.departments.find(
+        (item) => normalizeLabel(item.name) === normalizeLabel(process.department ?? ""),
+      );
+      const areaSigla = normalizeSigla(department?.sigla ?? process.department ?? "");
+      if (processRule.mode === "auto" && !code && areaSigla) {
+        code = (
+          await reserveCodeFn({
+            data: { organizationId: codeOrganizationId, type: "processo", areaSigla },
+          })
+        ).code;
+      }
+      const saved = isDemo
+        ? { ...process, id: `demo-process-${crypto.randomUUID()}`, code }
+        : ((await saveSuggestedProcess({
+            data: {
+              organizationId: codeOrganizationId,
+              code,
+              name: process.name,
+              type: process.type,
+              valueChainId: process.value_chain_id,
+              parentProcessId: process.parent_process_id,
+              department: process.department,
+              owner: process.owner,
+              description: process.description,
+              status: "Ativo",
+            },
+          })) as unknown as CreatedProcess);
+      replacements.set(process.id, saved);
+    }
+
+    return {
+      ...ws,
+      ddp: {
+        ...ws.ddp,
+        steps: ws.ddp.steps.map((step) => ({
+          ...step,
+          processId: replacements.get(step.processId)?.id ?? step.processId,
+          substeps: step.substeps.map((substep) => ({
+            ...substep,
+            processId: replacements.get(substep.processId)?.id ?? substep.processId,
+          })),
+        })),
+      },
+    };
+  }
+
   const saveMut = useMutation({
     mutationFn: async () => {
       if (moduleId === "ddp" && !workspace.ddp.macroprocess.processId) {
@@ -6004,6 +6069,7 @@ function ModuleWorkspacePage() {
       // o documento ainda não tem código.
       let workspaceToSave = workspace;
       if (moduleId === "ddp") {
+        workspaceToSave = await persistSuggestedMappingProcesses(workspaceToSave);
         workspaceToSave = await syncDdpGapsToCatalog(workspaceToSave);
       }
       if (isAutoCodeModule && !currentModuleCode(workspaceToSave)) {
@@ -6044,6 +6110,8 @@ function ModuleWorkspacePage() {
       setComment("");
       setSavedNonce((n) => n + 1);
       if (moduleId === "ddp") {
+        setPendingMappingProcesses([]);
+        if (!isDemo) catalogsQ.refetch();
         if (!isDemo && "document" in result) {
           setActiveCloudDocument({
             id: result.document.id,
@@ -6776,6 +6844,12 @@ function ModuleWorkspacePage() {
                 } else {
                   await catalogsQ.refetch();
                 }
+              }}
+              onSuggestedProcessPrepared={(process) => {
+                setPendingMappingProcesses((current) => [
+                  ...current.filter((item) => item.id !== process.id),
+                  process,
+                ]);
               }}
               onSystemCreated={async (system) => {
                 if (isDemo) {
@@ -9575,6 +9649,7 @@ function DdpModule({
   isDemo,
   codeSettings,
   onProcessCreated,
+  onSuggestedProcessPrepared,
   onSystemCreated,
 }: {
   data: DdpState;
@@ -9593,6 +9668,7 @@ function DdpModule({
   codeSettings: CodeSettings | null;
   // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
+  onSuggestedProcessPrepared: (process: CreatedProcess) => Promise<void> | void;
   // Idem, para o sistema recém-cadastrado a partir de "Sistemas envolvidos".
   onSystemCreated: (system: OrganizationSystem) => Promise<void> | void;
 }) {
@@ -9606,6 +9682,10 @@ function DdpModule({
   const [mappingAssistantText, setMappingAssistantText] = useState("");
   const [mappingAssistantBusy, setMappingAssistantBusy] = useState(false);
   const [mappingImport, setMappingImport] = useState<MappingDocumentImport | null>(null);
+  const [assistantProcessStepTitle, setAssistantProcessStepTitle] = useState<string | null>(null);
+  const [assistantCreatedProcesses, setAssistantCreatedProcesses] = useState<
+    Record<string, CreatedProcess>
+  >({});
   const mappingDocxInputRef = useRef<HTMLInputElement>(null);
   const [libraryCauseRows, setLibraryCauseRows] = useState<Record<string, boolean>>({});
   const [causeSearch, setCauseSearch] = useState<Record<string, string>>({});
@@ -9640,11 +9720,12 @@ function DdpModule({
     () =>
       mappingImport?.steps.filter(
         (step) =>
+          !assistantCreatedProcesses[normalizeLabel(step.title)] &&
           !flowProcessOptions.some(
             (process) => normalizeLabel(process.name) === normalizeLabel(step.title),
           ),
       ) ?? [],
-    [flowProcessOptions, mappingImport],
+    [assistantCreatedProcesses, flowProcessOptions, mappingImport],
   );
 
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
@@ -10013,6 +10094,7 @@ function DdpModule({
     setMappingAssistantBusy(true);
     try {
       const { parseDocxMapping } = await import("@/lib/docx-mapping-import");
+      setAssistantCreatedProcesses({});
       setMappingImport(await parseDocxMapping(file));
       setMappingAssistantOpen(false);
     } catch (error) {
@@ -10025,6 +10107,7 @@ function DdpModule({
   async function handleMappingTextImport() {
     try {
       const { parseStructuredMappingText } = await import("@/lib/docx-mapping-import");
+      setAssistantCreatedProcesses({});
       setMappingImport(parseStructuredMappingText(mappingAssistantText));
       setMappingAssistantOpen(false);
     } catch (error) {
@@ -10040,9 +10123,11 @@ function DdpModule({
     if (!mappingImport) return;
     const unmatchedSteps: string[] = [];
     const importedSteps = mappingImport.steps.flatMap((step): DdpFlowStep[] => {
-      const process = flowProcessOptions.find(
-        (item) => normalizeLabel(item.name) === normalizeLabel(step.title),
-      );
+      const process =
+        assistantCreatedProcesses[normalizeLabel(step.title)] ??
+        flowProcessOptions.find(
+          (item) => normalizeLabel(item.name) === normalizeLabel(step.title),
+        );
       if (!process) {
         unmatchedSteps.push(step.title);
         return [];
@@ -10158,6 +10243,7 @@ function DdpModule({
     };
     update(nextState);
     setMappingImport(null);
+    setAssistantCreatedProcesses({});
     if (unmatchedSteps.length) {
       toast.warning(
         `${unmatchedSteps.length} etapa(s) não foram aplicadas porque não correspondem a processos cadastrados.`,
@@ -10186,8 +10272,22 @@ function DdpModule({
           isDemo={isDemo}
           codeSettings={codeSettings}
           initialName={createProcessName}
-          onClose={() => setCreateProcessName(null)}
+          deferPersistence={Boolean(assistantProcessStepTitle)}
+          onClose={() => {
+            setCreateProcessName(null);
+            setAssistantProcessStepTitle(null);
+          }}
           onCreated={async (process) => {
+            const importedStepTitle = assistantProcessStepTitle;
+            if (importedStepTitle) {
+              await onSuggestedProcessPrepared(process);
+              setAssistantCreatedProcesses((current) => ({
+                ...current,
+                [normalizeLabel(importedStepTitle)]: process,
+              }));
+              toast.success("Processo associado à etapa sugerida.");
+              return;
+            }
             await onProcessCreated(process);
             selectPrimaryProcess(process as unknown as OrganizationProcess);
           }}
@@ -10380,11 +10480,59 @@ function DdpModule({
               </div>
             ) : null}
             {unmatchedImportedSteps.length ? (
-              <div className="rounded-lg border border-border bg-muted/35 p-3 text-sm text-foreground">
-                <div className="font-bold">Etapas sem processo correspondente</div>
-                <p className="mt-1 text-muted-foreground">
-                  Estas etapas não serão aplicadas até que exista um processo cadastrado com o mesmo
-                  nome: {unmatchedImportedSteps.map((step) => step.title).join(", ")}.
+              <div className="grid gap-3 rounded-lg border border-amber-300/60 bg-amber-50/60 p-4 text-sm text-foreground dark:border-amber-800 dark:bg-amber-950/20">
+                <div>
+                  <div className="flex items-center gap-2 font-bold">
+                    <TriangleAlert className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                    Processos não encontrados
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    Cadastre os processos sugeridos para que estas etapas também sejam aplicadas ao
+                    formulário.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  {unmatchedImportedSteps.map((step, index) => (
+                    <div
+                      key={`${normalizeLabel(step.title)}-${index}`}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
+                    >
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent font-data text-xs font-bold text-[var(--gold)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-semibold text-foreground" title={step.title}>
+                          {step.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Nenhum processo cadastrado possui este nome.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssistantProcessStepTitle(step.title);
+                          setCreateProcessName(step.title);
+                        }}
+                        className={`${secondaryButtonClass} shrink-0`}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Cadastrar processo
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {Object.keys(assistantCreatedProcesses).length ? (
+              <div className="rounded-lg border border-emerald-300/60 bg-emerald-50 p-3 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/25 dark:text-emerald-100">
+                <div className="flex items-center gap-2 font-bold">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {Object.keys(assistantCreatedProcesses).length} processo(s) preparado(s)
+                </div>
+                <p className="mt-1 opacity-80">
+                  Os novos processos ainda não foram gravados. Eles serão cadastrados somente ao
+                  salvar o mapeamento.
                 </p>
               </div>
             ) : null}

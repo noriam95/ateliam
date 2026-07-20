@@ -2353,6 +2353,7 @@ export function ProcessRegistrationDialog({
   isDemo,
   codeSettings,
   initialName = "",
+  deferPersistence = false,
   onClose,
   onCreated,
 }: {
@@ -2360,6 +2361,7 @@ export function ProcessRegistrationDialog({
   isDemo: boolean;
   codeSettings: CodeSettings | null;
   initialName?: string;
+  deferPersistence?: boolean;
   onClose: () => void;
   onCreated: (process: CreatedProcess) => void;
 }) {
@@ -2514,7 +2516,7 @@ export function ProcessRegistrationDialog({
   const saveMutation = useMutation({
     mutationFn: async (): Promise<CreatedProcess> => {
       let processCode = draft.code || null;
-      if (isAutoProcessCode && !processCode && processAreaSigla) {
+      if (!deferPersistence && isAutoProcessCode && !processCode && processAreaSigla) {
         processCode = isDemo
           ? reserveDemoDocumentCode(organizationId, "processo", processAreaSigla, codeSettings)
           : (
@@ -2524,6 +2526,24 @@ export function ProcessRegistrationDialog({
             ).code;
       }
       const nowIso = new Date().toISOString();
+      if (deferPersistence) {
+        return {
+          id: `pending-process:${crypto.randomUUID()}`,
+          organization_id: organizationId ?? "",
+          current_version: 1,
+          code: processCode,
+          name: draft.name,
+          type: draft.type,
+          value_chain_id: draft.valueChainId || null,
+          parent_process_id: draft.parentProcessId || null,
+          department: draft.department || null,
+          owner: draft.owner || null,
+          description: draft.description || null,
+          status: "Ativo",
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+      }
       if (isDemo) {
         return {
           id: `demo-process-${Date.now()}`,
@@ -2560,7 +2580,9 @@ export function ProcessRegistrationDialog({
       return row;
     },
     onSuccess: (process) => {
-      toast.success("Processo cadastrado.");
+      toast.success(
+        deferPersistence ? "Processo preparado para o mapeamento." : "Processo cadastrado.",
+      );
       onCreated(process);
       onClose();
     },
@@ -2584,9 +2606,13 @@ export function ProcessRegistrationDialog({
             {copy.icon}
           </span>
           <div className="min-w-0">
-            <h2 className="font-display text-base font-bold">Novo processo</h2>
+            <h2 className="font-display text-base font-bold">
+              {deferPersistence ? "Preparar novo processo" : "Novo processo"}
+            </h2>
             <p className="truncate text-xs text-muted-foreground">
-              Cadastro de processo (mesmos campos do menu Cadastros)
+              {deferPersistence
+                ? "O cadastro será efetivado ao salvar o mapeamento"
+                : "Cadastro de processo (mesmos campos do menu Cadastros)"}
             </p>
           </div>
           <button
@@ -2607,11 +2633,15 @@ export function ProcessRegistrationDialog({
             data={data}
             autoCode={isAutoProcessCode}
             codePreview={processCodePreview}
-            quickCreate={{
-              onCreateValueChain: (name) => openRelatedCreate("valueChain", name),
-              onCreateArea: (name) => openRelatedCreate("area", name),
-              onCreateOwner: (name) => openRelatedCreate("owner", name),
-            }}
+            quickCreate={
+              deferPersistence
+                ? undefined
+                : {
+                    onCreateValueChain: (name) => openRelatedCreate("valueChain", name),
+                    onCreateArea: (name) => openRelatedCreate("area", name),
+                    onCreateOwner: (name) => openRelatedCreate("owner", name),
+                  }
+            }
           />
         </div>
         <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
@@ -2627,7 +2657,12 @@ export function ProcessRegistrationDialog({
             disabled={saveMutation.isPending || !isValidDraft("processes", draft)}
             className={primaryButtonClass}
           >
-            <Save className="h-4 w-4" /> {saveMutation.isPending ? "Salvando..." : "Salvar"}
+            <Save className="h-4 w-4" />{" "}
+            {saveMutation.isPending
+              ? "Preparando..."
+              : deferPersistence
+                ? "Adicionar ao mapeamento"
+                : "Salvar"}
           </button>
         </footer>
       </form>
