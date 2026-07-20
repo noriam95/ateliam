@@ -422,6 +422,9 @@ type BpmnNode = {
   description?: string;
   responsible?: string;
   color?: string;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
   taskType?: BpmnTaskType;
   gatewayType?: BpmnGatewayType;
 };
@@ -441,6 +444,8 @@ type BpmnFlow = {
   toAnchor?: BpmnEdgeAnchor;
   freeFrom?: { x: number; y: number };
   freeTo?: { x: number; y: number };
+  strokeColor?: string;
+  strokeWidth?: number;
 };
 
 type DdpState = {
@@ -13674,7 +13679,17 @@ function BpmnModuleV2({
   const hasPool = Boolean(data.poolName.trim());
   const laneHeights = lanes.map((_, index) => data.laneHeights?.[index] ?? 170);
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null;
+  const selectedNodes = data.nodes.filter((node) => selectedNodeIds.includes(node.id));
   const selectedFlow = data.flows.find((flow) => flow.id === selectedFlowId) ?? null;
+  const commonNodeStrokeColor = commonSelectionValue(
+    selectedNodes.map((node) => node.strokeColor ?? defaultBpmnNodeStroke(node)),
+  );
+  const commonNodeStrokeWidth = commonSelectionValue(
+    selectedNodes.map((node) => node.strokeWidth ?? defaultBpmnNodeStrokeWidth(node)),
+  );
+  const commonNodeFillColor = commonSelectionValue(
+    selectedNodes.map((node) => node.fillColor ?? node.color ?? defaultBpmnNodeFill(node)),
+  );
   const poolX = BPMN_POOL_X;
   const poolY = BPMN_POOL_Y;
   const poolLabelWidth = BPMN_POOL_LABEL_WIDTH;
@@ -13955,6 +13970,31 @@ function BpmnModuleV2({
       nodes: data.nodes.map((node) => (node.id === nodeId ? { ...node, ...patch } : node)),
     });
     setContextMenu(null);
+  }
+
+  function updateSelectedNodeStyle(
+    patch: Pick<BpmnNode, "fillColor" | "strokeColor" | "strokeWidth">,
+  ) {
+    const ids = selectedNodeIds.length ? selectedNodeIds : selectedId ? [selectedId] : [];
+    if (!ids.length) return;
+    commit({
+      ...data,
+      lanes,
+      nodes: data.nodes.map((node) => (ids.includes(node.id) ? { ...node, ...patch } : node)),
+    });
+  }
+
+  function updateSelectedFlowStyle(
+    patch: Pick<BpmnFlow, "strokeColor" | "strokeWidth">,
+  ) {
+    if (!selectedFlowId) return;
+    commit({
+      ...data,
+      lanes,
+      flows: data.flows.map((flow) =>
+        flow.id === selectedFlowId ? { ...flow, ...patch } : flow,
+      ),
+    });
   }
 
   function addNode(type: BpmnNodeType, position?: { x: number; y: number }) {
@@ -14907,7 +14947,7 @@ function BpmnModuleV2({
                     refX="8"
                     refY="4.5"
                   >
-                    <path d="M0,0 L9,4.5 L0,9 Z" fill="var(--foreground)" />
+                    <path d="M0,0 L9,4.5 L0,9 Z" fill="context-stroke" />
                   </marker>
                   <filter id="bpmn-tool-shadow" x="-25%" y="-15%" width="150%" height="140%">
                     <feDropShadow
@@ -15469,15 +15509,17 @@ function BpmnModuleV2({
               <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                 Propriedades
               </h3>
-              <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                  Pool vinculada
-                </div>
-                <div className="mt-1 text-sm font-semibold text-foreground">
-                  {data.poolName || "Selecione um processo"}
-                </div>
-              </div>
-              <div className="mt-5 border-t border-border pt-4">
+              {!selectedNodes.length && !selectedFlow ? (
+                <>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      Pool vinculada
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">
+                      {data.poolName || "Selecione um processo"}
+                    </div>
+                  </div>
+                  <div className="mt-5 border-t border-border pt-4">
                 <div className="mb-2 flex items-center justify-between">
                   <h4 className="text-sm font-bold text-foreground">Raias</h4>
                   <button
@@ -15515,8 +15557,31 @@ function BpmnModuleV2({
                     </div>
                   ))}
                 </div>
-              </div>
-              {selected ? (
+                  </div>
+                </>
+              ) : null}
+              {selectedNodes.length > 1 ? (
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                  <div className="mb-1 text-sm font-bold text-foreground">
+                    {selectedNodes.length} elementos selecionados
+                  </div>
+                  <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
+                    As alterações serão aplicadas a todos os elementos compatíveis.
+                  </p>
+                  <BpmnStyleControls
+                    lineColor={commonNodeStrokeColor ?? "#64748b"}
+                    lineWidth={commonNodeStrokeWidth ?? 2}
+                    fillColor={commonNodeFillColor ?? "#ffffff"}
+                    showFill
+                    mixedLineColor={!commonNodeStrokeColor}
+                    mixedLineWidth={commonNodeStrokeWidth == null}
+                    mixedFillColor={!commonNodeFillColor}
+                    onLineColorChange={(strokeColor) => updateSelectedNodeStyle({ strokeColor })}
+                    onLineWidthChange={(strokeWidth) => updateSelectedNodeStyle({ strokeWidth })}
+                    onFillColorChange={(fillColor) => updateSelectedNodeStyle({ fillColor })}
+                  />
+                </div>
+              ) : selected ? (
                 <div className="mt-5 border-t border-border pt-4">
                   <h4 className="mb-3 text-sm font-bold text-foreground">Elemento</h4>
                   <div className="grid gap-3">
@@ -15561,6 +15626,20 @@ function BpmnModuleV2({
                       }
                     />
                   </div>
+                  <div className="mt-5 border-t border-border pt-4">
+                    <h5 className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Aparência
+                    </h5>
+                    <BpmnStyleControls
+                      lineColor={selected.strokeColor ?? defaultBpmnNodeStroke(selected)}
+                      lineWidth={selected.strokeWidth ?? defaultBpmnNodeStrokeWidth(selected)}
+                      fillColor={selected.fillColor ?? selected.color ?? defaultBpmnNodeFill(selected)}
+                      showFill
+                      onLineColorChange={(strokeColor) => updateSelectedNodeStyle({ strokeColor })}
+                      onLineWidthChange={(strokeWidth) => updateSelectedNodeStyle({ strokeWidth })}
+                      onFillColorChange={(fillColor) => updateSelectedNodeStyle({ fillColor })}
+                    />
+                  </div>
                 </div>
               ) : selectedFlow ? (
                 <div className="mt-5 border-t border-border pt-4">
@@ -15578,6 +15657,15 @@ function BpmnModuleV2({
                       })
                     }
                   />
+                  <div className="mt-4 border-t border-border pt-4">
+                    <BpmnStyleControls
+                      lineColor={selectedFlow.strokeColor ?? "#26352f"}
+                      lineWidth={selectedFlow.strokeWidth ?? 2.2}
+                      showFill={false}
+                      onLineColorChange={(strokeColor) => updateSelectedFlowStyle({ strokeColor })}
+                      onLineWidthChange={(strokeWidth) => updateSelectedFlowStyle({ strokeWidth })}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() =>
@@ -15751,6 +15839,113 @@ function inlineSvgExportStyles(source: SVGSVGElement, clone: SVGSVGElement) {
   });
 }
 
+function defaultBpmnNodeStroke(node: BpmnNode) {
+  if (node.type === "start") return "#66a80f";
+  if (node.type === "end") return "#a40000";
+  if (node.type === "gateway") return "#c49314";
+  if (node.type === "annotation") return "#06966f";
+  return "#26352f";
+}
+
+function defaultBpmnNodeFill(node: BpmnNode) {
+  if (node.type === "start") return "#d8f3a7";
+  if (node.type === "end") return "#f4c2bf";
+  if (node.type === "gateway") return "#fff5d8";
+  if (node.type === "annotation") return "#fff8e8";
+  return "#ffffff";
+}
+
+function defaultBpmnNodeStrokeWidth(node: BpmnNode) {
+  return node.type === "end" ? 4 : node.type === "start" ? 2.5 : 2;
+}
+
+function commonSelectionValue<T>(values: T[]) {
+  if (!values.length) return undefined;
+  return values.every((value) => value === values[0]) ? values[0] : undefined;
+}
+
+function BpmnStyleControls({
+  lineColor,
+  lineWidth,
+  fillColor,
+  showFill,
+  mixedLineColor = false,
+  mixedLineWidth = false,
+  mixedFillColor = false,
+  onLineColorChange,
+  onLineWidthChange,
+  onFillColorChange,
+}: {
+  lineColor: string;
+  lineWidth: number;
+  fillColor?: string;
+  showFill: boolean;
+  mixedLineColor?: boolean;
+  mixedLineWidth?: boolean;
+  mixedFillColor?: boolean;
+  onLineColorChange: (value: string) => void;
+  onLineWidthChange: (value: number) => void;
+  onFillColorChange?: (value: string) => void;
+}) {
+  return (
+    <div className="grid gap-4">
+      <label className="grid gap-2">
+        <span className="flex items-center justify-between text-xs font-semibold text-foreground">
+          Espessura da linha
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {mixedLineWidth ? "Mista" : `${lineWidth}px`}
+          </span>
+        </span>
+        <input
+          type="range"
+          min="1"
+          max="8"
+          step="0.5"
+          value={lineWidth}
+          onChange={(event) => onLineWidthChange(Number(event.target.value))}
+          className="h-2 w-full cursor-pointer accent-[var(--gold)]"
+        />
+      </label>
+      <label className="grid gap-2">
+        <span className="flex items-center justify-between text-xs font-semibold text-foreground">
+          Cor da linha
+          <span className="font-mono text-[10px] uppercase text-muted-foreground">
+            {mixedLineColor ? "Mista" : lineColor}
+          </span>
+        </span>
+        <span className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-2">
+          <input
+            type="color"
+            value={lineColor}
+            onChange={(event) => onLineColorChange(event.target.value)}
+            className="h-7 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+          />
+          <span className="text-xs text-muted-foreground">Selecionar cor</span>
+        </span>
+      </label>
+      {showFill && fillColor && onFillColorChange ? (
+        <label className="grid gap-2">
+          <span className="flex items-center justify-between text-xs font-semibold text-foreground">
+            Cor de preenchimento
+            <span className="font-mono text-[10px] uppercase text-muted-foreground">
+              {mixedFillColor ? "Mista" : fillColor}
+            </span>
+          </span>
+          <span className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-2">
+            <input
+              type="color"
+              value={fillColor}
+              onChange={(event) => onFillColorChange(event.target.value)}
+              className="h-7 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+            />
+            <span className="text-xs text-muted-foreground">Selecionar cor</span>
+          </span>
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
 function BpmnConnectorV2({
   flow,
   from,
@@ -15808,11 +16003,9 @@ function BpmnConnectorV2({
         stroke={
           preview
             ? "#10a37f"
-            : selected
-              ? "var(--gold)"
-              : "color-mix(in oklab, var(--foreground) 82%, transparent)"
+            : (flow.strokeColor ?? "color-mix(in oklab, var(--foreground) 82%, transparent)")
         }
-        strokeWidth={preview ? 3.4 : selected ? 3 : 2.2}
+        strokeWidth={preview ? 3.4 : (flow.strokeWidth ?? 2.2)}
         strokeDasharray={preview ? "8 6" : undefined}
         markerEnd="url(#arrow-v2)"
         pointerEvents="none"
@@ -15964,17 +16157,15 @@ function BpmnShapeV2({
   const height =
     node.height ??
     (node.type === "gateway" ? 90 : node.type === "start" || node.type === "end" ? 70 : 72);
-  const stroke = connecting
-    ? "var(--gold)"
-    : selected
-      ? "#10a37f"
-      : "color-mix(in oklab, var(--foreground) 82%, transparent)";
+  const stroke = connecting ? "var(--gold)" : (node.strokeColor ?? defaultBpmnNodeStroke(node));
   const fill =
+    node.fillColor ??
     node.color ??
     (node.type === "annotation"
       ? "color-mix(in oklab, var(--gold) 13%, var(--card))"
       : "var(--card)");
-  const common = { fill, stroke, strokeWidth: selected || connecting ? 3 : 2 };
+  const strokeWidth = node.strokeWidth ?? defaultBpmnNodeStrokeWidth(node);
+  const common = { fill, stroke, strokeWidth: connecting ? Math.max(strokeWidth, 3) : strokeWidth };
   const isEvent = node.type === "start" || node.type === "end";
   const quickToolsX = node.x + width + 52 > canvasRight ? node.x - 48 : node.x + width + 14;
   const connectionHandles: BpmnEdgeAnchor[] = [
@@ -16007,9 +16198,9 @@ function BpmnShapeV2({
       {node.type === "annotation" ? (
         <path
           d={`M${node.x},${node.y} H${node.x + width - 18} L${node.x + width},${node.y + 18} V${node.y + height} H${node.x} Z`}
-          fill="color-mix(in oklab, var(--gold) 13%, var(--card))"
+          fill={fill}
           stroke={stroke}
-          strokeWidth={selected ? 3 : 2}
+          strokeWidth={connecting ? Math.max(strokeWidth, 3) : strokeWidth}
           strokeDasharray="6 4"
         />
       ) : null}
@@ -16078,9 +16269,9 @@ function BpmnShapeV2({
           cx={node.x + width / 2}
           cy={node.y + height / 2}
           r={Math.min(width, height) / 2 - 4}
-          fill="#d8f3a7"
-          stroke={selected || connecting ? stroke : "#66a80f"}
-          strokeWidth={selected ? 3 : 2.5}
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={connecting ? Math.max(strokeWidth, 3) : strokeWidth}
         />
       ) : null}
       {node.type === "end" ? (
@@ -16088,9 +16279,9 @@ function BpmnShapeV2({
           cx={node.x + width / 2}
           cy={node.y + height / 2}
           r={Math.min(width, height) / 2 - 5}
-          fill="#f4c2bf"
-          stroke={selected || connecting ? stroke : "#a40000"}
-          strokeWidth={selected ? 5 : 4}
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={connecting ? Math.max(strokeWidth, 5) : strokeWidth}
         />
       ) : null}
       {isEvent && !editing ? (
