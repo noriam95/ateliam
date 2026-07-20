@@ -1772,6 +1772,45 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
   );
 }
 
+function OperationalMetricCard({
+  label,
+  value,
+  detail,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  icon: ReactNode;
+  color: string;
+}) {
+  return (
+    <div className={`${DASHBOARD_CARD_CLASS} flex min-h-[178px] flex-col justify-between gap-5`}>
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className="grid h-10 w-10 place-items-center rounded-lg"
+          style={{
+            backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
+            color,
+          }}
+        >
+          {icon}
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <div>
+        <strong className="font-data text-4xl font-bold leading-none text-foreground">{value}</strong>
+        <div className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
+          {detail}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type DashboardCauseColumn = keyof Pick<
   DashboardCauseRow,
   | "cause"
@@ -2590,34 +2629,42 @@ function WorkspaceContent({
     );
   }
 
-  const totalProcesses = totals?.processes ?? 0;
-  const activeProcesses = totals?.activeProcesses ?? 0;
-  const ddpCount = totals?.ddps ?? 0;
-  const popCount = totals?.pops ?? 0;
-  const coveragePct = totalProcesses > 0 ? Math.round((activeProcesses / totalProcesses) * 100) : 0;
-  const ddpCoverage = totalProcesses > 0 ? Math.round((ddpCount / totalProcesses) * 100) : 0;
-  const recentActivityItems: RecentActivityItem[] = [
-    ...recentProcesses.map((proc) => ({
-      id: `process-${proc.id}`,
-      title: proc.name,
-      subtitle: proc.owner ?? "-",
-      tag: "Processo",
-      // Processos não são versionados.
-      version: null,
-      updatedAt: proc.updated_at,
-    })),
-    ...recentDocuments.map((doc) => ({
-      id: `document-${doc.id}`,
-      title: doc.name,
-      subtitle: "Documento emitido",
-      tag: documentActivityTag(doc.module, doc.name),
-      // Mapeamentos (ddp) não são versionados; demais documentos mantêm versão.
-      version: doc.module === "ddp" ? null : `v${doc.current_version}`,
-      updatedAt: doc.updated_at,
-    })),
-  ]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 6);
+  const pendingMappings = mappingStatusCounts.emAndamento + mappingStatusCounts.emRevisao;
+  const openCauseRows = causeRows.filter((row) => {
+    const status = row.status
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase();
+    return !status.includes("encerr") && !status.includes("cancel");
+  });
+  const priorityRank = (priority: string) => {
+    const value = priority
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase();
+    if (value.includes("alta") || value.includes("crit")) return 3;
+    if (value.includes("media")) return 2;
+    return 1;
+  };
+  const attentionCauses = [...openCauseRows]
+    .sort(
+      (a, b) =>
+        priorityRank(b.priority) - priorityRank(a.priority) ||
+        b.updatedAt.localeCompare(a.updatedAt),
+    )
+    .slice(0, 3);
+  const highPriorityCauses = openCauseRows.filter((row) => priorityRank(row.priority) === 3).length;
+  const documentsInProgress = documentCatalogRows.filter((row) => {
+    const status = row.status
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase();
+    return status.includes("andamento") || status.includes("revisao");
+  }).length;
+  const largestDocumentTypeCount = Math.max(
+    1,
+    ...DOCUMENT_CATALOG_TYPES.map((type) => documentTypeCount(documentCatalogRows, type)),
+  );
 
   return (
     <div className="mx-auto grid w-full max-w-[1600px] gap-5">
@@ -2651,60 +2698,66 @@ function WorkspaceContent({
         </div>
       </section>
 
-      {/* Top Cards */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {/* Card 2: Índice de Mapeamento (cobertura de processos com mapeamento) */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <ExpandableCard
           title="Índice de Mapeamento"
           icon={<Activity className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[250px] flex-col gap-4`}
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col gap-4 xl:col-span-2`}
           expanded={<MappingCoverageExpanded coverage={mappingCoverage} />}
         >
-          <div className="grid flex-1 grid-cols-[132px_minmax(0,1fr)] items-center gap-5">
+          <div className="grid flex-1 grid-cols-[138px_minmax(0,1fr)] items-center gap-6">
             <CoverageDonut
               covered={mappingCoverage.covered}
               total={mappingCoverage.total}
-              size={126}
+              size={132}
               stroke={15}
             />
-            <div className="grid min-w-0 gap-2.5">
-              <div className="rounded-lg border border-border bg-background px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--gold)]" />
-                    <span className="truncate">Com mapeamento</span>
-                  </span>
-                  <strong className="font-data text-lg text-foreground">
-                    {mappingCoverage.covered}
-                  </strong>
-                </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Processos cobertos
               </div>
-              <div className="rounded-lg border border-border bg-background px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/25" />
-                    <span className="truncate">Sem mapeamento</span>
-                  </span>
-                  <strong className="font-data text-lg text-foreground">
-                    {Math.max(0, mappingCoverage.total - mappingCoverage.covered)}
-                  </strong>
-                </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <strong className="font-data text-3xl font-bold text-foreground">
+                  {mappingCoverage.covered}
+                </strong>
+                <span className="text-sm text-muted-foreground">de {mappingCoverage.total}</span>
               </div>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Processos cadastrados relacionados a um mapeamento como processo principal, etapa
+                ou subetapa.
+              </p>
             </div>
-          </div>
-          <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3 text-[11px] text-muted-foreground">
-            <span>Cobertura dos processos cadastrados</span>
-            <strong className="shrink-0 text-foreground">
-              {mappingCoverage.covered} de {mappingCoverage.total}
-            </strong>
           </div>
         </ExpandableCard>
 
-        {/* Card 3: Acompanhamento de Mapeamentos */}
+        <OperationalMetricCard
+          label="Mapeamentos"
+          value={mappingRows.length}
+          detail={`${pendingMappings} ${pendingMappings === 1 ? "registro pendente" : "registros pendentes"}`}
+          icon={<FileText className="h-5 w-5" />}
+          color="var(--gold)"
+        />
+        <OperationalMetricCard
+          label="Causas abertas"
+          value={openCauseRows.length}
+          detail={`${highPriorityCauses} ${highPriorityCauses === 1 ? "causa de prioridade alta" : "causas de prioridade alta"}`}
+          icon={<CircleAlert className="h-5 w-5" />}
+          color="#c95151"
+        />
+        <OperationalMetricCard
+          label="Documentos"
+          value={documentCatalogRows.length}
+          detail={`${documentsInProgress} ${documentsInProgress === 1 ? "item em elaboração ou revisão" : "itens em elaboração ou revisão"}`}
+          icon={<FileCheck2 className="h-5 w-5" />}
+          color="#1f9d6b"
+        />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(360px,0.7fr)]">
         <ExpandableCard
           title="Acompanhamento de Mapeamentos"
           icon={<FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[250px] flex-col gap-4 xl:col-span-2`}
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<MappingRecordsTable rows={mappingRows} />}
         >
           <div className="flex flex-1 flex-col justify-center gap-3">
@@ -2729,35 +2782,63 @@ function WorkspaceContent({
             </div>
           </div>
         </ExpandableCard>
-      </section>
 
-      <section>
         <ExpandableCard
-          title="Causas identificadas"
+          title="Causas que exigem atenção"
           icon={<CircleAlert className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col gap-4`}
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<CauseRecordsTable rows={causeRows} />}
         >
-          <div className="flex flex-1 flex-col justify-center gap-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-xs text-muted-foreground">
-                Acompanhamento das causas por status
-              </span>
-              <strong className="font-data text-sm text-foreground">
-                {causeRows.length} no total
-              </strong>
-            </div>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {CAUSE_STATUS_TILES.map((tile) => (
-                <StatusSummaryTile
-                  key={tile.key}
-                  label={tile.label}
-                  value={causeStatusCounts[tile.key]}
-                  total={causeRows.length}
-                  color={tile.color}
-                />
-              ))}
-            </div>
+          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>Prioridade e atualização mais recente</span>
+            <strong className="font-data text-foreground">{openCauseRows.length} abertas</strong>
+          </div>
+          <div className="mt-1 divide-y divide-border">
+            {attentionCauses.map((cause) => (
+              <div key={cause.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-3">
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-semibold text-foreground">{cause.cause}</div>
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+                    <span className="font-data font-semibold text-[var(--gold)]">
+                      {cause.source === "Mapeamento" ? cause.mapping : "Causa avulsa"}
+                    </span>
+                    {cause.process && cause.process !== "-" ? (
+                      <span className="max-w-[220px] truncate">{cause.process}</span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{
+                      color: priorityRank(cause.priority) === 3 ? "#c95151" : "var(--gold)",
+                      backgroundColor:
+                        priorityRank(cause.priority) === 3
+                          ? "color-mix(in oklab, #c95151 10%, var(--card))"
+                          : "color-mix(in oklab, var(--gold) 12%, var(--card))",
+                    }}
+                  >
+                    {cause.priority || "Sem prioridade"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{cause.status}</span>
+                </div>
+              </div>
+            ))}
+            {attentionCauses.length === 0 ? (
+              <div className="py-10 text-center text-xs text-muted-foreground">
+                Nenhuma causa aberta exige atenção.
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-auto grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border bg-border">
+            {CAUSE_STATUS_TILES.map((tile) => (
+              <div key={tile.key} className="min-w-0 bg-background px-2 py-2 text-center">
+                <div className="font-data text-sm font-bold" style={{ color: tile.color }}>
+                  {causeStatusCounts[tile.key]}
+                </div>
+                <div className="truncate text-[9px] text-muted-foreground">{tile.label}</div>
+              </div>
+            ))}
           </div>
         </ExpandableCard>
       </section>
@@ -2772,51 +2853,52 @@ function WorkspaceContent({
           className={DASHBOARD_CARD_CLASS}
           expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
         >
-          <div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-[minmax(220px,0.78fr)_minmax(0,1.5fr)]">
-            {/* Controle de Documentos */}
-            <div className="min-w-0 rounded-lg border border-border bg-background p-3">
-              <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Controle de Documentos
+          <div className="mt-4 grid min-w-0 gap-6 lg:grid-cols-[170px_minmax(0,1fr)]">
+            <div className="flex min-h-[210px] flex-col justify-between rounded-lg border border-border bg-[color-mix(in_oklab,#006b57_8%,var(--background))] p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color-mix(in_oklab,#006b57_14%,var(--card))] text-[#007f68]">
+                <FileCheck2 className="h-5 w-5" />
               </div>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border text-[10px] text-muted-foreground">
-                    <th className="pb-1.5 text-left font-semibold">Tipo</th>
-                    <th className="pb-1.5 text-right font-semibold">Qtd.</th>
-                    <th className="pb-1.5 text-right font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {DOCUMENT_CATALOG_TYPES.map((type) => {
-                    const count = documentTypeCount(documentCatalogRows, type);
-                    return (
-                      <tr key={type}>
-                        <td className="py-1.5 font-medium text-foreground">{type}</td>
-                        <td className="py-1.5 text-right font-data text-foreground">{count}</td>
-                        <td className="py-1.5 text-right">
-                          <StatusBadge
-                            status={latestStatusForDocumentType(documentCatalogRows, type)}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div>
+                <div className="font-data text-4xl font-bold text-foreground">
+                  {documentCatalogRows.length}
+                </div>
+                <div className="mt-1 text-xs font-semibold text-foreground">documentos catalogados</div>
+                <div className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  {documentsInProgress} em elaboração ou revisão
+                </div>
+              </div>
             </div>
 
-            {/* Quadrantes por tipo de documento */}
             <div className="min-w-0">
-              <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Documentos por Área
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Distribuição por tipo
+                </span>
+                <span className="text-[10px] text-muted-foreground">Status mais recente</span>
               </div>
-              <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-                {DOCUMENT_CATALOG_TYPES.map((type) => (
-                  <div key={type} className="min-w-0">
-                    <DocumentTypeQuadrant type={type} rows={documentCatalogRows} />
-                  </div>
-                ))}
+              <div className="space-y-3.5">
+                {DOCUMENT_CATALOG_TYPES.map((type) => {
+                  const count = documentTypeCount(documentCatalogRows, type);
+                  return (
+                    <div key={type} className="grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-3">
+                      <span className="truncate text-xs font-medium text-foreground">{type}</span>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-[var(--gold)] transition-[width]"
+                          style={{ width: `${(count / largestDocumentTypeCount) * 100}%` }}
+                        />
+                      </div>
+                      <div className="flex min-w-[88px] items-center justify-end gap-2">
+                        <strong className="font-data text-xs text-foreground">{count}</strong>
+                        <StatusBadge status={latestStatusForDocumentType(documentCatalogRows, type)} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              <p className="mt-4 border-t border-border pt-3 text-[10px] text-muted-foreground">
+                A visualização expandida detalha código, área, responsável, status e atualização.
+              </p>
             </div>
           </div>
         </ExpandableCard>
@@ -2837,31 +2919,27 @@ function WorkspaceContent({
                 Sem atividade recente.
               </div>
             ) : (
-              <div className="grid gap-2">
-                {activityItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-lg border border-border bg-background p-3 transition hover:border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] hover:bg-[color-mix(in_oklab,var(--gold)_5%,var(--background))]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
+              <div className="relative ml-2 border-l border-border pl-5">
+                {activityItems.map((item, index) => (
+                  <div key={item.id} className={index === activityItems.length - 1 ? "pb-1" : "pb-5"}>
+                    <span className="absolute -ml-[25px] mt-1.5 h-2 w-2 rounded-full border-2 border-card bg-[var(--gold)] ring-1 ring-[var(--gold)]" />
+                    <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="inline-flex rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[9px] font-semibold text-[var(--gold)]">
                             {item.tag}
                           </span>
                           <div className="min-w-0 truncate text-xs font-semibold text-foreground">
                             {item.title}
                           </div>
                         </div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">
+                        <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
                           {item.description}
                         </div>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <div className="text-[10px] text-muted-foreground">
-                          {formatShortDate(item.updatedAt)}
-                        </div>
-                      </div>
+                      <time className="shrink-0 font-data text-[10px] text-muted-foreground">
+                        {formatShortDate(item.updatedAt)}
+                      </time>
                     </div>
                   </div>
                 ))}
