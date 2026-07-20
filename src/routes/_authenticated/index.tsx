@@ -20,6 +20,7 @@ import {
   BarChart2,
   Bell,
   Building2,
+  CalendarDays,
   Check,
   CheckCheck,
   CheckCircle2,
@@ -1323,11 +1324,13 @@ function CoverageDonut({
   total,
   size = 112,
   stroke = 14,
+  color = "var(--gold)",
 }: {
   covered: number;
   total: number;
   size?: number;
   stroke?: number;
+  color?: string;
 }) {
   const pct = total > 0 ? covered / total : 0;
   const radius = (size - stroke) / 2;
@@ -1357,7 +1360,7 @@ function CoverageDonut({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="var(--gold)"
+            stroke={color}
             strokeWidth={stroke}
             strokeDasharray={`${filled} ${circ - filled}`}
             strokeLinecap="round"
@@ -1369,7 +1372,7 @@ function CoverageDonut({
         y="50%"
         textAnchor="middle"
         dominantBaseline="middle"
-        style={{ fill: "var(--foreground)", fontSize: size * 0.24, fontWeight: 700 }}
+        style={{ fill: color, fontSize: size * 0.24, fontWeight: 700 }}
       >
         {Math.round(pct * 100)}%
       </text>
@@ -1786,26 +1789,20 @@ function OperationalMetricCard({
   color: string;
 }) {
   return (
-    <div className={`${DASHBOARD_CARD_CLASS} flex min-h-[178px] flex-col justify-between gap-5`}>
-      <div className="flex items-start justify-between gap-3">
-        <div
-          className="grid h-10 w-10 place-items-center rounded-lg"
-          style={{
-            backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
-            color,
-          }}
-        >
-          {icon}
-        </div>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          {label}
-        </span>
-      </div>
-      <div>
-        <strong className="font-data text-4xl font-bold leading-none text-foreground">{value}</strong>
-        <div className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
-          {detail}
-        </div>
+    <div className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col p-5`}>
+      <span className="text-sm font-semibold text-foreground">{label}</span>
+      <strong className="mt-5 font-data text-5xl font-bold leading-none" style={{ color }}>
+        {value}
+      </strong>
+      <p className="mt-3 max-w-[17ch] text-xs leading-relaxed text-muted-foreground">{detail}</p>
+      <div
+        className="mt-auto grid h-10 w-10 place-items-center rounded-md"
+        style={{
+          backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
+          color,
+        }}
+      >
+        {icon}
       </div>
     </div>
   );
@@ -2629,7 +2626,6 @@ function WorkspaceContent({
     );
   }
 
-  const pendingMappings = mappingStatusCounts.emAndamento + mappingStatusCounts.emRevisao;
   const openCauseRows = causeRows.filter((row) => {
     const status = row.status
       .normalize("NFD")
@@ -2653,44 +2649,44 @@ function WorkspaceContent({
         b.updatedAt.localeCompare(a.updatedAt),
     )
     .slice(0, 3);
-  const highPriorityCauses = openCauseRows.filter((row) => priorityRank(row.priority) === 3).length;
-  const documentsInProgress = documentCatalogRows.filter((row) => {
-    const status = row.status
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase();
-    return status.includes("andamento") || status.includes("revisao");
-  }).length;
-  const largestDocumentTypeCount = Math.max(
-    1,
-    ...DOCUMENT_CATALOG_TYPES.map((type) => documentTypeCount(documentCatalogRows, type)),
-  );
+  const documentConformity = (type: DashboardDocumentType) => {
+    const rows = documentCatalogRows.filter((row) => row.documentType === type);
+    if (!rows.length) return 0;
+    const conforming = rows.filter((row) => {
+      const status = row.status
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLowerCase();
+      return status.includes("aprov") || status.includes("conclu");
+    }).length;
+    return Math.round((conforming / rows.length) * 100);
+  };
+  const latestOperationalUpdate = [
+    ...mappingRows.map((row) => row.updatedAt),
+    ...causeRows.map((row) => row.updatedAt),
+    ...documentCatalogRows.map((row) => row.updatedAt),
+    ...activityItems.map((item) => item.updatedAt),
+  ]
+    .filter(Boolean)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 
   return (
     <div className="mx-auto grid w-full max-w-[1600px] gap-5">
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <section className="px-1 pb-1 pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">
-              Página Inicial
-            </div>
-            <h1 className="mt-2 font-display text-2xl font-bold text-foreground">
-              Visão operacional
-            </h1>
+            <h1 className="font-display text-3xl font-bold text-foreground">Visão operacional</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Acompanhe mapeamentos, cobertura de processos, catálogo documental e atividades
-              recentes.
+              Acompanhe o status dos processos, causas e documentos.
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-background px-4 py-3 text-right">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Atualização do Painel
-            </div>
-            <div className="mt-0.5 text-sm font-semibold text-foreground">
-              {formatDateBr(new Date().toISOString().slice(0, 10))}
-            </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarDays className="h-4 w-4" />
+            <span>
+              Atualizado em {latestOperationalUpdate ? formatDateTimeBr(latestOperationalUpdate) : "-"}
+            </span>
             {isLoading ? (
-              <span className="mt-1 inline-flex rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              <span className="inline-flex rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                 Atualizando...
               </span>
             ) : null}
@@ -2700,32 +2696,28 @@ function WorkspaceContent({
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <ExpandableCard
-          title="Índice de Mapeamento"
-          icon={<Activity className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col gap-4 xl:col-span-2`}
+          title="Cobertura de mapeamentos"
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col gap-4 p-5 xl:col-span-2`}
           expanded={<MappingCoverageExpanded coverage={mappingCoverage} />}
         >
-          <div className="grid flex-1 grid-cols-[138px_minmax(0,1fr)] items-center gap-6">
+          <div className="grid flex-1 grid-cols-[150px_minmax(0,1fr)] items-center gap-8">
             <CoverageDonut
               covered={mappingCoverage.covered}
               total={mappingCoverage.total}
-              size={132}
+              size={142}
               stroke={15}
+              color="#009f7f"
             />
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Processos cobertos
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <strong className="font-data text-3xl font-bold text-foreground">
+              <div className="flex items-baseline gap-3">
+                <strong className="font-data text-5xl font-bold text-[#007f68]">
                   {mappingCoverage.covered}
                 </strong>
-                <span className="text-sm text-muted-foreground">de {mappingCoverage.total}</span>
+                <strong className="font-data text-2xl font-bold text-foreground">
+                  de {mappingCoverage.total}
+                </strong>
               </div>
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                Processos cadastrados relacionados a um mapeamento como processo principal, etapa
-                ou subetapa.
-              </p>
+              <p className="mt-2 text-sm text-muted-foreground">processos mapeados</p>
             </div>
           </div>
         </ExpandableCard>
@@ -2733,95 +2725,89 @@ function WorkspaceContent({
         <OperationalMetricCard
           label="Mapeamentos"
           value={mappingRows.length}
-          detail={`${pendingMappings} ${pendingMappings === 1 ? "registro pendente" : "registros pendentes"}`}
+          detail="Total de registros no catálogo"
           icon={<FileText className="h-5 w-5" />}
-          color="var(--gold)"
+          color="#007f68"
         />
         <OperationalMetricCard
           label="Causas abertas"
           value={openCauseRows.length}
-          detail={`${highPriorityCauses} ${highPriorityCauses === 1 ? "causa de prioridade alta" : "causas de prioridade alta"}`}
+          detail="Causas aguardando tratamento"
           icon={<CircleAlert className="h-5 w-5" />}
-          color="#c95151"
+          color="#007f68"
         />
         <OperationalMetricCard
           label="Documentos"
           value={documentCatalogRows.length}
-          detail={`${documentsInProgress} ${documentsInProgress === 1 ? "item em elaboração ou revisão" : "itens em elaboração ou revisão"}`}
+          detail="Documentos cadastrados no catálogo"
           icon={<FileCheck2 className="h-5 w-5" />}
-          color="#1f9d6b"
+          color="#007f68"
         />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(360px,0.7fr)]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)]">
         <ExpandableCard
-          title="Acompanhamento de Mapeamentos"
-          icon={<FileText className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
+          title="Acompanhamento de mapeamentos"
           className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<MappingRecordsTable rows={mappingRows} />}
         >
-          <div className="flex flex-1 flex-col justify-center gap-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-xs text-muted-foreground">
-                Distribuição dos registros por status
-              </span>
-              <strong className="font-data text-sm text-foreground">
-                {mappingRows.length} no total
-              </strong>
-            </div>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {MAPPING_STATUS_TILES.map((tile) => (
-                <StatusSummaryTile
+          <div className="grid flex-1 grid-cols-2 items-center md:grid-cols-4">
+            {MAPPING_STATUS_TILES.map((tile, index) => {
+              const value = mappingStatusCounts[tile.key];
+              return (
+                <div
                   key={tile.key}
-                  label={tile.label}
-                  value={mappingStatusCounts[tile.key]}
-                  total={mappingRows.length}
-                  color={tile.color}
-                />
-              ))}
-            </div>
+                  className={`flex min-h-[142px] flex-col items-center justify-center px-3 text-center ${
+                    index > 0 ? "border-l border-border" : ""
+                  }`}
+                >
+                  <span className="text-xs font-medium" style={{ color: tile.color }}>
+                    {tile.label}
+                  </span>
+                  <strong className="mt-4 font-data text-4xl font-bold" style={{ color: tile.color }}>
+                    {value}
+                  </strong>
+                  <span className="mt-2 text-xs text-muted-foreground">
+                    {value === 1 ? "registro" : "registros"}
+                  </span>
+                  <span className="mt-5 h-0.5 w-full max-w-[120px]" style={{ backgroundColor: tile.color }} />
+                </div>
+              );
+            })}
           </div>
         </ExpandableCard>
 
         <ExpandableCard
           title="Causas que exigem atenção"
-          icon={<CircleAlert className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
           className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<CauseRecordsTable rows={causeRows} />}
         >
-          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>Prioridade e atualização mais recente</span>
-            <strong className="font-data text-foreground">{openCauseRows.length} abertas</strong>
-          </div>
-          <div className="mt-1 divide-y divide-border">
+          <div className="divide-y divide-border">
             {attentionCauses.map((cause) => (
-              <div key={cause.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-3">
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-semibold text-foreground">{cause.cause}</div>
-                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
-                    <span className="font-data font-semibold text-[var(--gold)]">
-                      {cause.source === "Mapeamento" ? cause.mapping : "Causa avulsa"}
-                    </span>
-                    {cause.process && cause.process !== "-" ? (
-                      <span className="max-w-[220px] truncate">{cause.process}</span>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1.5">
+              <div
+                key={cause.id}
+                className="grid grid-cols-[92px_minmax(0,1fr)_72px_82px] items-center gap-3 py-3"
+              >
+                <span className="truncate font-data text-xs font-semibold text-[#007f68]">
+                  {cause.source === "Mapeamento" ? cause.mapping : "Avulsa"}
+                </span>
+                <span className="truncate text-xs text-foreground" title={cause.cause}>
+                  {cause.cause}
+                </span>
+                <div className="flex justify-center">
                   <span
-                    className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    className="rounded border px-2 py-0.5 text-[10px] font-semibold"
                     style={{
-                      color: priorityRank(cause.priority) === 3 ? "#c95151" : "var(--gold)",
-                      backgroundColor:
-                        priorityRank(cause.priority) === 3
-                          ? "color-mix(in oklab, #c95151 10%, var(--card))"
-                          : "color-mix(in oklab, var(--gold) 12%, var(--card))",
+                      color: priorityRank(cause.priority) === 3 ? "#b77900" : "#007f68",
+                      borderColor: priorityRank(cause.priority) === 3 ? "#d09522" : "#009f7f",
                     }}
                   >
                     {cause.priority || "Sem prioridade"}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">{cause.status}</span>
                 </div>
+                <time className="text-right font-data text-[10px] text-muted-foreground">
+                  {formatDateBr(cause.dueDate) || formatDateBr(cause.updatedAt)}
+                </time>
               </div>
             ))}
             {attentionCauses.length === 0 ? (
@@ -2830,116 +2816,89 @@ function WorkspaceContent({
               </div>
             ) : null}
           </div>
-          <div className="mt-auto grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-border bg-border">
-            {CAUSE_STATUS_TILES.map((tile) => (
-              <div key={tile.key} className="min-w-0 bg-background px-2 py-2 text-center">
-                <div className="font-data text-sm font-bold" style={{ color: tile.color }}>
-                  {causeStatusCounts[tile.key]}
-                </div>
-                <div className="truncate text-[9px] text-muted-foreground">{tile.label}</div>
-              </div>
-            ))}
-          </div>
         </ExpandableCard>
       </section>
 
       {/* Bottom: Catálogo e Conformidade + Painel de Atividade Recente */}
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         {/* Catálogo e Conformidade */}
         <ExpandableCard
-          title="Catálogo e Conformidade"
-          icon={<FileCheck2 className="h-4 w-4 text-[var(--gold)]" />}
+          title="Catálogo e conformidade"
           titleClassName="text-sm font-semibold text-foreground"
           className={DASHBOARD_CARD_CLASS}
           expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
         >
-          <div className="mt-4 grid min-w-0 gap-6 lg:grid-cols-[170px_minmax(0,1fr)]">
-            <div className="flex min-h-[210px] flex-col justify-between rounded-lg border border-border bg-[color-mix(in_oklab,#006b57_8%,var(--background))] p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color-mix(in_oklab,#006b57_14%,var(--card))] text-[#007f68]">
-                <FileCheck2 className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-data text-4xl font-bold text-foreground">
-                  {documentCatalogRows.length}
-                </div>
-                <div className="mt-1 text-xs font-semibold text-foreground">documentos catalogados</div>
-                <div className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                  {documentsInProgress} em elaboração ou revisão
-                </div>
-              </div>
+          <div className="mt-4 min-w-0">
+            <div className="grid grid-cols-[minmax(0,1fr)_60px_minmax(150px,0.9fr)] border-b border-border px-1 pb-2 text-[10px] font-semibold text-muted-foreground">
+              <span>Tipo de documento</span>
+              <span className="text-center">Total</span>
+              <span className="text-right">% conformidade</span>
             </div>
-
-            <div className="min-w-0">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Distribuição por tipo
-                </span>
-                <span className="text-[10px] text-muted-foreground">Status mais recente</span>
-              </div>
-              <div className="space-y-3.5">
-                {DOCUMENT_CATALOG_TYPES.map((type) => {
-                  const count = documentTypeCount(documentCatalogRows, type);
-                  return (
-                    <div key={type} className="grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-3">
-                      <span className="truncate text-xs font-medium text-foreground">{type}</span>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div className="divide-y divide-border">
+              {DOCUMENT_CATALOG_TYPES.map((type) => {
+                const count = documentTypeCount(documentCatalogRows, type);
+                const conformity = documentConformity(type);
+                const conformityColor = conformity >= 80 ? "#009f7f" : conformity > 0 ? "#d09522" : "#c95151";
+                return (
+                  <div
+                    key={type}
+                    className="grid grid-cols-[minmax(0,1fr)_60px_minmax(150px,0.9fr)] items-center gap-3 px-1 py-2"
+                  >
+                    <span className="truncate text-xs text-foreground">{type}</span>
+                    <span className="text-center font-data text-xs text-foreground">{count}</span>
+                    <div className="flex items-center justify-end gap-3">
+                      <div className="h-1.5 w-full max-w-[150px] overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-[var(--gold)] transition-[width]"
-                          style={{ width: `${(count / largestDocumentTypeCount) * 100}%` }}
+                          className="h-full rounded-full"
+                          style={{ width: `${conformity}%`, backgroundColor: conformityColor }}
                         />
                       </div>
-                      <div className="flex min-w-[88px] items-center justify-end gap-2">
-                        <strong className="font-data text-xs text-foreground">{count}</strong>
-                        <StatusBadge status={latestStatusForDocumentType(documentCatalogRows, type)} />
-                      </div>
+                      <span className="w-9 text-right font-data text-[10px] font-semibold" style={{ color: conformityColor }}>
+                        {conformity}%
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
-              <p className="mt-4 border-t border-border pt-3 text-[10px] text-muted-foreground">
-                A visualização expandida detalha código, área, responsável, status e atualização.
-              </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </ExpandableCard>
 
         {/* Painel de Atividade Recente */}
         <ExpandableCard
-          title="Painel de Atividade Recente"
-          icon={<Activity className="h-4 w-4 text-[var(--gold)]" />}
+          title="Atividade recente"
           titleClassName="text-sm font-semibold text-foreground"
           className={DASHBOARD_CARD_CLASS}
         >
-          <div className="mt-4">
-            <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Últimas atividades
-            </div>
+          <div className="mt-3">
             {activityItems.length === 0 ? (
               <div className="py-4 text-center text-xs text-muted-foreground">
                 Sem atividade recente.
               </div>
             ) : (
-              <div className="relative ml-2 border-l border-border pl-5">
-                {activityItems.map((item, index) => (
-                  <div key={item.id} className={index === activityItems.length - 1 ? "pb-1" : "pb-5"}>
-                    <span className="absolute -ml-[25px] mt-1.5 h-2 w-2 rounded-full border-2 border-card bg-[var(--gold)] ring-1 ring-[var(--gold)]" />
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <span className="inline-flex rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[9px] font-semibold text-[var(--gold)]">
-                            {item.tag}
-                          </span>
-                          <div className="min-w-0 truncate text-xs font-semibold text-foreground">
-                            {item.title}
-                          </div>
-                        </div>
-                        <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-                          {item.description}
-                        </div>
+              <div className="divide-y divide-border border-l border-border pl-4">
+                {activityItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="relative grid grid-cols-[76px_84px_minmax(0,1fr)] items-center gap-3 py-2.5"
+                  >
+                    <span className="absolute -left-[20.5px] h-2.5 w-2.5 rounded-full border-2 border-card bg-[#009f7f]" />
+                    <time className="font-data text-[10px] leading-tight text-muted-foreground">
+                      {formatDateBr(item.updatedAt)}
+                      <br />
+                      {new Date(item.updatedAt).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                    <span className="inline-flex justify-center rounded border border-[#009f7f] px-2 py-0.5 text-[9px] font-semibold uppercase text-[#007f68]">
+                      {item.tag}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-xs text-foreground">{item.title}</div>
+                      <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                        {item.description}
                       </div>
-                      <time className="shrink-0 font-data text-[10px] text-muted-foreground">
-                        {formatShortDate(item.updatedAt)}
-                      </time>
                     </div>
                   </div>
                 ))}
