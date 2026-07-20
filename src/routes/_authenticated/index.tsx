@@ -2649,18 +2649,6 @@ function WorkspaceContent({
         b.updatedAt.localeCompare(a.updatedAt),
     )
     .slice(0, 3);
-  const documentConformity = (type: DashboardDocumentType) => {
-    const rows = documentCatalogRows.filter((row) => row.documentType === type);
-    if (!rows.length) return 0;
-    const conforming = rows.filter((row) => {
-      const status = row.status
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .toLowerCase();
-      return status.includes("aprov") || status.includes("conclu");
-    }).length;
-    return Math.round((conforming / rows.length) * 100);
-  };
   const latestOperationalUpdate = [
     ...mappingRows.map((row) => row.updatedAt),
     ...causeRows.map((row) => row.updatedAt),
@@ -2829,34 +2817,22 @@ function WorkspaceContent({
           expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
         >
           <div className="mt-4 min-w-0">
-            <div className="grid grid-cols-[minmax(0,1fr)_60px_minmax(150px,0.9fr)] border-b border-border px-1 pb-2 text-[10px] font-semibold text-muted-foreground">
+            <div className="grid grid-cols-[minmax(0,1fr)_80px] border-b border-border px-1 pb-2 text-[10px] font-semibold text-muted-foreground">
               <span>Tipo de documento</span>
-              <span className="text-center">Total</span>
-              <span className="text-right">% conformidade</span>
+              <span className="text-right">Total</span>
             </div>
             <div className="divide-y divide-border">
               {DOCUMENT_CATALOG_TYPES.map((type) => {
                 const count = documentTypeCount(documentCatalogRows, type);
-                const conformity = documentConformity(type);
-                const conformityColor = conformity >= 80 ? "#009f7f" : conformity > 0 ? "#d09522" : "#c95151";
                 return (
                   <div
                     key={type}
-                    className="grid grid-cols-[minmax(0,1fr)_60px_minmax(150px,0.9fr)] items-center gap-3 px-1 py-2"
+                    className="grid grid-cols-[minmax(0,1fr)_80px] items-center gap-3 px-1 py-2"
                   >
                     <span className="truncate text-xs text-foreground">{type}</span>
-                    <span className="text-center font-data text-xs text-foreground">{count}</span>
-                    <div className="flex items-center justify-end gap-3">
-                      <div className="h-1.5 w-full max-w-[150px] overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${conformity}%`, backgroundColor: conformityColor }}
-                        />
-                      </div>
-                      <span className="w-9 text-right font-data text-[10px] font-semibold" style={{ color: conformityColor }}>
-                        {conformity}%
-                      </span>
-                    </div>
+                    <span className="text-right font-data text-xs font-semibold text-foreground">
+                      {count}
+                    </span>
                   </div>
                 );
               })}
