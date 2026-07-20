@@ -23,6 +23,7 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  CircleAlert,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -238,6 +239,24 @@ type DashboardMappingStatusCounts = {
   aprovado: number;
   concluido: number;
 };
+type DashboardCauseRow = {
+  id: string;
+  cause: string;
+  source: "Mapeamento" | "Avulsa";
+  mapping: string;
+  process: string;
+  responsible: string;
+  priority: string;
+  status: string;
+  dueDate: string;
+  updatedAt: string;
+};
+type DashboardCauseStatusCounts = {
+  naoIniciada: number;
+  emAndamento: number;
+  encerrada: number;
+  cancelada: number;
+};
 
 // Uma cor por etapa do acompanhamento de mapeamentos. As tonalidades seguem a
 // paleta do sistema (âmbar/gold da marca + o verde e o teal já usados no
@@ -251,6 +270,17 @@ const MAPPING_STATUS_TILES: Array<{
   { key: "emRevisao", label: "Em revisão", color: "#3b74c4" },
   { key: "aprovado", label: "Aprovado", color: "#1f9d6b" },
   { key: "concluido", label: "Concluído", color: "#0e8fa6" },
+];
+
+const CAUSE_STATUS_TILES: Array<{
+  key: keyof DashboardCauseStatusCounts;
+  label: string;
+  color: string;
+}> = [
+  { key: "naoIniciada", label: "Não iniciada", color: "var(--gold)" },
+  { key: "emAndamento", label: "Em andamento", color: "#3b74c4" },
+  { key: "encerrada", label: "Encerrada", color: "#1f9d6b" },
+  { key: "cancelada", label: "Cancelada", color: "#c95151" },
 ];
 
 function normalizeStatusKey(status: string): keyof DashboardMappingStatusCounts | null {
@@ -541,6 +571,51 @@ function WorkspaceHome() {
               selectedDemoOrganization.id === "demo-bom-futuro"
                 ? { emAndamento: 1, emRevisao: 1, aprovado: 1, concluido: 1 }
                 : { emAndamento: 0, emRevisao: 0, aprovado: 0, concluido: 0 },
+            causeRows:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? [
+                    {
+                      id: "demo-cause-1",
+                      cause: "Critérios de priorização não formalizados",
+                      source: "Mapeamento" as const,
+                      mapping: "MAP.PMO.007",
+                      process: "Gestão de Demandas de BI Analytics",
+                      responsible: "Gerente de TI",
+                      priority: "Alta",
+                      status: "Em andamento",
+                      dueDate: "2026-07-30",
+                      updatedAt: new Date().toISOString(),
+                    },
+                    {
+                      id: "demo-cause-2",
+                      cause: "Ausência de padrão na entrada das demandas",
+                      source: "Mapeamento" as const,
+                      mapping: "MAP.PMO.007",
+                      process: "Gestão de Demandas de BI Analytics",
+                      responsible: "Coordenador de BI",
+                      priority: "Média",
+                      status: "Não iniciada",
+                      dueDate: "2026-08-15",
+                      updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+                    },
+                    {
+                      id: "demo-cause-3",
+                      cause: "Cadastro incompleto de responsáveis",
+                      source: "Avulsa" as const,
+                      mapping: "-",
+                      process: "Gestão do Portfólio de Processos",
+                      responsible: "Coordenadora de Processos",
+                      priority: "Baixa",
+                      status: "Encerrado",
+                      dueDate: "2026-07-10",
+                      updatedAt: new Date(Date.now() - 86400000 * 7).toISOString(),
+                    },
+                  ]
+                : [],
+            causeStatusCounts:
+              selectedDemoOrganization.id === "demo-bom-futuro"
+                ? { naoIniciada: 1, emAndamento: 1, encerrada: 1, cancelada: 0 }
+                : { naoIniciada: 0, emAndamento: 0, encerrada: 0, cancelada: 0 },
             documentCatalogRows:
               selectedDemoOrganization.id === "demo-bom-futuro"
                 ? [
@@ -1083,6 +1158,15 @@ function WorkspaceHome() {
                   aprovado: 0,
                   concluido: 0,
                 }) as DashboardMappingStatusCounts
+              }
+              causeRows={(dashboard?.causeRows ?? []) as DashboardCauseRow[]}
+              causeStatusCounts={
+                (dashboard?.causeStatusCounts ?? {
+                  naoIniciada: 0,
+                  emAndamento: 0,
+                  encerrada: 0,
+                  cancelada: 0,
+                }) as DashboardCauseStatusCounts
               }
               documentCatalogRows={
                 (dashboard?.documentCatalogRows ?? []) as DashboardDocumentCatalogRow[]
@@ -1688,6 +1772,130 @@ function MappingRecordsTable({ rows }: { rows: DashboardMappingRow[] }) {
   );
 }
 
+type DashboardCauseColumn = keyof Pick<
+  DashboardCauseRow,
+  | "cause"
+  | "source"
+  | "mapping"
+  | "process"
+  | "responsible"
+  | "priority"
+  | "status"
+  | "dueDate"
+  | "updatedAt"
+>;
+
+const DASHBOARD_CAUSE_COLUMNS: Array<[DashboardCauseColumn, string]> = [
+  ["cause", "Causa"],
+  ["source", "Origem"],
+  ["mapping", "Mapeamento"],
+  ["process", "Processo"],
+  ["responsible", "Responsável"],
+  ["priority", "Prioridade"],
+  ["status", "Status"],
+  ["dueDate", "Prazo"],
+  ["updatedAt", "Última atualização"],
+];
+
+function CauseRecordsTable({ rows }: { rows: DashboardCauseRow[] }) {
+  const [query, setQuery] = useState("");
+  const [sortField, setSortField] = useState<DashboardCauseColumn>("updatedAt");
+  const [sortDir, setSortDir] = useState<DashboardSortDir>("desc");
+
+  function toggleSort(field: DashboardCauseColumn) {
+    if (field === sortField) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortField(field);
+    setSortDir(field === "updatedAt" || field === "dueDate" ? "desc" : "asc");
+  }
+
+  const visibleRows = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("pt-BR");
+    const filtered = normalized
+      ? rows.filter((row) =>
+          DASHBOARD_CAUSE_COLUMNS.some(([field]) =>
+            String(row[field] ?? "").toLocaleLowerCase("pt-BR").includes(normalized),
+          ),
+        )
+      : rows;
+    const sign = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort(
+      (a, b) =>
+        String(a[sortField] ?? "").localeCompare(String(b[sortField] ?? ""), "pt-BR", {
+          numeric: true,
+          sensitivity: "base",
+        }) * sign,
+    );
+  }, [query, rows, sortDir, sortField]);
+
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">
+          {visibleRows.length} {visibleRows.length === 1 ? "causa" : "causas"}
+        </span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Filtrar causas..."
+          className="h-8 w-64 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+        />
+      </div>
+      <div className="overflow-auto rounded-lg border border-border">
+        <table className="w-full min-w-[1180px] text-left text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr>
+              {DASHBOARD_CAUSE_COLUMNS.map(([field, label]) => (
+                <th key={field} className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(field)}
+                    className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
+                  >
+                    {label}
+                    <SortGlyph active={sortField === field} dir={sortDir} />
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {visibleRows.map((row) => (
+              <tr key={row.id} className="hover:bg-muted/30">
+                {DASHBOARD_CAUSE_COLUMNS.map(([field]) => (
+                  <td key={field} className="break-words px-3 py-3 text-foreground">
+                    {field === "updatedAt" ? (
+                      formatDateTimeBr(row.updatedAt)
+                    ) : field === "dueDate" ? (
+                      formatDateBr(row.dueDate) || "-"
+                    ) : field === "status" ? (
+                      <StatusBadge status={row.status || "-"} />
+                    ) : (
+                      row[field] || "-"
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {visibleRows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={DASHBOARD_CAUSE_COLUMNS.length}
+                  className="px-3 py-8 text-center text-muted-foreground"
+                >
+                  Nenhuma causa identificada.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 const DOCUMENT_CATALOG_TYPES: DashboardDocumentType[] = [
   "Norma",
   "POP",
@@ -2142,6 +2350,8 @@ function WorkspaceContent({
   totals,
   mappingRows,
   mappingStatusCounts,
+  causeRows,
+  causeStatusCounts,
   documentCatalogRows,
   topDepartments,
   topOwners,
@@ -2160,6 +2370,8 @@ function WorkspaceContent({
   totals: DashboardTotals | undefined;
   mappingRows: DashboardMappingRow[];
   mappingStatusCounts: DashboardMappingStatusCounts;
+  causeRows: DashboardCauseRow[];
+  causeStatusCounts: DashboardCauseStatusCounts;
   documentCatalogRows: DashboardDocumentCatalogRow[];
   topDepartments: { label: string; value: number }[];
   topOwners: { label: string; value: number }[];
@@ -2511,6 +2723,37 @@ function WorkspaceContent({
                   label={tile.label}
                   value={mappingStatusCounts[tile.key]}
                   total={mappingRows.length}
+                  color={tile.color}
+                />
+              ))}
+            </div>
+          </div>
+        </ExpandableCard>
+      </section>
+
+      <section>
+        <ExpandableCard
+          title="Causas identificadas"
+          icon={<CircleAlert className="h-4 w-4 shrink-0 text-[var(--gold)]" />}
+          className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col gap-4`}
+          expanded={<CauseRecordsTable rows={causeRows} />}
+        >
+          <div className="flex flex-1 flex-col justify-center gap-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs text-muted-foreground">
+                Acompanhamento das causas por status
+              </span>
+              <strong className="font-data text-sm text-foreground">
+                {causeRows.length} no total
+              </strong>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {CAUSE_STATUS_TILES.map((tile) => (
+                <StatusSummaryTile
+                  key={tile.key}
+                  label={tile.label}
+                  value={causeStatusCounts[tile.key]}
+                  total={causeRows.length}
                   color={tile.color}
                 />
               ))}

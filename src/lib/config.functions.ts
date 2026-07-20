@@ -1496,6 +1496,18 @@ type DashboardMappingRow = {
   status: string;
   updatedAt: string;
 };
+type DashboardCauseRow = {
+  id: string;
+  cause: string;
+  source: "Mapeamento" | "Avulsa";
+  mapping: string;
+  process: string;
+  responsible: string;
+  priority: string;
+  status: string;
+  dueDate: string;
+  updatedAt: string;
+};
 type DashboardDocumentCatalogRow = {
   id: string;
   code: string;
@@ -1653,6 +1665,47 @@ function dashboardMappingRowFromDocument(document: {
   }
 }
 
+function dashboardCauseRowsFromDocument(document: {
+  id: string;
+  name: string;
+  updated_at: string;
+  content_inline: string | null;
+}): Array<DashboardCauseRow & { sharedCauseId: string }> {
+  try {
+    const parsed = JSON.parse(document.content_inline ?? "{}") as Record<string, unknown>;
+    const source =
+      parsed.modules && typeof parsed.modules === "object"
+        ? (parsed.modules as Record<string, unknown>)
+        : parsed;
+    const ddp = objectAt(source, "ddp");
+    const meta = objectAt(ddp, "meta");
+    const macroprocess = objectAt(ddp, "macroprocess");
+    const legacy = objectAt(ddp, "legacy");
+    const gaps = Array.isArray(ddp.gaps) ? ddp.gaps : [];
+
+    return gaps.flatMap((value, index) => {
+      if (!value || typeof value !== "object") return [];
+      const gap = value as Record<string, unknown>;
+      const id = readString(gap.id, `${index + 1}`);
+      return [{
+        id: `mapping:${document.id}:${id}`,
+        cause: readString(gap.causa, "Causa sem título"),
+        source: "Mapeamento" as const,
+        mapping: readString(meta.codigo, readString(meta.titulo, document.name)),
+        process: readString(macroprocess.titulo, readString(legacy.processName)),
+        responsible: readString(gap.responsavel),
+        priority: readString(gap.prioridade, "Média"),
+        status: readString(gap.status, "Não iniciada"),
+        dueDate: readString(gap.prazo, ""),
+        updatedAt: document.updated_at,
+        sharedCauseId: readString(gap.sharedCauseId, ""),
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
+
 function dashboardDocumentCatalogRowFromDocument(document: {
   id: string;
   name: string;
@@ -1761,6 +1814,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       { data: departments, error: departmentsError },
       { data: owners, error: ownersError },
       { data: valueChains, error: valueChainsError },
+      { data: standaloneCauses, error: standaloneCausesError },
     ] = await Promise.all([
       context.supabase.from("organizations").select("*").eq("id", organizationId).maybeSingle(),
       context.supabase
@@ -1788,6 +1842,11 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         .from("organization_value_chains")
         .select("id, name")
         .eq("organization_id", organizationId),
+      context.supabase
+        .from("organization_causes")
+        .select("id, title, priority, status, responsible, process_id, due_date, updated_at")
+        .eq("organization_id", organizationId)
+        .order("updated_at", { ascending: false }),
     ]);
 
     if (organizationError) throw new Error(organizationError.message);
@@ -1796,6 +1855,9 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     if (departmentsError) throw new Error(departmentsError.message);
     if (ownersError) throw new Error(ownersError.message);
     if (valueChainsError) throw new Error(valueChainsError.message);
+    if (standaloneCausesError && !isMissingExtendedCauseColumn(standaloneCausesError.message)) {
+      throw new Error(standaloneCausesError.message);
+    }
 
     const rank = (values: Array<string | null>) => {
       const counts = new Map<string, number>();
@@ -1820,6 +1882,42 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       emRevisao: dashboardMappingRows.filter((row) => row.status === "Em revisão").length,
       aprovado: dashboardMappingRows.filter((row) => row.status === "Aprovado").length,
       concluido: dashboardMappingRows.filter((row) => row.status === "Concluído").length,
+    };
+
+    const processNamesById = new Map((processes ?? []).map((process) => [process.id, process.name]));
+    const mappingCauseRows = ddps.flatMap(dashboardCauseRowsFromDocument);
+    const sharedCauseIds = new Set(
+      mappingCauseRows.map((row) => row.sharedCauseId).filter((value) => value && value !== "-"),
+    );
+    const standaloneCauseRows: DashboardCauseRow[] = (standaloneCauses ?? [])
+      .filter((cause) => !sharedCauseIds.has(cause.id))
+      .map((cause) => ({
+        id: `standalone:${cause.id}`,
+        cause: cause.title,
+        source: "Avulsa",
+        mapping: "-",
+        process: cause.process_id ? processNamesById.get(cause.process_id) ?? "-" : "-",
+        responsible: cause.responsible || "-",
+        priority: cause.priority || "Média",
+        status: cause.status || "Não iniciada",
+        dueDate: cause.due_date || "",
+        updatedAt: cause.updated_at,
+      }));
+    const causeRows: DashboardCauseRow[] = [
+      ...mappingCauseRows.map(({ sharedCauseId: _sharedCauseId, ...row }) => row),
+      ...standaloneCauseRows,
+    ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const normalizeCauseStatus = (status: string) =>
+      status.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().toLowerCase();
+    const causeStatusCounts = {
+      naoIniciada: causeRows.filter((row) => normalizeCauseStatus(row.status).includes("nao inici"))
+        .length,
+      emAndamento: causeRows.filter((row) => normalizeCauseStatus(row.status).includes("andamento"))
+        .length,
+      encerrada: causeRows.filter((row) => normalizeCauseStatus(row.status).includes("encerr"))
+        .length,
+      cancelada: causeRows.filter((row) => normalizeCauseStatus(row.status).includes("cancel"))
+        .length,
     };
 
     const processIdsByName = new Map<string, string>();
@@ -1884,6 +1982,8 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       )),
       mappingRows: dashboardMappingRows,
       mappingStatusCounts,
+      causeRows,
+      causeStatusCounts,
       documentCatalogRows,
       recentDocuments: (documents ?? []).map(({ content_inline: _content, ...document }) => document).slice(0, 5),
       recentProcesses: (processes ?? []).slice(0, 5),
