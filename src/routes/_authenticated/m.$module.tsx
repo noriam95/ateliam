@@ -6318,7 +6318,10 @@ function ModuleWorkspacePage() {
     });
   }, [cloudDocsQ.data]);
 
-  async function updateMappingCauseStatus(record: MappingCauseRecord, status: string) {
+  async function updateMappingCause(
+    record: MappingCauseRecord,
+    patch: { status?: string; comentarios?: CauseComment[] },
+  ) {
     const document = (cloudDocsQ.data as CloudModuleDocument[] | undefined)?.find(
       (item) => item.id === record.documentId,
     );
@@ -6328,12 +6331,19 @@ function ModuleWorkspacePage() {
     const gapExists = snapshot.ddp.gaps.some((gap) => gap.id === record.gapId);
     if (!gapExists) throw new Error("A causa não existe mais no mapeamento de origem.");
 
+    const nextStatus = normalizeCauseStatus(patch.status ?? record.status);
     const updatedWorkspace: WorkspaceState = {
       ...snapshot,
       ddp: {
         ...snapshot.ddp,
         gaps: snapshot.ddp.gaps.map((gap) =>
-          gap.id === record.gapId ? { ...gap, status: normalizeCauseStatus(status) } : gap,
+          gap.id === record.gapId
+            ? {
+                ...gap,
+                status: nextStatus,
+                comentarios: patch.comentarios ?? gap.comentarios,
+              }
+            : gap,
         ),
       },
     };
@@ -6347,7 +6357,9 @@ function ModuleWorkspacePage() {
         title: payload.title,
         description: payload.description,
         content: buildModuleJson("ddp", updatedWorkspace),
-        comment: `[Mapeamento] Status da causa alterado para ${normalizeCauseStatus(status)}`,
+        comment: patch.comentarios
+          ? "[Mapeamento] Acompanhamento da causa atualizado"
+          : `[Mapeamento] Status da causa alterado para ${nextStatus}`,
         primaryProcessId: payload.primaryProcessId,
         primaryProcessVersion: payload.primaryProcessVersion,
       },
@@ -6715,7 +6727,7 @@ function ModuleWorkspacePage() {
               onCreateStandaloneCause={createStandaloneCause}
               onUpdateStandaloneCause={updateCauseCatalog}
               onDeleteStandaloneCause={deleteCauseCatalog}
-              onUpdateMappingStatus={updateMappingCauseStatus}
+              onUpdateMappingCause={updateMappingCause}
               onOpenMapping={openMappingFromCause}
               mode={
                 search.view?.startsWith("cause-")
@@ -8859,7 +8871,7 @@ function DdpCausesModuleV2({
   onCreateStandaloneCause,
   onUpdateStandaloneCause,
   onDeleteStandaloneCause,
-  onUpdateMappingStatus,
+  onUpdateMappingCause,
   onOpenMapping,
   mode = "consult",
 }: {
@@ -8869,7 +8881,10 @@ function DdpCausesModuleV2({
   onCreateStandaloneCause: (gap: GapItem) => Promise<OrganizationCause>;
   onUpdateStandaloneCause: (cause: OrganizationCause) => Promise<OrganizationCause>;
   onDeleteStandaloneCause: (causeId: string) => Promise<void>;
-  onUpdateMappingStatus: (record: MappingCauseRecord, status: string) => Promise<void>;
+  onUpdateMappingCause: (
+    record: MappingCauseRecord,
+    patch: { status?: string; comentarios?: CauseComment[] },
+  ) => Promise<void>;
   onOpenMapping: (record: MappingCauseRecord) => Promise<void>;
   mode?: "new" | "consult" | "edit";
 }) {
@@ -8993,6 +9008,7 @@ function DdpCausesModuleV2({
         ...draft.gap,
         causa: title,
         status: normalizeCauseStatus(draft.gap.status),
+        comentarios: commentsForSave(),
       };
       if (draft.row?.standalone) {
         await onUpdateStandaloneCause(organizationCauseFromGap(normalized, draft.row.standalone));
@@ -9015,7 +9031,7 @@ function DdpCausesModuleV2({
     try {
       const normalizedStatus = normalizeCauseStatus(status);
       if (row.mapping) {
-        await onUpdateMappingStatus(row.mapping, normalizedStatus);
+        await onUpdateMappingCause(row.mapping, { status: normalizedStatus });
       } else if (row.standalone) {
         await onUpdateStandaloneCause(
           organizationCauseFromGap({ ...row.gap, status: normalizedStatus }, row.standalone),
@@ -9055,6 +9071,17 @@ function DdpCausesModuleV2({
       ],
     });
     setCommentDraft("");
+  }
+
+  function commentsForSave() {
+    if (!draft) return [];
+    const text = commentDraft.trim();
+    return text
+      ? [
+          ...draft.gap.comentarios,
+          { id: id("comment"), text, createdAt: new Date().toISOString() },
+        ]
+      : draft.gap.comentarios;
   }
 
   return (
@@ -9187,37 +9214,75 @@ function DdpCausesModuleV2({
 
       {draft ? (
         <div className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/35 p-4 backdrop-blur-[2px]" onClick={(event) => event.target === event.currentTarget && setDraft(null)}>
-          <div className="my-auto max-h-[92vh] w-full max-w-4xl overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">{draft.source === "mapping" ? "Causa do mapeamento" : draft.row ? "Editar causa avulsa" : "Nova causa avulsa"}</h2>
-                {draft.row?.mapping ? <p className="mt-1 text-sm text-muted-foreground">{draft.row.mapping.mappingCode} · {draft.row.mapping.mappingTitle}</p> : null}
+          <div className="my-auto max-h-[92vh] w-full max-w-5xl overflow-auto rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-card px-6 py-5">
+              <div className="flex items-start gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <TriangleAlert className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg font-bold text-foreground">{draft.source === "mapping" ? "Causa do mapeamento" : draft.row ? "Editar causa avulsa" : "Nova causa avulsa"}</h2>
+                    <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      {draft.source === "mapping" ? "Mapeamento" : "Avulsa"}
+                    </span>
+                  </div>
+                  {draft.row?.mapping ? <p className="mt-1 text-sm text-muted-foreground">{draft.row.mapping.mappingCode} · {draft.row.mapping.mappingTitle}</p> : <p className="mt-1 text-sm text-muted-foreground">Registre a causa, seus efeitos e o tratamento proposto.</p>}
+                </div>
               </div>
               <button type="button" onClick={() => setDraft(null)} className="grid h-8 w-8 place-items-center rounded-md hover:bg-muted" aria-label="Fechar"><X className="h-4 w-4" /></button>
             </div>
-            {draft.source === "mapping" ? (
-              <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/35 dark:text-sky-100">
-                Os dados desta causa são mantidos pelo mapeamento. Nesta consulta, somente o status pode ser alterado.
-              </div>
-            ) : null}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Causa" value={draft.gap.causa} onChange={(causa) => updateDraft({ causa })} disabled={draft.source === "mapping"} />
-              <Field label="Responsável" value={draft.gap.responsavel} onChange={(responsavel) => updateDraft({ responsavel })} disabled={draft.source === "mapping"} />
-              <SelectField label="Status" value={normalizeCauseStatus(draft.gap.status)} options={[...CAUSE_STATUS_OPTIONS]} onChange={(status) => updateDraft({ status })} />
-              <SelectField label="Prioridade" value={draft.gap.prioridade} options={[...CAUSE_PRIORITY_OPTIONS]} onChange={(prioridade) => updateDraft({ prioridade })} disabled={draft.source === "mapping"} />
-              <DateRangeField label="Prazo" value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} disabled={draft.source === "mapping"} />
-              <TextArea label="Descrição" value={draft.gap.descricao} onChange={(descricao) => updateDraft({ descricao })} disabled={draft.source === "mapping"} />
-              <TextArea label="Impacto" value={draft.gap.impacto} onChange={(impacto) => updateDraft({ impacto })} disabled={draft.source === "mapping"} />
-              <TextArea label="Ação proposta" value={draft.gap.acao} onChange={(acao) => updateDraft({ acao })} disabled={draft.source === "mapping"} />
+
+            <div className="grid gap-5 p-6">
+              {draft.source === "mapping" ? (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/35 dark:text-sky-100">
+                  Os dados técnicos são mantidos no mapeamento. Aqui podem ser atualizados o status e os comentários de acompanhamento.
+                </div>
+              ) : null}
+
+              <section className="grid gap-4 rounded-lg border border-border p-4">
+                <div className="flex items-center gap-2 border-b border-border pb-3">
+                  <ListChecks className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Identificação e controle</h3>
+                </div>
+                <Field label="Causa" value={draft.gap.causa} onChange={(causa) => updateDraft({ causa })} disabled={draft.source === "mapping"} />
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="Responsável" value={draft.gap.responsavel} onChange={(responsavel) => updateDraft({ responsavel })} disabled={draft.source === "mapping"} />
+                  <SelectField label="Status" value={normalizeCauseStatus(draft.gap.status)} options={[...CAUSE_STATUS_OPTIONS]} onChange={(status) => updateDraft({ status })} />
+                  <SelectField label="Prioridade" value={draft.gap.prioridade} options={[...CAUSE_PRIORITY_OPTIONS]} onChange={(prioridade) => updateDraft({ prioridade })} disabled={draft.source === "mapping"} />
+                </div>
+              </section>
+
+              <section className="grid gap-4 rounded-lg border border-border p-4">
+                <div className="flex items-center gap-2 border-b border-border pb-3">
+                  <TriangleAlert className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Análise e tratamento</h3>
+                </div>
+                <TextArea label="Descrição" value={draft.gap.descricao} onChange={(descricao) => updateDraft({ descricao })} rows={3} disabled={draft.source === "mapping"} />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextArea label="Impacto" value={draft.gap.impacto} onChange={(impacto) => updateDraft({ impacto })} rows={4} disabled={draft.source === "mapping"} />
+                  <TextArea label="Ação proposta" value={draft.gap.acao} onChange={(acao) => updateDraft({ acao })} rows={4} disabled={draft.source === "mapping"} />
+                </div>
+              </section>
+
+              <section className="grid gap-4 rounded-lg border border-border p-4">
+                <div className="flex items-center gap-2 border-b border-border pb-3">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Prazo e acompanhamento</h3>
+                </div>
+                <div className="max-w-md">
+                  <DateRangeField label="Prazo" value={draft.gap.prazo} onChange={(prazo) => updateDraft({ prazo })} disabled={draft.source === "mapping"} />
+                </div>
+                <div className="rounded-lg bg-muted/35 p-3">
+                  <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold"><MessageSquare className="h-4 w-4" /> Comentários</h4>
+                  <div className="flex flex-col gap-2 sm:flex-row"><input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && commentDraft.trim()) { event.preventDefault(); addComment(); } }} placeholder="Registrar comentário de acompanhamento" className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" /><button type="button" onClick={addComment} disabled={!commentDraft.trim()} className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-40">Adicionar</button></div>
+                  <div className="mt-3 grid gap-2">{draft.gap.comentarios.length ? draft.gap.comentarios.map((comment) => <div key={comment.id} className="rounded-md border border-border bg-background p-3 text-sm"><div>{comment.text}</div>{comment.createdAt ? <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeBr(comment.createdAt)}</div> : null}</div>) : <div className="py-2 text-sm text-muted-foreground">Nenhum comentário registrado.</div>}</div>
+                </div>
+              </section>
             </div>
-            <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><MessageSquare className="h-4 w-4" /> Comentários</h3>
-              {draft.source === "standalone" ? <div className="flex gap-2"><input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Adicionar comentário" className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm" /><button type="button" onClick={addComment} disabled={!commentDraft.trim()} className="rounded-md bg-foreground px-3 text-sm font-semibold text-background disabled:opacity-40">Adicionar</button></div> : null}
-              <div className="mt-3 grid gap-2">{draft.gap.comentarios.length ? draft.gap.comentarios.map((comment) => <div key={comment.id} className="rounded-md border border-border bg-background p-3 text-sm"><div>{comment.text}</div>{comment.createdAt ? <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeBr(comment.createdAt)}</div> : null}</div>) : <div className="text-sm text-muted-foreground">Nenhum comentário registrado.</div>}</div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
+            <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-card px-6 py-4">
               <button type="button" onClick={() => setDraft(null)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Cancelar</button>
-              {draft.source === "mapping" && draft.row?.mapping ? <><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { await onUpdateMappingStatus(draft.row!.mapping!, draft.gap.status); setDraft(null); toast.success("Status atualizado."); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o status."); } finally { setSaving(false); } }} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Salvar status</button><button type="button" onClick={() => onOpenMapping(draft.row!.mapping!).catch((error) => toast.error(error.message))} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Editar no mapeamento</button></> : <button type="button" disabled={saving} onClick={saveDraft} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">Salvar causa</button>}
+              {draft.source === "mapping" && draft.row?.mapping ? <><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { await onUpdateMappingCause(draft.row!.mapping!, { status: draft.gap.status, comentarios: commentsForSave() }); setDraft(null); toast.success("Acompanhamento da causa atualizado."); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a causa."); } finally { setSaving(false); } }} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Salvar acompanhamento</button><button type="button" onClick={() => onOpenMapping(draft.row!.mapping!).catch((error) => toast.error(error.message))} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Editar no mapeamento</button></> : <button type="button" disabled={saving} onClick={saveDraft} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">Salvar causa</button>}
             </div>
           </div>
         </div>
@@ -9306,37 +9371,49 @@ function DateRangeField({
   label,
   value,
   onChange,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
-      <TableDateRange value={value} onChange={onChange} />
+      <TableDateRange value={value} onChange={onChange} disabled={disabled} />
     </label>
   );
 }
 
-function TableDateRange({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function TableDateRange({
+  value,
+  onChange,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
   const range = parseGapDateRange(value);
   return (
     <div className="grid min-w-[220px] gap-2 sm:grid-cols-2">
       <input
         type="date"
         value={range.start}
+        disabled={disabled}
         aria-label="Início do prazo"
         onChange={(event) => onChange(formatGapDateRange(event.target.value, range.end))}
-        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10 disabled:cursor-not-allowed disabled:bg-muted/60 disabled:text-muted-foreground"
       />
       <input
         type="date"
         value={range.end}
+        disabled={disabled}
         aria-label="Fim do prazo"
         min={range.start || undefined}
         onChange={(event) => onChange(formatGapDateRange(range.start, event.target.value))}
-        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10 disabled:cursor-not-allowed disabled:bg-muted/60 disabled:text-muted-foreground"
       />
     </div>
   );
@@ -17577,7 +17654,7 @@ const primaryButtonClass =
 const secondaryButtonClass =
   "inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted";
 const fieldInputBase =
-  "w-full rounded-lg border border-input bg-background text-sm text-foreground outline-none transition placeholder:text-muted-foreground/50 hover:border-[color-mix(in_oklab,var(--foreground)_22%,var(--input))] focus:border-[var(--gold)] focus:ring-[3px] focus:ring-[var(--gold)]/18";
+  "w-full rounded-lg border border-input bg-background text-sm text-foreground outline-none transition placeholder:text-muted-foreground/50 hover:border-[color-mix(in_oklab,var(--foreground)_22%,var(--input))] focus:border-[var(--gold)] focus:ring-[3px] focus:ring-[var(--gold)]/18 disabled:cursor-not-allowed disabled:bg-muted/60 disabled:text-muted-foreground disabled:hover:border-input";
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   // Campo preenchido automaticamente pelo cadastro — visualmente "travado".
@@ -17604,12 +17681,14 @@ function Field({
   onChange,
   type = "text",
   compact,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   compact?: boolean;
+  disabled?: boolean;
 }) {
   const isDate = type === "date";
   if (isDate) {
@@ -17621,6 +17700,7 @@ function Field({
       <input
         type={type}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         className={`${fieldInputBase} px-3 ${compact ? "h-9" : "h-10"}`}
       />
@@ -17854,11 +17934,13 @@ function SelectField({
   value,
   options,
   onChange,
+  disabled = false,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
@@ -17866,6 +17948,7 @@ function SelectField({
       <div className="relative">
         <select
           value={value}
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           className={`${fieldInputBase} h-10 cursor-pointer appearance-none px-3 pr-9`}
         >
@@ -17886,17 +17969,20 @@ function TextArea({
   value,
   onChange,
   rows = 5,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   rows?: number;
+  disabled?: boolean;
 }) {
   return (
     <label className="block">
       <span className={fieldLabelClass}>{label}</span>
       <textarea
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
         className={`${fieldInputBase} resize-y px-3 py-2.5 leading-relaxed`}
