@@ -446,6 +446,7 @@ type BpmnFlow = {
   freeTo?: { x: number; y: number };
   strokeColor?: string;
   strokeWidth?: number;
+  lineStyle?: "solid" | "dashed";
 };
 
 type DdpState = {
@@ -13985,7 +13986,7 @@ function BpmnModuleV2({
   }
 
   function updateSelectedFlowStyle(
-    patch: Pick<BpmnFlow, "strokeColor" | "strokeWidth">,
+    patch: Pick<BpmnFlow, "strokeColor" | "strokeWidth" | "lineStyle">,
   ) {
     if (!selectedFlowId) return;
     commit({
@@ -15661,9 +15662,12 @@ function BpmnModuleV2({
                     <BpmnStyleControls
                       lineColor={selectedFlow.strokeColor ?? "#26352f"}
                       lineWidth={selectedFlow.strokeWidth ?? 2.2}
+                      lineStyle={selectedFlow.lineStyle ?? "solid"}
                       showFill={false}
+                      showLineStyle
                       onLineColorChange={(strokeColor) => updateSelectedFlowStyle({ strokeColor })}
                       onLineWidthChange={(strokeWidth) => updateSelectedFlowStyle({ strokeWidth })}
+                      onLineStyleChange={(lineStyle) => updateSelectedFlowStyle({ lineStyle })}
                     />
                   </div>
                   <button
@@ -15867,45 +15871,102 @@ function commonSelectionValue<T>(values: T[]) {
 function BpmnStyleControls({
   lineColor,
   lineWidth,
+  lineStyle = "solid",
   fillColor,
   showFill,
+  showLineStyle = false,
   mixedLineColor = false,
   mixedLineWidth = false,
   mixedFillColor = false,
   onLineColorChange,
   onLineWidthChange,
+  onLineStyleChange,
   onFillColorChange,
 }: {
   lineColor: string;
   lineWidth: number;
+  lineStyle?: "solid" | "dashed";
   fillColor?: string;
   showFill: boolean;
+  showLineStyle?: boolean;
   mixedLineColor?: boolean;
   mixedLineWidth?: boolean;
   mixedFillColor?: boolean;
   onLineColorChange: (value: string) => void;
   onLineWidthChange: (value: number) => void;
+  onLineStyleChange?: (value: "solid" | "dashed") => void;
   onFillColorChange?: (value: string) => void;
 }) {
   return (
     <div className="grid gap-4">
       <label className="grid gap-2">
-        <span className="flex items-center justify-between text-xs font-semibold text-foreground">
+        <span className="text-xs font-semibold text-foreground">
           Espessura da linha
-          <span className="font-mono text-[11px] text-muted-foreground">
-            {mixedLineWidth ? "Mista" : `${lineWidth}px`}
+        </span>
+        <span className="flex items-center gap-3">
+          <input
+            type="range"
+            min="0.5"
+            max="12"
+            step="0.5"
+            value={Math.min(lineWidth, 12)}
+            onChange={(event) => onLineWidthChange(Number(event.target.value))}
+            className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--gold)]"
+          />
+          <span className="flex h-9 w-[76px] items-center rounded-md border border-border bg-background px-2 focus-within:border-[var(--gold)]">
+            <input
+              type="number"
+              min="0.5"
+              max="20"
+              step="0.5"
+              aria-label="Espessura da linha em pixels"
+              value={mixedLineWidth ? "" : lineWidth}
+              placeholder="Mista"
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                if (Number.isFinite(value) && value >= 0.5 && value <= 20) {
+                  onLineWidthChange(value);
+                }
+              }}
+              className="min-w-0 flex-1 bg-transparent text-right text-xs font-semibold text-foreground outline-none"
+            />
+            <span className="ml-1 text-[10px] text-muted-foreground">px</span>
           </span>
         </span>
-        <input
-          type="range"
-          min="1"
-          max="8"
-          step="0.5"
-          value={lineWidth}
-          onChange={(event) => onLineWidthChange(Number(event.target.value))}
-          className="h-2 w-full cursor-pointer accent-[var(--gold)]"
-        />
       </label>
+      {showLineStyle && onLineStyleChange ? (
+        <fieldset className="grid gap-2">
+          <legend className="text-xs font-semibold text-foreground">Estilo da linha</legend>
+          <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/40 p-1">
+            {(["solid", "dashed"] as const).map((style) => (
+              <button
+                key={style}
+                type="button"
+                onClick={() => onLineStyleChange(style)}
+                className={cn(
+                  "flex h-9 items-center justify-center gap-2 rounded px-2 text-xs font-semibold transition-colors",
+                  lineStyle === style
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <svg viewBox="0 0 38 8" className="h-2 w-9" aria-hidden="true">
+                  <line
+                    x1="1"
+                    y1="4"
+                    x2="37"
+                    y2="4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeDasharray={style === "dashed" ? "6 4" : undefined}
+                  />
+                </svg>
+                {style === "solid" ? "Contínua" : "Tracejada"}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
       <label className="grid gap-2">
         <span className="flex items-center justify-between text-xs font-semibold text-foreground">
           Cor da linha
@@ -16006,7 +16067,7 @@ function BpmnConnectorV2({
             : (flow.strokeColor ?? "color-mix(in oklab, var(--foreground) 82%, transparent)")
         }
         strokeWidth={preview ? 3.4 : (flow.strokeWidth ?? 2.2)}
-        strokeDasharray={preview ? "8 6" : undefined}
+        strokeDasharray={preview ? "8 6" : flow.lineStyle === "dashed" ? "10 7" : undefined}
         markerEnd="url(#arrow-v2)"
         pointerEvents="none"
       />
