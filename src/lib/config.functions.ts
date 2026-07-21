@@ -146,12 +146,23 @@ function uppercaseModuleDocumentContent(
     if (moduleId === "ddp") {
       const ddp = parsed.ddp as Record<string, unknown> | undefined;
       const meta = ddp?.meta as Record<string, unknown> | undefined;
+      const macroprocess = ddp?.macroprocess as Record<string, unknown> | undefined;
+      const legacy = ddp?.legacy as Record<string, unknown> | undefined;
       if (meta && typeof meta.titulo === "string") meta.titulo = uppercase(meta.titulo);
+      if (macroprocess && typeof macroprocess.titulo === "string") {
+        macroprocess.titulo = uppercase(macroprocess.titulo);
+      }
+      if (legacy && typeof legacy.processName === "string") {
+        legacy.processName = uppercase(legacy.processName);
+      }
     }
     if (moduleId === "pop") {
       const pop = parsed.pop as Record<string, unknown> | undefined;
       const meta = pop?.meta as Record<string, unknown> | undefined;
-      if (meta && typeof meta.titulo === "string") meta.titulo = uppercase(meta.titulo);
+      if (meta) {
+        if (typeof meta.titulo === "string") meta.titulo = uppercase(meta.titulo);
+        if (typeof meta.processo === "string") meta.processo = uppercase(meta.processo);
+      }
     }
     if (moduleId === "bpmn") {
       const bpmn = parsed.bpmn as Record<string, unknown> | undefined;

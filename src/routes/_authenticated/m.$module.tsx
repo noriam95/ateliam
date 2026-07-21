@@ -6533,6 +6533,7 @@ function ModuleWorkspacePage() {
   const documentRows = buildModuleGridRows(
     moduleId,
     (cloudDocsQ.data as CloudModuleDocument[] | undefined) ?? [],
+    organizationCatalogs.processes,
     savedDemoDocument,
     isDemo,
   ).map((row) => (statusOverrides[row.id] ? { ...row, status: statusOverrides[row.id] } : row));
@@ -7540,6 +7541,10 @@ type ModuleGridRow = {
   updatedAt: string;
 };
 
+function uppercaseProcessName(value: string) {
+  return value === "-" ? value : value.trim().toLocaleUpperCase("pt-BR");
+}
+
 function moduleGridRowFromWorkspace(
   moduleId: AteliamModule,
   workspace: WorkspaceState,
@@ -7553,8 +7558,11 @@ function moduleGridRowFromWorkspace(
       name: workspace.ddp.meta.titulo || "Mapeamento sem título",
       type: "Mapeamento",
       modalidade: workspace.ddp.meta.modalidade || "AS IS",
-      process:
-        workspace.ddp.macroprocess.titulo || workspace.ddp.legacy?.processName?.toString() || "-",
+      process: uppercaseProcessName(
+        workspace.ddp.macroprocess.titulo ||
+          workspace.ddp.legacy?.processName?.toString() ||
+          "-",
+      ),
       area: workspace.ddp.legacy?.processArea?.toString() || workspace.ddp.meta.area || "-",
       owner:
         workspace.ddp.legacy?.processOwner?.toString() ||
@@ -7571,7 +7579,7 @@ function moduleGridRowFromWorkspace(
       name: workspace.pop.meta.titulo || "Documento sem título",
       type: workspace.pop.meta.tipo || "Documento",
       modalidade: "-",
-      process: workspace.pop.meta.processo || "-",
+      process: uppercaseProcessName(workspace.pop.meta.processo || "-"),
       area: workspace.pop.meta.area || "-",
       owner: "-",
       responsible: workspace.pop.meta.elaboracao || workspace.pop.meta.aprovacao || "-",
@@ -7584,7 +7592,7 @@ function moduleGridRowFromWorkspace(
     name: workspace.bpmn.poolName || "Fluxograma sem título",
     type: "Fluxo de atividades",
     modalidade: "-",
-    process: workspace.bpmn.poolName || "-",
+    process: uppercaseProcessName(workspace.bpmn.poolName || "-"),
     area: "-",
     owner: "-",
     responsible: workspace.bpmn.lanes.filter(Boolean).join(" / ") || "-",
@@ -7846,6 +7854,7 @@ function buildDemoModuleRows(moduleId: AteliamModule): ModuleGridRow[] {
 function buildModuleGridRows(
   moduleId: AteliamModule,
   documents: CloudModuleDocument[],
+  processes: OrganizationProcess[],
   savedDemoDocument: {
     id: string;
     workspace: WorkspaceState;
@@ -7855,11 +7864,18 @@ function buildModuleGridRows(
 ) {
   const cloudRows = documents.map((document) => {
     const snapshot = parseWorkspace(document.content_inline);
-    return moduleGridRowFromWorkspace(moduleId, snapshot, {
+    const row = moduleGridRowFromWorkspace(moduleId, snapshot, {
       id: document.id,
       status: "Ativo",
       updatedAt: document.updated_at,
     });
+    const registeredProcess = document.primary_process_id
+      ? processes.find((process) => process.id === document.primary_process_id)
+      : null;
+    return {
+      ...row,
+      process: uppercaseProcessName(registeredProcess?.name || row.process),
+    };
   });
   if (cloudRows.length) return cloudRows;
   if (isDemo) {
