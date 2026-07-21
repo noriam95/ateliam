@@ -3029,8 +3029,13 @@ function getDdpExportModel(data: DdpState) {
     // Área e Dono do documento vêm do processo vinculado (preenchido no cadastro).
     processName: textAt(legacy, "processName") || currentMacro.titulo,
     processCode: textAt(legacy, "processCode"),
-    valueChainName:
-      textAt(legacy, "processValueChainName") || data.meta.valueChainName || data.meta.valueChainId,
+    valueChainName: (
+      textAt(legacy, "processValueChainName") ||
+      data.meta.valueChainName ||
+      data.meta.valueChainId
+    )
+      .trim()
+      .toLocaleUpperCase("pt-BR"),
     area: textAt(legacy, "processArea") || data.meta.area,
     owner: textAt(legacy, "processOwner") || data.meta.responsavel,
     description: data.overview.objetivo,
@@ -11153,11 +11158,14 @@ function DdpModule({
                 <ReadOnlyField label="Código do processo" value={selectedProcess?.code ?? ""} />
                 <ReadOnlyField
                   label="Cadeia de valor"
-                  value={
-                    data.legacy?.processValueChainName?.toString() ??
+                  value={(
                     findProcessValueChain(selectedProcess)?.name ??
+                    data.legacy?.processValueChainName?.toString() ??
+                    data.meta.valueChainName ??
                     ""
-                  }
+                  )
+                    .trim()
+                    .toLocaleUpperCase("pt-BR")}
                 />
                 <ReadOnlyField label="Tipo" value="Relatório de Mapeamento de Processo" />
                 <ReadOnlyField
