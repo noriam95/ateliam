@@ -855,7 +855,7 @@ export function WorkspaceProcessRegistrations({
           data: {
             id: draft.id || undefined,
             organizationId,
-            name: draft.name,
+            name: draft.name.trim().toLocaleUpperCase("pt-BR"),
             category: draft.valueChainCategory,
             description: draft.description || null,
             status: draft.status as "Ativa" | "Inativa",
@@ -988,7 +988,7 @@ export function WorkspaceProcessRegistrations({
         return saveValueChain({
           data: {
             organizationId,
-            name: relatedDraft.name,
+            name: relatedDraft.name.trim().toLocaleUpperCase("pt-BR"),
             category: relatedDraft.valueChainCategory,
             description: relatedDraft.description || null,
             status: relatedDraft.status as "Ativa" | "Inativa",
@@ -1622,7 +1622,9 @@ function RegistrationFields({
         <Field label="Nome">
           <input
             value={draft.name}
-            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, name: e.target.value.toLocaleUpperCase("pt-BR") }))
+            }
             className={inputClass}
           />
         </Field>
@@ -2113,7 +2115,7 @@ function saveDemoRegistration(
         ...current,
         valueChains: upsert(current.valueChains, {
           id,
-          name: draft.name,
+          name: draft.name.trim().toLocaleUpperCase("pt-BR"),
           category: draft.valueChainCategory,
           description: draft.description || null,
           status: draft.status,
@@ -2459,7 +2461,7 @@ export function ProcessRegistrationDialog({
         return saveValueChain({
           data: {
             organizationId,
-            name: relatedDraft.name,
+            name: relatedDraft.name.trim().toLocaleUpperCase("pt-BR"),
             category: relatedDraft.valueChainCategory,
             description: relatedDraft.description || null,
             status: relatedDraft.status as "Ativa" | "Inativa",

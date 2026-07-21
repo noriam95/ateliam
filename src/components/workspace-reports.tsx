@@ -180,7 +180,7 @@ function ValueChainReport({
                 c.id === draft.id
                   ? {
                       ...c,
-                      name: draft.name,
+                      name: draft.name.trim().toLocaleUpperCase("pt-BR"),
                       category: draft.category,
                       description: draft.description || null,
                       status: draft.status,
@@ -191,7 +191,7 @@ function ValueChainReport({
                 ...current,
                 {
                   id: `demo-chain-${Date.now()}`,
-                  name: draft.name,
+                  name: draft.name.trim().toLocaleUpperCase("pt-BR"),
                   category: draft.category,
                   description: draft.description || null,
                   status: draft.status,
@@ -204,7 +204,7 @@ function ValueChainReport({
         data: {
           id: draft.id || undefined,
           organizationId,
-          name: draft.name,
+          name: draft.name.trim().toLocaleUpperCase("pt-BR"),
           category: draft.category,
           description: draft.description || null,
           status: (draft.status.toLowerCase().startsWith("ativ") ? "Ativa" : "Inativa") as
@@ -1607,7 +1607,9 @@ function ValueChainForm({
             <input
               autoFocus
               value={draft.name}
-              onChange={(e) => onChange({ ...draft, name: e.target.value })}
+              onChange={(e) =>
+                onChange({ ...draft, name: e.target.value.toLocaleUpperCase("pt-BR") })
+              }
               placeholder="Ex.: Operação Laboratorial"
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
             />

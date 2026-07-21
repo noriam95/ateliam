@@ -649,7 +649,10 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       processOwners: processOwners ?? [],
       causes: causes ?? [],
       processes: (processes ?? []).filter((process) => process.type !== "macroprocess"),
-      valueChains: valueChains ?? [],
+      valueChains: (valueChains ?? []).map((chain) => ({
+        ...chain,
+        name: chain.name.trim().toLocaleUpperCase("pt-BR"),
+      })),
       systems: systems ?? [],
       positions: positions ?? [],
     };
@@ -726,7 +729,10 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
       areas: areas.data ?? [],
       owners: owners.data ?? [],
       types: (types.data ?? []).filter((type) => type.code !== "macroprocess"),
-      valueChains: valueChains.data ?? [],
+      valueChains: (valueChains.data ?? []).map((chain) => ({
+        ...chain,
+        name: chain.name.trim().toLocaleUpperCase("pt-BR"),
+      })),
       processes: (processes.data ?? []).filter((process) => process.type !== "macroprocess"),
       systems: systems.data ?? [],
       positions: positions.data ?? [],
@@ -910,7 +916,7 @@ export const saveValueChainRegistration = createServerFn({ method: "POST" })
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const payload = {
       organization_id: access.organizationId,
-      name: data.name,
+      name: data.name.trim().toLocaleUpperCase("pt-BR"),
       category: data.category,
       description: data.description ?? null,
       status: data.status,
