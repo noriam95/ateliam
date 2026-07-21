@@ -2642,6 +2642,43 @@ function buildModuleJson(moduleId: AteliamModule, workspace: WorkspaceState) {
   );
 }
 
+function withUppercaseModuleTitle(
+  moduleId: AteliamModule,
+  workspace: WorkspaceState,
+): WorkspaceState {
+  if (moduleId === "ddp") {
+    return {
+      ...workspace,
+      ddp: {
+        ...workspace.ddp,
+        meta: {
+          ...workspace.ddp.meta,
+          titulo: workspace.ddp.meta.titulo.trim().toLocaleUpperCase("pt-BR"),
+        },
+      },
+    };
+  }
+  if (moduleId === "pop") {
+    return {
+      ...workspace,
+      pop: {
+        ...workspace.pop,
+        meta: {
+          ...workspace.pop.meta,
+          titulo: workspace.pop.meta.titulo.trim().toLocaleUpperCase("pt-BR"),
+        },
+      },
+    };
+  }
+  return {
+    ...workspace,
+    bpmn: {
+      ...workspace.bpmn,
+      poolName: workspace.bpmn.poolName.trim().toLocaleUpperCase("pt-BR"),
+    },
+  };
+}
+
 function parseWorkspace(raw?: string | null): WorkspaceState {
   const fallback = defaultWorkspace();
   if (!raw) return fallback;
@@ -6200,7 +6237,7 @@ function ModuleWorkspacePage() {
       }
       // Geração automática de código: reserva a sequência quando configurado e
       // o documento ainda não tem código.
-      let workspaceToSave = workspace;
+      let workspaceToSave = withUppercaseModuleTitle(moduleId, workspace);
       if (moduleId === "ddp") {
         workspaceToSave = await persistSuggestedMappingProcesses(workspaceToSave);
         workspaceToSave = await persistMappingSystems(workspaceToSave);
@@ -11087,7 +11124,12 @@ function DdpModule({
                 <Field
                   label="Título do Mapeamento"
                   value={data.meta.titulo}
-                  onChange={(titulo) => update({ ...data, meta: { ...data.meta, titulo } })}
+                  onChange={(titulo) =>
+                    update({
+                      ...data,
+                      meta: { ...data.meta, titulo: titulo.toLocaleUpperCase("pt-BR") },
+                    })
+                  }
                 />
                 {/* Ordem abaixo espelha a tabela de identificação do relatório Word
               (Tipo/Dono/Área/Modalidade, Elaborador/Revisor/Data). Tipo, Dono e
@@ -13022,7 +13064,9 @@ function PopModule({
                 <Field
                   label={`Título do ${documentName}`}
                   value={data.meta.titulo}
-                  onChange={(titulo) => updateMeta({ titulo })}
+                  onChange={(titulo) =>
+                    updateMeta({ titulo: titulo.toLocaleUpperCase("pt-BR") })
+                  }
                 />
                 <Field
                   label="Público / classificação"

@@ -132,6 +132,36 @@ const moduleDocumentSchema = z.object({
   primaryProcessId: z.string().uuid().optional().nullable(),
   primaryProcessVersion: z.number().int().positive().optional().nullable(),
 });
+
+function uppercaseModuleDocumentContent(
+  content: string,
+  moduleId: "ddp" | "pop" | "bpmn",
+) {
+  try {
+    const parsed = JSON.parse(content) as Record<string, unknown>;
+    const uppercase = (value: unknown) =>
+      typeof value === "string" ? value.trim().toLocaleUpperCase("pt-BR") : value;
+
+    if (typeof parsed.titulo === "string") parsed.titulo = uppercase(parsed.titulo);
+    if (moduleId === "ddp") {
+      const ddp = parsed.ddp as Record<string, unknown> | undefined;
+      const meta = ddp?.meta as Record<string, unknown> | undefined;
+      if (meta && typeof meta.titulo === "string") meta.titulo = uppercase(meta.titulo);
+    }
+    if (moduleId === "pop") {
+      const pop = parsed.pop as Record<string, unknown> | undefined;
+      const meta = pop?.meta as Record<string, unknown> | undefined;
+      if (meta && typeof meta.titulo === "string") meta.titulo = uppercase(meta.titulo);
+    }
+    if (moduleId === "bpmn") {
+      const bpmn = parsed.bpmn as Record<string, unknown> | undefined;
+      if (bpmn && typeof bpmn.poolName === "string") bpmn.poolName = uppercase(bpmn.poolName);
+    }
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return content;
+  }
+}
 const organizationScopeSchema = z.object({
   organizationId: z.string().uuid().optional().nullable(),
 });
@@ -1402,7 +1432,9 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
   .validator((d: z.infer<typeof moduleDocumentSchema>) => moduleDocumentSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const name = data.code ? `${data.code} - ${data.title}` : data.title;
+    const title = data.title.trim().toLocaleUpperCase("pt-BR");
+    const content = uppercaseModuleDocumentContent(data.content, data.moduleId);
+    const name = data.code ? `${data.code} - ${title}` : title;
     let primaryProcessVersion = data.primaryProcessVersion ?? null;
 
     if (data.primaryProcessId) {
@@ -1441,7 +1473,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
           organization_id: access.organizationId,
           module: data.moduleId,
           description: data.description ?? null,
-          content_inline: data.content,
+          content_inline: content,
           primary_process_id: data.primaryProcessId ?? null,
           primary_process_version: primaryProcessVersion,
         })
@@ -1454,14 +1486,14 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
     const nextVersion =
       data.moduleId === "ddp" ? (doc.current_version ?? 0) : (doc.current_version ?? 0) + 1;
     if (data.moduleId !== "ddp") {
-      const hash = await sha256Hex(data.content);
+      const hash = await sha256Hex(content);
       const { error: versionError } = await context.supabase.from("document_versions").insert({
         document_id: doc.id,
         version_number: nextVersion,
         author_id: context.userId,
         comment: data.comment ?? null,
         content_hash: hash,
-        content_snapshot: data.content,
+        content_snapshot: content,
       });
       if (versionError) throw new Error(versionError.message);
     }
@@ -1471,7 +1503,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
       .update({
         name,
         description: data.description ?? null,
-        content_inline: data.content,
+        content_inline: content,
         current_version: nextVersion,
         primary_process_id: data.primaryProcessId ?? null,
         primary_process_version: primaryProcessVersion,
