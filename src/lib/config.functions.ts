@@ -950,7 +950,7 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
     const payload = {
       organization_id: access.organizationId,
       code: data.code ?? null,
-      name: data.name,
+      name: data.name.trim().toLocaleUpperCase("pt-BR"),
       type: data.type,
       value_chain_id: data.valueChainId ?? null,
       parent_process_id: data.parentProcessId ?? null,

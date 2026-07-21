@@ -868,7 +868,7 @@ export function WorkspaceProcessRegistrations({
           id: draft.id || undefined,
           organizationId,
           code: processCode,
-          name: draft.name,
+          name: draft.name.trim().toLocaleUpperCase("pt-BR"),
           type: draft.type,
           valueChainId: draft.valueChainId || null,
           parentProcessId: draft.parentProcessId || null,
@@ -1697,7 +1697,12 @@ function RegistrationFields({
         <Field label="Nome">
           <input
             value={draft.name}
-            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                name: e.target.value.toLocaleUpperCase("pt-BR"),
+              }))
+            }
             className={inputClass}
           />
         </Field>
@@ -2120,7 +2125,7 @@ function saveDemoRegistration(
       processes: upsert(current.processes, {
         id,
         code: draft.code || null,
-        name: draft.name,
+        name: draft.name.trim().toLocaleUpperCase("pt-BR"),
         type: draft.type,
         value_chain_id: draft.valueChainId || null,
         parent_process_id: draft.parentProcessId || null,
@@ -2385,7 +2390,7 @@ export function ProcessRegistrationDialog({
 
   const [draft, setDraft] = useState<Draft>(() => ({
     ...emptyDraft("processes", data),
-    name: initialName,
+    name: initialName.toLocaleUpperCase("pt-BR"),
   }));
   const [relatedCreate, setRelatedCreate] = useState<RelatedCreateState | null>(null);
 
@@ -2532,7 +2537,7 @@ export function ProcessRegistrationDialog({
           organization_id: organizationId ?? "",
           current_version: 1,
           code: processCode,
-          name: draft.name,
+          name: draft.name.trim().toLocaleUpperCase("pt-BR"),
           type: draft.type,
           value_chain_id: draft.valueChainId || null,
           parent_process_id: draft.parentProcessId || null,
@@ -2550,7 +2555,7 @@ export function ProcessRegistrationDialog({
           organization_id: "demo",
           current_version: 1,
           code: processCode,
-          name: draft.name,
+          name: draft.name.trim().toLocaleUpperCase("pt-BR"),
           type: draft.type,
           value_chain_id: draft.valueChainId || null,
           parent_process_id: draft.parentProcessId || null,
@@ -2567,7 +2572,7 @@ export function ProcessRegistrationDialog({
           id: undefined,
           organizationId,
           code: processCode,
-          name: draft.name,
+          name: draft.name.trim().toLocaleUpperCase("pt-BR"),
           type: draft.type,
           valueChainId: draft.valueChainId || null,
           parentProcessId: draft.parentProcessId || null,
