@@ -172,6 +172,17 @@ html[data-theme="dark"] {
   select {
     font: inherit;
   }
+  :where(button, a, input, textarea, select, summary, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  :where(button, [role="button"]):not(:disabled) {
+    touch-action: manipulation;
+  }
+  :where(input, textarea, select)[aria-invalid="true"] {
+    border-color: var(--destructive);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 14%, transparent);
+  }
   h1,
   h2,
   h3,
@@ -288,17 +299,25 @@ html[data-theme="dark"] {
 
   html[data-theme="dark"] body {
     background:
-      radial-gradient(circle at 8% 0%, color-mix(in oklab, var(--gold) 7%, transparent), transparent 28%),
+      radial-gradient(
+        circle at 8% 0%,
+        color-mix(in oklab, var(--gold) 7%, transparent),
+        transparent 28%
+      ),
       var(--background);
   }
 
   html[data-theme="dark"] .shadow-sm {
-    box-shadow: 0 1px 0 color-mix(in oklab, white 8%, transparent), 0 10px 26px -22px black !important;
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 8%, transparent),
+      0 10px 26px -22px black !important;
   }
 
   html[data-theme="dark"] .shadow,
   html[data-theme="dark"] .shadow-md {
-    box-shadow: 0 1px 0 color-mix(in oklab, white 8%, transparent), 0 18px 42px -28px black !important;
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 8%, transparent),
+      0 18px 42px -28px black !important;
   }
 
   html[data-theme="dark"] .bg-white {
@@ -399,5 +418,26 @@ html[data-theme="dark"] {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 767px) {
+  [role="dialog"] {
+    width: calc(100vw - 1rem);
+  }
+
+  table {
+    font-size: 0.8125rem;
   }
 }

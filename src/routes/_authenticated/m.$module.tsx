@@ -57,6 +57,7 @@ import {
   type DragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -6965,7 +6966,18 @@ function ModuleWorkspacePage() {
       <>
         {!loaded && !isDemo ? (
           <Panel>
-            <div className="py-20 text-center text-sm text-[#6e6e73]">Carregando workspace...</div>
+            <div className="grid gap-4 p-2" role="status" aria-label="Carregando módulo">
+              <div className="h-16 animate-pulse rounded-lg bg-muted" />
+              <div className="grid gap-3 md:grid-cols-[220px_1fr]">
+                <div className="hidden h-72 animate-pulse rounded-lg bg-muted/70 md:block" />
+                <div className="grid gap-3">
+                  <div className="h-32 animate-pulse rounded-lg bg-muted/70" />
+                  <div className="h-24 animate-pulse rounded-lg bg-muted/60" />
+                  <div className="h-24 animate-pulse rounded-lg bg-muted/60" />
+                </div>
+              </div>
+              <span className="sr-only">Carregando conteúdo do módulo.</span>
+            </div>
           </Panel>
         ) : null}
         {loaded && moduleId === "ddp" ? (
@@ -7296,7 +7308,34 @@ function ModuleWorkspacePage() {
           </aside>
 
           <main className="min-w-0 p-4 sm:p-5">
-            <section className="min-w-0">{moduleMainContent}</section>
+            <section className="min-w-0">
+              {saveMut.isError ? (
+                <div
+                  role="alert"
+                  className="mb-3 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-destructive/35 bg-destructive/5 px-4 py-3 text-sm text-foreground"
+                >
+                  <div className="flex min-w-0 gap-2.5">
+                    <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div>
+                      <div className="font-bold">Não foi possível salvar</div>
+                      <p className="mt-0.5 text-muted-foreground">
+                        {saveMut.error instanceof Error
+                          ? saveMut.error.message
+                          : "Revise os campos e tente novamente. O preenchimento foi preservado."}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => saveMut.reset()}
+                    className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                  >
+                    Fechar aviso
+                  </button>
+                </div>
+              ) : null}
+              {moduleMainContent}
+            </section>
           </main>
         </div>
       </div>
@@ -7564,9 +7603,7 @@ function moduleGridRowFromWorkspace(
       type: "Mapeamento",
       modalidade: workspace.ddp.meta.modalidade || "AS IS",
       process: uppercaseProcessName(
-        workspace.ddp.macroprocess.titulo ||
-          workspace.ddp.legacy?.processName?.toString() ||
-          "-",
+        workspace.ddp.macroprocess.titulo || workspace.ddp.legacy?.processName?.toString() || "-",
       ),
       area: workspace.ddp.legacy?.processArea?.toString() || workspace.ddp.meta.area || "-",
       owner:
@@ -10368,6 +10405,8 @@ function DdpModule({
         ? "saved"
         : "idle";
 
+  useUnsavedChangesGuard(dirty && !saving);
+
   // Atalho ⌘S / Ctrl+S para salvar o preenchimento.
   useEffect(() => {
     if (!onSave) return;
@@ -12350,6 +12389,8 @@ function PopModule({
         ? "saved"
         : "idle";
 
+  useUnsavedChangesGuard(dirty && !saving);
+
   function selectSection(key: string) {
     setActiveSection(key);
     setOpenSignals((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }));
@@ -13088,9 +13129,7 @@ function PopModule({
                 <Field
                   label={`Título do ${documentName}`}
                   value={data.meta.titulo}
-                  onChange={(titulo) =>
-                    updateMeta({ titulo: titulo.toLocaleUpperCase("pt-BR") })
-                  }
+                  onChange={(titulo) => updateMeta({ titulo: titulo.toLocaleUpperCase("pt-BR") })}
                 />
                 <Field
                   label="Público / classificação"
@@ -17911,6 +17950,18 @@ function Panel({
 
 type MappingSectionInfo = { key: string; num: string; title: string; pct: number };
 
+function useUnsavedChangesGuard(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    function preventAccidentalExit(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", preventAccidentalExit);
+    return () => window.removeEventListener("beforeunload", preventAccidentalExit);
+  }, [enabled]);
+}
+
 // Barra fixa no topo do formulário de mapeamento: identidade do documento,
 // medidor de progresso segmentado (uma marca por seção), estado de salvamento e
 // as ações Salvar / Visualizar sempre acessíveis.
@@ -17950,7 +18001,7 @@ function FlowCommandBar({
           ? "Tudo salvo"
           : "";
   return (
-    <div className="sticky top-14 z-30 -mx-5 border-b border-border bg-[color-mix(in_oklab,var(--card)_88%,transparent)] px-5 py-3 backdrop-blur-md">
+    <div className="sticky top-14 z-30 -mx-5 border-b border-border bg-[color-mix(in_oklab,var(--card)_94%,transparent)] px-3 py-3 backdrop-blur-md sm:px-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0">
           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">
@@ -17966,7 +18017,10 @@ function FlowCommandBar({
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-3" title="Preenchimento por seção">
+        <div
+          className="order-last flex w-full items-center gap-3 sm:order-none sm:w-auto"
+          title="Preenchimento por seção"
+        >
           <div className="flex gap-[3px]">
             {sections.map((s) => (
               <span
@@ -17988,8 +18042,11 @@ function FlowCommandBar({
         </div>
 
         <div className="flex items-center gap-2.5">
+          <span className="sr-only sm:hidden" role="status" aria-live="polite">
+            {stateLabel}
+          </span>
           {stateLabel ? (
-            <div className="hidden text-right sm:block">
+            <div className="hidden text-right sm:block" role="status" aria-live="polite">
               <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[var(--gold)]">
                 {saveState === "dirty" ? (
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />
@@ -18005,26 +18062,27 @@ function FlowCommandBar({
               type="button"
               onClick={onPreview}
               disabled={!canSave}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3.5 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45 sm:h-9 sm:px-3.5"
               title={previewTitle}
             >
               <Eye className="h-4 w-4" />
-              Visualizar
+              <span className="hidden sm:inline">Visualizar</span>
             </button>
           ) : null}
           {onSave ? (
             <button
               type="button"
               onClick={onSave}
-              disabled={!canSave}
-              className="relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-45"
+              disabled={!canSave || saveState === "saving"}
+              aria-busy={saveState === "saving"}
+              className="relative inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-45 sm:h-9 sm:px-3.5"
               title={saveTitle}
             >
               {saveState === "dirty" && canSave ? (
                 <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[var(--gold)] ring-2 ring-card" />
               ) : null}
               <Save className="h-4 w-4" />
-              Salvar
+              <span className="hidden sm:inline">Salvar</span>
             </button>
           ) : null}
         </div>
@@ -18049,20 +18107,23 @@ function MappingSectionNav({
 }) {
   const done = sections.filter((s) => s.pct >= 100).length;
   return (
-    <nav className="sticky top-[16.5rem] hidden lg:block" aria-label={label}>
+    <nav
+      className="sticky top-[13.5rem] z-20 -mx-1 mb-3 rounded-lg border border-border bg-card/95 p-2 shadow-sm backdrop-blur lg:top-[16.5rem] lg:mx-0 lg:mb-0 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+      aria-label={label}
+    >
       <div className="mb-3 ml-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
         {label}
       </div>
-      <ul className="grid gap-0.5">
+      <ul className="flex gap-1 overflow-x-auto pb-1 lg:grid lg:gap-0.5 lg:overflow-visible lg:pb-0">
         {sections.map((s) => {
           const active = s.key === activeKey;
           return (
-            <li key={s.key}>
+            <li key={s.key} className="shrink-0 lg:shrink">
               <button
                 type="button"
                 onClick={() => onSelect(s.key)}
                 className={[
-                  "grid w-full grid-cols-[20px_1fr_auto] items-center gap-2.5 rounded-md border-l-2 py-2 pl-2 pr-2.5 text-left transition",
+                  "grid min-w-[150px] grid-cols-[20px_1fr_auto] items-center gap-2 rounded-md border-l-2 px-2 py-2 text-left transition lg:w-full lg:min-w-0 lg:gap-2.5 lg:pl-2 lg:pr-2.5",
                   active
                     ? "border-[var(--gold)] bg-accent text-foreground"
                     : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -18073,7 +18134,9 @@ function MappingSectionNav({
                 >
                   {s.num}
                 </span>
-                <span className={`truncate text-[12.5px] ${active ? "font-bold" : "font-medium"}`}>
+                <span
+                  className={`max-w-36 truncate text-[12.5px] lg:max-w-none ${active ? "font-bold" : "font-medium"}`}
+                >
                   {s.title}
                 </span>
                 <MappingSectionDot pct={s.pct} />
@@ -18082,7 +18145,7 @@ function MappingSectionNav({
           );
         })}
       </ul>
-      <div className="mt-3 ml-1 flex items-center justify-between border-t border-border/70 pt-3 text-[11.5px] text-muted-foreground">
+      <div className="mt-3 ml-1 hidden items-center justify-between border-t border-border/70 pt-3 text-[11.5px] text-muted-foreground lg:flex">
         <span>Seções concluídas</span>
         <b className="font-data text-foreground">
           {done} / {sections.length}
@@ -18134,6 +18197,9 @@ function RegisteredProcessSelect({
   const selected = processes.find((process) => process.id === value) ?? null;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputId = useId();
+  const listboxId = `${inputId}-options`;
   const normalizedQuery = normalizeLabel(query);
   const filtered = useMemo(() => {
     if (!normalizedQuery) return processes.slice(0, 12);
@@ -18162,15 +18228,42 @@ function RegisteredProcessSelect({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selected?.id, displayName]);
 
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") return setOpen(false);
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((current) => {
+        if (!filtered.length) return -1;
+        if (current < 0) return direction > 0 ? 0 : filtered.length - 1;
+        return (current + direction + filtered.length) % filtered.length;
+      });
+    } else if (event.key === "Enter" && open) {
+      event.preventDefault();
+      if (activeIndex >= 0 && filtered[activeIndex]) onSelect(filtered[activeIndex]);
+      else if (canRequestCreate) onRequestCreate?.(query.trim());
+      setOpen(false);
+    }
+  }
+
   return (
     <div className="relative">
       <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
+          id={inputId}
           required={required}
           value={open ? query : selected ? displayName(selected) : ""}
           placeholder={placeholder}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-activedescendant={
+            activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+          }
           onFocus={() => {
             setQuery("");
             setOpen(true);
@@ -18180,6 +18273,7 @@ function RegisteredProcessSelect({
             setOpen(true);
           }}
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          onKeyDown={handleKeyDown}
           className="w-full rounded-md border border-input bg-background py-2.5 pl-9 pr-9 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
         />
         {value ? (
@@ -18198,18 +18292,27 @@ function RegisteredProcessSelect({
         ) : null}
       </div>
       {open ? (
-        <div className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label={`Opções de ${label}`}
+          className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg"
+        >
           {filtered.length ? (
-            filtered.map((process) => (
+            filtered.map((process, index) => (
               <button
                 type="button"
                 key={process.id}
+                id={`${listboxId}-option-${index}`}
+                role="option"
+                aria-selected={process.id === value}
                 onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => {
                   onSelect(process);
                   setOpen(false);
                 }}
-                className="grid w-full gap-1 rounded-md border border-transparent px-3 py-2.5 text-left text-sm hover:border-border hover:bg-muted"
+                className={`grid min-h-11 w-full gap-1 rounded-md border border-transparent px-3 py-2.5 text-left text-sm hover:border-border hover:bg-muted ${activeIndex === index ? "bg-muted" : ""}`}
               >
                 <span className="flex min-w-0 items-center justify-between gap-2">
                   <span className="truncate font-semibold text-foreground">
@@ -18277,6 +18380,9 @@ function RegisteredSystemSelect({
     null;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputId = useId();
+  const listboxId = `${inputId}-options`;
   const normalizedQuery = normalizeLabel(query);
   const filtered = useMemo(() => {
     if (!normalizedQuery) return systems.slice(0, 12);
@@ -18296,14 +18402,41 @@ function RegisteredSystemSelect({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selected?.id]);
 
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") return setOpen(false);
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((current) => {
+        if (!filtered.length) return -1;
+        if (current < 0) return direction > 0 ? 0 : filtered.length - 1;
+        return (current + direction + filtered.length) % filtered.length;
+      });
+    } else if (event.key === "Enter" && open) {
+      event.preventDefault();
+      if (activeIndex >= 0 && filtered[activeIndex]) onSelect(filtered[activeIndex]);
+      else if (canRequestCreate) onRequestCreate?.(query.trim());
+      setOpen(false);
+    }
+  }
+
   return (
     <div className="relative">
       <span className="mb-1.5 block text-[11px] font-semibold text-muted-foreground">{label}</span>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
+          id={inputId}
           value={open ? query : (selected?.name ?? displayValue)}
           placeholder={placeholder}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-activedescendant={
+            activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+          }
           onFocus={() => {
             setQuery("");
             setOpen(true);
@@ -18313,6 +18446,7 @@ function RegisteredSystemSelect({
             setOpen(true);
           }}
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          onKeyDown={handleKeyDown}
           className="w-full rounded-md border border-input bg-background py-2.5 pl-9 pr-9 text-sm text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
         />
         {value || displayValue ? (
@@ -18331,18 +18465,27 @@ function RegisteredSystemSelect({
         ) : null}
       </div>
       {open ? (
-        <div className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label={`Opções de ${label}`}
+          className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg"
+        >
           {filtered.length ? (
-            filtered.map((system) => (
+            filtered.map((system, index) => (
               <button
                 type="button"
                 key={system.id}
+                id={`${listboxId}-option-${index}`}
+                role="option"
+                aria-selected={system.id === value}
                 onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => {
                   onSelect(system);
                   setOpen(false);
                 }}
-                className="grid w-full gap-1 rounded-md border border-transparent px-3 py-2.5 text-left text-sm hover:border-border hover:bg-muted"
+                className={`grid min-h-11 w-full gap-1 rounded-md border border-transparent px-3 py-2.5 text-left text-sm hover:border-border hover:bg-muted ${activeIndex === index ? "bg-muted" : ""}`}
               >
                 <span className="truncate font-semibold text-foreground">{system.name}</span>
                 {system.description ? (
@@ -18589,6 +18732,9 @@ function DropdownTextField({
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputId = useId();
+  const listboxId = `${inputId}-options`;
   const uniqueOptions = useMemo(() => Array.from(new Set(options.filter(Boolean))), [options]);
   const normalizedValue = normalizeLabel(value);
   const filteredOptions = useMemo(() => {
@@ -18600,16 +18746,61 @@ function DropdownTextField({
   const hasExact = uniqueOptions.some((option) => normalizeLabel(option) === normalizedValue);
   const canCreate = Boolean(onCreate && createLabel && value.trim() && !hasExact);
 
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [value, open]);
+
+  function selectOption(option: string) {
+    onChange(option);
+    setOpen(false);
+  }
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      setOpen(false);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((current) => {
+        if (!filteredOptions.length) return -1;
+        if (current < 0) return direction > 0 ? 0 : filteredOptions.length - 1;
+        return (current + direction + filteredOptions.length) % filteredOptions.length;
+      });
+      return;
+    }
+    if (event.key === "Enter" && open) {
+      event.preventDefault();
+      if (activeIndex >= 0 && filteredOptions[activeIndex]) {
+        selectOption(filteredOptions[activeIndex]);
+      } else if (canCreate) {
+        onCreate?.(value.trim());
+        setOpen(false);
+      }
+    }
+  }
+
   return (
-    <label className="relative block">
+    <label className="relative block" htmlFor={inputId}>
       <span className={fieldLabelClass}>{label}</span>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
         <input
+          id={inputId}
           value={value}
           placeholder={placeholder}
           autoComplete="off"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-activedescendant={
+            open && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+          }
           onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
           onChange={(event) => {
             onChange(event.target.value);
             setOpen(true);
@@ -18620,18 +18811,26 @@ function DropdownTextField({
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
       </div>
       {open ? (
-        <div className="absolute z-40 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label={`Opções de ${label}`}
+          className="absolute z-40 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg"
+        >
           {filteredOptions.length ? (
-            filteredOptions.map((option) => (
+            filteredOptions.map((option, index) => (
               <button
                 key={option}
+                id={`${listboxId}-option-${index}`}
                 type="button"
+                role="option"
+                aria-selected={normalizeLabel(option) === normalizedValue}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onChange(option);
-                  setOpen(false);
-                }}
-                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => selectOption(option)}
+                className={`flex min-h-10 w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted ${
+                  activeIndex === index ? "bg-muted" : ""
+                }`}
               >
                 <span className="truncate">{option}</span>
                 {normalizeLabel(option) === normalizedValue ? (
@@ -19012,23 +19211,40 @@ function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const titleId = useId();
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-lg border border-border bg-card p-5 text-foreground shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-4 text-foreground shadow-2xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-black tracking-tight">{title}</h2>
-            {subtitle ? <p className="mt-1 text-sm text-[#6e6e73]">{subtitle}</p> : null}
+            <h2 id={titleId} className="text-xl font-black tracking-tight">
+              {title}
+            </h2>
+            {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-lg hover:bg-[#f5f5f7]"
+            aria-label="Fechar janela"
+            title="Fechar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-md hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>

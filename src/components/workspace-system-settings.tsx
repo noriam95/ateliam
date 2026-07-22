@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useId,
   useMemo,
   useState,
   type ChangeEvent,
@@ -221,23 +222,38 @@ function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const titleId = useId();
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-foreground/20 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-lg border border-border bg-card p-5 text-foreground shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-4 text-foreground shadow-2xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-black tracking-tight">{title}</h2>
+            <h2 id={titleId} className="text-xl font-black tracking-tight">{title}</h2>
             {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted"
+            aria-label="Fechar janela"
+            title="Fechar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-md hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>
