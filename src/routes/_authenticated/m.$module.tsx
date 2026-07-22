@@ -2,6 +2,12 @@ import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignHorizontalSpaceBetween,
+  AlignStartHorizontal,
+  AlignStartVertical,
+  AlignVerticalSpaceBetween,
   ArrowDown,
   ArrowDownUp,
   ArrowUp,
@@ -19,6 +25,7 @@ import {
   Ellipsis,
   Eye,
   Database,
+  FileSearch,
   FileText,
   Presentation,
   FlaskConical,
@@ -39,6 +46,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Rows3,
   Save,
   Search,
   Settings,
@@ -212,6 +220,7 @@ export const Route = createFileRoute("/_authenticated/m/$module")({
       typeof search.view === "string" && MODULE_ROUTE_VIEWS.has(search.view as ModuleRouteView)
         ? (search.view as ModuleRouteView)
         : undefined,
+    filter: typeof search.filter === "string" ? search.filter.slice(0, 120) : undefined,
   }),
   beforeLoad: ({ params }) => {
     if (!MODULES.some((m) => m.id === params.module)) throw notFound();
@@ -219,6 +228,22 @@ export const Route = createFileRoute("/_authenticated/m/$module")({
 });
 
 const DRAFT_KEY = "ateliam_modern_workspace_v2";
+const NAVIGATION_STATE_KEY = "bf-flow-navigation-expanded";
+
+function readModuleNavigationState(defaults: Record<string, boolean>) {
+  if (typeof window === "undefined") return defaults;
+  try {
+    return {
+      ...defaults,
+      ...(JSON.parse(window.localStorage.getItem(NAVIGATION_STATE_KEY) ?? "{}") as Record<
+        string,
+        boolean
+      >),
+    };
+  } catch {
+    return defaults;
+  }
+}
 
 const moduleGrayVars = {
   "--accent": "color-mix(in oklab, var(--gold) 12%, var(--background))",
@@ -5522,20 +5547,24 @@ function ModuleWorkspacePage() {
   );
   const [registrationView, setRegistrationView] = useState<ModuleRegistrationView>("processes");
   const [settingsView, setSettingsView] = useState<ModuleSettingsView>("theme");
-  const [expandedTree, setExpandedTree] = useState<Record<string, boolean>>({
-    home: true,
-    modules: true,
-    registrations: false,
-    // Expande já o branch do módulo atual, para a barra lateral refletir onde o
-    // usuário está em vez de aparecer recolhida ("menu voltou para versão antiga").
-    ddp: moduleId === "ddp",
-    pop: moduleId === "pop",
-    bpmn: moduleId === "bpmn",
-    causes: false,
-    settings: true,
-    processRegistrations: true,
-    systemRegistrations: true,
-  });
+  const [expandedTree, setExpandedTree] = useState<Record<string, boolean>>(() =>
+    readModuleNavigationState({
+      home: true,
+      modules: true,
+      registrations: false,
+      ddp: moduleId === "ddp",
+      pop: moduleId === "pop",
+      bpmn: moduleId === "bpmn",
+      causes: search.view?.startsWith("cause-") ?? false,
+      settings: true,
+      processRegistrations: true,
+      systemRegistrations: true,
+    }),
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(NAVIGATION_STATE_KEY, JSON.stringify(expandedTree));
+  }, [expandedTree]);
 
   const [showSave, setShowSave] = useState(false);
   const [pendingMappingProcesses, setPendingMappingProcesses] = useState<CreatedProcess[]>([]);
@@ -5849,17 +5878,14 @@ function ModuleWorkspacePage() {
     setRailArea("modules");
     setContentMode("module");
     setModuleSurface("editor");
-    // Expande o branch do módulo atual (recolhendo os demais), para a barra
-    // lateral refletir onde o usuário está em vez de aparecer toda recolhida.
+    // Mantém os demais grupos como o usuário deixou e abre apenas o contexto atual.
     setExpandedTree((current) => ({
       ...current,
       modules: true,
-      ddp: moduleId === "ddp",
-      pop: moduleId === "pop",
-      bpmn: moduleId === "bpmn",
-      causes: false,
+      [moduleId]: true,
+      causes: current.causes || search.view?.startsWith("cause-") === true,
     }));
-  }, [moduleId]);
+  }, [moduleId, search.view]);
 
   useEffect(() => {
     if (search.view === "consult") {
@@ -6961,6 +6987,7 @@ function ModuleWorkspacePage() {
         onView={viewDocumentRow}
         onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
         onChangeStatus={changeRowStatus}
+        initialQuery={search.filter}
       />
     ) : (
       <>
@@ -7009,6 +7036,7 @@ function ModuleWorkspacePage() {
               onView={viewDocumentRow}
               onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
               onChangeStatus={changeRowStatus}
+              initialQuery={search.filter}
             />
           ) : (
             <DdpModule
@@ -7055,6 +7083,7 @@ function ModuleWorkspacePage() {
               onView={viewDocumentRow}
               onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
               onChangeStatus={changeRowStatus}
+              initialQuery={search.filter}
             />
           ) : (
             <PopModule
@@ -7221,7 +7250,7 @@ function ModuleWorkspacePage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex items-center gap-2">
                   {railArea === "home" ? (
                     <Home className="h-4 w-4 text-foreground" />
                   ) : railArea === "modules" ? (
@@ -7236,6 +7265,10 @@ function ModuleWorkspacePage() {
                         ? "Processos"
                         : "Configurações"}
                   </div>
+                  <div className="mt-2 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{organizationBrand.name ?? "BF Flow"}</span>
+                  </div>
                 </div>
               </div>
 
@@ -7248,10 +7281,15 @@ function ModuleWorkspacePage() {
                       target.kind === "module-root"
                         ? moduleId === target.moduleId && contentMode === "module"
                         : target.kind === "module-task"
-                          ? target.task === "consult" &&
-                            moduleId === target.moduleId &&
+                          ? moduleId === target.moduleId &&
                             contentMode === "module" &&
-                            moduleSurface === "consult"
+                            (target.task === "consult"
+                              ? moduleSurface === "consult"
+                              : target.task === "new"
+                                ? moduleSurface === "editor" && ddpView === "editor"
+                                : target.task === "cause-new"
+                                  ? ddpView === "causes" && search.view === "cause-new"
+                                  : ddpView === "causes")
                           : target.kind === "registrations-root"
                             ? contentMode === "registrations"
                             : target.kind === "registration"
@@ -8063,6 +8101,7 @@ function ModuleDocumentGrid({
   onView,
   onDuplicate,
   onChangeStatus,
+  initialQuery = "",
 }: {
   moduleId: AteliamModule;
   rows: ModuleGridRow[];
@@ -8073,11 +8112,28 @@ function ModuleDocumentGrid({
   onView: (row: ModuleGridRow) => void;
   onDuplicate?: (row: ModuleGridRow) => void | Promise<void>;
   onChangeStatus: (row: ModuleGridRow, status: string) => void | Promise<void>;
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const tablePreferenceKey = `bf-flow-table-${moduleId}`;
+  const [query, setQuery] = useState(() => {
+    if (initialQuery) return initialQuery;
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem(`${tablePreferenceKey}-query`) ?? "";
+  });
   const [selected, setSelected] = useState<string[]>([]);
-  const [sortField, setSortField] = useState<ModuleGridColumn>("updatedAt");
-  const [sortDir, setSortDir] = useState<ModuleGridSortDir>("desc");
+  const [sortField, setSortField] = useState<ModuleGridColumn>(() => {
+    if (typeof window === "undefined") return "updatedAt";
+    return (window.localStorage.getItem(`${tablePreferenceKey}-sort-field`) as ModuleGridColumn) || "updatedAt";
+  });
+  const [sortDir, setSortDir] = useState<ModuleGridSortDir>(() => {
+    if (typeof window === "undefined") return "desc";
+    return window.localStorage.getItem(`${tablePreferenceKey}-sort-dir`) === "asc" ? "asc" : "desc";
+  });
+  const [compact, setCompact] = useState(() =>
+    typeof window === "undefined"
+      ? false
+      : window.localStorage.getItem(`${tablePreferenceKey}-density`) === "compact",
+  );
   const [pendingStatus, setPendingStatus] = useState<{
     row: ModuleGridRow;
     status: string;
@@ -8089,6 +8145,18 @@ function ModuleDocumentGrid({
   } | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [deleteSaving, setDeleteSaving] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (initialQuery) setQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    window.localStorage.setItem(`${tablePreferenceKey}-query`, query);
+    window.localStorage.setItem(`${tablePreferenceKey}-sort-field`, sortField);
+    window.localStorage.setItem(`${tablePreferenceKey}-sort-dir`, sortDir);
+    window.localStorage.setItem(`${tablePreferenceKey}-density`, compact ? "compact" : "comfortable");
+  }, [compact, query, sortDir, sortField, tablePreferenceKey]);
   const filtered = useMemo(() => {
     const normalized = normalizeLabel(query);
     return rows.filter((row) =>
@@ -8214,14 +8282,26 @@ function ModuleDocumentGrid({
             ) : null}
           </div>
         </div>
-        <div className="relative mt-4 max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar na tabela"
-            className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-          />
+        <div className="mt-4 flex max-w-xl items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar na tabela"
+              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setCompact((current) => !current)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+            title={compact ? "Usar linhas confortáveis" : "Usar linhas compactas"}
+            aria-label={compact ? "Usar linhas confortáveis" : "Usar linhas compactas"}
+            aria-pressed={compact}
+          >
+            <Rows3 className="h-4 w-4" />
+          </button>
         </div>
         {moduleId === "ddp" ? (
           <div className="mt-4">
@@ -8280,7 +8360,30 @@ function ModuleDocumentGrid({
                   colSpan={columns.length + 2}
                   className="px-4 py-12 text-center text-muted-foreground"
                 >
-                  Nenhum registro encontrado.
+                  <div className="grid justify-items-center gap-3">
+                    <FileSearch className="h-7 w-7 text-muted-foreground/70" />
+                    <div>
+                      <div className="font-semibold text-foreground">
+                        {query ? "Nenhum resultado para este filtro" : "Nenhum registro cadastrado"}
+                      </div>
+                      <div className="mt-1 text-xs">
+                        {query ? "Ajuste os termos da busca." : "Crie o primeiro registro para iniciar."}
+                      </div>
+                    </div>
+                    {query ? (
+                      <button type="button" onClick={() => setQuery("")} className="text-xs font-semibold text-primary hover:underline">
+                        Limpar filtro
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => navigate({ to: "/m/$module", params: { module: moduleId }, search: { view: "new" } })}
+                        className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
+                      >
+                        <Plus className="h-4 w-4" /> Criar registro
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : null}
@@ -8289,11 +8392,11 @@ function ModuleDocumentGrid({
                   <tr
                     key={row.id}
                     onDoubleClick={() => onEdit(row)}
-                    className={`border-t border-border ${
+                    className={`border-t border-border transition-colors ${
                       selected.includes(row.id) ? "bg-accent/70" : "bg-card hover:bg-muted/45"
                     }`}
                   >
-                    <td className="px-4 py-3">
+                    <td className={compact ? "px-4 py-2" : "px-4 py-3"}>
                       <input
                         type="checkbox"
                         aria-label={`Selecionar ${row.name}`}
@@ -8308,7 +8411,7 @@ function ModuleDocumentGrid({
                           ? MODULE_STATUS_OPTIONS
                           : [value, ...MODULE_STATUS_OPTIONS];
                         return (
-                          <td key={key} className="px-3 py-3">
+                          <td key={key} className={compact ? "px-3 py-2" : "px-3 py-3"}>
                             <select
                               value={value}
                               onClick={(event) => event.stopPropagation()}
@@ -8330,12 +8433,12 @@ function ModuleDocumentGrid({
                         );
                       }
                       return (
-                        <td key={key} className="break-words px-3 py-3 text-foreground">
+                        <td key={key} className={`break-words px-3 text-foreground ${compact ? "py-2" : "py-3"}`}>
                           {key === "updatedAt" ? formatDateTimeBr(value) : value}
                         </td>
                       );
                     })}
-                    <td className="px-4 py-3">
+                    <td className={compact ? "px-4 py-2" : "px-4 py-3"}>
                       <RowActions
                         moduleId={moduleId}
                         onView={() => onView(row)}
@@ -8356,7 +8459,7 @@ function ModuleDocumentGrid({
       </footer>
       {pendingStatus ? (
         <Modal
-          title="Alterar status do mapeamento"
+          title={`Alterar status do ${moduleDocumentLabel(moduleId).toLowerCase()}`}
           subtitle={`Confirma alterar o status de "${pendingStatus.row.status}" para "${pendingStatus.status}"?`}
           onClose={() => setPendingStatus(null)}
         >
@@ -14579,6 +14682,18 @@ function BpmnModuleV2({
         event.preventDefault();
         deleteSelected();
       }
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+        const target = event.target as HTMLElement | null;
+        if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || !selectedNodeIds.length) {
+          return;
+        }
+        event.preventDefault();
+        const distance = event.shiftKey ? 10 : 1;
+        if (event.key === "ArrowLeft") nudgeSelectedNodes(-distance, 0);
+        if (event.key === "ArrowRight") nudgeSelectedNodes(distance, 0);
+        if (event.key === "ArrowUp") nudgeSelectedNodes(0, -distance);
+        if (event.key === "ArrowDown") nudgeSelectedNodes(0, distance);
+      }
       if (event.key === "Escape") {
         setTool("select");
         setConnectFrom(null);
@@ -14854,6 +14969,116 @@ function BpmnModuleV2({
       ...data,
       lanes,
       flows: data.flows.map((flow) => (flow.id === selectedFlowId ? { ...flow, ...patch } : flow)),
+    });
+  }
+
+  function arrangeSelectedNodes(
+    mode:
+      | "left"
+      | "center-horizontal"
+      | "top"
+      | "center-vertical"
+      | "distribute-horizontal"
+      | "distribute-vertical",
+  ) {
+    if (selectedNodes.length < 2) return;
+    const left = Math.min(...selectedNodes.map((node) => node.x));
+    const right = Math.max(
+      ...selectedNodes.map((node) => node.x + (node.width ?? defaultNode(node.type).width)),
+    );
+    const top = Math.min(...selectedNodes.map((node) => node.y));
+    const bottom = Math.max(
+      ...selectedNodes.map((node) => node.y + (node.height ?? defaultNode(node.type).height)),
+    );
+    const orderedHorizontal = [...selectedNodes].sort((a, b) => a.x - b.x);
+    const orderedVertical = [...selectedNodes].sort((a, b) => a.y - b.y);
+    const firstHorizontalCenter =
+      orderedHorizontal[0].x +
+      (orderedHorizontal[0].width ?? defaultNode(orderedHorizontal[0].type).width) / 2;
+    const lastHorizontal = orderedHorizontal.at(-1)!;
+    const lastHorizontalCenter =
+      lastHorizontal.x +
+      (lastHorizontal.width ?? defaultNode(lastHorizontal.type).width) / 2;
+    const firstVerticalCenter =
+      orderedVertical[0].y +
+      (orderedVertical[0].height ?? defaultNode(orderedVertical[0].type).height) / 2;
+    const lastVertical = orderedVertical.at(-1)!;
+    const lastVerticalCenter =
+      lastVertical.y +
+      (lastVertical.height ?? defaultNode(lastVertical.type).height) / 2;
+    const horizontalStep =
+      (lastHorizontalCenter - firstHorizontalCenter) / (selectedNodes.length - 1);
+    const verticalStep =
+      (lastVerticalCenter - firstVerticalCenter) / (selectedNodes.length - 1);
+    const positions = new Map<string, { x?: number; y?: number }>();
+
+    selectedNodes.forEach((node) => {
+      const width = node.width ?? defaultNode(node.type).width;
+      const height = node.height ?? defaultNode(node.type).height;
+      if (mode === "left") positions.set(node.id, { x: left });
+      if (mode === "center-horizontal") {
+        positions.set(node.id, { x: left + (right - left - width) / 2 });
+      }
+      if (mode === "top") positions.set(node.id, { y: top });
+      if (mode === "center-vertical") {
+        positions.set(node.id, { y: top + (bottom - top - height) / 2 });
+      }
+    });
+    if (mode === "distribute-horizontal") {
+      orderedHorizontal.forEach((node, index) =>
+        positions.set(node.id, {
+          x:
+            firstHorizontalCenter +
+            horizontalStep * index -
+            (node.width ?? defaultNode(node.type).width) / 2,
+        }),
+      );
+    }
+    if (mode === "distribute-vertical") {
+      orderedVertical.forEach((node, index) =>
+        positions.set(node.id, {
+          y:
+            firstVerticalCenter +
+            verticalStep * index -
+            (node.height ?? defaultNode(node.type).height) / 2,
+        }),
+      );
+    }
+
+    commit({
+      ...data,
+      lanes,
+      nodes: data.nodes.map((node) => {
+        const position = positions.get(node.id);
+        if (!position) return node;
+        const nextY = position.y ?? node.y;
+        return {
+          ...node,
+          x: snapValue(position.x ?? node.x),
+          y: snapValue(nextY),
+          lane: laneIndexFromY(nextY + (node.height ?? defaultNode(node.type).height) / 2),
+        };
+      }),
+    });
+  }
+
+  function nudgeSelectedNodes(dx: number, dy: number) {
+    const ids = selectedNodeIds.length ? selectedNodeIds : selectedId ? [selectedId] : [];
+    if (!ids.length) return;
+    commit({
+      ...data,
+      lanes,
+      nodes: data.nodes.map((node) => {
+        if (!ids.includes(node.id)) return node;
+        const width = node.width ?? defaultNode(node.type).width;
+        const height = node.height ?? defaultNode(node.type).height;
+        const x = Math.max(
+          poolX + leftHeaderWidth + 8,
+          Math.min(poolX + poolWidth - width - 8, node.x + dx),
+        );
+        const y = Math.max(poolY + 8, Math.min(poolY + poolHeight - height - 8, node.y + dy));
+        return { ...node, x, y, lane: laneIndexFromY(y + height / 2) };
+      }),
     });
   }
 
@@ -16428,6 +16653,46 @@ function BpmnModuleV2({
                   <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
                     As alterações serão aplicadas a todos os elementos compatíveis.
                   </p>
+                  <div className="mb-4 border-b border-border pb-4">
+                    <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Alinhar e distribuir
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <IconButton label="Alinhar Ã  esquerda" onClick={() => arrangeSelectedNodes("left")}>
+                        <AlignStartVertical className="h-4 w-4" />
+                      </IconButton>
+                      <IconButton
+                        label="Centralizar horizontalmente"
+                        onClick={() => arrangeSelectedNodes("center-horizontal")}
+                      >
+                        <AlignCenterVertical className="h-4 w-4" />
+                      </IconButton>
+                      <IconButton label="Alinhar ao topo" onClick={() => arrangeSelectedNodes("top")}>
+                        <AlignStartHorizontal className="h-4 w-4" />
+                      </IconButton>
+                      <IconButton
+                        label="Centralizar verticalmente"
+                        onClick={() => arrangeSelectedNodes("center-vertical")}
+                      >
+                        <AlignCenterHorizontal className="h-4 w-4" />
+                      </IconButton>
+                      <IconButton
+                        label="Distribuir horizontalmente"
+                        onClick={() => arrangeSelectedNodes("distribute-horizontal")}
+                      >
+                        <AlignHorizontalSpaceBetween className="h-4 w-4" />
+                      </IconButton>
+                      <IconButton
+                        label="Distribuir verticalmente"
+                        onClick={() => arrangeSelectedNodes("distribute-vertical")}
+                      >
+                        <AlignVerticalSpaceBetween className="h-4 w-4" />
+                      </IconButton>
+                    </div>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Use as setas para ajuste fino; pressione Shift para mover 10 px.
+                    </p>
+                  </div>
                   <BpmnStyleControls
                     lineColor={commonNodeStrokeColor ?? "#64748b"}
                     lineWidth={commonNodeStrokeWidth ?? 2}

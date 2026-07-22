@@ -1,7 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ImageDown, Maximize2, Network, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { FileSearch, ImageDown, Maximize2, Network, Pencil, Plus, Rows3, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteProcessRegistration,
@@ -11,6 +11,39 @@ import {
 import { DEMO_REGISTRY } from "@/components/workspace-process-registrations";
 
 type ChainCategory = "primary" | "support" | "management" | "output";
+
+const VALUE_CHAIN_VIEW_STATE_KEY = "bf-flow-value-chain-view";
+const VALUE_CHAIN_TABLE_STATE_KEY = "bf-flow-value-chain-table";
+
+function readValueChainViewState() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(window.localStorage.getItem(VALUE_CHAIN_VIEW_STATE_KEY) ?? "null") as {
+      query?: string;
+      statusFilter?: "all" | "active" | "inactive";
+      activeTab?: "value-chain" | "processes";
+    } | null;
+  } catch {
+    return null;
+  }
+}
+
+function readValueChainTableState() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(window.localStorage.getItem(VALUE_CHAIN_TABLE_STATE_KEY) ?? "null") as {
+      sortField?: SortField;
+      sortDir?: SortDir;
+      processQuery?: string;
+      processStatusFilter?: "all" | "active" | "inactive";
+      processSortField?: ProcessSortField;
+      processSortDir?: SortDir;
+      density?: "comfortable" | "compact";
+    } | null;
+  } catch {
+    return null;
+  }
+}
 
 // Opções completas para o formulário de cadastro (o mesmo texto do cadastro de
 // processos). A tabela continua exibindo o rótulo curto de CATEGORY_LABELS.
@@ -160,10 +193,21 @@ function ValueChainReport({
     return (catalogsQ.data?.processes ?? []) as unknown as ProcessRecord[];
   }, [isDemo, catalogsQ.data]);
 
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
-  const [activeTab, setActiveTab] = useState<"value-chain" | "processes">("value-chain");
+  const [query, setQuery] = useState(() => readValueChainViewState()?.query ?? "");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">(
+    () => readValueChainViewState()?.statusFilter ?? "active",
+  );
+  const [activeTab, setActiveTab] = useState<"value-chain" | "processes">(
+    () => readValueChainViewState()?.activeTab ?? "value-chain",
+  );
   const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      VALUE_CHAIN_VIEW_STATE_KEY,
+      JSON.stringify({ query, statusFilter, activeTab }),
+    );
+  }, [query, statusFilter, activeTab]);
   const [editingChain, setEditingChain] = useState<ChainDraft | null>(null);
   // Ações que exigem confirmação (mesma lógica do cadastro de processos).
   const [pendingAction, setPendingAction] = useState<{
@@ -501,6 +545,15 @@ function PorterDiagram({
     setExpanded(false);
   }
 
+  useEffect(() => {
+    if (!expanded) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeExpanded();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [expanded]);
+
   const chainButton = (
     item: ValueChain,
     className: string,
@@ -571,13 +624,21 @@ function PorterDiagram({
                 : "grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)]"
             }`}
           >
-            <div className="flex min-w-0 items-stretch">
+            <div
+              className={
+                large
+                  ? "grid min-w-0 grid-cols-[repeat(auto-fit,minmax(190px,1fr))] items-stretch gap-2"
+                  : "flex min-w-[720px] items-stretch"
+              }
+            >
               {primary.length ? (
                 primary.map((item, index) =>
                   chainButton(
                     item,
-                    `relative grid min-h-16 flex-1 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] ${
-                      index === 0
+                    `relative grid min-h-16 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] ${
+                      large
+                        ? "rounded-md border border-[#ded6ca]"
+                        : index === 0
                         ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
                         : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
                     }`,
@@ -664,13 +725,21 @@ function PorterDiagram({
       </div>
       {renderDiagram(false)}
       {expanded ? (
-        <div className="fixed inset-0 z-[90] bg-black/85 p-2 sm:p-5" onClick={closeExpanded}>
+        <div
+          className="fixed inset-0 z-[90] bg-black/85 p-2 sm:p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="value-chain-expanded-title"
+          onClick={closeExpanded}
+        >
           <div
             className="mx-auto flex h-full w-full max-w-[1920px] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-              <div className="font-display text-base font-bold">Cadeia de Valor</div>
+              <div id="value-chain-expanded-title" className="font-display text-base font-bold">
+                Cadeia de Valor
+              </div>
               <button
                 type="button"
                 onClick={closeExpanded}
@@ -764,14 +833,50 @@ function ConsultationTable({
       .map(({ chain }, i) => ({ chain, index: i + 1 }));
   }, [chains]);
 
-  const [sortField, setSortField] = useState<SortField>("index");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [processQuery, setProcessQuery] = useState("");
-  const [processStatusFilter, setProcessStatusFilter] = useState<"all" | "active" | "inactive">(
-    "active",
+  const [sortField, setSortField] = useState<SortField>(
+    () => readValueChainTableState()?.sortField ?? "index",
   );
-  const [processSortField, setProcessSortField] = useState<ProcessSortField>("index");
-  const [processSortDir, setProcessSortDir] = useState<SortDir>("asc");
+  const [sortDir, setSortDir] = useState<SortDir>(
+    () => readValueChainTableState()?.sortDir ?? "asc",
+  );
+  const [processQuery, setProcessQuery] = useState(
+    () => readValueChainTableState()?.processQuery ?? "",
+  );
+  const [processStatusFilter, setProcessStatusFilter] = useState<"all" | "active" | "inactive">(
+    () => readValueChainTableState()?.processStatusFilter ?? "active",
+  );
+  const [processSortField, setProcessSortField] = useState<ProcessSortField>(
+    () => readValueChainTableState()?.processSortField ?? "index",
+  );
+  const [processSortDir, setProcessSortDir] = useState<SortDir>(
+    () => readValueChainTableState()?.processSortDir ?? "asc",
+  );
+  const [density, setDensity] = useState<"comfortable" | "compact">(
+    () => readValueChainTableState()?.density ?? "comfortable",
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      VALUE_CHAIN_TABLE_STATE_KEY,
+      JSON.stringify({
+        sortField,
+        sortDir,
+        processQuery,
+        processStatusFilter,
+        processSortField,
+        processSortDir,
+        density,
+      }),
+    );
+  }, [
+    sortField,
+    sortDir,
+    processQuery,
+    processStatusFilter,
+    processSortField,
+    processSortDir,
+    density,
+  ]);
 
   const activeCount = ordered.filter((r) => isActiveChain(r.chain)).length;
 
@@ -1057,9 +1162,19 @@ function ConsultationTable({
               <Plus className="h-4 w-4" /> Novo
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setDensity((value) => (value === "compact" ? "comfortable" : "compact"))}
+            title={density === "compact" ? "Usar linhas confortÃ¡veis" : "Usar linhas compactas"}
+            aria-label={density === "compact" ? "Usar linhas confortÃ¡veis" : "Usar linhas compactas"}
+            aria-pressed={density === "compact"}
+            className="inline-grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Rows3 className="h-4 w-4" />
+          </button>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className={`overflow-x-auto ${density === "compact" ? "[&_td]:!py-2" : ""}`}>
         {activeTab === "value-chain" ? (
           <table className="w-full text-sm">
             <thead>
@@ -1128,8 +1243,39 @@ function ConsultationTable({
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-muted-foreground">
-                    Nenhum Macroprocesso encontrado com os filtros atuais.
+                  <td colSpan={6} className="px-5 py-10 text-center">
+                    <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
+                      <FileSearch className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Nenhum macroprocesso encontrado</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {query || statusFilter !== "all"
+                            ? "Ajuste os filtros para ampliar os resultados."
+                            : "Cadastre o primeiro macroprocesso da Cadeia de Valor."}
+                        </p>
+                      </div>
+                      {query || statusFilter !== "all" ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuery("");
+                            setStatusFilter("all");
+                          }}
+                          className="h-8 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted"
+                        >
+                          Limpar filtros
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={onNewChain}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--gold)] px-3 text-xs font-semibold text-black hover:brightness-95"
+                        >
+                          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                          Novo macroprocesso
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -1191,8 +1337,29 @@ function ConsultationTable({
               })}
               {processRows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-sm text-muted-foreground">
-                    Nenhum processo encontrado com os filtros atuais.
+                  <td colSpan={8} className="px-5 py-10 text-center">
+                    <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
+                      <FileSearch className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Nenhum processo encontrado</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Ajuste os filtros ou cadastre processos no menu Processos.
+                        </p>
+                      </div>
+                      {(processQuery || processStatusFilter !== "all" || selectedChainId) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProcessQuery("");
+                            setProcessStatusFilter("all");
+                            setSelectedChainId(null);
+                          }}
+                          className="h-8 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted"
+                        >
+                          Limpar filtros
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

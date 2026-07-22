@@ -279,6 +279,17 @@ export function WorkspaceModulesTree({
   isActive: (target: ModulesTreeTarget) => boolean;
   onNavigate: (target: ModulesTreeTarget) => void;
 }) {
+  const branchIsActive = (moduleId: ModulesTreeModuleId) =>
+    isActive({ kind: "module-root", moduleId }) ||
+    (["new", "consult", ...(moduleId === "ddp" ? ["cause-new", "cause-consult"] : [])] as ModulesTreeTask[]).some(
+      (task) => isActive({ kind: "module-task", moduleId, task }),
+    );
+  const registrationsAreActive =
+    isActive({ kind: "registrations-root" }) ||
+    MODULES_TREE_REGISTRATIONS.some((item) =>
+      isActive({ kind: "registration", view: item.view }),
+    );
+
   return (
     <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
       {MODULES_TREE_BRANCHES.map((branch) => (
@@ -286,7 +297,7 @@ export function WorkspaceModulesTree({
           key={branch.moduleId}
           title={branch.title}
           icon={branch.icon}
-          active={isActive({ kind: "module-root", moduleId: branch.moduleId })}
+          active={branchIsActive(branch.moduleId)}
           open={!!expanded[branch.moduleId]}
           onSelect={() => onNavigate({ kind: "module-root", moduleId: branch.moduleId })}
           onToggle={() => onToggle(branch.moduleId)}
@@ -338,7 +349,7 @@ export function WorkspaceModulesTree({
       <ModuleBranch
         title="Cadastros"
         icon={<Database className="h-4 w-4" />}
-        active={false}
+        active={registrationsAreActive}
         open={!!expanded.registrations}
         onSelect={() => onToggle("registrations")}
         onToggle={() => onToggle("registrations")}

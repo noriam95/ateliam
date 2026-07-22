@@ -76,6 +76,21 @@ const WorkspaceReports = lazy(() =>
   })),
 );
 
+const NAVIGATION_STATE_KEY = "bf-flow-navigation-expanded";
+
+function readNavigationState(defaults: Record<string, boolean>) {
+  if (typeof window === "undefined") return defaults;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(NAVIGATION_STATE_KEY) ?? "{}") as Record<
+      string,
+      boolean
+    >;
+    return { ...defaults, ...saved };
+  } catch {
+    return defaults;
+  }
+}
+
 export const Route = createFileRoute("/_authenticated/")({
   component: WorkspaceHome,
   validateSearch: (search: Record<string, unknown>) => ({
@@ -389,20 +404,26 @@ function WorkspaceHome() {
     (search.view as WorkspaceView | undefined) ?? "overview",
   );
   const initialView = (search.view as WorkspaceView | undefined) ?? "overview";
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    organization: true,
-    modules: true,
-    ddp: false,
-    pop: false,
-    bpmn: false,
-    causes: false,
-    valueChain: true,
-    registrations: isRegistrationView(initialView),
-    processRegistrations: true,
-    systemRegistrations: true,
-    governance: true,
-    settings: true,
-  });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
+    readNavigationState({
+      organization: true,
+      modules: true,
+      ddp: false,
+      pop: false,
+      bpmn: false,
+      causes: false,
+      valueChain: true,
+      registrations: isRegistrationView(initialView),
+      processRegistrations: true,
+      systemRegistrations: true,
+      governance: true,
+      settings: true,
+    }),
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(NAVIGATION_STATE_KEY, JSON.stringify(expanded));
+  }, [expanded]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -426,11 +447,7 @@ function WorkspaceHome() {
     setExpanded((current) => ({
       ...current,
       modules: current.modules || nextArea === "modules",
-      ddp: isRegistration ? false : current.ddp,
-      pop: isRegistration ? false : current.pop,
-      bpmn: isRegistration ? false : current.bpmn,
-      causes: isRegistration ? false : current.causes,
-      registrations: isRegistration,
+      registrations: current.registrations || isRegistration,
       valueChain: current.valueChain || nextArea === "value-chain",
       settings: current.settings || nextArea === "settings",
     }));
@@ -1067,6 +1084,10 @@ function WorkspaceHome() {
                               : "Configurações"}
                     </div>
                   </div>
+                  <div className="mt-2 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{organizationName}</span>
+                  </div>
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -1196,6 +1217,8 @@ function ExpandableCard({
   titleClassName = "text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground",
   children,
   expanded,
+  onNavigate,
+  navigateLabel = "Abrir consulta",
 }: {
   title: string;
   icon?: ReactNode;
@@ -1204,6 +1227,8 @@ function ExpandableCard({
   children: ReactNode;
   // Conteúdo detalhado (tabela) mostrado quando o card é aberto em tela cheia.
   expanded?: ReactNode;
+  onNavigate?: () => void;
+  navigateLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -1229,6 +1254,17 @@ function ExpandableCard({
             <span className={titleClassName}>{title}</span>
           </span>
           <div className="flex items-center gap-1.5">
+            {onNavigate ? (
+              <button
+                type="button"
+                onClick={onNavigate}
+                title={navigateLabel}
+                aria-label={navigateLabel}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -1246,6 +1282,9 @@ function ExpandableCard({
         ? createPortal(
             <div
               className="fixed inset-0 z-[70] flex flex-col bg-background/90 p-4 backdrop-blur-sm sm:p-8"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${title} em tela cheia`}
               onClick={() => setOpen(false)}
             >
               <div
@@ -1253,9 +1292,14 @@ function ExpandableCard({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-border px-5 py-3">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <span className="flex min-w-0 items-center gap-3 text-sm font-semibold text-foreground">
                     {icon}
-                    {title}
+                    <span className="min-w-0">
+                      <span className="block truncate">{title}</span>
+                      <span className="block text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                        VisualizaÃ§Ã£o detalhada
+                      </span>
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -1781,30 +1825,39 @@ function OperationalMetricCard({
   detail,
   icon,
   color,
+  onClick,
 }: {
   label: string;
   value: number;
   detail: string;
   icon: ReactNode;
   color: string;
+  onClick: () => void;
 }) {
   return (
-    <div className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col p-5`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${DASHBOARD_CARD_CLASS} group flex min-h-[220px] flex-col p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
+    >
       <span className="text-sm font-semibold text-foreground">{label}</span>
       <strong className="mt-5 font-data text-5xl font-bold leading-none" style={{ color }}>
         {value}
       </strong>
       <p className="mt-3 max-w-[17ch] text-xs leading-relaxed text-muted-foreground">{detail}</p>
-      <div
-        className="mt-auto grid h-10 w-10 place-items-center rounded-md"
+      <div className="mt-auto flex w-full items-end justify-between">
+        <span
+          className="grid h-10 w-10 place-items-center rounded-md"
         style={{
           backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
           color,
         }}
-      >
-        {icon}
+        >
+          {icon}
+        </span>
+        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -2424,6 +2477,7 @@ function WorkspaceContent({
   isLoading: boolean;
   isDemo: boolean;
 }) {
+  const navigate = useNavigate();
   if (String(view).startsWith("module:")) {
     const [, moduleId, task = "home"] = view.split(":") as [
       "module",
@@ -2687,6 +2741,9 @@ function WorkspaceContent({
           title="Cobertura de mapeamentos"
           className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col gap-4 p-5 xl:col-span-2`}
           expanded={<MappingCoverageExpanded coverage={mappingCoverage} />}
+          onNavigate={() =>
+            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })
+          }
         >
           <div className="grid flex-1 grid-cols-[150px_minmax(0,1fr)] items-center gap-8">
             <CoverageDonut
@@ -2716,20 +2773,29 @@ function WorkspaceContent({
           detail="Total de registros no catálogo"
           icon={<FileText className="h-5 w-5" />}
           color="#007f68"
+          onClick={() =>
+            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })
+          }
         />
         <OperationalMetricCard
           label="Causas abertas"
           value={openCauseRows.length}
           detail="Causas aguardando tratamento"
           icon={<CircleAlert className="h-5 w-5" />}
-          color="#007f68"
+          color="#c58916"
+          onClick={() =>
+            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "cause-consult" } })
+          }
         />
         <OperationalMetricCard
           label="Documentos"
           value={documentCatalogRows.length}
           detail="Documentos cadastrados no catálogo"
           icon={<FileCheck2 className="h-5 w-5" />}
-          color="#007f68"
+          color="#2774b8"
+          onClick={() =>
+            navigate({ to: "/m/$module", params: { module: "pop" }, search: { view: "consult" } })
+          }
         />
       </section>
 
@@ -2738,14 +2804,25 @@ function WorkspaceContent({
           title="Acompanhamento de mapeamentos"
           className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<MappingRecordsTable rows={mappingRows} />}
+          onNavigate={() =>
+            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })
+          }
         >
           <div className="grid flex-1 grid-cols-2 items-center md:grid-cols-4">
             {MAPPING_STATUS_TILES.map((tile, index) => {
               const value = mappingStatusCounts[tile.key];
               return (
-                <div
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate({
+                      to: "/m/$module",
+                      params: { module: "ddp" },
+                      search: { view: "consult", filter: tile.label },
+                    })
+                  }
                   key={tile.key}
-                  className={`flex min-h-[142px] flex-col items-center justify-center px-3 text-center ${
+                  className={`flex min-h-[142px] flex-col items-center justify-center px-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
                     index > 0 ? "border-l border-border" : ""
                   }`}
                 >
@@ -2759,7 +2836,7 @@ function WorkspaceContent({
                     {value === 1 ? "registro" : "registros"}
                   </span>
                   <span className="mt-5 h-0.5 w-full max-w-[120px]" style={{ backgroundColor: tile.color }} />
-                </div>
+                </button>
               );
             })}
           </div>
@@ -2769,6 +2846,9 @@ function WorkspaceContent({
           title="Causas que exigem atenção"
           className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<CauseRecordsTable rows={causeRows} />}
+          onNavigate={() =>
+            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "cause-consult" } })
+          }
         >
           <div className="divide-y divide-border">
             {attentionCauses.map((cause) => (
@@ -2815,6 +2895,9 @@ function WorkspaceContent({
           titleClassName="text-sm font-semibold text-foreground"
           className={DASHBOARD_CARD_CLASS}
           expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
+          onNavigate={() =>
+            navigate({ to: "/m/$module", params: { module: "pop" }, search: { view: "consult" } })
+          }
         >
           <div className="mt-4 min-w-0">
             <div className="grid grid-cols-[minmax(0,1fr)_80px] border-b border-border px-1 pb-2 text-[10px] font-semibold text-muted-foreground">
@@ -2825,15 +2908,23 @@ function WorkspaceContent({
               {DOCUMENT_CATALOG_TYPES.map((type) => {
                 const count = documentTypeCount(documentCatalogRows, type);
                 return (
-                  <div
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate({
+                        to: "/m/$module",
+                        params: { module: type === "Mapeamento" ? "ddp" : type === "Fluxograma" ? "bpmn" : "pop" },
+                        search: { view: "consult", filter: type === "Instrução" ? "IT" : type },
+                      })
+                    }
                     key={type}
-                    className="grid grid-cols-[minmax(0,1fr)_80px] items-center gap-3 px-1 py-2"
+                    className="grid w-full grid-cols-[minmax(0,1fr)_80px] items-center gap-3 px-1 py-2 text-left transition-colors hover:bg-muted/40"
                   >
                     <span className="truncate text-xs text-foreground">{type}</span>
                     <span className="text-right font-data text-xs font-semibold text-foreground">
                       {count}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
