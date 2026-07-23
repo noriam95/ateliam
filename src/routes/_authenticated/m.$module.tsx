@@ -6871,6 +6871,215 @@ function ModuleWorkspacePage() {
 
   // Abre uma visualização somente-leitura amigável do registro em nova aba, com todas
   // as informações preenchidas no formulário e seguindo a identidade visual.
+  const responsivePresentationStyles = `
+    @media (max-width: 980px) {
+      html { scroll-padding-top: 168px; }
+      body { overflow-x: hidden; }
+      .shell {
+        display: block !important;
+        min-width: 0 !important;
+      }
+      .sidebar {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 100 !important;
+        display: grid !important;
+        grid-template-columns: auto minmax(180px, 1fr) auto !important;
+        grid-template-rows: auto auto !important;
+        gap: 10px 14px !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        padding: 12px 16px !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, .2) !important;
+      }
+      .brand {
+        grid-column: 1 !important;
+        min-height: 42px !important;
+      }
+      .brand-logo {
+        width: auto !important;
+        max-width: 126px !important;
+        max-height: 42px !important;
+      }
+      .doc-code {
+        grid-column: 2 !important;
+        align-self: center !important;
+        min-width: 0 !important;
+        padding: 8px 11px !important;
+      }
+      .doc-code span { font-size: 9px !important; }
+      .doc-code strong {
+        overflow: hidden !important;
+        margin-top: 4px !important;
+        font-size: 13px !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+      .presentation-controls {
+        grid-column: 3 !important;
+        align-self: center !important;
+        margin: 0 !important;
+      }
+      .nav {
+        grid-column: 1 / -1 !important;
+        grid-row: 2 !important;
+        display: flex !important;
+        gap: 6px !important;
+        overflow-x: auto !important;
+        padding: 2px 0 4px !important;
+        scrollbar-width: thin;
+        scroll-snap-type: x proximity;
+      }
+      .nav a {
+        flex: 0 0 auto !important;
+        min-height: 40px !important;
+        padding: 10px 12px !important;
+        font-size: 10px !important;
+        white-space: nowrap !important;
+        scroll-snap-align: start;
+      }
+      .content, .slide { min-width: 0 !important; }
+      .slide {
+        min-height: auto !important;
+        padding: 38px 24px !important;
+      }
+      .cover {
+        min-height: calc(100svh - 168px) !important;
+        justify-content: flex-start !important;
+        padding-top: 54px !important;
+      }
+      .cover h1 {
+        max-width: 100% !important;
+        font-size: clamp(38px, 8vw, 62px) !important;
+        line-height: 1 !important;
+      }
+      .cover p { font-size: 18px !important; }
+      .cover-hero,
+      .cover-board,
+      .cover-context,
+      .cover-row,
+      .flow-card,
+      .text-panel,
+      .mini-grid .field-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .cover-context { margin-top: 30px !important; }
+      .cover-meta {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        width: 100% !important;
+      }
+      .section-head {
+        gap: 14px !important;
+        margin-bottom: 22px !important;
+      }
+      .section-head > span {
+        width: 50px !important;
+        height: 50px !important;
+        border-radius: 12px !important;
+        font-size: 21px !important;
+      }
+      .section-head h2 { font-size: clamp(28px, 6vw, 42px) !important; }
+      .card-grid,
+      .reference-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)) !important;
+      }
+      .table-wrap {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      th, td {
+        min-width: 130px;
+        padding: 12px !important;
+      }
+      .zoom-modal { padding: 12px !important; }
+      .zoom-modal > img,
+      .zoom-modal img {
+        max-width: 96vw !important;
+        max-height: 82svh !important;
+      }
+      .zoom-map { display: none !important; }
+    }
+    @media (max-width: 640px) {
+      html { scroll-padding-top: 206px; }
+      .sidebar {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        grid-template-rows: auto auto auto !important;
+        padding: 10px 12px !important;
+      }
+      .brand { grid-column: 1 !important; }
+      .presentation-controls { grid-column: 2 !important; }
+      .doc-code {
+        grid-column: 1 / -1 !important;
+        grid-row: 2 !important;
+      }
+      .nav {
+        grid-row: 3 !important;
+        margin: 0 -2px !important;
+      }
+      .slide { padding: 30px 16px !important; }
+      .cover {
+        min-height: calc(100svh - 206px) !important;
+        padding-top: 38px !important;
+      }
+      .cover h1 { font-size: clamp(34px, 11vw, 48px) !important; }
+      .cover p { font-size: 16px !important; }
+      .cover-code { min-width: 0 !important; }
+      .cover-context,
+      .cover-meta {
+        grid-template-columns: 1fr !important;
+      }
+      .cover-line { padding: 17px 16px !important; }
+      .section-head > span {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 18px !important;
+      }
+      .section-head h2 { font-size: 29px !important; }
+      .text-panel,
+      .procedure-card,
+      .list-card,
+      .flow-card,
+      .glossary-card {
+        padding: 17px !important;
+      }
+      .procedure-card > header,
+      .changes article {
+        grid-template-columns: 1fr !important;
+      }
+      .image-card { margin-inline: 0 !important; }
+    }
+  `;
+
+  function preparePresentationHtml(docHtml: string) {
+    if (docHtml.includes("data-responsive-preview")) return docHtml;
+    return docHtml.replace(
+      /<\/head>/i,
+      `<style data-responsive-preview>${responsivePresentationStyles}</style></head>`,
+    );
+  }
+
+  function openPresentationHtml(docHtml: string, blockedMessage: string) {
+    const opened = window.open("", "_blank");
+    if (!opened) {
+      toast.error(blockedMessage);
+      return;
+    }
+
+    try {
+      opened.document.open();
+      opened.document.write(preparePresentationHtml(docHtml));
+      opened.document.close();
+      opened.opener = null;
+    } catch {
+      opened.close();
+      toast.error("Não foi possível abrir a visualização neste navegador.");
+    }
+  }
+
   function viewDocumentRow(row: ModuleGridRow) {
     const snapshot = resolveRowSnapshot(row);
     let docHtml: string;
@@ -6881,28 +7090,19 @@ function ModuleWorkspacePage() {
     } else {
       docHtml = buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
     }
-    const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
-    const opened = window.open(url, "_blank", "noopener");
-    if (!opened) toast.error("Habilite pop-ups para visualizar o registro.");
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o registro.");
   }
 
   // Visualiza, em nova aba, o que está sendo preenchido agora no formulário,
   // na mesma modalidade somente-leitura disponível na consulta.
   function previewCurrentDdp() {
     const docHtml = buildDdpPresentationHtml(workspace.ddp, brandForDocumentModel("ddp-html"));
-    const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
-    const opened = window.open(url, "_blank", "noopener");
-    if (!opened) toast.error("Habilite pop-ups para visualizar o preenchimento.");
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o preenchimento.");
   }
 
   function previewCurrentPop() {
     const docHtml = buildPopPresentationHtml(workspace.pop, brandForDocumentPresentation());
-    const url = URL.createObjectURL(new Blob([docHtml], { type: "text/html;charset=utf-8" }));
-    const opened = window.open(url, "_blank", "noopener");
-    if (!opened) toast.error("Habilite pop-ups para visualizar o preenchimento.");
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o preenchimento.");
   }
 
   async function exportDocumentRow(
@@ -7250,7 +7450,7 @@ function ModuleWorkspacePage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                 </div>
-                  <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2">
                   {railArea === "home" ? (
                     <Home className="h-4 w-4 text-foreground" />
                   ) : railArea === "modules" ? (
@@ -7345,7 +7545,7 @@ function ModuleWorkspacePage() {
             </div>
           </aside>
 
-          <main className="min-w-0 p-4 sm:p-5">
+          <main className="min-w-0 p-3 sm:p-5">
             <section className="min-w-0">
               {saveMut.isError ? (
                 <div
@@ -8123,7 +8323,10 @@ function ModuleDocumentGrid({
   const [selected, setSelected] = useState<string[]>([]);
   const [sortField, setSortField] = useState<ModuleGridColumn>(() => {
     if (typeof window === "undefined") return "updatedAt";
-    return (window.localStorage.getItem(`${tablePreferenceKey}-sort-field`) as ModuleGridColumn) || "updatedAt";
+    return (
+      (window.localStorage.getItem(`${tablePreferenceKey}-sort-field`) as ModuleGridColumn) ||
+      "updatedAt"
+    );
   });
   const [sortDir, setSortDir] = useState<ModuleGridSortDir>(() => {
     if (typeof window === "undefined") return "desc";
@@ -8155,7 +8358,10 @@ function ModuleDocumentGrid({
     window.localStorage.setItem(`${tablePreferenceKey}-query`, query);
     window.localStorage.setItem(`${tablePreferenceKey}-sort-field`, sortField);
     window.localStorage.setItem(`${tablePreferenceKey}-sort-dir`, sortDir);
-    window.localStorage.setItem(`${tablePreferenceKey}-density`, compact ? "compact" : "comfortable");
+    window.localStorage.setItem(
+      `${tablePreferenceKey}-density`,
+      compact ? "compact" : "comfortable",
+    );
   }, [compact, query, sortDir, sortField, tablePreferenceKey]);
   const filtered = useMemo(() => {
     const normalized = normalizeLabel(query);
@@ -8367,17 +8573,29 @@ function ModuleDocumentGrid({
                         {query ? "Nenhum resultado para este filtro" : "Nenhum registro cadastrado"}
                       </div>
                       <div className="mt-1 text-xs">
-                        {query ? "Ajuste os termos da busca." : "Crie o primeiro registro para iniciar."}
+                        {query
+                          ? "Ajuste os termos da busca."
+                          : "Crie o primeiro registro para iniciar."}
                       </div>
                     </div>
                     {query ? (
-                      <button type="button" onClick={() => setQuery("")} className="text-xs font-semibold text-primary hover:underline">
+                      <button
+                        type="button"
+                        onClick={() => setQuery("")}
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
                         Limpar filtro
                       </button>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => navigate({ to: "/m/$module", params: { module: moduleId }, search: { view: "new" } })}
+                        onClick={() =>
+                          navigate({
+                            to: "/m/$module",
+                            params: { module: moduleId },
+                            search: { view: "new" },
+                          })
+                        }
                         className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
                       >
                         <Plus className="h-4 w-4" /> Criar registro
@@ -8433,7 +8651,10 @@ function ModuleDocumentGrid({
                         );
                       }
                       return (
-                        <td key={key} className={`break-words px-3 text-foreground ${compact ? "py-2" : "py-3"}`}>
+                        <td
+                          key={key}
+                          className={`break-words px-3 text-foreground ${compact ? "py-2" : "py-3"}`}
+                        >
                           {key === "updatedAt" ? formatDateTimeBr(value) : value}
                         </td>
                       );
@@ -14684,7 +14905,11 @@ function BpmnModuleV2({
       }
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
         const target = event.target as HTMLElement | null;
-        if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || !selectedNodeIds.length) {
+        if (
+          target?.tagName === "INPUT" ||
+          target?.tagName === "TEXTAREA" ||
+          !selectedNodeIds.length
+        ) {
           return;
         }
         event.preventDefault();
@@ -14997,19 +15222,16 @@ function BpmnModuleV2({
       (orderedHorizontal[0].width ?? defaultNode(orderedHorizontal[0].type).width) / 2;
     const lastHorizontal = orderedHorizontal.at(-1)!;
     const lastHorizontalCenter =
-      lastHorizontal.x +
-      (lastHorizontal.width ?? defaultNode(lastHorizontal.type).width) / 2;
+      lastHorizontal.x + (lastHorizontal.width ?? defaultNode(lastHorizontal.type).width) / 2;
     const firstVerticalCenter =
       orderedVertical[0].y +
       (orderedVertical[0].height ?? defaultNode(orderedVertical[0].type).height) / 2;
     const lastVertical = orderedVertical.at(-1)!;
     const lastVerticalCenter =
-      lastVertical.y +
-      (lastVertical.height ?? defaultNode(lastVertical.type).height) / 2;
+      lastVertical.y + (lastVertical.height ?? defaultNode(lastVertical.type).height) / 2;
     const horizontalStep =
       (lastHorizontalCenter - firstHorizontalCenter) / (selectedNodes.length - 1);
-    const verticalStep =
-      (lastVerticalCenter - firstVerticalCenter) / (selectedNodes.length - 1);
+    const verticalStep = (lastVerticalCenter - firstVerticalCenter) / (selectedNodes.length - 1);
     const positions = new Map<string, { x?: number; y?: number }>();
 
     selectedNodes.forEach((node) => {
@@ -16658,7 +16880,10 @@ function BpmnModuleV2({
                       Alinhar e distribuir
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      <IconButton label="Alinhar Ã  esquerda" onClick={() => arrangeSelectedNodes("left")}>
+                      <IconButton
+                        label="Alinhar Ã  esquerda"
+                        onClick={() => arrangeSelectedNodes("left")}
+                      >
                         <AlignStartVertical className="h-4 w-4" />
                       </IconButton>
                       <IconButton
@@ -16667,7 +16892,10 @@ function BpmnModuleV2({
                       >
                         <AlignCenterVertical className="h-4 w-4" />
                       </IconButton>
-                      <IconButton label="Alinhar ao topo" onClick={() => arrangeSelectedNodes("top")}>
+                      <IconButton
+                        label="Alinhar ao topo"
+                        onClick={() => arrangeSelectedNodes("top")}
+                      >
                         <AlignStartHorizontal className="h-4 w-4" />
                       </IconButton>
                       <IconButton

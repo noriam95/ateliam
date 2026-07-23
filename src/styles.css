@@ -433,8 +433,40 @@ html[data-theme="dark"] {
 }
 
 @media (max-width: 767px) {
+  html {
+    scroll-padding-top: env(safe-area-inset-top);
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
   [role="dialog"] {
     width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  [role="button"] {
+    touch-action: manipulation;
   }
 
   table {

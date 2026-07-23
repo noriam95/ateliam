@@ -1164,7 +1164,7 @@ function WorkspaceHome() {
             </aside>
           ) : null}
 
-          <main className={`min-w-0 ${activeArea === "home" ? "p-5 lg:p-7" : "p-5"}`}>
+          <main className={`min-w-0 ${activeArea === "home" ? "p-3 sm:p-5 lg:p-7" : "p-3 sm:p-5"}`}>
             <WorkspaceContent
               view={view}
               organizationName={organizationName}
@@ -1848,10 +1848,10 @@ function OperationalMetricCard({
       <div className="mt-auto flex w-full items-end justify-between">
         <span
           className="grid h-10 w-10 place-items-center rounded-md"
-        style={{
-          backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
-          color,
-        }}
+          style={{
+            backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
+            color,
+          }}
         >
           {icon}
         </span>
@@ -1905,7 +1905,9 @@ function CauseRecordsTable({ rows }: { rows: DashboardCauseRow[] }) {
     const filtered = normalized
       ? rows.filter((row) =>
           DASHBOARD_CAUSE_COLUMNS.some(([field]) =>
-            String(row[field] ?? "").toLocaleLowerCase("pt-BR").includes(normalized),
+            String(row[field] ?? "")
+              .toLocaleLowerCase("pt-BR")
+              .includes(normalized),
           ),
         )
       : rows;
@@ -2725,7 +2727,8 @@ function WorkspaceContent({
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <CalendarDays className="h-4 w-4" />
             <span>
-              Atualizado em {latestOperationalUpdate ? formatDateTimeBr(latestOperationalUpdate) : "-"}
+              Atualizado em{" "}
+              {latestOperationalUpdate ? formatDateTimeBr(latestOperationalUpdate) : "-"}
             </span>
             {isLoading ? (
               <span className="inline-flex rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
@@ -2784,7 +2787,11 @@ function WorkspaceContent({
           icon={<CircleAlert className="h-5 w-5" />}
           color="#c58916"
           onClick={() =>
-            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "cause-consult" } })
+            navigate({
+              to: "/m/$module",
+              params: { module: "ddp" },
+              search: { view: "cause-consult" },
+            })
           }
         />
         <OperationalMetricCard
@@ -2829,13 +2836,19 @@ function WorkspaceContent({
                   <span className="text-xs font-medium" style={{ color: tile.color }}>
                     {tile.label}
                   </span>
-                  <strong className="mt-4 font-data text-4xl font-bold" style={{ color: tile.color }}>
+                  <strong
+                    className="mt-4 font-data text-4xl font-bold"
+                    style={{ color: tile.color }}
+                  >
                     {value}
                   </strong>
                   <span className="mt-2 text-xs text-muted-foreground">
                     {value === 1 ? "registro" : "registros"}
                   </span>
-                  <span className="mt-5 h-0.5 w-full max-w-[120px]" style={{ backgroundColor: tile.color }} />
+                  <span
+                    className="mt-5 h-0.5 w-full max-w-[120px]"
+                    style={{ backgroundColor: tile.color }}
+                  />
                 </button>
               );
             })}
@@ -2847,7 +2860,11 @@ function WorkspaceContent({
           className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<CauseRecordsTable rows={causeRows} />}
           onNavigate={() =>
-            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "cause-consult" } })
+            navigate({
+              to: "/m/$module",
+              params: { module: "ddp" },
+              search: { view: "cause-consult" },
+            })
           }
         >
           <div className="divide-y divide-border">
@@ -2913,7 +2930,10 @@ function WorkspaceContent({
                     onClick={() =>
                       navigate({
                         to: "/m/$module",
-                        params: { module: type === "Mapeamento" ? "ddp" : type === "Fluxograma" ? "bpmn" : "pop" },
+                        params: {
+                          module:
+                            type === "Mapeamento" ? "ddp" : type === "Fluxograma" ? "bpmn" : "pop",
+                        },
                         search: { view: "consult", filter: type === "Instrução" ? "IT" : type },
                       })
                     }
