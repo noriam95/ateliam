@@ -3040,6 +3040,163 @@ type OrganizationSystem = {
   description: string;
 };
 
+type QuantitativeBreakdown = {
+  label: string;
+  value: number;
+  percentage: number;
+};
+
+type MappingQuantitativeStats = {
+  processes: number;
+  subprocesses: number;
+  activities: number;
+  areas: number;
+  systems: number;
+  averageActivities: number;
+  maxActivitiesInSubprocess: number;
+  execution: QuantitativeBreakdown[];
+  automationPercentage: number;
+  fullyManualPercentage: number;
+  areaDistribution: QuantitativeBreakdown[];
+  resourceUsage: QuantitativeBreakdown[];
+  alerts: {
+    manualActivities: number;
+    withoutOwner: number;
+    withoutDescription: number;
+    withoutSystem: number;
+  };
+};
+
+function calculateMappingQuantitativeStats(
+  data: DdpState,
+  processCatalog: OrganizationProcess[] = [],
+): MappingQuantitativeStats {
+  const processById = new Map(processCatalog.map((process) => [process.id, process]));
+  const processKeys = new Set<string>();
+  const areaActivityCounts = new Map<string, number>();
+  const resourceCounts = new Map<string, number>();
+  const executionCounts = new Map<FlowExecutionType, number>(
+    FLOW_EXECUTION_TYPE_OPTIONS.map((label) => [label, 0]),
+  );
+  let subprocesses = 0;
+  let activities = 0;
+  let maxActivitiesInSubprocess = 0;
+  let withoutOwner = 0;
+  let withoutDescription = 0;
+  let withoutSystem = 0;
+
+  const addProcess = (processId?: string, fallbackName?: string) => {
+    const key = processId?.trim() || normalizeLabel(fallbackName || "");
+    if (key) processKeys.add(key);
+  };
+  addProcess(
+    data.macroprocess.processId,
+    textAt(data.legacy ?? {}, "processName") || data.macroprocess.titulo,
+  );
+  data.steps.forEach((step) => addProcess(step.processId, step.etapa));
+
+  const countActivity = (
+    activity: Pick<DdpFlowActivity, "classificacao" | "descricao" | "systemIds">,
+    processId?: string,
+    fallbackArea?: string,
+    fallbackOwner?: string,
+  ) => {
+    activities += 1;
+    executionCounts.set(
+      activity.classificacao,
+      (executionCounts.get(activity.classificacao) ?? 0) + 1,
+    );
+
+    const process = processId ? processById.get(processId) : undefined;
+    const area = plain(process?.department || fallbackArea || "Área não definida");
+    areaActivityCounts.set(area, (areaActivityCounts.get(area) ?? 0) + 1);
+    if (!plain(process?.owner || fallbackOwner)) withoutOwner += 1;
+    if (!plain(activity.descricao)) withoutDescription += 1;
+    if (!activity.systemIds.length) withoutSystem += 1;
+
+    const resourceIds = new Set(activity.systemIds);
+    data.systems.forEach((system) => {
+      if (!resourceIds.has(system.id) && (!system.systemId || !resourceIds.has(system.systemId))) {
+        return;
+      }
+      const label = plain(system.nome) || "Recurso não identificado";
+      resourceCounts.set(label, (resourceCounts.get(label) ?? 0) + 1);
+    });
+  };
+
+  data.steps.forEach((step) => {
+    const stepProcess = step.processId ? processById.get(step.processId) : undefined;
+    step.substeps.forEach((substep) => {
+      if (substep.tipo === "subprocesso") {
+        subprocesses += 1;
+        maxActivitiesInSubprocess = Math.max(maxActivitiesInSubprocess, substep.activities.length);
+        substep.activities.forEach((activity) =>
+          countActivity(
+            activity,
+            substep.processId || step.processId,
+            stepProcess?.department || data.meta.area,
+            stepProcess?.owner || step.responsavel,
+          ),
+        );
+        return;
+      }
+      countActivity(
+        substep,
+        step.processId,
+        stepProcess?.department || data.meta.area,
+        stepProcess?.owner || step.responsavel,
+      );
+    });
+  });
+
+  const toBreakdown = (entries: Array<[string, number]>, total: number) =>
+    entries
+      .map(([label, value]) => ({
+        label,
+        value,
+        percentage: total ? Math.round((value / total) * 100) : 0,
+      }))
+      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "pt-BR"));
+
+  const automatic = executionCounts.get("Automática") ?? 0;
+  const manualInSystem = executionCounts.get("Manual no sistema") ?? 0;
+  const manualOutsideSystem = executionCounts.get("Manual fora do sistema") ?? 0;
+  const hybrid = executionCounts.get("Híbrida (manual/automática)") ?? 0;
+  const structureBase = processKeys.size + subprocesses;
+
+  return {
+    processes: processKeys.size,
+    subprocesses,
+    activities,
+    areas: Array.from(areaActivityCounts.keys()).filter((area) => area !== "Área não definida")
+      .length,
+    systems: data.systems.filter((system) => plain(system.nome)).length,
+    averageActivities: structureBase ? Math.round((activities / structureBase) * 10) / 10 : 0,
+    maxActivitiesInSubprocess,
+    execution: toBreakdown(
+      [
+        ["Automáticas", automatic],
+        ["Manuais no sistema", manualInSystem],
+        ["Manuais fora do sistema", manualOutsideSystem],
+        ["Híbridas", hybrid],
+      ],
+      activities,
+    ),
+    automationPercentage: activities ? Math.round(((automatic + hybrid) / activities) * 100) : 0,
+    fullyManualPercentage: activities
+      ? Math.round(((manualInSystem + manualOutsideSystem) / activities) * 100)
+      : 0,
+    areaDistribution: toBreakdown(Array.from(areaActivityCounts.entries()), activities),
+    resourceUsage: toBreakdown(Array.from(resourceCounts.entries()), activities).slice(0, 5),
+    alerts: {
+      manualActivities: manualInSystem + manualOutsideSystem,
+      withoutOwner,
+      withoutDescription,
+      withoutSystem,
+    },
+  };
+}
+
 function reconcileDdpSystemsWithCatalog(
   systems: DdpSystem[],
   catalogSystems: OrganizationSystem[],
@@ -3163,8 +3320,9 @@ function exportImages(items: unknown[], fallbackTitle = "Imagem") {
   return items.map((item, index) => exportImage(item, `${fallbackTitle} ${index + 1}`));
 }
 
-function getDdpExportModel(data: DdpState) {
+function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[] = []) {
   const legacy = data.legacy ?? {};
+  const quantitativeStats = calculateMappingQuantitativeStats(data, processCatalog);
   const overviewCards: ExportCard[] = [
     { title: "Objetivo", text: data.overview.objetivo },
     { title: "Escopo", text: data.overview.escopo },
@@ -3276,7 +3434,7 @@ function getDdpExportModel(data: DdpState) {
     description: data.overview.objetivo,
     scope: data.overview.escopo,
     overview: data.overview.estadoAtual,
-    stats: [],
+    stats: quantitativeStats,
     cards: overviewCards,
     systems,
     macroprocess: {
@@ -4666,8 +4824,12 @@ function createDocxContext(params: {
   };
 }
 
-function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
-  const model = getDdpExportModel(data);
+function buildDdpDocx(
+  data: DdpState,
+  brand?: OrganizationBrand,
+  processCatalog: OrganizationProcess[] = [],
+) {
+  const model = getDdpExportModel(data, processCatalog);
   const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || "Mapeamento";
   const doc = createDocxContext({
     code: model.meta.codigo,
@@ -4714,9 +4876,10 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     ["02", "Sistemas/Documentos Envolvidos"],
     ["03", "Análise SIPOC"],
     ["04", "Etapas do Processo"],
-    ["05", "Oportunidades de Melhoria"],
-    ["06", "Próximos Passos"],
-    ["07", "Glossário"],
+    ["05", "Visão Quantitativa"],
+    ["06", "Oportunidades de Melhoria"],
+    ["07", "Próximos Passos"],
+    ["08", "Glossário"],
   ].forEach(([num, label]) => parts.push(doc.tocLine(num, label)));
   parts.push(doc.sectionBreak());
 
@@ -4875,7 +5038,129 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     }
   });
 
-  parts.push(doc.sectionTitle("05 Oportunidades de Melhoria"));
+  parts.push(doc.sectionTitle("05 Visão Quantitativa"));
+  parts.push(
+    doc.table(
+      [
+        [
+          doc.headerCell("Processos"),
+          doc.headerCell("Subprocessos"),
+          doc.headerCell("Atividades"),
+          doc.headerCell("Áreas"),
+          doc.headerCell("Sistemas/Documentos"),
+        ],
+        [
+          doc.bodyCell(String(model.stats.processes)),
+          doc.bodyCell(String(model.stats.subprocesses)),
+          doc.bodyCell(String(model.stats.activities)),
+          doc.bodyCell(String(model.stats.areas)),
+          doc.bodyCell(String(model.stats.systems)),
+        ],
+      ],
+      [1800, 1900, 1900, 1700, 3006],
+      { full: true },
+    ),
+  );
+  parts.push(
+    doc.table(
+      [
+        [
+          doc.headerCell("Média de atividades"),
+          doc.headerCell("Maior subprocesso"),
+          doc.headerCell("Com automação"),
+          doc.headerCell("Totalmente manuais"),
+        ],
+        [
+          doc.bodyCell(
+            `${model.stats.averageActivities.toLocaleString("pt-BR", {
+              maximumFractionDigits: 1,
+            })} por processo ou subprocesso`,
+          ),
+          doc.bodyCell(`${model.stats.maxActivitiesInSubprocess} atividades`),
+          doc.bodyCell(`${model.stats.automationPercentage}%`),
+          doc.bodyCell(`${model.stats.fullyManualPercentage}%`),
+        ],
+      ],
+      [2800, 2700, 2400, 2406],
+      { full: true },
+    ),
+  );
+  parts.push(doc.subTitle("Distribuição por forma de execução"));
+  parts.push(
+    doc.table(
+      [
+        [doc.headerCell("Forma de execução"), doc.headerCell("Quantidade"), doc.headerCell("%")],
+        ...model.stats.execution.map((item) => [
+          doc.bodyCell(item.label),
+          doc.bodyCell(String(item.value)),
+          doc.bodyCell(`${item.percentage}%`),
+        ]),
+      ],
+      [6500, 1900, 1906],
+      { full: true },
+    ),
+  );
+  if (model.stats.areaDistribution.length) {
+    parts.push(doc.subTitle("Participação das áreas"));
+    parts.push(
+      doc.table(
+        [
+          [doc.headerCell("Área"), doc.headerCell("Atividades"), doc.headerCell("%")],
+          ...model.stats.areaDistribution.map((item) => [
+            doc.bodyCell(item.label),
+            doc.bodyCell(String(item.value)),
+            doc.bodyCell(`${item.percentage}%`),
+          ]),
+        ],
+        [6500, 1900, 1906],
+        { full: true },
+      ),
+    );
+  }
+  if (model.stats.resourceUsage.length) {
+    parts.push(doc.subTitle("Recursos mais utilizados"));
+    parts.push(
+      doc.table(
+        [
+          [
+            doc.headerCell("Sistema/Documento"),
+            doc.headerCell("Vínculos"),
+            doc.headerCell("% das atividades"),
+          ],
+          ...model.stats.resourceUsage.map((item) => [
+            doc.bodyCell(item.label),
+            doc.bodyCell(String(item.value)),
+            doc.bodyCell(`${item.percentage}%`),
+          ]),
+        ],
+        [6500, 1900, 1906],
+        { full: true },
+      ),
+    );
+  }
+  parts.push(doc.subTitle("Alertas analíticos"));
+  parts.push(
+    doc.table(
+      [
+        [
+          doc.headerCell("Atividades manuais"),
+          doc.headerCell("Sem responsável"),
+          doc.headerCell("Sem descrição"),
+          doc.headerCell("Sem sistema relacionado"),
+        ],
+        [
+          doc.bodyCell(String(model.stats.alerts.manualActivities)),
+          doc.bodyCell(String(model.stats.alerts.withoutOwner)),
+          doc.bodyCell(String(model.stats.alerts.withoutDescription)),
+          doc.bodyCell(String(model.stats.alerts.withoutSystem)),
+        ],
+      ],
+      [2576, 2576, 2576, 2578],
+      { full: true },
+    ),
+  );
+
+  parts.push(doc.sectionTitle("06 Oportunidades de Melhoria"));
   model.gaps.forEach((gap, index) => {
     parts.push(
       doc.table(
@@ -4934,7 +5219,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   });
   if (!model.gaps.length) parts.push(doc.p("Nenhuma oportunidade de melhoria cadastrada."));
 
-  parts.push(doc.sectionTitle("06 Próximos Passos"));
+  parts.push(doc.sectionTitle("07 Próximos Passos"));
   parts.push(
     model.nextSteps.length
       ? doc.table(
@@ -4953,7 +5238,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   );
 
   parts.push(doc.pageBreak());
-  parts.push(doc.sectionTitle("07 Glossário"));
+  parts.push(doc.sectionTitle("08 Glossário"));
   parts.push(
     model.glossary.length
       ? doc.table(
@@ -5596,8 +5881,12 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
   );
 }
 
-function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
-  const model = getDdpExportModel(data);
+function buildDdpPresentationHtml(
+  data: DdpState,
+  brand?: OrganizationBrand,
+  processCatalog: OrganizationProcess[] = [],
+) {
+  const model = getDdpExportModel(data, processCatalog);
   const presentationColor = docxColor(brand?.word_header_color, "1D1F23");
   const assetBase =
     typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
@@ -5615,9 +5904,10 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     ["sistemas", "02 Sistemas/Documentos envolvidos"],
     ["sipoc", "03 SIPOC"],
     ["fluxo", "04 Etapas do processo"],
-    ["gaps", "05 Oportunidades de melhoria"],
-    ["proximos", "06 Próximos passos"],
-    ["glossario", "07 Glossário"],
+    ["quantitativa", "05 Visão Quantitativa"],
+    ["gaps", "06 Oportunidades de melhoria"],
+    ["proximos", "07 Próximos passos"],
+    ["glossario", "08 Glossário"],
   ];
 
   const coverLine = (
@@ -5812,6 +6102,58 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
         .join("")
     : emptyBlock("Nenhum termo informado.");
 
+  const quantitativeMetricCards = [
+    ["Processos", model.stats.processes],
+    ["Subprocessos", model.stats.subprocesses],
+    ["Atividades", model.stats.activities],
+    ["Áreas", model.stats.areas],
+    ["Sistemas/Documentos", model.stats.systems],
+  ]
+    .map(
+      ([label, value]) =>
+        `<article class="quant-metric"><span>${html(label)}</span><strong>${html(
+          String(value),
+        )}</strong></article>`,
+    )
+    .join("");
+
+  const quantitativeBars = (items: QuantitativeBreakdown[]) =>
+    items.length
+      ? items
+          .map(
+            (item) =>
+              `<div class="quant-bar"><div><span>${html(item.label)}</span><strong>${item.value} · ${
+                item.percentage
+              }%</strong></div><i><b style="width:${item.percentage}%"></b></i></div>`,
+          )
+          .join("")
+      : emptyBlock("Não há dados suficientes para esta análise.");
+
+  const quantitativeResources = model.stats.resourceUsage.length
+    ? model.stats.resourceUsage
+        .map(
+          (item, index) =>
+            `<div class="quant-resource"><span>${String(index + 1).padStart(2, "0")}</span><strong>${html(
+              item.label,
+            )}</strong><b>${item.value}</b></div>`,
+        )
+        .join("")
+    : emptyBlock("Nenhum sistema ou documento foi vinculado às atividades.");
+
+  const quantitativeAlerts = [
+    ["Atividades manuais", model.stats.alerts.manualActivities],
+    ["Sem responsável", model.stats.alerts.withoutOwner],
+    ["Sem descrição", model.stats.alerts.withoutDescription],
+    ["Sem sistema relacionado", model.stats.alerts.withoutSystem],
+  ]
+    .map(
+      ([label, value]) =>
+        `<div class="quant-alert"><strong>${html(String(value))}</strong><span>${html(
+          label,
+        )}</span></div>`,
+    )
+    .join("");
+
   const macroDiagram = model.macroprocess.src
     ? zoomImage({
         title: model.macroprocess.title || "Macroprocesso",
@@ -5836,7 +6178,10 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 .type-tag{display:inline-flex;width:max-content;align-items:center;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-strong);padding:4px 9px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}.substep-tags{margin:0 0 0 auto;justify-content:flex-end}
 .nested-activities{display:grid;gap:12px;margin-top:14px;padding-left:18px;border-left:2px solid color-mix(in srgb,var(--gold) 42%,var(--line))}.nested-activities .list-card{padding:16px;box-shadow:none}.nested-activities .list-card h3{margin-bottom:7px}
 .flow-details{display:block;min-width:0}.flow-details>summary,.substep>summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;border-radius:12px}.flow-details>summary::-webkit-details-marker,.substep>summary::-webkit-details-marker{display:none}.flow-details>summary:before,.substep>summary:before{content:"";width:9px;height:9px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:.18s ease}.flow-details:not([open])>summary:before,.substep:not([open])>summary:before{transform:rotate(-45deg)}.flow-details>summary{margin-bottom:10px;padding:4px 2px}.flow-details>summary h3{margin:0}.substep>summary{padding:2px 0}.substep>summary h4{margin:0;color:var(--text)}.substep-body{padding-top:8px}.zoom-modal{overflow:hidden}.zoom-modal img{transition:transform .16s ease;transform:scale(var(--zoom-scale,1));transform-origin:center center}.zoom-help{position:fixed;left:28px;bottom:24px;color:rgba(255,255,255,.74);font-size:12px}.zoom-map{position:fixed;right:28px;bottom:24px;width:190px;height:126px;border:1px solid rgba(255,255,255,.32);border-radius:12px;background:rgba(255,255,255,.08);padding:8px;display:none;overflow:hidden}.zoom-modal.open .zoom-map{display:block}.zoom-map img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;transform:none;box-shadow:none;cursor:default}.zoom-map span{position:absolute;border:2px solid #d49a21;border-radius:8px;background:rgba(212,154,33,.14);box-shadow:0 0 0 999px rgba(0,0,0,.18);pointer-events:none;transition:inset .16s ease,left .16s ease,top .16s ease,width .16s ease,height .16s ease}
+.quant-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.quant-metric,.quant-panel,.quant-alert{border:1px solid var(--line);background:var(--surface);border-radius:16px}.quant-metric{min-height:118px;padding:18px;display:flex;flex-direction:column;justify-content:space-between}.quant-metric span{color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.quant-metric strong{font-size:36px;color:var(--text)}.quant-summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.quant-panel{padding:20px}.quant-panel h3{margin:0 0 16px;color:var(--accent-strong);font-size:16px}.quant-highlights{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}.quant-highlight{border:1px solid var(--line);border-radius:14px;background:var(--surface-2);padding:15px}.quant-highlight strong{display:block;font-size:26px;color:var(--text)}.quant-highlight span{display:block;margin-top:6px;color:var(--muted);font-size:11px;line-height:1.35}.quant-bar{display:grid;gap:7px;margin-top:13px}.quant-bar>div{display:flex;justify-content:space-between;gap:16px;font-size:12px}.quant-bar>div span{color:var(--text);font-weight:700}.quant-bar>div strong{color:var(--muted)}.quant-bar i{display:block;height:7px;overflow:hidden;border-radius:999px;background:var(--line)}.quant-bar i b{display:block;height:100%;border-radius:inherit;background:var(--gold)}.quant-resource{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0}.quant-resource:last-child{border-bottom:0}.quant-resource span{display:grid;height:28px;place-items:center;border-radius:8px;background:color-mix(in srgb,var(--gold) 16%,transparent);color:var(--gold);font-size:11px;font-weight:900}.quant-resource strong{font-size:13px;color:var(--text)}.quant-resource b{font-size:15px}.quant-alerts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}.quant-alert{padding:15px}.quant-alert strong{display:block;font-size:26px;color:var(--text)}.quant-alert span{display:block;margin-top:5px;color:var(--muted);font-size:11px}.quant-subtitle{margin:26px 0 8px;color:var(--accent-strong);font-size:16px}
 @media(max-width:720px){.substep>summary{align-items:flex-start;flex-wrap:wrap}.substep-tags{width:100%;margin:2px 0 0 19px;justify-content:flex-start}}
+@media(max-width:1100px){.quant-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.quant-highlights,.quant-alerts{grid-template-columns:repeat(2,minmax(0,1fr))}.quant-summary{grid-template-columns:1fr}}
+@media(max-width:720px){.quant-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.quant-highlights,.quant-alerts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -5874,9 +6219,10 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 <section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas/Documentos envolvidos", "Sistemas, documentos e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
 <section class="slide" id="sipoc">${sectionHead("03", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
 <section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
-<section class="slide" id="gaps">${sectionHead("05", "Oportunidades de melhoria", "Oportunidades, impactos e planos de ação relacionados.")}${gapTable}</section>
-<section class="slide alt" id="proximos">${sectionHead("06", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
-<section class="slide" id="glossario">${sectionHead("07", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
+<section class="slide" id="quantitativa">${sectionHead("05", "Visão Quantitativa", "Indicadores calculados automaticamente a partir do mapeamento.")}<div class="quant-metrics">${quantitativeMetricCards}</div><div class="quant-highlights"><div class="quant-highlight"><strong>${model.stats.averageActivities.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong><span>Média de atividades por processo ou subprocesso</span></div><div class="quant-highlight"><strong>${model.stats.maxActivitiesInSubprocess}</strong><span>Maior quantidade de atividades em um subprocesso</span></div><div class="quant-highlight"><strong>${model.stats.automationPercentage}%</strong><span>Atividades com algum grau de automação</span></div><div class="quant-highlight"><strong>${model.stats.fullyManualPercentage}%</strong><span>Atividades totalmente manuais</span></div></div><div class="quant-summary"><article class="quant-panel"><h3>Distribuição por forma de execução</h3>${quantitativeBars(model.stats.execution)}</article><article class="quant-panel"><h3>Participação das áreas</h3>${quantitativeBars(model.stats.areaDistribution)}</article></div><div class="quant-summary"><article class="quant-panel"><h3>Recursos mais utilizados</h3>${quantitativeResources}</article><article class="quant-panel"><h3>Alertas analíticos</h3><div class="quant-alerts">${quantitativeAlerts}</div></article></div></section>
+<section class="slide alt" id="gaps">${sectionHead("06", "Oportunidades de melhoria", "Oportunidades, impactos e planos de ação relacionados.")}${gapTable}</section>
+<section class="slide" id="proximos">${sectionHead("07", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
+<section class="slide alt" id="glossario">${sectionHead("08", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
 </main>
 </div>
 <div class="zoom-modal" id="zoom-modal" onclick="closeImageZoom()"><div class="zoom-title" id="zoom-title"></div><button class="zoom-close" onclick="closeImageZoom();event.stopPropagation()">Fechar</button><img id="zoom-img" alt="Imagem ampliada" onclick="changeImageZoom(0.25);event.stopPropagation()" oncontextmenu="changeImageZoom(-0.25);event.preventDefault();event.stopPropagation()"/><div class="zoom-help">Clique para ampliar. Botão direito para reduzir.</div><div class="zoom-map" id="zoom-map"><img id="zoom-map-img" alt="Miniatura"/><span id="zoom-map-window" aria-hidden="true"></span></div></div>
@@ -7470,7 +7816,11 @@ function ModuleWorkspacePage() {
     let docHtml: string;
     if (snapshot && moduleId === "ddp") {
       const ddp = reconcileDdpWithCatalog(snapshot.ddp, organizationCatalogs.systems);
-      docHtml = buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html"));
+      docHtml = buildDdpPresentationHtml(
+        ddp,
+        brandForDocumentModel("ddp-html"),
+        organizationCatalogs.processes,
+      );
     } else if (snapshot && moduleId === "pop") {
       docHtml = buildPopPresentationHtml(snapshot.pop, brandForDocumentPresentation());
     } else {
@@ -7483,7 +7833,11 @@ function ModuleWorkspacePage() {
   // na mesma modalidade somente-leitura disponível na consulta.
   function previewCurrentDdp() {
     const ddp = reconcileDdpWithCatalog(workspace.ddp, organizationCatalogs.systems);
-    const docHtml = buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html"));
+    const docHtml = buildDdpPresentationHtml(
+      ddp,
+      brandForDocumentModel("ddp-html"),
+      organizationCatalogs.processes,
+    );
     openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o preenchimento.");
   }
 
@@ -7513,19 +7867,30 @@ function ModuleWorkspacePage() {
       );
       downloadText(
         `${filename}.html`,
-        buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html")),
+        buildDdpPresentationHtml(
+          ddp,
+          brandForDocumentModel("ddp-html"),
+          organizationCatalogs.processes,
+        ),
         "text/html;charset=utf-8",
       );
     } else if (format === "ddp-presentation-doc") {
       const filename = cleanFileName(`${ddp.meta.codigo}-${ddp.meta.titulo}-apresentacao`);
       downloadText(
         `${filename}.doc`,
-        buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html")),
+        buildDdpPresentationHtml(
+          ddp,
+          brandForDocumentModel("ddp-html"),
+          organizationCatalogs.processes,
+        ),
         "application/msword;charset=utf-8",
       );
     } else if (format === "ddp-docx") {
       const filename = cleanFileName(`${ddp.meta.codigo}-${ddp.meta.titulo}`);
-      downloadBlob(`${filename}.docx`, buildDdpDocx(ddp, brandForDocumentModel("ddp-word")));
+      downloadBlob(
+        `${filename}.docx`,
+        buildDdpDocx(ddp, brandForDocumentModel("ddp-word"), organizationCatalogs.processes),
+      );
     } else if (format === "pop-presentation-doc") {
       const filename = cleanFileName(
         `${snapshot.pop.meta.codigo}-${snapshot.pop.meta.titulo}-apresentacao`,
@@ -10916,6 +11281,10 @@ function DdpModule({
       ) ?? [],
     [assistantCreatedProcesses, flowProcessOptions, mappingImport],
   );
+  const quantitativeStats = useMemo(
+    () => calculateMappingQuantitativeStats(data, catalogs.processes),
+    [catalogs.processes, data],
+  );
 
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
@@ -11072,16 +11441,23 @@ function DdpModule({
     { key: "sipoc", num: "03", title: "Análise SIPOC", pct: sectionProgress.sipoc },
     { key: "flowStage", num: "04", title: "Etapas do processo", pct: sectionProgress.flowStage },
     {
-      key: "gaps",
+      key: "quantitative",
       num: "05",
+      title: "Visão Quantitativa",
+      pct: 100,
+    },
+    {
+      key: "gaps",
+      num: "06",
       title: "Oportunidades de melhoria",
       pct: sectionProgress.gaps,
     },
-    { key: "nextSteps", num: "06", title: "Próximos passos", pct: sectionProgress.nextSteps },
-    { key: "glossary", num: "07", title: "Glossário", pct: sectionProgress.glossary },
+    { key: "nextSteps", num: "07", title: "Próximos passos", pct: sectionProgress.nextSteps },
+    { key: "glossary", num: "08", title: "Glossário", pct: sectionProgress.glossary },
   ];
+  const fillableSections = sections.filter((section) => section.key !== "quantitative");
   const overallPct = Math.round(
-    sections.reduce((sum, section) => sum + section.pct, 0) / sections.length,
+    fillableSections.reduce((sum, section) => sum + section.pct, 0) / fillableSections.length,
   );
 
   // O formulário está pronto para exibir as seções quando há um processo
@@ -11114,6 +11490,7 @@ function DdpModule({
       "systems",
       "sipoc",
       "flowStage",
+      "quantitative",
       "gaps",
       "nextSteps",
       "glossary",
@@ -11744,7 +12121,7 @@ function DdpModule({
                     value={mappingAssistantText}
                     onChange={(event) => setMappingAssistantText(event.target.value)}
                     placeholder={
-                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n05 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n06 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n07 Glossário\nSLA | Acordo de nível de serviço"
+                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
                     }
                     className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
                   />
@@ -13009,6 +13386,238 @@ function DdpModule({
                     </button>
                   </div>
                 </div>
+              </div>
+            </Panel>
+            <Panel
+              id="sec-quantitative"
+              num="05"
+              openSignal={openTarget === "quantitative" ? openNonce : 0}
+              title="Visão Quantitativa"
+            >
+              <div className="grid gap-5">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                  {[
+                    {
+                      label: "Processos",
+                      value: quantitativeStats.processes,
+                      icon: Workflow,
+                    },
+                    {
+                      label: "Subprocessos",
+                      value: quantitativeStats.subprocesses,
+                      icon: GitBranch,
+                    },
+                    {
+                      label: "Atividades",
+                      value: quantitativeStats.activities,
+                      icon: ListChecks,
+                    },
+                    {
+                      label: "Áreas",
+                      value: quantitativeStats.areas,
+                      icon: Building2,
+                    },
+                    {
+                      label: "Sistemas/Documentos",
+                      value: quantitativeStats.systems,
+                      icon: Database,
+                    },
+                  ].map((metric) => {
+                    const Icon = metric.icon;
+                    return (
+                      <article
+                        key={metric.label}
+                        className="flex min-h-[112px] flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                            {metric.label}
+                          </span>
+                          <Icon className="h-4 w-4 text-[var(--gold)]" />
+                        </div>
+                        <strong className="text-3xl font-bold tabular-nums text-foreground">
+                          {metric.value}
+                        </strong>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <article className="rounded-lg border border-border bg-card p-4">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Média de atividades
+                    </span>
+                    <div className="mt-2 flex items-end gap-2">
+                      <strong className="text-3xl font-bold tabular-nums text-foreground">
+                        {quantitativeStats.averageActivities.toLocaleString("pt-BR", {
+                          maximumFractionDigits: 1,
+                        })}
+                      </strong>
+                      <span className="pb-1 text-xs text-muted-foreground">
+                        por processo ou subprocesso
+                      </span>
+                    </div>
+                  </article>
+                  <article className="rounded-lg border border-border bg-card p-4">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Maior subprocesso
+                    </span>
+                    <div className="mt-2 flex items-end gap-2">
+                      <strong className="text-3xl font-bold tabular-nums text-foreground">
+                        {quantitativeStats.maxActivitiesInSubprocess}
+                      </strong>
+                      <span className="pb-1 text-xs text-muted-foreground">
+                        atividades vinculadas
+                      </span>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
+                  <article className="rounded-lg border border-border bg-card p-4">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">
+                          Distribuição por forma de execução
+                        </h3>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Composição das atividades classificadas no fluxo.
+                        </p>
+                      </div>
+                      <ListChecks className="h-5 w-5 text-[var(--gold)]" />
+                    </div>
+                    <div className="grid gap-3">
+                      {quantitativeStats.execution.map((item) => (
+                        <div key={item.label} className="grid gap-1.5">
+                          <div className="flex items-center justify-between gap-3 text-xs">
+                            <span className="font-medium text-foreground">{item.label}</span>
+                            <span className="tabular-nums text-muted-foreground">
+                              {item.value} · {item.percentage}%
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-[var(--gold)] transition-[width] duration-300"
+                              style={{ width: `${item.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="grid gap-3 rounded-lg border border-border bg-card p-4">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Indicadores de execução
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-emerald-500/10 p-3">
+                        <strong className="block text-2xl tabular-nums text-emerald-700 dark:text-emerald-300">
+                          {quantitativeStats.automationPercentage}%
+                        </strong>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          Com algum grau de automação
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-muted/60 p-3">
+                        <strong className="block text-2xl tabular-nums text-foreground">
+                          {quantitativeStats.fullyManualPercentage}%
+                        </strong>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          Totalmente manuais
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <article className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Participação das áreas
+                    </h3>
+                    <div className="mt-4 grid gap-3">
+                      {quantitativeStats.areaDistribution.length ? (
+                        quantitativeStats.areaDistribution.map((item) => (
+                          <div key={item.label} className="grid gap-1.5">
+                            <div className="flex items-center justify-between gap-3 text-xs">
+                              <span className="truncate font-medium text-foreground">
+                                {item.label}
+                              </span>
+                              <span className="shrink-0 tabular-nums text-muted-foreground">
+                                {item.value} · {item.percentage}%
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-primary"
+                                style={{ width: `${item.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="rounded-lg border border-dashed border-border bg-muted/20 p-5 text-center text-xs text-muted-foreground">
+                          As áreas aparecerão quando houver atividades vinculadas a processos
+                          cadastrados.
+                        </p>
+                      )}
+                    </div>
+                  </article>
+
+                  <article className="rounded-lg border border-border bg-card p-4">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Recursos mais utilizados
+                    </h3>
+                    <div className="mt-4 grid gap-2">
+                      {quantitativeStats.resourceUsage.length ? (
+                        quantitativeStats.resourceUsage.map((item, index) => (
+                          <div
+                            key={item.label}
+                            className="flex items-center gap-3 rounded-lg bg-muted/45 px-3 py-2.5"
+                          >
+                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-background text-xs font-bold text-[var(--gold)]">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                              {item.label}
+                            </span>
+                            <strong className="tabular-nums text-sm text-foreground">
+                              {item.value}
+                            </strong>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="rounded-lg border border-dashed border-border bg-muted/20 p-5 text-center text-xs text-muted-foreground">
+                          Vincule sistemas ou documentos às atividades para identificar o uso.
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                </div>
+
+                <article className="rounded-lg border border-border bg-card p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <TriangleAlert className="h-4 w-4 text-[var(--gold)]" />
+                    <h3 className="text-sm font-semibold text-foreground">Alertas analíticos</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    {[
+                      ["Atividades manuais", quantitativeStats.alerts.manualActivities],
+                      ["Sem responsável", quantitativeStats.alerts.withoutOwner],
+                      ["Sem descrição", quantitativeStats.alerts.withoutDescription],
+                      ["Sem sistema relacionado", quantitativeStats.alerts.withoutSystem],
+                    ].map(([label, value]) => (
+                      <div key={String(label)} className="rounded-lg border border-border p-3">
+                        <strong className="block text-2xl tabular-nums text-foreground">
+                          {value}
+                        </strong>
+                        <span className="mt-1 block text-xs text-muted-foreground">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </article>
               </div>
             </Panel>
             <Panel
