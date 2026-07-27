@@ -1990,6 +1990,17 @@ function normalizeDdpSubsteps(values: unknown[] | undefined) {
     const systemValues = arrayAt(row, "systemIds").length
       ? arrayAt(row, "systemIds")
       : arrayAt(row, "systems");
+    const tipo =
+      textAt(row, "tipo") === "subprocesso" || arrayAt(row, "activities").length
+        ? ("subprocesso" as const)
+        : ("atividade" as const);
+    const activities = normalizeDdpActivities(
+      arrayAt(row, "activities").length ? arrayAt(row, "activities") : arrayAt(row, "atividades"),
+      textAt(row, "codigo") || String(index + 1),
+    );
+    const ownSystemIds = systemValues
+      .map((item) => (typeof item === "string" ? item : textAt(asObject(item), "id")))
+      .filter(Boolean);
     return {
       id: textAt(row, "id") || id("substep"),
       processId: textAt(row, "processId"),
@@ -1997,24 +2008,19 @@ function normalizeDdpSubsteps(values: unknown[] | undefined) {
       codigo: textAt(row, "codigo") || String(index + 1).padStart(2, "0"),
       titulo: textAt(row, "titulo") || textAt(row, "title") || `Atividade ${index + 1}`,
       descricao: textAt(row, "descricao") || textAt(row, "desc") || textAt(row, "text"),
-      tipo:
-        textAt(row, "tipo") === "subprocesso" || arrayAt(row, "activities").length
-          ? ("subprocesso" as const)
-          : ("atividade" as const),
+      tipo,
       classificacao: normalizeFlowExecutionType(
         textAt(row, "classificacao") || textAt(row, "classification"),
       ),
-      systemIds: systemValues
-        .map((item) => (typeof item === "string" ? item : textAt(asObject(item), "id")))
-        .filter(Boolean),
+      systemIds:
+        tipo === "subprocesso" && activities.length
+          ? Array.from(new Set(activities.flatMap((activity) => activity.systemIds)))
+          : ownSystemIds,
       images: normalizeImages(
         arrayAt(row, "images").length ? arrayAt(row, "images") : arrayAt(row, "imagens"),
         "subimg",
       ),
-      activities: normalizeDdpActivities(
-        arrayAt(row, "activities").length ? arrayAt(row, "activities") : arrayAt(row, "atividades"),
-        textAt(row, "codigo") || String(index + 1),
-      ),
+      activities,
     };
   });
 }
@@ -10846,6 +10852,11 @@ function DdpModule({
   onSuggestedProcessPrepared: (process: CreatedProcess) => Promise<void> | void;
 }) {
   const [createProcessName, setCreateProcessName] = useState<string | null>(null);
+  const [processCreationTarget, setProcessCreationTarget] = useState<
+    | { kind: "step"; stepId: string }
+    | { kind: "subprocess"; stepId: string; substepId: string }
+    | null
+  >(null);
   const [createSystemRequest, setCreateSystemRequest] = useState<{
     stepId: string;
     query: string;
@@ -11235,14 +11246,21 @@ function DdpModule({
   function renumberFlowSteps(steps: DdpFlowStep[]) {
     return steps.map((step, stepIndex) => ({
       ...step,
-      substeps: step.substeps.map((substep, substepIndex) => ({
-        ...substep,
-        codigo: `${stepIndex + 1}.${substepIndex + 1}`,
-        activities: substep.activities.map((activity, activityIndex) => ({
+      substeps: step.substeps.map((substep, substepIndex) => {
+        const activities = substep.activities.map((activity, activityIndex) => ({
           ...activity,
           codigo: `${stepIndex + 1}.${substepIndex + 1}.${activityIndex + 1}`,
-        })),
-      })),
+        }));
+        return {
+          ...substep,
+          codigo: `${stepIndex + 1}.${substepIndex + 1}`,
+          systemIds:
+            substep.tipo === "subprocesso"
+              ? Array.from(new Set(activities.flatMap((activity) => activity.systemIds)))
+              : substep.systemIds,
+          activities,
+        };
+      }),
     }));
   }
 
@@ -11567,10 +11585,12 @@ function DdpModule({
           isDemo={isDemo}
           codeSettings={codeSettings}
           initialName={createProcessName}
-          deferPersistence={Boolean(assistantProcessStepTitle)}
+          initialType={processCreationTarget?.kind === "subprocess" ? "subprocess" : "process"}
+          deferPersistence={Boolean(assistantProcessStepTitle || processCreationTarget)}
           onClose={() => {
             setCreateProcessName(null);
             setAssistantProcessStepTitle(null);
+            setProcessCreationTarget(null);
           }}
           onCreated={async (process) => {
             const importedStepTitle = assistantProcessStepTitle;
@@ -11597,6 +11617,35 @@ function DdpModule({
                 [normalizeLabel(importedStepTitle)]: process,
               }));
               toast.success("Processo associado à etapa sugerida.");
+              return;
+            }
+            if (processCreationTarget) {
+              await onSuggestedProcessPrepared(process);
+              setAssistantCreatedProcesses((current) => ({
+                ...current,
+                [normalizeLabel(process.name)]: process,
+              }));
+              if (processCreationTarget.kind === "step") {
+                updateStep(processCreationTarget.stepId, {
+                  processId: process.id,
+                  processVersion: 1,
+                  etapa: process.name,
+                  responsavel: process.owner || "",
+                  atividade: process.description || "",
+                });
+              } else {
+                updateSubstep(processCreationTarget.stepId, processCreationTarget.substepId, {
+                  processId: process.id,
+                  processVersion: 1,
+                  titulo: process.name,
+                  descricao: process.description || "",
+                });
+              }
+              toast.success(
+                processCreationTarget.kind === "subprocess"
+                  ? "Subprocesso preparado e associado."
+                  : "Processo preparado e associado.",
+              );
               return;
             }
             await onProcessCreated(process);
@@ -12387,6 +12436,10 @@ function DdpModule({
                                   atividade: step.atividade || process?.description || "",
                                 })
                               }
+                              onRequestCreate={(name) => {
+                                setProcessCreationTarget({ kind: "step", stepId: step.id });
+                                setCreateProcessName(name);
+                              }}
                             />
                           </div>
                           <IconButton
@@ -12468,18 +12521,41 @@ function DdpModule({
                                             label="Código"
                                             value={`${index + 1}.${substepIndex + 1}`}
                                           />
-                                          <Field
-                                            compact
-                                            label={
-                                              substep.tipo === "subprocesso"
-                                                ? "Subprocesso / etapa"
-                                                : "Atividade"
-                                            }
-                                            value={substep.titulo}
-                                            onChange={(titulo) =>
-                                              updateSubstep(step.id, substep.id, { titulo })
-                                            }
-                                          />
+                                          {substep.tipo === "subprocesso" ? (
+                                            <RegisteredProcessSelect
+                                              label="Subprocesso / etapa"
+                                              value={substep.processId ?? ""}
+                                              processes={flowProcessOptions}
+                                              placeholder="Busque ou cadastre o subprocesso"
+                                              displayName={(process) => process.name}
+                                              onSelect={(process) =>
+                                                updateSubstep(step.id, substep.id, {
+                                                  processId: process?.id ?? "",
+                                                  processVersion: 1,
+                                                  titulo: process?.name ?? "",
+                                                  descricao:
+                                                    substep.descricao || process?.description || "",
+                                                })
+                                              }
+                                              onRequestCreate={(name) => {
+                                                setProcessCreationTarget({
+                                                  kind: "subprocess",
+                                                  stepId: step.id,
+                                                  substepId: substep.id,
+                                                });
+                                                setCreateProcessName(name);
+                                              }}
+                                            />
+                                          ) : (
+                                            <Field
+                                              compact
+                                              label="Atividade"
+                                              value={substep.titulo}
+                                              onChange={(titulo) =>
+                                                updateSubstep(step.id, substep.id, { titulo })
+                                              }
+                                            />
+                                          )}
                                           <IconButton
                                             label={
                                               substep.tipo === "subprocesso"
@@ -12518,6 +12594,8 @@ function DdpModule({
                                                     tipo: event.target.checked
                                                       ? "subprocesso"
                                                       : "atividade",
+                                                    processId: "",
+                                                    processVersion: 1,
                                                     activities: event.target.checked
                                                       ? substep.activities
                                                       : [],
@@ -12542,9 +12620,45 @@ function DdpModule({
                                         />
                                         <div className="mt-3 grid gap-2 rounded-lg border border-border bg-background p-3">
                                           <span className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground">
-                                            Sistemas/Documentos utilizados
+                                            {substep.tipo === "subprocesso"
+                                              ? "Resumo dos sistemas/documentos das atividades"
+                                              : "Sistemas/Documentos utilizados"}
                                           </span>
-                                          {data.systems.some((system) => system.nome.trim()) ? (
+                                          {substep.tipo === "subprocesso" ? (
+                                            substep.systemIds.length ? (
+                                              <div className="flex flex-wrap gap-2">
+                                                {data.systems
+                                                  .filter(
+                                                    (system) =>
+                                                      system.nome.trim() &&
+                                                      (substep.systemIds.includes(system.id) ||
+                                                        (!!system.systemId &&
+                                                          substep.systemIds.includes(
+                                                            system.systemId,
+                                                          ))),
+                                                  )
+                                                  .map((system) => (
+                                                    <span
+                                                      key={system.id}
+                                                      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
+                                                    >
+                                                      <span className="font-semibold">
+                                                        {system.nome}
+                                                      </span>
+                                                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                                        {normalizeSystemModality(system.tipo)}
+                                                      </span>
+                                                    </span>
+                                                  ))}
+                                              </div>
+                                            ) : (
+                                              <p className="text-xs text-muted-foreground">
+                                                Selecione sistemas ou documentos nas atividades
+                                                deste subprocesso. O resumo será atualizado
+                                                automaticamente.
+                                              </p>
+                                            )
+                                          ) : data.systems.some((system) => system.nome.trim()) ? (
                                             <div className="flex flex-wrap gap-2">
                                               {data.systems
                                                 .filter((system) => system.nome.trim())

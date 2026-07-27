@@ -2506,6 +2506,7 @@ export function ProcessRegistrationDialog({
   isDemo,
   codeSettings,
   initialName = "",
+  initialType = "process",
   deferPersistence = false,
   onClose,
   onCreated,
@@ -2514,6 +2515,7 @@ export function ProcessRegistrationDialog({
   isDemo: boolean;
   codeSettings: CodeSettings | null;
   initialName?: string;
+  initialType?: "process" | "subprocess" | "atividade" | "tarefa";
   deferPersistence?: boolean;
   onClose: () => void;
   onCreated: (process: CreatedProcess) => void;
@@ -2539,6 +2541,7 @@ export function ProcessRegistrationDialog({
   const [draft, setDraft] = useState<Draft>(() => ({
     ...emptyDraft("processes", data),
     name: initialName.toLocaleUpperCase("pt-BR"),
+    type: initialType,
   }));
   const [relatedCreate, setRelatedCreate] = useState<RelatedCreateState | null>(null);
 
