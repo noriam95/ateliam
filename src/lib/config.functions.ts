@@ -2038,7 +2038,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
 
     // Cobertura de mapeamento: um processo é "coberto" se aparecer como processo
     // principal do mapeamento ou como processo relacionado em macroprocesso,
-    // etapa ou subetapa do fluxo AS IS. A quantidade de mapeamentos não importa:
+    // etapa, subprocesso ou atividade do fluxo. A quantidade de mapeamentos não importa:
     // a cobertura é sim/não por processo cadastrado.
     const mappingsByProcess = new Map<
       string,

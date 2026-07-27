@@ -303,6 +303,26 @@ type DdpFlowStep = {
   images: ModuleImage[];
   substeps: DdpFlowSubstep[];
 };
+type FlowExecutionType =
+  | "Automática"
+  | "Manual no sistema"
+  | "Manual fora do sistema"
+  | "Híbrida (manual/automática)";
+const FLOW_EXECUTION_TYPE_OPTIONS: FlowExecutionType[] = [
+  "Automática",
+  "Manual no sistema",
+  "Manual fora do sistema",
+  "Híbrida (manual/automática)",
+];
+type DdpFlowActivity = {
+  id: string;
+  codigo: string;
+  titulo: string;
+  descricao: string;
+  classificacao: FlowExecutionType;
+  systemIds: string[];
+  images: ModuleImage[];
+};
 type DdpFlowSubstep = {
   id: string;
   processId?: string;
@@ -310,8 +330,11 @@ type DdpFlowSubstep = {
   codigo: string;
   titulo: string;
   descricao: string;
+  tipo: "atividade" | "subprocesso";
+  classificacao: FlowExecutionType;
   systemIds: string[];
   images: ModuleImage[];
+  activities: DdpFlowActivity[];
 };
 type SipocRow = {
   id: string;
@@ -1924,6 +1947,43 @@ function normalizeImages(values: unknown[] | undefined, prefix: string) {
     .filter((image) => image.src);
 }
 
+function normalizeFlowExecutionType(value: unknown): FlowExecutionType {
+  const normalized = normalizeLabel(String(value ?? ""));
+  if (normalized.includes("hibrid")) return "Híbrida (manual/automática)";
+  if (normalized.includes("fora")) return "Manual fora do sistema";
+  if (normalized.includes("manual")) return "Manual no sistema";
+  return "Automática";
+}
+
+function normalizeDdpActivities(values: unknown[] | undefined, parentCode: string) {
+  return (values ?? []).map((value, index): DdpFlowActivity => {
+    const row = asObject(value);
+    const systemValues = arrayAt(row, "systemIds").length
+      ? arrayAt(row, "systemIds")
+      : arrayAt(row, "systems");
+    return {
+      id: textAt(row, "id") || id("activity"),
+      codigo: textAt(row, "codigo") || `${parentCode}.${index + 1}`,
+      titulo:
+        textAt(row, "titulo") ||
+        textAt(row, "title") ||
+        textAt(row, "nome") ||
+        `Atividade ${index + 1}`,
+      descricao: textAt(row, "descricao") || textAt(row, "desc") || textAt(row, "text"),
+      classificacao: normalizeFlowExecutionType(
+        textAt(row, "classificacao") || textAt(row, "classification"),
+      ),
+      systemIds: systemValues
+        .map((item) => (typeof item === "string" ? item : textAt(asObject(item), "id")))
+        .filter(Boolean),
+      images: normalizeImages(
+        arrayAt(row, "images").length ? arrayAt(row, "images") : arrayAt(row, "imagens"),
+        "activityimg",
+      ),
+    };
+  });
+}
+
 function normalizeDdpSubsteps(values: unknown[] | undefined) {
   return (values ?? []).map((value, index) => {
     const row = asObject(value);
@@ -1935,14 +1995,25 @@ function normalizeDdpSubsteps(values: unknown[] | undefined) {
       processId: textAt(row, "processId"),
       processVersion: Number(textAt(row, "processVersion") || 1),
       codigo: textAt(row, "codigo") || String(index + 1).padStart(2, "0"),
-      titulo: textAt(row, "titulo") || textAt(row, "title") || `Subetapa ${index + 1}`,
+      titulo: textAt(row, "titulo") || textAt(row, "title") || `Atividade ${index + 1}`,
       descricao: textAt(row, "descricao") || textAt(row, "desc") || textAt(row, "text"),
+      tipo:
+        textAt(row, "tipo") === "subprocesso" || arrayAt(row, "activities").length
+          ? ("subprocesso" as const)
+          : ("atividade" as const),
+      classificacao: normalizeFlowExecutionType(
+        textAt(row, "classificacao") || textAt(row, "classification"),
+      ),
       systemIds: systemValues
         .map((item) => (typeof item === "string" ? item : textAt(asObject(item), "id")))
         .filter(Boolean),
       images: normalizeImages(
         arrayAt(row, "images").length ? arrayAt(row, "images") : arrayAt(row, "imagens"),
         "subimg",
+      ),
+      activities: normalizeDdpActivities(
+        arrayAt(row, "activities").length ? arrayAt(row, "activities") : arrayAt(row, "atividades"),
+        textAt(row, "codigo") || String(index + 1),
       ),
     };
   });
@@ -2817,8 +2888,18 @@ type ExportFlowStep = {
     code: string;
     title: string;
     description: string;
+    kind: "atividade" | "subprocesso";
+    classification: FlowExecutionType;
     systems: ExportSubstepSystem[];
     images: ExportImage[];
+    activities: Array<{
+      code: string;
+      title: string;
+      description: string;
+      classification: FlowExecutionType;
+      systems: ExportSubstepSystem[];
+      images: ExportImage[];
+    }>;
   }>;
 };
 type ExportGap = {
@@ -3108,6 +3189,8 @@ function getDdpExportModel(data: DdpState) {
           code: substep.codigo,
           title: substep.titulo,
           description: substep.descricao,
+          kind: substep.tipo,
+          classification: substep.classificacao,
           systems: data.systems
             .filter(
               (system) =>
@@ -3122,6 +3205,27 @@ function getDdpExportModel(data: DdpState) {
             title: image.titulo,
             caption: image.legenda,
             src: image.src,
+          })),
+          activities: substep.activities.map((activity) => ({
+            code: activity.codigo,
+            title: activity.titulo,
+            description: activity.descricao,
+            classification: activity.classificacao,
+            systems: data.systems
+              .filter(
+                (system) =>
+                  activity.systemIds.includes(system.id) ||
+                  (!!system.systemId && activity.systemIds.includes(system.systemId)),
+              )
+              .map((system) => ({
+                name: system.nome,
+                type: normalizeSystemModality(system.tipo),
+              })),
+            images: activity.images.map((image) => ({
+              title: image.titulo,
+              caption: image.legenda,
+              src: image.src,
+            })),
           })),
         }))
       : [],
@@ -3561,23 +3665,43 @@ function buildDdpImportTemplate(data: DdpState) {
       ],
     },
     {
-      name: "Subetapas Fluxo",
+      name: "Atividades Fluxo",
       rows: [
-        ["etapa", "codigo", "titulo", "descricao", "sistemas_documentos"],
+        ["etapa", "codigo", "tipo", "classificacao", "titulo", "descricao", "sistemas_documentos"],
         ...data.steps.flatMap((step, index) =>
-          step.substeps.map((substep) => [
-            String(index + 1),
-            substep.codigo,
-            substep.titulo,
-            substep.descricao,
-            data.systems
-              .filter(
-                (system) =>
-                  substep.systemIds.includes(system.id) ||
-                  (!!system.systemId && substep.systemIds.includes(system.systemId)),
-              )
-              .map((system) => system.nome)
-              .join("; "),
+          step.substeps.flatMap((substep) => [
+            [
+              String(index + 1),
+              substep.codigo,
+              substep.tipo,
+              substep.classificacao,
+              substep.titulo,
+              substep.descricao,
+              data.systems
+                .filter(
+                  (system) =>
+                    substep.systemIds.includes(system.id) ||
+                    (!!system.systemId && substep.systemIds.includes(system.systemId)),
+                )
+                .map((system) => system.nome)
+                .join("; "),
+            ],
+            ...substep.activities.map((activity) => [
+              String(index + 1),
+              activity.codigo,
+              "atividade",
+              activity.classificacao,
+              activity.titulo,
+              activity.descricao,
+              data.systems
+                .filter(
+                  (system) =>
+                    activity.systemIds.includes(system.id) ||
+                    (!!system.systemId && activity.systemIds.includes(system.systemId)),
+                )
+                .map((system) => system.nome)
+                .join("; "),
+            ]),
           ]),
         ),
       ],
@@ -3899,40 +4023,97 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
     criticidade: rowValue(row, "criticidade", "Média"),
     descricao: rowValue(row, "descricao"),
   }));
-  const substepRows = rowObjects(sheetRows(sheets, "Subetapas Fluxo"));
-  const steps = rowObjects(sheetRows(sheets, "Fluxo AS IS")).map((row, index) => ({
-    id: current.steps[index]?.id || id("step"),
-    etapa: rowValue(row, "etapa"),
-    responsavel: rowValue(row, "responsavel"),
-    entrada: rowValue(row, "entrada"),
-    atividade: rowValue(row, "atividade"),
-    saida: rowValue(row, "saida"),
-    sistema: rowValue(row, "sistema"),
-    risco: rowValue(row, "risco"),
-    observacoes: rowValue(row, "observacoes"),
-    images: current.steps[index]?.images ?? [],
-    substeps: substepRows
-      .filter((substep) => {
-        const stepRef = rowValue(substep, "etapa");
-        return (
-          stepRef === String(index + 1) ||
-          normalizeLabel(stepRef) === normalizeLabel(rowValue(row, "etapa"))
-        );
-      })
-      .map((substep, subIndex) => ({
-        id: current.steps[index]?.substeps[subIndex]?.id || id("substep"),
-        codigo: rowValue(substep, "codigo") || `${index + 1}.${subIndex + 1}`,
-        titulo: rowValue(substep, "titulo"),
-        descricao: rowValue(substep, "descricao"),
-        systemIds: rowValue(substep, "sistemas_documentos")
-          .split(";")
-          .map((name) => normalizeLabel(name))
-          .filter(Boolean)
-          .map((name) => systems.find((system) => normalizeLabel(system.nome) === name)?.id)
-          .filter((systemId): systemId is string => Boolean(systemId)),
-        images: current.steps[index]?.substeps[subIndex]?.images ?? [],
-      })),
-  }));
+  const substepRows = rowObjects(
+    sheetRows(sheets, "Atividades Fluxo").length
+      ? sheetRows(sheets, "Atividades Fluxo")
+      : sheetRows(sheets, "Subetapas Fluxo"),
+  );
+  const systemIdsForRow = (row: Record<string, string>) =>
+    rowValue(row, "sistemas_documentos")
+      .split(";")
+      .map((name) => normalizeLabel(name))
+      .filter(Boolean)
+      .map((name) => systems.find((system) => normalizeLabel(system.nome) === name)?.id)
+      .filter((systemId): systemId is string => Boolean(systemId));
+  const steps = rowObjects(sheetRows(sheets, "Fluxo AS IS")).map((row, index) => {
+    const rowsForStep = substepRows.filter((substep) => {
+      const stepRef = rowValue(substep, "etapa");
+      return (
+        stepRef === String(index + 1) ||
+        normalizeLabel(stepRef) === normalizeLabel(rowValue(row, "etapa"))
+      );
+    });
+    const substeps: DdpFlowSubstep[] = [];
+
+    rowsForStep.forEach((entry, entryIndex) => {
+      const code = rowValue(entry, "codigo") || `${index + 1}.${entryIndex + 1}`;
+      const codeParts = code.split(".");
+      const isNestedActivity = codeParts.length >= 3;
+      const activityData = {
+        id: id("activity"),
+        codigo: code,
+        titulo: rowValue(entry, "titulo"),
+        descricao: rowValue(entry, "descricao"),
+        classificacao: normalizeFlowExecutionType(rowValue(entry, "classificacao")),
+        systemIds: systemIdsForRow(entry),
+        images: [] as ModuleImage[],
+      };
+
+      if (isNestedActivity) {
+        const parentCode = codeParts.slice(0, 2).join(".");
+        let parent = substeps.find((item) => item.codigo === parentCode);
+        if (!parent) {
+          parent = {
+            id: id("substep"),
+            processId: "",
+            processVersion: 1,
+            codigo: parentCode,
+            titulo: `Subprocesso ${parentCode}`,
+            descricao: "",
+            tipo: "subprocesso",
+            classificacao: "Automática",
+            systemIds: [],
+            images: [],
+            activities: [],
+          };
+          substeps.push(parent);
+        }
+        parent.tipo = "subprocesso";
+        parent.activities.push(activityData);
+        return;
+      }
+
+      const currentEntry = current.steps[index]?.substeps[substeps.length];
+      substeps.push({
+        id: currentEntry?.id || id("substep"),
+        processId: currentEntry?.processId || "",
+        processVersion: currentEntry?.processVersion || 1,
+        codigo: code,
+        titulo: activityData.titulo,
+        descricao: activityData.descricao,
+        tipo:
+          normalizeLabel(rowValue(entry, "tipo")) === "subprocesso" ? "subprocesso" : "atividade",
+        classificacao: activityData.classificacao,
+        systemIds: activityData.systemIds,
+        images: currentEntry?.images ?? [],
+        activities: [],
+      });
+    });
+
+    return {
+      id: current.steps[index]?.id || id("step"),
+      etapa: rowValue(row, "etapa"),
+      responsavel: rowValue(row, "responsavel"),
+      entrada: rowValue(row, "entrada"),
+      atividade: rowValue(row, "atividade"),
+      saida: rowValue(row, "saida"),
+      sistema: rowValue(row, "sistema"),
+      risco: rowValue(row, "risco"),
+      observacoes: rowValue(row, "observacoes"),
+      images: current.steps[index]?.images ?? [],
+      substeps,
+    };
+  });
 
   return normalizeDdp(
     {
@@ -4635,32 +4816,56 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
           [
             [
               doc.headerCell("ID"),
-              doc.headerCell("Atividade"),
+              doc.headerCell("Etapa / atividade"),
+              doc.headerCell("Classificação"),
               doc.headerCell("Descrição"),
               doc.headerCell("Sistemas/Documentos"),
             ],
-            ...step.substeps.map((substep) => [
-              doc.bodyCell(substep.code),
-              doc.bodyCell(substep.title),
-              doc.bodyCell(substep.description),
-              doc.bodyCell(
-                substep.systems.map((system) => `${system.name} (${system.type})`).join("; ") ||
-                  "-",
-              ),
+            ...step.substeps.flatMap((substep) => [
+              [
+                doc.bodyCell(substep.code),
+                doc.bodyCell(substep.title),
+                doc.bodyCell(substep.classification),
+                doc.bodyCell(substep.description),
+                doc.bodyCell(
+                  substep.systems.map((system) => `${system.name} (${system.type})`).join("; ") ||
+                    "-",
+                ),
+              ],
+              ...substep.activities.map((activity) => [
+                doc.bodyCell(activity.code),
+                doc.bodyCell(activity.title),
+                doc.bodyCell(activity.classification),
+                doc.bodyCell(activity.description),
+                doc.bodyCell(
+                  activity.systems.map((system) => `${system.name} (${system.type})`).join("; ") ||
+                    "-",
+                ),
+              ]),
             ]),
           ],
-          [800, 2400, 4300, 2806],
+          [750, 2100, 1650, 3300, 2506],
           { full: true },
         ),
       );
-      step.substeps.forEach((substep) =>
+      step.substeps.forEach((substep) => {
         substep.images.forEach((image) => {
           if (!image.src) return;
           parts.push(doc.imageParagraph(image.src, image.title));
           if (image.caption)
             parts.push(doc.p(image.caption, { size: 8.5, color: doc.C.gray500, align: "center" }));
-        }),
-      );
+        });
+        substep.activities.forEach((activity) =>
+          activity.images.forEach((image) => {
+            if (!image.src) return;
+            parts.push(doc.imageParagraph(image.src, image.title));
+            if (image.caption)
+              parts.push(
+                doc.p(image.caption, { size: 8.5, color: doc.C.gray500, align: "center" }),
+              );
+          }),
+        );
+      });
     }
   });
 
@@ -5504,19 +5709,44 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
               .map(
                 (substep) =>
                   `<details class="substep"><summary><h4>${html(
-                    joinClean([substep.code, substep.title], " - ") || "Subetapa",
-                  )}</h4>${
+                    joinClean([substep.code, substep.title], " - ") ||
+                      (substep.kind === "subprocesso" ? "Subprocesso" : "Atividade"),
+                  )}</h4><div class="tag-list substep-tags"><span class="type-tag">${html(
+                    substep.kind === "subprocesso" ? "Subprocesso / etapa" : "Atividade",
+                  )}</span><span class="type-tag">${html(substep.classification)}</span>${
                     substep.systems.length
-                      ? `<div class="tag-list substep-tags">${substep.systems
+                      ? substep.systems
                           .map(
                             (system) =>
                               `<span class="type-tag">${html(system.name)} · ${html(system.type)}</span>`,
                           )
+                          .join("")
+                      : ""
+                  }</div></summary><div class="substep-body">${
+                    substep.description ? `<p>${html(substep.description)}</p>` : ""
+                  }${substep.images.map(zoomImage).join("")}${
+                    substep.activities.length
+                      ? `<div class="nested-activities">${substep.activities
+                          .map(
+                            (activity) =>
+                              `<article class="list-card"><div class="index">${html(
+                                activity.code,
+                              )}</div><div class="tag-list"><span class="type-tag">${html(
+                                activity.classification,
+                              )}</span>${activity.systems
+                                .map(
+                                  (system) =>
+                                    `<span class="type-tag">${html(system.name)} · ${html(
+                                      system.type,
+                                    )}</span>`,
+                                )
+                                .join("")}</div><h3>${html(activity.title)}</h3>${
+                                activity.description ? `<p>${html(activity.description)}</p>` : ""
+                              }${activity.images.map(zoomImage).join("")}</article>`,
+                          )
                           .join("")}</div>`
                       : ""
-                  }</summary><div class="substep-body">${
-                    substep.description ? `<p>${html(substep.description)}</p>` : ""
-                  }${substep.images.map(zoomImage).join("")}</div></details>`,
+                  }</div></details>`,
               )
               .join("")}</div></details></article>`,
         )
@@ -5598,6 +5828,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 </style>
 <style>
 .type-tag{display:inline-flex;width:max-content;align-items:center;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-strong);padding:4px 9px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}.substep-tags{margin:0 0 0 auto;justify-content:flex-end}
+.nested-activities{display:grid;gap:12px;margin-top:14px;padding-left:18px;border-left:2px solid color-mix(in srgb,var(--gold) 42%,var(--line))}.nested-activities .list-card{padding:16px;box-shadow:none}.nested-activities .list-card h3{margin-bottom:7px}
 .flow-details{display:block;min-width:0}.flow-details>summary,.substep>summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;border-radius:12px}.flow-details>summary::-webkit-details-marker,.substep>summary::-webkit-details-marker{display:none}.flow-details>summary:before,.substep>summary:before{content:"";width:9px;height:9px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:.18s ease}.flow-details:not([open])>summary:before,.substep:not([open])>summary:before{transform:rotate(-45deg)}.flow-details>summary{margin-bottom:10px;padding:4px 2px}.flow-details>summary h3{margin:0}.substep>summary{padding:2px 0}.substep>summary h4{margin:0;color:var(--text)}.substep-body{padding-top:8px}.zoom-modal{overflow:hidden}.zoom-modal img{transition:transform .16s ease;transform:scale(var(--zoom-scale,1));transform-origin:center center}.zoom-help{position:fixed;left:28px;bottom:24px;color:rgba(255,255,255,.74);font-size:12px}.zoom-map{position:fixed;right:28px;bottom:24px;width:190px;height:126px;border:1px solid rgba(255,255,255,.32);border-radius:12px;background:rgba(255,255,255,.08);padding:8px;display:none;overflow:hidden}.zoom-modal.open .zoom-map{display:block}.zoom-map img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;transform:none;box-shadow:none;cursor:default}.zoom-map span{position:absolute;border:2px solid #d49a21;border-radius:8px;background:rgba(212,154,33,.14);box-shadow:0 0 0 999px rgba(0,0,0,.18);pointer-events:none;transition:inset .16s ease,left .16s ease,top .16s ease,width .16s ease,height .16s ease}
 @media(max-width:720px){.substep>summary{align-items:flex-start;flex-wrap:wrap}.substep-tags{width:100%;margin:2px 0 0 19px;justify-content:flex-start}}
 </style>
@@ -10682,6 +10913,11 @@ function DdpModule({
     stepId: string;
     substepId: string;
   } | null>(null);
+  const [draggedActivity, setDraggedActivity] = useState<{
+    stepId: string;
+    subprocessId: string;
+    activityId: string;
+  } | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const toggleStep = (stepId: string) =>
     setOpenSteps((current) => ({ ...current, [stepId]: !current[stepId] }));
@@ -10767,7 +11003,15 @@ function DdpModule({
           substep.codigo,
           substep.titulo,
           substep.descricao,
+          substep.classificacao,
           ...substep.images.flatMap((image) => [image.src, image.titulo, image.legenda]),
+          ...substep.activities.flatMap((activity) => [
+            activity.codigo,
+            activity.titulo,
+            activity.descricao,
+            activity.classificacao,
+            ...activity.images.flatMap((image) => [image.src, image.titulo, image.legenda]),
+          ]),
         ]),
       ]),
     ]),
@@ -10958,12 +11202,46 @@ function DdpModule({
     });
   }
 
+  function updateActivity(
+    stepId: string,
+    subprocessId: string,
+    activityId: string,
+    patch: Partial<DdpFlowActivity>,
+  ) {
+    update({
+      ...data,
+      steps: renumberFlowSteps(
+        data.steps.map((step) =>
+          step.id === stepId
+            ? {
+                ...step,
+                substeps: step.substeps.map((substep) =>
+                  substep.id === subprocessId
+                    ? {
+                        ...substep,
+                        activities: substep.activities.map((activity) =>
+                          activity.id === activityId ? { ...activity, ...patch } : activity,
+                        ),
+                      }
+                    : substep,
+                ),
+              }
+            : step,
+        ),
+      ),
+    });
+  }
+
   function renumberFlowSteps(steps: DdpFlowStep[]) {
     return steps.map((step, stepIndex) => ({
       ...step,
       substeps: step.substeps.map((substep, substepIndex) => ({
         ...substep,
         codigo: `${stepIndex + 1}.${substepIndex + 1}`,
+        activities: substep.activities.map((activity, activityIndex) => ({
+          ...activity,
+          codigo: `${stepIndex + 1}.${substepIndex + 1}.${activityIndex + 1}`,
+        })),
       })),
     }));
   }
@@ -11012,6 +11290,37 @@ function DdpModule({
       ),
     });
     setDraggedSubstep(null);
+  }
+
+  function reorderActivities(
+    targetStepId: string,
+    targetSubprocessId: string,
+    targetActivityId: string,
+  ) {
+    if (
+      !draggedActivity ||
+      draggedActivity.stepId !== targetStepId ||
+      draggedActivity.subprocessId !== targetSubprocessId ||
+      draggedActivity.activityId === targetActivityId
+    ) {
+      return;
+    }
+    const step = data.steps.find((item) => item.id === targetStepId);
+    const subprocess = step?.substeps.find((item) => item.id === targetSubprocessId);
+    if (!subprocess) return;
+    const fromIndex = subprocess.activities.findIndex(
+      (item) => item.id === draggedActivity.activityId,
+    );
+    const toIndex = subprocess.activities.findIndex((item) => item.id === targetActivityId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    updateStep(targetStepId, {
+      substeps: step!.substeps.map((item) =>
+        item.id === targetSubprocessId
+          ? { ...item, activities: moveItem(item.activities, fromIndex, toIndex) }
+          : item,
+      ),
+    });
+    setDraggedActivity(null);
   }
 
   function updateGap(gapId: string, patch: Partial<GapItem>) {
@@ -11134,8 +11443,11 @@ function DdpModule({
           codigo: `1.${substepIndex + 1}`,
           titulo: substep.title,
           descricao: substep.description,
+          tipo: "atividade",
+          classificacao: "Automática",
           systemIds: [],
           images: substep.images.map(mappingImage),
+          activities: [],
         })),
       };
     });
@@ -11436,7 +11748,7 @@ function DdpModule({
                   {mappingImport.stats.sections} seções · {mappingImport.stats.steps} etapas
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {mappingImport.stats.substeps} subetapas · {mappingImport.stats.images} imagens
+                  {mappingImport.stats.substeps} atividades · {mappingImport.stats.images} imagens
                 </div>
               </div>
             </div>
@@ -11600,7 +11912,7 @@ function DdpModule({
               <div className="font-bold">Preenchimento sugerido aplicado</div>
               <p className="mt-0.5 text-xs opacity-80">
                 Revise todas as seções antes de salvar. Foram reconhecidas{" "}
-                {mappingImport.stats.steps} etapa(s) e {mappingImport.stats.substeps} subetapa(s).
+                {mappingImport.stats.steps} etapa(s) e {mappingImport.stats.substeps} atividade(s).
               </p>
             </div>
             <button
@@ -12104,11 +12416,11 @@ function DdpModule({
                                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                                   <div>
                                     <div className="text-[11px] font-semibold text-foreground">
-                                      Subetapas
+                                      Atividades e subprocessos
                                     </div>
                                     <div className="mt-0.5 text-xs text-muted-foreground">
-                                      Detalhe subprocessos e adicione imagens específicas quando
-                                      necessário.
+                                      Adicione atividades diretamente ou detalhe um subprocesso com
+                                      atividades internas.
                                     </div>
                                   </div>
                                 </div>
@@ -12135,7 +12447,7 @@ function DdpModule({
                                             : ""
                                         }`}
                                       >
-                                        <div className="mb-3 grid gap-3 md:grid-cols-[40px_120px_1fr_auto]">
+                                        <div className="mb-3 grid gap-3 lg:grid-cols-[40px_110px_1fr_auto]">
                                           <button
                                             type="button"
                                             draggable
@@ -12147,8 +12459,8 @@ function DdpModule({
                                             }
                                             onDragEnd={() => setDraggedSubstep(null)}
                                             className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                                            title="Arrastar subetapa"
-                                            aria-label="Arrastar subetapa"
+                                            title="Arrastar atividade ou subprocesso"
+                                            aria-label="Arrastar atividade ou subprocesso"
                                           >
                                             <ArrowDownUp className="h-4 w-4" />
                                           </button>
@@ -12158,14 +12470,22 @@ function DdpModule({
                                           />
                                           <Field
                                             compact
-                                            label="Título"
+                                            label={
+                                              substep.tipo === "subprocesso"
+                                                ? "Subprocesso / etapa"
+                                                : "Atividade"
+                                            }
                                             value={substep.titulo}
                                             onChange={(titulo) =>
                                               updateSubstep(step.id, substep.id, { titulo })
                                             }
                                           />
                                           <IconButton
-                                            label="Excluir subetapa"
+                                            label={
+                                              substep.tipo === "subprocesso"
+                                                ? "Excluir subprocesso"
+                                                : "Excluir atividade"
+                                            }
                                             onClick={() =>
                                               updateStep(step.id, {
                                                 substeps: step.substeps.filter(
@@ -12177,8 +12497,44 @@ function DdpModule({
                                             <Trash2 className="h-4 w-4" />
                                           </IconButton>
                                         </div>
+                                        <div className="mb-3 grid gap-3 md:grid-cols-2">
+                                          <SelectField
+                                            label="Classificação"
+                                            value={substep.classificacao}
+                                            options={FLOW_EXECUTION_TYPE_OPTIONS}
+                                            onChange={(classificacao) =>
+                                              updateSubstep(step.id, substep.id, {
+                                                classificacao: classificacao as FlowExecutionType,
+                                              })
+                                            }
+                                          />
+                                          <div className="flex items-end pb-1">
+                                            <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground">
+                                              <input
+                                                type="checkbox"
+                                                checked={substep.tipo === "subprocesso"}
+                                                onChange={(event) =>
+                                                  updateSubstep(step.id, substep.id, {
+                                                    tipo: event.target.checked
+                                                      ? "subprocesso"
+                                                      : "atividade",
+                                                    activities: event.target.checked
+                                                      ? substep.activities
+                                                      : [],
+                                                  })
+                                                }
+                                                className="h-4 w-4 accent-[var(--gold)]"
+                                              />
+                                              Criar como subprocesso / etapa
+                                            </label>
+                                          </div>
+                                        </div>
                                         <TextArea
-                                          label="Descrição da subetapa"
+                                          label={
+                                            substep.tipo === "subprocesso"
+                                              ? "Descrição do subprocesso"
+                                              : "Descrição da atividade"
+                                          }
                                           value={substep.descricao}
                                           onChange={(descricao) =>
                                             updateSubstep(step.id, substep.id, { descricao })
@@ -12243,13 +12599,234 @@ function DdpModule({
                                         </div>
                                         <div className="mt-3">
                                           <ImageManager
-                                            label="Imagens da subetapa"
+                                            label={
+                                              substep.tipo === "subprocesso"
+                                                ? "Imagens do subprocesso"
+                                                : "Imagens da atividade"
+                                            }
                                             images={substep.images}
                                             onChange={(images) =>
                                               updateSubstep(step.id, substep.id, { images })
                                             }
                                           />
                                         </div>
+                                        {substep.tipo === "subprocesso" ? (
+                                          <div className="mt-4 rounded-lg border border-border bg-background p-3">
+                                            <div className="mb-3">
+                                              <div className="text-[11px] font-semibold text-foreground">
+                                                Atividades do subprocesso
+                                              </div>
+                                              <div className="mt-0.5 text-xs text-muted-foreground">
+                                                A numeração é atualizada automaticamente.
+                                              </div>
+                                            </div>
+                                            <div className="grid gap-3">
+                                              {substep.activities.map((activity, activityIndex) => (
+                                                <div
+                                                  key={activity.id}
+                                                  onDragOver={(event) => {
+                                                    if (
+                                                      draggedActivity?.subprocessId ===
+                                                        substep.id &&
+                                                      draggedActivity.activityId !== activity.id
+                                                    ) {
+                                                      event.preventDefault();
+                                                    }
+                                                  }}
+                                                  onDrop={(event) => {
+                                                    event.preventDefault();
+                                                    reorderActivities(
+                                                      step.id,
+                                                      substep.id,
+                                                      activity.id,
+                                                    );
+                                                  }}
+                                                  className={`rounded-lg border border-border bg-muted/20 p-3 transition ${
+                                                    draggedActivity?.activityId === activity.id
+                                                      ? "opacity-60 ring-2 ring-[var(--gold)]/40"
+                                                      : ""
+                                                  }`}
+                                                >
+                                                  <div className="grid gap-3 lg:grid-cols-[40px_120px_1fr_220px_auto]">
+                                                    <button
+                                                      type="button"
+                                                      draggable
+                                                      onDragStart={() =>
+                                                        setDraggedActivity({
+                                                          stepId: step.id,
+                                                          subprocessId: substep.id,
+                                                          activityId: activity.id,
+                                                        })
+                                                      }
+                                                      onDragEnd={() => setDraggedActivity(null)}
+                                                      className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                                                      title="Arrastar atividade"
+                                                      aria-label="Arrastar atividade"
+                                                    >
+                                                      <ArrowDownUp className="h-4 w-4" />
+                                                    </button>
+                                                    <ReadOnlyField
+                                                      label="Código"
+                                                      value={`${index + 1}.${substepIndex + 1}.${activityIndex + 1}`}
+                                                    />
+                                                    <Field
+                                                      compact
+                                                      label="Atividade"
+                                                      value={activity.titulo}
+                                                      onChange={(titulo) =>
+                                                        updateActivity(
+                                                          step.id,
+                                                          substep.id,
+                                                          activity.id,
+                                                          { titulo },
+                                                        )
+                                                      }
+                                                    />
+                                                    <SelectField
+                                                      label="Classificação"
+                                                      value={activity.classificacao}
+                                                      options={FLOW_EXECUTION_TYPE_OPTIONS}
+                                                      onChange={(classificacao) =>
+                                                        updateActivity(
+                                                          step.id,
+                                                          substep.id,
+                                                          activity.id,
+                                                          {
+                                                            classificacao:
+                                                              classificacao as FlowExecutionType,
+                                                          },
+                                                        )
+                                                      }
+                                                    />
+                                                    <IconButton
+                                                      label="Excluir atividade"
+                                                      onClick={() =>
+                                                        updateSubstep(step.id, substep.id, {
+                                                          activities: substep.activities.filter(
+                                                            (item) => item.id !== activity.id,
+                                                          ),
+                                                        })
+                                                      }
+                                                    >
+                                                      <Trash2 className="h-4 w-4" />
+                                                    </IconButton>
+                                                  </div>
+                                                  <div className="mt-3">
+                                                    <TextArea
+                                                      label="Descrição da atividade"
+                                                      value={activity.descricao}
+                                                      onChange={(descricao) =>
+                                                        updateActivity(
+                                                          step.id,
+                                                          substep.id,
+                                                          activity.id,
+                                                          { descricao },
+                                                        )
+                                                      }
+                                                      rows={3}
+                                                    />
+                                                  </div>
+                                                  {data.systems.some((system) =>
+                                                    system.nome.trim(),
+                                                  ) ? (
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                      {data.systems
+                                                        .filter((system) => system.nome.trim())
+                                                        .map((system) => {
+                                                          const checked =
+                                                            activity.systemIds.includes(
+                                                              system.id,
+                                                            ) ||
+                                                            (!!system.systemId &&
+                                                              activity.systemIds.includes(
+                                                                system.systemId,
+                                                              ));
+                                                          return (
+                                                            <label
+                                                              key={system.id}
+                                                              className={[
+                                                                "inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition",
+                                                                checked
+                                                                  ? "border-[var(--gold)] bg-[color-mix(in_oklab,var(--gold)_10%,transparent)] text-foreground"
+                                                                  : "border-border bg-card text-muted-foreground hover:bg-muted",
+                                                              ].join(" ")}
+                                                            >
+                                                              <input
+                                                                type="checkbox"
+                                                                checked={checked}
+                                                                onChange={(event) => {
+                                                                  const nextIds = event.target
+                                                                    .checked
+                                                                    ? [
+                                                                        ...activity.systemIds,
+                                                                        system.id,
+                                                                      ]
+                                                                    : activity.systemIds.filter(
+                                                                        (item) =>
+                                                                          item !== system.id &&
+                                                                          item !== system.systemId,
+                                                                      );
+                                                                  updateActivity(
+                                                                    step.id,
+                                                                    substep.id,
+                                                                    activity.id,
+                                                                    {
+                                                                      systemIds: Array.from(
+                                                                        new Set(nextIds),
+                                                                      ),
+                                                                    },
+                                                                  );
+                                                                }}
+                                                                className="h-4 w-4 accent-[var(--gold)]"
+                                                              />
+                                                              {system.nome}
+                                                            </label>
+                                                          );
+                                                        })}
+                                                    </div>
+                                                  ) : null}
+                                                  <div className="mt-3">
+                                                    <ImageManager
+                                                      label="Imagens da atividade"
+                                                      images={activity.images}
+                                                      onChange={(images) =>
+                                                        updateActivity(
+                                                          step.id,
+                                                          substep.id,
+                                                          activity.id,
+                                                          { images },
+                                                        )
+                                                      }
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                updateSubstep(step.id, substep.id, {
+                                                  activities: [
+                                                    ...substep.activities,
+                                                    {
+                                                      id: id("activity"),
+                                                      codigo: "",
+                                                      titulo: "Nova atividade",
+                                                      descricao: "",
+                                                      classificacao: "Automática",
+                                                      systemIds: [],
+                                                      images: [],
+                                                    },
+                                                  ],
+                                                })
+                                              }
+                                              className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                                            >
+                                              <Plus className="h-4 w-4" />
+                                              Adicionar atividade ao subprocesso
+                                            </button>
+                                          </div>
+                                        ) : null}
                                       </div>
                                     ))}
                                   </div>
@@ -12265,10 +12842,13 @@ function DdpModule({
                                           processId: "",
                                           processVersion: 1,
                                           codigo: `${index + 1}.${step.substeps.length + 1}`,
-                                          titulo: "Nova subetapa",
+                                          titulo: "Nova atividade",
                                           descricao: "",
+                                          tipo: "atividade",
+                                          classificacao: "Automática",
                                           systemIds: [],
                                           images: [],
+                                          activities: [],
                                         },
                                       ],
                                     })
@@ -12276,7 +12856,7 @@ function DdpModule({
                                   className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                                 >
                                   <Plus className="h-4 w-4" />
-                                  Adicionar subetapa
+                                  Adicionar atividade ou subprocesso
                                 </button>
                               </div>
                             </div>

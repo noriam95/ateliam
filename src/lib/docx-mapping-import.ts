@@ -542,7 +542,7 @@ function parseEntries(
       }
       const stepHeading = line.match(/^(?:etapa\s*)?(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i);
       const substepHeading = line.match(
-        /^(?:subetapa\s*)?(\d+)\.(\d+)\s*[-\u2013\u2014.:)]?\s*(.+)$/i,
+        /^(?:(?:subetapa|atividade)\s*)?(\d+)\.(\d+)\s*[-\u2013\u2014.:)]?\s*(.+)$/i,
       );
       if (substepHeading) {
         if (!currentStep) {
@@ -592,7 +592,12 @@ function parseEntries(
         };
         result.steps.push(currentStep);
         currentSubstep = null;
-      } else if (label === "subetapa" || label === "titulo da subetapa") {
+      } else if (
+        label === "subetapa" ||
+        label === "titulo da subetapa" ||
+        label === "atividade" ||
+        label === "titulo da atividade"
+      ) {
         if (!currentStep) continue;
         currentSubstep = { title: value, description: "", images };
         currentStep.substeps.push(currentSubstep);
