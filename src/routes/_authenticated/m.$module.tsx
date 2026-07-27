@@ -276,7 +276,11 @@ const SYSTEM_MODALITY_OPTIONS: SystemModality[] = [
 ];
 function normalizeSystemModality(value?: string | null): SystemModality {
   if (SYSTEM_MODALITY_OPTIONS.includes(value as SystemModality)) return value as SystemModality;
-  if (value === "Documento") return "Documentos e comunicações";
+  const normalized = normalizeLabel(value ?? "");
+  if (normalized.includes("document") || normalized.includes("comunic"))
+    return "Documentos e comunicações";
+  if (normalized.includes("ferrament")) return "Ferramentas auxiliares";
+  if (normalized.includes("fonte") || normalized.includes("extern")) return "Fontes externas";
   return "Sistemas corporativos";
 }
 type DdpSystem = {
@@ -6899,7 +6903,8 @@ function ModuleWorkspacePage() {
               name: process.name,
               type: process.type,
               valueChainId: process.value_chain_id,
-              parentProcessId: process.parent_process_id,
+              parentProcessId:
+                replacements.get(process.parent_process_id ?? "")?.id ?? process.parent_process_id,
               department: process.department,
               owner: process.owner,
               description: process.description,
@@ -11282,8 +11287,14 @@ function DdpModule({
     [assistantCreatedProcesses, flowProcessOptions, mappingImport],
   );
   const quantitativeStats = useMemo(
-    () => calculateMappingQuantitativeStats(data, catalogs.processes),
-    [catalogs.processes, data],
+    () =>
+      calculateMappingQuantitativeStats(data, [
+        ...catalogs.processes,
+        ...Object.values(assistantCreatedProcesses).filter(
+          (process) => !catalogs.processes.some((item) => item.id === process.id),
+        ),
+      ]),
+    [assistantCreatedProcesses, catalogs.processes, data],
   );
 
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
@@ -11794,30 +11805,98 @@ function DdpModule({
     if (!importResult) return;
     const preparedProcesses: Record<string, CreatedProcess> = {};
     const nowIso = new Date().toISOString();
-    const importedSteps = importResult.steps.map((step): DdpFlowStep => {
+    const referencedSystemNames = importResult.steps.flatMap((step) => [
+      step.system,
+      ...step.substeps.flatMap((substep) => [
+        ...substep.systemNames,
+        ...substep.activities.flatMap((activity) => activity.systemNames),
+      ]),
+    ]);
+    const systemImports = [
+      ...importResult.systems,
+      ...referencedSystemNames
+        .filter(Boolean)
+        .filter(
+          (name) =>
+            !importResult.systems.some(
+              (system) => normalizeLabel(system.name) === normalizeLabel(name),
+            ),
+        )
+        .map((name) => ({ name, description: "", modality: "" })),
+    ].filter(
+      (system, index, rows) =>
+        system.name.trim() &&
+        rows.findIndex(
+          (candidate) => normalizeLabel(candidate.name) === normalizeLabel(system.name),
+        ) === index,
+    );
+    const importedSystems = systemImports.map((system) => {
+      const catalogSystem = catalogs.systems.find(
+        (item) => normalizeLabel(item.name) === normalizeLabel(system.name),
+      );
+      return {
+        id: id("sys"),
+        systemId: catalogSystem?.id ?? "",
+        nome: catalogSystem?.name ?? system.name,
+        tipo: normalizeSystemModality(catalogSystem?.modality || system.modality),
+        dono: "",
+        criticidade: "Média",
+        descricao: system.description || catalogSystem?.description || "",
+      };
+    });
+    const systemIdsForNames = (names: string[]) =>
+      Array.from(
+        new Set(
+          names.flatMap((name) => {
+            const system = importedSystems.find(
+              (item) => normalizeLabel(item.nome) === normalizeLabel(name),
+            );
+            return system ? [system.id] : [];
+          }),
+        ),
+      );
+    const findOrPrepareProcess = (
+      title: string,
+      parentProcessId: string | null,
+      department: string,
+      owner: string,
+      description: string,
+    ) => {
+      const normalizedTitle = normalizeLabel(title);
       let process =
-        assistantCreatedProcesses[normalizeLabel(step.title)] ??
-        flowProcessOptions.find((item) => normalizeLabel(item.name) === normalizeLabel(step.title));
+        preparedProcesses[normalizedTitle] ??
+        assistantCreatedProcesses[normalizedTitle] ??
+        flowProcessOptions.find((item) => normalizeLabel(item.name) === normalizedTitle);
       if (!process) {
         process = {
           id: `pending-process:${crypto.randomUUID()}`,
           organization_id: organizationId ?? "",
           current_version: 1,
           code: null,
-          name: step.title,
+          name: title,
           type: "subprocess",
           value_chain_id: selectedProcess?.value_chain_id ?? null,
-          parent_process_id: selectedProcess?.id ?? data.macroprocess.processId ?? null,
-          department: selectedProcess?.department ?? null,
-          owner: step.responsible || selectedProcess?.owner || null,
-          description: step.activity || step.notes || null,
+          parent_process_id: parentProcessId,
+          department: department || selectedProcess?.department || null,
+          owner: owner || selectedProcess?.owner || null,
+          description: description || null,
           status: "Ativo",
           created_at: nowIso,
           updated_at: nowIso,
         };
-        preparedProcesses[normalizeLabel(step.title)] = process;
+        preparedProcesses[normalizedTitle] = process;
         void onSuggestedProcessPrepared(process);
       }
+      return process;
+    };
+    const importedSteps = importResult.steps.map((step): DdpFlowStep => {
+      const process = findOrPrepareProcess(
+        step.title,
+        selectedProcess?.id ?? data.macroprocess.processId ?? null,
+        step.area,
+        step.responsible,
+        step.activity || step.notes,
+      );
       return {
         id: id("step"),
         processId: process?.id ?? "",
@@ -11831,33 +11910,43 @@ function DdpModule({
         risco: step.risk,
         observacoes: step.notes,
         images: step.images.map(mappingImage),
-        substeps: step.substeps.map((substep, substepIndex) => ({
-          id: id("substep"),
-          processId: "",
-          processVersion: 1,
-          codigo: `1.${substepIndex + 1}`,
-          titulo: substep.title,
-          descricao: substep.description,
-          tipo: "atividade",
-          classificacao: "Automática",
-          systemIds: [],
-          images: substep.images.map(mappingImage),
-          activities: [],
-        })),
-      };
-    });
-    const importedSystems = importResult.systems.map((system) => {
-      const catalogSystem = catalogs.systems.find(
-        (item) => normalizeLabel(item.name) === normalizeLabel(system.name),
-      );
-      return {
-        id: id("sys"),
-        systemId: catalogSystem?.id ?? "",
-        nome: catalogSystem?.name ?? system.name,
-        tipo: normalizeSystemModality(catalogSystem?.modality),
-        dono: "",
-        criticidade: "Média",
-        descricao: system.description || catalogSystem?.description || "",
+        substeps: step.substeps.map((substep, substepIndex) => {
+          const subprocess =
+            substep.kind === "subprocess"
+              ? findOrPrepareProcess(
+                  substep.title,
+                  process?.id ?? null,
+                  step.area,
+                  step.responsible,
+                  substep.description,
+                )
+              : null;
+          const activities = substep.activities.map((activity, activityIndex) => ({
+            id: id("activity"),
+            codigo: `1.${substepIndex + 1}.${activityIndex + 1}`,
+            titulo: activity.title,
+            descricao: activity.description,
+            classificacao: normalizeFlowExecutionType(activity.executionType),
+            systemIds: systemIdsForNames(activity.systemNames),
+            images: activity.images.map(mappingImage),
+          }));
+          return {
+            id: id("substep"),
+            processId: subprocess?.id ?? "",
+            processVersion: 1,
+            codigo: `1.${substepIndex + 1}`,
+            titulo: substep.title,
+            descricao: substep.description,
+            tipo: substep.kind === "subprocess" ? "subprocesso" : "atividade",
+            classificacao: normalizeFlowExecutionType(substep.executionType),
+            systemIds:
+              substep.kind === "subprocess"
+                ? Array.from(new Set(activities.flatMap((activity) => activity.systemIds)))
+                : systemIdsForNames(substep.systemNames),
+            images: substep.images.map(mappingImage),
+            activities,
+          };
+        }),
       };
     });
     const nextState: DdpState = {
@@ -12121,7 +12210,7 @@ function DdpModule({
                     value={mappingAssistantText}
                     onChange={(event) => setMappingAssistantText(event.target.value)}
                     placeholder={
-                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
+                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nClassificação: Sistemas corporativos\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nClassificação: Documentos e comunicações\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\nProcesso: Receber demanda\nÁrea: Atendimento\nResponsável: Analista\nDescrição do processo: Receber e qualificar a solicitação\nAtividade: Registrar solicitação\nForma de execução: Manual no sistema\nSistemas/Documentos: Fluig\nDescrição: Registrar os dados obrigatórios\nSubprocesso: Validar informações\nDescrição: Conferir a consistência dos dados\nAtividade: Conferir campos\nForma de execução: Manual no sistema\nSistemas/Documentos: Fluig, Política de atendimento\nDescrição: Verificar os campos e documentos recebidos\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
                     }
                     className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
                   />

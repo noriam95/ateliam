@@ -1,7 +1,7 @@
 import JSZip from "jszip";
 
 export type MappingImportImage = { name: string; src: string };
-export type MappingImportSystem = { name: string; description: string };
+export type MappingImportSystem = { name: string; description: string; modality: string };
 export type MappingImportSipoc = {
   suppliers: string;
   inputs: string;
@@ -12,10 +12,15 @@ export type MappingImportSipoc = {
 export type MappingImportSubstep = {
   title: string;
   description: string;
+  kind: "activity" | "subprocess";
+  executionType: string;
+  systemNames: string[];
   images: MappingImportImage[];
+  activities: MappingImportSubstep[];
 };
 export type MappingImportStep = {
   title: string;
+  area: string;
   responsible: string;
   input: string;
   activity: string;
@@ -74,6 +79,7 @@ type MappingSection =
   | "systems"
   | "sipoc"
   | "steps"
+  | "quantitative"
   | "gaps"
   | "nextSteps"
   | "glossary"
@@ -160,6 +166,29 @@ function append(current: string, next: string) {
   return current ? `${current}\n\n${value}` : value;
 }
 
+function listValues(value: string) {
+  return value
+    .split(/[,;|]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function emptySubstep(
+  title: string,
+  images: MappingImportImage[] = [],
+  kind: MappingImportSubstep["kind"] = "activity",
+): MappingImportSubstep {
+  return {
+    title,
+    description: "",
+    kind,
+    executionType: "",
+    systemNames: [],
+    images,
+    activities: [],
+  };
+}
+
 function mime(name: string) {
   const extension = name.split(".").pop()?.toLowerCase();
   if (extension === "png") return "image/png";
@@ -223,14 +252,18 @@ function emptyImport(fileName: string): MappingDocumentImport {
 }
 
 function detectSection(value: string): MappingSection {
-  const text = normalized(value).replace(/^0?[0-7]\s+/, "");
+  const text = normalized(value).replace(/^0?[0-8]\s+/, "");
   if (/^(dados do mapeamento|identificacao|informacoes do mapeamento)$/.test(text))
     return "metadata";
   if (/^(visao geral|objetivo escopo e contexto)$/.test(text)) return "overview";
-  if (/^sistemas(?:\/documentos)? envolvidos$/.test(text)) return "systems";
+  if (/^sistemas(?: documentos)? envolvidos$/.test(text)) return "systems";
   if (/^(analise )?sipoc( do processo)?$/.test(text)) return "sipoc";
   if (/^(etapas do processo|fluxo as is|fluxo to be)$/.test(text)) return "steps";
-  if (/^(gaps? e causas? raiz|causas? raiz e planos? de acao)$/.test(text)) return "gaps";
+  if (/^visao quantitativa$/.test(text)) return "quantitative";
+  if (
+    /^(oportunidades? de melhoria|gaps? e causas? raiz|causas? raiz e planos? de acao)$/.test(text)
+  )
+    return "gaps";
   if (/^proximos passos$/.test(text)) return "nextSteps";
   if (/^glossario$/.test(text)) return "glossary";
   return null;
@@ -301,11 +334,16 @@ function mapTable(
     return true;
   }
 
-  const system = headerIndex(headers, ["sistema", "ferramenta"]);
+  const system = headerIndex(headers, ["sistema", "ferramenta", "documento"]);
   const description = headerIndex(headers, ["descricao", "uso no processo"]);
   if (system >= 0 && description >= 0 && headers.length <= 4) {
+    const modality = headerIndex(headers, ["classificacao", "modalidade", "tipo"]);
     dataRows.forEach((row) =>
-      result.systems.push({ name: at(row, system), description: at(row, description) }),
+      result.systems.push({
+        name: at(row, system),
+        description: at(row, description),
+        modality: at(row, modality),
+      }),
     );
     return true;
   }
@@ -319,9 +357,8 @@ function mapTable(
       const descriptionValue = at(row, activityDescription);
       if (!title && !descriptionValue) return;
       context.currentStep?.substeps.push({
-        title: title || at(row, rowId),
+        ...emptySubstep(title || at(row, rowId)),
         description: descriptionValue,
-        images: [],
       });
     });
     return true;
@@ -430,6 +467,7 @@ function parseEntries(
   let currentSystem: MappingImportSystem | null = null;
   let currentStep: MappingImportStep | null = null;
   let currentSubstep: MappingImportSubstep | null = null;
+  let currentActivity: MappingImportSubstep | null = null;
   let currentGap: MappingImportGap | null = null;
   let gapField: "description" | "impact" | "action" | null = null;
   let currentNext: MappingDocumentImport["nextSteps"][number] | null = null;
@@ -452,6 +490,7 @@ function parseEntries(
       currentSystem = null;
       currentStep = null;
       currentSubstep = null;
+      currentActivity = null;
       currentGap = null;
       gapField = null;
       currentNext = null;
@@ -495,14 +534,24 @@ function parseEntries(
         cells.length >= 2 &&
         !["sistema", "sistema ou controle", "ferramenta"].includes(normalized(cells[0]))
       ) {
-        result.systems.push({ name: cells[0], description: cells.slice(1).join(" | ") });
+        result.systems.push({
+          name: cells[0],
+          description: cells.slice(1).join(" | "),
+          modality: "",
+        });
         currentSystem = result.systems.at(-1) ?? null;
-      } else if (label === "sistema" || label === "ferramenta") {
-        currentSystem = { name: value, description: "" };
+      } else if (label === "sistema" || label === "ferramenta" || label === "documento") {
+        currentSystem = {
+          name: value,
+          description: "",
+          modality: label === "documento" ? "Documentos e comunicações" : "",
+        };
         result.systems.push(currentSystem);
+      } else if (label === "classificacao" || label === "modalidade" || label === "tipo") {
+        if (currentSystem) currentSystem.modality = value;
       } else if (label.includes("descricao") || label.includes("uso no processo")) {
         if (!currentSystem) {
-          currentSystem = { name: "", description: "" };
+          currentSystem = { name: "", description: "", modality: "" };
           result.systems.push(currentSystem);
         }
         currentSystem.description = value;
@@ -526,11 +575,11 @@ function parseEntries(
       const cells = cellsFromLine(line);
       if (currentStep && cells.length >= 3 && /^\d+\.\d+$/.test(cells[0])) {
         currentSubstep = {
-          title: cells[1],
+          ...emptySubstep(cells[1], images),
           description: cells.slice(2).join(" | "),
-          images,
         };
         currentStep.substeps.push(currentSubstep);
+        currentActivity = null;
         continue;
       }
       if (
@@ -540,14 +589,28 @@ function parseEntries(
       ) {
         continue;
       }
-      const stepHeading = line.match(/^(?:etapa\s*)?(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i);
-      const substepHeading = line.match(
-        /^(?:(?:subetapa|atividade)\s*)?(\d+)\.(\d+)\s*[-\u2013\u2014.:)]?\s*(.+)$/i,
+      const nestedActivityHeading = line.match(
+        /^(?:(?:atividade)\s*)?(\d+)\.(\d+)\.(\d+)\s*[-\u2013\u2014.:)]?\s*(.+)$/i,
       );
-      if (substepHeading) {
+      const substepHeading = line.match(
+        /^(?:(subprocesso|subetapa|atividade)\s*)?(\d+)\.(\d+)\s*[-\u2013\u2014.:)]?\s*(.+)$/i,
+      );
+      const stepHeading = line.match(
+        /^(?:(?:etapa|processo)\s*)?(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i,
+      );
+      if (nestedActivityHeading) {
+        if (!currentStep) continue;
+        if (!currentSubstep || currentSubstep.kind !== "subprocess") {
+          currentSubstep = emptySubstep("Subprocesso", [], "subprocess");
+          currentStep.substeps.push(currentSubstep);
+        }
+        currentActivity = emptySubstep(nestedActivityHeading[4].trim(), images);
+        currentSubstep.activities.push(currentActivity);
+      } else if (substepHeading) {
         if (!currentStep) {
           currentStep = {
             title: "Etapa",
+            area: "",
             responsible: "",
             input: "",
             activity: "",
@@ -560,11 +623,17 @@ function parseEntries(
           };
           result.steps.push(currentStep);
         }
-        currentSubstep = { title: substepHeading[3].trim(), description: "", images };
+        currentSubstep = emptySubstep(
+          substepHeading[4].trim(),
+          images,
+          normalized(substepHeading[1] || "") === "subprocesso" ? "subprocess" : "activity",
+        );
         currentStep.substeps.push(currentSubstep);
+        currentActivity = null;
       } else if (stepHeading) {
         currentStep = {
           title: stepHeading[2].trim(),
+          area: "",
           responsible: "",
           input: "",
           activity: "",
@@ -577,9 +646,16 @@ function parseEntries(
         };
         result.steps.push(currentStep);
         currentSubstep = null;
-      } else if (label === "etapa" || label === "titulo da etapa") {
+        currentActivity = null;
+      } else if (
+        label === "etapa" ||
+        label === "titulo da etapa" ||
+        label === "processo" ||
+        label === "titulo do processo"
+      ) {
         currentStep = {
           title: value,
+          area: "",
           responsible: "",
           input: "",
           activity: "",
@@ -592,6 +668,12 @@ function parseEntries(
         };
         result.steps.push(currentStep);
         currentSubstep = null;
+        currentActivity = null;
+      } else if (label === "subprocesso" || label === "titulo do subprocesso") {
+        if (!currentStep) continue;
+        currentSubstep = emptySubstep(value, images, "subprocess");
+        currentStep.substeps.push(currentSubstep);
+        currentActivity = null;
       } else if (
         label === "subetapa" ||
         label === "titulo da subetapa" ||
@@ -599,19 +681,57 @@ function parseEntries(
         label === "titulo da atividade"
       ) {
         if (!currentStep) continue;
-        currentSubstep = { title: value, description: "", images };
-        currentStep.substeps.push(currentSubstep);
+        if (currentSubstep?.kind === "subprocess") {
+          currentActivity = emptySubstep(value, images);
+          currentSubstep.activities.push(currentActivity);
+        } else {
+          currentSubstep = emptySubstep(value, images);
+          currentStep.substeps.push(currentSubstep);
+          currentActivity = null;
+        }
+      } else if (
+        currentActivity &&
+        (label === "forma de execucao" || label === "classificacao" || label === "tipo de execucao")
+      ) {
+        currentActivity.executionType = value;
+      } else if (
+        currentSubstep &&
+        (label === "forma de execucao" || label === "classificacao" || label === "tipo de execucao")
+      ) {
+        currentSubstep.executionType = value;
+      } else if (
+        (currentActivity || currentSubstep) &&
+        (label === "sistema" ||
+          label === "sistemas" ||
+          label === "documento" ||
+          label === "documentos" ||
+          label === "sistemas documentos" ||
+          label === "sistemas documentos envolvidos")
+      ) {
+        const target = currentActivity ?? currentSubstep;
+        if (target) target.systemNames = listValues(value);
+      } else if (
+        currentSubstep &&
+        (label === "tipo" || label === "tipo do registro") &&
+        normalized(value).includes("subprocesso")
+      ) {
+        currentSubstep.kind = "subprocess";
       } else if (currentStep && (label === "observacoes" || label === "observacao")) {
         currentStep.notes = append(currentStep.notes, value);
-      } else if (currentSubstep && (label === "descricao" || !labeled)) {
-        currentSubstep.description = append(currentSubstep.description, labeled ? value : line);
-        currentSubstep.images.push(...images);
+      } else if ((currentActivity || currentSubstep) && (label === "descricao" || !labeled)) {
+        const target = currentActivity ?? currentSubstep;
+        if (target) {
+          target.description = append(target.description, labeled ? value : line);
+          target.images.push(...images);
+        }
       } else if (currentStep) {
-        if (label === "responsavel") currentStep.responsible = value;
+        if (label === "area" || label === "area responsavel") currentStep.area = value;
+        else if (label === "responsavel") currentStep.responsible = value;
         else if (label === "entrada") currentStep.input = value;
-        else if (label === "atividade" || label === "descricao") currentStep.activity = value;
+        else if (label === "descricao do processo" || label === "descricao da etapa")
+          currentStep.activity = value;
         else if (label === "saida") currentStep.output = value;
-        else if (label === "sistema") currentStep.system = value;
+        else if (label === "sistema" || label === "sistemas") currentStep.system = value;
         else if (label === "risco") currentStep.risk = value;
         else if (label === "observacoes" || label === "observacao") currentStep.notes = value;
         else if (!labeled) currentStep.activity = append(currentStep.activity, line);
@@ -699,7 +819,16 @@ function parseEntries(
     systems: result.systems.length,
     sipocRows: result.sipoc.length,
     steps: result.steps.length,
-    substeps: result.steps.reduce((sum, step) => sum + step.substeps.length, 0),
+    substeps: result.steps.reduce(
+      (sum, step) =>
+        sum +
+        step.substeps.reduce(
+          (subtotal, substep) =>
+            subtotal + (substep.kind === "subprocess" ? substep.activities.length : 1),
+          0,
+        ),
+      0,
+    ),
     gaps: result.gaps.length,
     images:
       result.macroImages.length +
@@ -707,7 +836,16 @@ function parseEntries(
         (sum, step) =>
           sum +
           step.images.length +
-          step.substeps.reduce((subtotal, substep) => subtotal + substep.images.length, 0),
+          step.substeps.reduce(
+            (subtotal, substep) =>
+              subtotal +
+              substep.images.length +
+              substep.activities.reduce(
+                (activityTotal, activity) => activityTotal + activity.images.length,
+                0,
+              ),
+            0,
+          ),
         0,
       ),
   };
@@ -716,6 +854,24 @@ function parseEntries(
     result.warnings.push("O objetivo não foi identificado na seção Visão geral.");
   if (!result.scope) result.warnings.push("O escopo não foi identificado na seção Visão geral.");
   if (!result.steps.length) result.warnings.push("Nenhuma etapa numerada foi identificada.");
+  const activitiesWithoutExecutionType = result.steps.reduce(
+    (total, step) =>
+      total +
+      step.substeps.reduce(
+        (subtotal, substep) =>
+          subtotal +
+          (substep.kind === "subprocess"
+            ? substep.activities.filter((activity) => !activity.executionType.trim()).length
+            : Number(!substep.executionType.trim())),
+        0,
+      ),
+    0,
+  );
+  if (activitiesWithoutExecutionType) {
+    result.warnings.push(
+      `${activitiesWithoutExecutionType} atividade(s) sem forma de execução. Revise a classificação antes de salvar.`,
+    );
+  }
   if (result.stats.sections < 2) {
     throw new Error(
       "A estrutura do mapeamento não foi reconhecida. Use os títulos de seção apresentados no modelo do assistente.",
