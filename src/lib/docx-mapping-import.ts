@@ -14,6 +14,8 @@ export type MappingImportSubstep = {
   description: string;
   kind: "activity" | "subprocess";
   executionType: string;
+  actorType: "" | "area" | "position";
+  actorName: string;
   systemNames: string[];
   images: MappingImportImage[];
   activities: MappingImportSubstep[];
@@ -183,6 +185,8 @@ function emptySubstep(
     description: "",
     kind,
     executionType: "",
+    actorType: "",
+    actorName: "",
     systemNames: [],
     images,
     activities: [],
@@ -699,6 +703,36 @@ function parseEntries(
         (label === "forma de execucao" || label === "classificacao" || label === "tipo de execucao")
       ) {
         currentSubstep.executionType = value;
+      } else if (
+        (currentActivity || currentSubstep) &&
+        (label === "tipo do ator" ||
+          label === "origem do ator" ||
+          label === "categoria do ator")
+      ) {
+        const target = currentActivity ?? currentSubstep;
+        const actorType = normalized(value);
+        if (target) {
+          target.actorType =
+            actorType.includes("area") || actorType.includes("departamento")
+              ? "area"
+              : actorType.includes("cargo") || actorType.includes("posicao")
+                ? "position"
+                : "";
+        }
+      } else if (
+        (currentActivity || currentSubstep) &&
+        (label === "area ator" ||
+          label === "area ou ator" ||
+          label === "area ator do processo" ||
+          label === "ator" ||
+          label === "ator do processo" ||
+          label === "cargo")
+      ) {
+        const target = currentActivity ?? currentSubstep;
+        if (target) {
+          target.actorName = value;
+          if (!target.actorType) target.actorType = label.includes("area") ? "area" : "position";
+        }
       } else if (
         (currentActivity || currentSubstep) &&
         (label === "sistema" ||

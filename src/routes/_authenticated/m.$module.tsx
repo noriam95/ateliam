@@ -318,12 +318,15 @@ const FLOW_EXECUTION_TYPE_OPTIONS: FlowExecutionType[] = [
   "Manual fora do sistema",
   "Híbrida (manual/automática)",
 ];
+type FlowActorType = "" | "area" | "position";
 type DdpFlowActivity = {
   id: string;
   codigo: string;
   titulo: string;
   descricao: string;
   classificacao: FlowExecutionType;
+  actorType: FlowActorType;
+  actorName: string;
   systemIds: string[];
   images: ModuleImage[];
 };
@@ -336,6 +339,8 @@ type DdpFlowSubstep = {
   descricao: string;
   tipo: "atividade" | "subprocesso";
   classificacao: FlowExecutionType;
+  actorType: FlowActorType;
+  actorName: string;
   systemIds: string[];
   images: ModuleImage[];
   activities: DdpFlowActivity[];
@@ -1959,6 +1964,19 @@ function normalizeFlowExecutionType(value: unknown): FlowExecutionType {
   return "Automática";
 }
 
+function normalizeFlowActorType(value: unknown): FlowActorType {
+  const normalized = normalizeLabel(String(value ?? ""));
+  if (normalized.includes("area") || normalized.includes("departamento")) return "area";
+  if (
+    normalized.includes("cargo") ||
+    normalized.includes("position") ||
+    normalized.includes("posicao")
+  ) {
+    return "position";
+  }
+  return "";
+}
+
 function normalizeDdpActivities(values: unknown[] | undefined, parentCode: string) {
   return (values ?? []).map((value, index): DdpFlowActivity => {
     const row = asObject(value);
@@ -1977,6 +1995,14 @@ function normalizeDdpActivities(values: unknown[] | undefined, parentCode: strin
       classificacao: normalizeFlowExecutionType(
         textAt(row, "classificacao") || textAt(row, "classification"),
       ),
+      actorType: normalizeFlowActorType(
+        textAt(row, "actorType") || textAt(row, "tipoAtor") || textAt(row, "actor_type"),
+      ),
+      actorName:
+        textAt(row, "actorName") ||
+        textAt(row, "areaAtor") ||
+        textAt(row, "ator") ||
+        textAt(row, "actor_name"),
       systemIds: systemValues
         .map((item) => (typeof item === "string" ? item : textAt(asObject(item), "id")))
         .filter(Boolean),
@@ -2016,6 +2042,14 @@ function normalizeDdpSubsteps(values: unknown[] | undefined) {
       classificacao: normalizeFlowExecutionType(
         textAt(row, "classificacao") || textAt(row, "classification"),
       ),
+      actorType: normalizeFlowActorType(
+        textAt(row, "actorType") || textAt(row, "tipoAtor") || textAt(row, "actor_type"),
+      ),
+      actorName:
+        textAt(row, "actorName") ||
+        textAt(row, "areaAtor") ||
+        textAt(row, "ator") ||
+        textAt(row, "actor_name"),
       systemIds:
         tipo === "subprocesso" && activities.length
           ? Array.from(new Set(activities.flatMap((activity) => activity.systemIds)))
@@ -2900,6 +2934,8 @@ type ExportFlowStep = {
     description: string;
     kind: "atividade" | "subprocesso";
     classification: FlowExecutionType;
+    actorType: FlowActorType;
+    actorName: string;
     systems: ExportSubstepSystem[];
     images: ExportImage[];
     activities: Array<{
@@ -2907,6 +2943,8 @@ type ExportFlowStep = {
       title: string;
       description: string;
       classification: FlowExecutionType;
+      actorType: FlowActorType;
+      actorName: string;
       systems: ExportSubstepSystem[];
       images: ExportImage[];
     }>;
@@ -3100,7 +3138,10 @@ function calculateMappingQuantitativeStats(
   data.steps.forEach((step) => addProcess(step.processId, step.etapa));
 
   const countActivity = (
-    activity: Pick<DdpFlowActivity, "classificacao" | "descricao" | "systemIds">,
+    activity: Pick<
+      DdpFlowActivity,
+      "classificacao" | "descricao" | "systemIds" | "actorType" | "actorName"
+    >,
     processId?: string,
     fallbackArea?: string,
     fallbackOwner?: string,
@@ -3112,9 +3153,14 @@ function calculateMappingQuantitativeStats(
     );
 
     const process = processId ? processById.get(processId) : undefined;
-    const area = plain(process?.department || fallbackArea || "Área não definida");
+    const area = plain(
+      (activity.actorType === "area" ? activity.actorName : "") ||
+        process?.department ||
+        fallbackArea ||
+        "Área não definida",
+    );
     areaActivityCounts.set(area, (areaActivityCounts.get(area) ?? 0) + 1);
-    if (!plain(process?.owner || fallbackOwner)) withoutOwner += 1;
+    if (!plain(activity.actorName || process?.owner || fallbackOwner)) withoutOwner += 1;
     if (!plain(activity.descricao)) withoutDescription += 1;
     if (!activity.systemIds.length) withoutSystem += 1;
 
@@ -3359,6 +3405,8 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
           description: substep.descricao,
           kind: substep.tipo,
           classification: substep.classificacao,
+          actorType: substep.actorType,
+          actorName: substep.actorName,
           systems: data.systems
             .filter(
               (system) =>
@@ -3379,6 +3427,8 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
             title: activity.titulo,
             description: activity.descricao,
             classification: activity.classificacao,
+            actorType: activity.actorType,
+            actorName: activity.actorName,
             systems: data.systems
               .filter(
                 (system) =>
@@ -3835,7 +3885,17 @@ function buildDdpImportTemplate(data: DdpState) {
     {
       name: "Atividades Fluxo",
       rows: [
-        ["etapa", "codigo", "tipo", "classificacao", "titulo", "descricao", "sistemas_documentos"],
+        [
+          "etapa",
+          "codigo",
+          "tipo",
+          "classificacao",
+          "tipo_ator",
+          "area_ator",
+          "titulo",
+          "descricao",
+          "sistemas_documentos",
+        ],
         ...data.steps.flatMap((step, index) =>
           step.substeps.flatMap((substep) => [
             [
@@ -3843,6 +3903,12 @@ function buildDdpImportTemplate(data: DdpState) {
               substep.codigo,
               substep.tipo,
               substep.classificacao,
+              substep.actorType === "area"
+                ? "Área"
+                : substep.actorType === "position"
+                  ? "Cargo"
+                  : "",
+              substep.actorName,
               substep.titulo,
               substep.descricao,
               data.systems
@@ -3859,6 +3925,12 @@ function buildDdpImportTemplate(data: DdpState) {
               activity.codigo,
               "atividade",
               activity.classificacao,
+              activity.actorType === "area"
+                ? "Área"
+                : activity.actorType === "position"
+                  ? "Cargo"
+                  : "",
+              activity.actorName,
               activity.titulo,
               activity.descricao,
               data.systems
@@ -4223,6 +4295,8 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
         titulo: rowValue(entry, "titulo"),
         descricao: rowValue(entry, "descricao"),
         classificacao: normalizeFlowExecutionType(rowValue(entry, "classificacao")),
+        actorType: normalizeFlowActorType(rowValue(entry, "tipo_ator")),
+        actorName: rowValue(entry, "area_ator"),
         systemIds: systemIdsForRow(entry),
         images: [] as ModuleImage[],
       };
@@ -4240,6 +4314,8 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
             descricao: "",
             tipo: "subprocesso",
             classificacao: "Automática",
+            actorType: "",
+            actorName: "",
             systemIds: [],
             images: [],
             activities: [],
@@ -4262,6 +4338,8 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
         tipo:
           normalizeLabel(rowValue(entry, "tipo")) === "subprocesso" ? "subprocesso" : "atividade",
         classificacao: activityData.classificacao,
+        actorType: activityData.actorType,
+        actorName: activityData.actorName,
         systemIds: activityData.systemIds,
         images: currentEntry?.images ?? [],
         activities: [],
@@ -4991,6 +5069,7 @@ function buildDdpDocx(
               doc.headerCell("ID"),
               doc.headerCell("Etapa / atividade"),
               doc.headerCell("Classificação"),
+              doc.headerCell("Área / ator"),
               doc.headerCell("Descrição"),
               doc.headerCell("Sistemas/Documentos"),
             ],
@@ -4999,6 +5078,11 @@ function buildDdpDocx(
                 doc.bodyCell(substep.code),
                 doc.bodyCell(substep.title),
                 doc.bodyCell(substep.classification),
+                doc.bodyCell(
+                  substep.actorName
+                    ? `${substep.actorType === "position" ? "Cargo" : "Área"}: ${substep.actorName}`
+                    : "-",
+                ),
                 doc.bodyCell(substep.description),
                 doc.bodyCell(
                   substep.systems.map((system) => `${system.name} (${system.type})`).join("; ") ||
@@ -5009,6 +5093,11 @@ function buildDdpDocx(
                 doc.bodyCell(activity.code),
                 doc.bodyCell(activity.title),
                 doc.bodyCell(activity.classification),
+                doc.bodyCell(
+                  activity.actorName
+                    ? `${activity.actorType === "position" ? "Cargo" : "Área"}: ${activity.actorName}`
+                    : "-",
+                ),
                 doc.bodyCell(activity.description),
                 doc.bodyCell(
                   activity.systems.map((system) => `${system.name} (${system.type})`).join("; ") ||
@@ -5017,7 +5106,7 @@ function buildDdpDocx(
               ]),
             ]),
           ],
-          [750, 2100, 1650, 3300, 2506],
+          [650, 1800, 1400, 1500, 2600, 2356],
           { full: true },
         ),
       );
@@ -6014,6 +6103,12 @@ function buildDdpPresentationHtml(
                   )}</h4><div class="tag-list substep-tags"><span class="type-tag">${html(
                     substep.kind === "subprocesso" ? "Subprocesso / etapa" : "Atividade",
                   )}</span><span class="type-tag">${html(substep.classification)}</span>${
+                    substep.actorName
+                      ? `<span class="type-tag">${html(
+                          substep.actorType === "position" ? "Cargo" : "Área",
+                        )}: ${html(substep.actorName)}</span>`
+                      : ""
+                  }${
                     substep.systems.length
                       ? substep.systems
                           .map(
@@ -6033,7 +6128,13 @@ function buildDdpPresentationHtml(
                                 activity.code,
                               )}</div><div class="tag-list"><span class="type-tag">${html(
                                 activity.classification,
-                              )}</span>${activity.systems
+                              )}</span>${
+                                activity.actorName
+                                  ? `<span class="type-tag">${html(
+                                      activity.actorType === "position" ? "Cargo" : "Área",
+                                    )}: ${html(activity.actorName)}</span>`
+                                  : ""
+                              }${activity.systems
                                 .map(
                                   (system) =>
                                     `<span class="type-tag">${html(system.name)} · ${html(
@@ -8008,6 +8109,9 @@ function ModuleWorkspacePage() {
               organizationId={codeOrganizationId}
               isDemo={isDemo}
               codeSettings={codeSettings}
+              onCatalogCreated={async () => {
+                if (!isDemo) await catalogsQ.refetch();
+              }}
               onProcessCreated={async (process) => {
                 if (isDemo) {
                   setDemoCatalogs((current) => ({
@@ -11200,6 +11304,7 @@ function DdpModule({
   organizationId,
   isDemo,
   codeSettings,
+  onCatalogCreated,
   onProcessCreated,
   onSuggestedProcessPrepared,
 }: {
@@ -11217,11 +11322,23 @@ function DdpModule({
   organizationId: string | null;
   isDemo: boolean;
   codeSettings: CodeSettings | null;
+  onCatalogCreated?: () => Promise<void> | void;
   // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
   onSuggestedProcessPrepared: (process: CreatedProcess) => Promise<void> | void;
 }) {
+  const saveArea = useServerFn(saveProcessArea);
+  const savePosition = useServerFn(savePositionRegistration);
   const [createProcessName, setCreateProcessName] = useState<string | null>(null);
+  const [actorCatalogRequest, setActorCatalogRequest] = useState<{
+    kind: "area" | "position";
+    initial: string;
+    target:
+      | { kind: "substep"; stepId: string; substepId: string }
+      | { kind: "activity"; stepId: string; substepId: string; activityId: string };
+  } | null>(null);
+  const [actorAreaSigla, setActorAreaSigla] = useState("");
+  const [actorPositionDescription, setActorPositionDescription] = useState("");
   const [processCreationTarget, setProcessCreationTarget] = useState<
     | { kind: "step"; stepId: string }
     | { kind: "subprocess"; stepId: string; substepId: string }
@@ -11631,6 +11748,62 @@ function DdpModule({
     });
   }
 
+  function updateActorTarget(
+    target: NonNullable<typeof actorCatalogRequest>["target"],
+    actorType: FlowActorType,
+    actorName: string,
+  ) {
+    if (target.kind === "activity") {
+      updateActivity(target.stepId, target.substepId, target.activityId, {
+        actorType,
+        actorName,
+      });
+      return;
+    }
+    updateSubstep(target.stepId, target.substepId, { actorType, actorName });
+  }
+
+  async function saveActorCatalog() {
+    if (!actorCatalogRequest) return;
+    const name = actorCatalogRequest.initial.trim();
+    if (!name) {
+      toast.error("Informe o nome do cadastro.");
+      return;
+    }
+    try {
+      if (!isDemo) {
+        if (actorCatalogRequest.kind === "area") {
+          const sigla = normalizeSigla(actorAreaSigla || name);
+          if (sigla.length !== 3) {
+            toast.error("Informe uma sigla de 3 letras para a área.");
+            return;
+          }
+          await saveArea({ data: { organizationId, name, sigla } });
+        } else {
+          await savePosition({
+            data: {
+              organizationId,
+              title: name,
+              description: actorPositionDescription.trim() || null,
+            },
+          });
+        }
+        await onCatalogCreated?.();
+      }
+      updateActorTarget(
+        actorCatalogRequest.target,
+        actorCatalogRequest.kind === "area" ? "area" : "position",
+        name,
+      );
+      toast.success(actorCatalogRequest.kind === "area" ? "Área cadastrada." : "Cargo cadastrado.");
+      setActorCatalogRequest(null);
+      setActorAreaSigla("");
+      setActorPositionDescription("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível cadastrar.");
+    }
+  }
+
   function renumberFlowSteps(steps: DdpFlowStep[]) {
     return steps.map((step, stepIndex) => ({
       ...step,
@@ -11927,6 +12100,8 @@ function DdpModule({
             titulo: activity.title,
             descricao: activity.description,
             classificacao: normalizeFlowExecutionType(activity.executionType),
+            actorType: normalizeFlowActorType(activity.actorType),
+            actorName: activity.actorName,
             systemIds: systemIdsForNames(activity.systemNames),
             images: activity.images.map(mappingImage),
           }));
@@ -11939,6 +12114,8 @@ function DdpModule({
             descricao: substep.description,
             tipo: substep.kind === "subprocess" ? "subprocesso" : "atividade",
             classificacao: normalizeFlowExecutionType(substep.executionType),
+            actorType: normalizeFlowActorType(substep.actorType),
+            actorName: substep.actorName,
             systemIds:
               substep.kind === "subprocess"
                 ? Array.from(new Set(activities.flatMap((activity) => activity.systemIds)))
@@ -12045,6 +12222,60 @@ function DdpModule({
 
   return (
     <div className="grid gap-5">
+      {actorCatalogRequest ? (
+        <Modal
+          title={actorCatalogRequest.kind === "area" ? "Cadastrar área" : "Cadastrar cargo"}
+          subtitle="O cadastro ficará disponível para esta e para as próximas atividades."
+          onClose={() => setActorCatalogRequest(null)}
+        >
+          <div className="grid gap-4">
+            <Field
+              label={actorCatalogRequest.kind === "area" ? "Nome da área" : "Título do cargo"}
+              value={actorCatalogRequest.initial}
+              onChange={(initial) =>
+                setActorCatalogRequest({ ...actorCatalogRequest, initial })
+              }
+            />
+            {actorCatalogRequest.kind === "area" ? (
+              <Field
+                label="Sigla"
+                value={actorAreaSigla}
+                onChange={(value) =>
+                  setActorAreaSigla(
+                    value
+                      .replace(/[^A-Za-z]/g, "")
+                      .toUpperCase()
+                      .slice(0, 3),
+                  )
+                }
+              />
+            ) : (
+              <TextArea
+                label="Descrição"
+                value={actorPositionDescription}
+                rows={3}
+                onChange={setActorPositionDescription}
+              />
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setActorCatalogRequest(null)}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveActorCatalog}
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
       {createProcessName !== null ? (
         <ProcessRegistrationDialog
           organizationId={organizationId}
@@ -12210,7 +12441,7 @@ function DdpModule({
                     value={mappingAssistantText}
                     onChange={(event) => setMappingAssistantText(event.target.value)}
                     placeholder={
-                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nClassificação: Sistemas corporativos\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nClassificação: Documentos e comunicações\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\nProcesso: Receber demanda\nÁrea: Atendimento\nResponsável: Analista\nDescrição do processo: Receber e qualificar a solicitação\nAtividade: Registrar solicitação\nForma de execução: Manual no sistema\nSistemas/Documentos: Fluig\nDescrição: Registrar os dados obrigatórios\nSubprocesso: Validar informações\nDescrição: Conferir a consistência dos dados\nAtividade: Conferir campos\nForma de execução: Manual no sistema\nSistemas/Documentos: Fluig, Política de atendimento\nDescrição: Verificar os campos e documentos recebidos\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
+                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nClassificação: Sistemas corporativos\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nClassificação: Documentos e comunicações\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\nProcesso: Receber demanda\nÁrea: Atendimento\nResponsável: Analista\nDescrição do processo: Receber e qualificar a solicitação\nAtividade: Registrar solicitação\nForma de execução: Manual no sistema\nTipo do ator: Cargo\nÁrea/Ator do processo: Analista de atendimento\nSistemas/Documentos: Fluig\nDescrição: Registrar os dados obrigatórios\nSubprocesso: Validar informações\nDescrição: Conferir a consistência dos dados\nAtividade: Conferir campos\nForma de execução: Manual no sistema\nTipo do ator: Área\nÁrea/Ator do processo: Atendimento\nSistemas/Documentos: Fluig, Política de atendimento\nDescrição: Verificar os campos e documentos recebidos\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
                     }
                     className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
                   />
@@ -13084,6 +13315,29 @@ function DdpModule({
                                             updateSubstep(step.id, substep.id, { descricao })
                                           }
                                         />
+                                        {substep.tipo === "atividade" ? (
+                                          <div className="mt-3">
+                                            <ActivityActorField
+                                              actorType={substep.actorType}
+                                              actorName={substep.actorName}
+                                              catalogs={catalogs}
+                                              onChange={(patch) =>
+                                                updateSubstep(step.id, substep.id, patch)
+                                              }
+                                              onCreate={(kind, initial) =>
+                                                setActorCatalogRequest({
+                                                  kind,
+                                                  initial,
+                                                  target: {
+                                                    kind: "substep",
+                                                    stepId: step.id,
+                                                    substepId: substep.id,
+                                                  },
+                                                })
+                                              }
+                                            />
+                                          </div>
+                                        ) : null}
                                         <div className="mt-3 grid gap-2 rounded-lg border border-border bg-background p-3">
                                           <span className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground">
                                             {substep.tipo === "subprocesso"
@@ -13306,6 +13560,33 @@ function DdpModule({
                                                       rows={3}
                                                     />
                                                   </div>
+                                                  <div className="mt-3">
+                                                    <ActivityActorField
+                                                      actorType={activity.actorType}
+                                                      actorName={activity.actorName}
+                                                      catalogs={catalogs}
+                                                      onChange={(patch) =>
+                                                        updateActivity(
+                                                          step.id,
+                                                          substep.id,
+                                                          activity.id,
+                                                          patch,
+                                                        )
+                                                      }
+                                                      onCreate={(kind, initial) =>
+                                                        setActorCatalogRequest({
+                                                          kind,
+                                                          initial,
+                                                          target: {
+                                                            kind: "activity",
+                                                            stepId: step.id,
+                                                            substepId: substep.id,
+                                                            activityId: activity.id,
+                                                          },
+                                                        })
+                                                      }
+                                                    />
+                                                  </div>
                                                   {data.systems.some((system) =>
                                                     system.nome.trim(),
                                                   ) ? (
@@ -13394,6 +13675,8 @@ function DdpModule({
                                                       titulo: "Nova atividade",
                                                       descricao: "",
                                                       classificacao: "Automática",
+                                                      actorType: "",
+                                                      actorName: "",
                                                       systemIds: [],
                                                       images: [],
                                                     },
@@ -13426,6 +13709,8 @@ function DdpModule({
                                           descricao: "",
                                           tipo: "atividade",
                                           classificacao: "Automática",
+                                          actorType: "",
+                                          actorName: "",
                                           systemIds: [],
                                           images: [],
                                           activities: [],
@@ -20855,6 +21140,58 @@ function CatalogSearchField({
       onCreate={onCreate}
       compact
     />
+  );
+}
+
+function ActivityActorField({
+  actorType,
+  actorName,
+  catalogs,
+  onChange,
+  onCreate,
+}: {
+  actorType: FlowActorType;
+  actorName: string;
+  catalogs: OrganizationCatalogs;
+  onChange: (patch: { actorType?: FlowActorType; actorName?: string }) => void;
+  onCreate: (kind: "area" | "position", initial: string) => void;
+}) {
+  const typeLabel =
+    actorType === "area" ? "Área" : actorType === "position" ? "Cargo" : "Selecione";
+  const options =
+    actorType === "area"
+      ? catalogs.departments.map((item) => item.name)
+      : catalogs.positions.map((item) => item.title);
+
+  return (
+    <div className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-[180px_1fr]">
+      <SelectField
+        label="Tipo de ator"
+        value={typeLabel}
+        options={["Selecione", "Área", "Cargo"]}
+        onChange={(value) =>
+          onChange({
+            actorType: value === "Área" ? "area" : value === "Cargo" ? "position" : "",
+            actorName: "",
+          })
+        }
+      />
+      {actorType ? (
+        <CatalogSearchField
+          label="Área/Ator do processo"
+          value={actorName}
+          options={options}
+          createLabel={actorType === "area" ? "Cadastrar nova área" : "Cadastrar novo cargo"}
+          onChange={(value) => onChange({ actorName: value })}
+          onCreate={(initial) => onCreate(actorType, initial)}
+        />
+      ) : (
+        <ReadOnlyField
+          label="Área/Ator do processo"
+          value="Selecione primeiro se o ator é uma área ou um cargo"
+        />
+      )}
+    </div>
   );
 }
 
