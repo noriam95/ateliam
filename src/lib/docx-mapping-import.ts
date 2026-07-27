@@ -804,6 +804,10 @@ function parseEntries(
         result.nextSteps.push(currentNext);
       } else if (currentNext && label === "responsavel") currentNext.responsible = value;
       else if (currentNext && (label === "prazo" || label === "data")) currentNext.deadline = value;
+      else if (!labeled && line) {
+        currentNext = { text: line, responsible: "", deadline: "" };
+        result.nextSteps.push(currentNext);
+      }
       continue;
     }
     if (section === "glossary") {
