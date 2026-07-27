@@ -1077,16 +1077,22 @@ export const saveProcessRegistration = createServerFn({ method: "POST" })
 
 export const deleteProcessRegistration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { organizationId?: string | null; kind: string; id: string }) =>
-    organizationScopeSchema
-      .extend({
-        kind: z.enum(["value-chain", "process", "area", "owner", "system", "position"]),
-        id: z.string().uuid(),
-      })
-      .parse(data),
+  .validator(
+    (data: { organizationId?: string | null; kind: string; id?: string; ids?: string[] }) =>
+      organizationScopeSchema
+        .extend({
+          kind: z.enum(["value-chain", "process", "area", "owner", "system", "position"]),
+          id: z.string().uuid().optional(),
+          ids: z.array(z.string().uuid()).min(1).max(500).optional(),
+        })
+        .refine((value) => value.id || value.ids?.length, {
+          message: "Informe ao menos um registro para exclusão.",
+        })
+        .parse(data),
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const ids = data.ids ?? (data.id ? [data.id] : []);
     const table =
       data.kind === "value-chain"
         ? "organization_value_chains"
@@ -1102,7 +1108,7 @@ export const deleteProcessRegistration = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from(table as any)
       .delete()
-      .eq("id", data.id)
+      .in("id", ids)
       .eq("organization_id", access.organizationId);
     if (error) throw new Error(error.message);
     return { ok: true };

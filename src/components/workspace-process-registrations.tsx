@@ -766,9 +766,8 @@ export function WorkspaceProcessRegistrations({
     process: Process;
     status: "Ativo" | "Arquivado";
   } | null>(null);
-  const [pendingDeleteRow, setPendingDeleteRow] = useState<
-    ReturnType<typeof registryRows>[number] | null
-  >(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
   // O código do Processo (PR) depende da sigla da área selecionada no formulário.
   const processAreaSigla = areaSiglaByName(data.areas, draft.department);
@@ -790,10 +789,17 @@ export function WorkspaceProcessRegistrations({
     setSortCol(null);
     setSortDir("asc");
     setSearch("");
+    setSelectedIds([]);
+    setPendingDeleteIds([]);
   }, [view]);
   const displayRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let result = q ? rows.filter((row) => row.values.join(" ").toLowerCase().includes(q)) : rows;
+    const terms = normalizeLabel(search).split(/\s+/).filter(Boolean);
+    let result = terms.length
+      ? rows.filter((row) => {
+          const searchableText = normalizeLabel(row.values.map(String).join(" "));
+          return terms.every((term) => searchableText.includes(term));
+        })
+      : rows;
     if (sortCol !== null) {
       const dir = sortDir === "asc" ? 1 : -1;
       result = [...result].sort(
@@ -805,6 +811,27 @@ export function WorkspaceProcessRegistrations({
     }
     return result;
   }, [rows, search, sortCol, sortDir]);
+  const canDeleteRows = view !== "process-types";
+  const visibleIds = useMemo(() => displayRows.map((row) => row.id), [displayRows]);
+  const selectedVisibleCount = visibleIds.filter((id) => selectedIds.includes(id)).length;
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+  useEffect(() => {
+    const availableIds = new Set(rows.map((row) => row.id));
+    setSelectedIds((current) => current.filter((id) => availableIds.has(id)));
+  }, [rows]);
+
+  function toggleVisibleSelection() {
+    setSelectedIds((current) => {
+      if (allVisibleSelected) return current.filter((id) => !visibleIds.includes(id));
+      return Array.from(new Set([...current, ...visibleIds]));
+    });
+  }
+
+  function toggleRowSelection(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
   function toggleSort(col: number) {
     if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
@@ -934,10 +961,10 @@ export function WorkspaceProcessRegistrations({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (ids: string[]) => {
       if (view === "process-types") throw new Error("Os três tipos estruturais não são excluídos.");
       if (isDemo) {
-        deleteDemoRegistration(view, id, setDemoData);
+        ids.forEach((id) => deleteDemoRegistration(view, id, setDemoData));
         return;
       }
       const kind =
@@ -952,12 +979,13 @@ export function WorkspaceProcessRegistrations({
                 : view === "positions"
                   ? "position"
                   : "owner";
-      await removeRegistration({ data: { organizationId, kind, id } });
+      await removeRegistration({ data: { organizationId, kind, ids } });
     },
-    onSuccess: async () => {
-      toast.success("Registro excluído.");
+    onSuccess: async (_result, ids) => {
+      toast.success(ids.length === 1 ? "Registro excluído." : `${ids.length} registros excluídos.`);
       if (!isDemo) await query.refetch();
-      setPendingDeleteRow(null);
+      setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
+      setPendingDeleteIds([]);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -1127,15 +1155,29 @@ export function WorkspaceProcessRegistrations({
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs text-muted-foreground">
-          {displayRows.length} {displayRows.length === 1 ? "registro" : "registros"}
-        </span>
-        <div className="relative w-full max-w-xs">
+        <div className="flex min-h-9 items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            {displayRows.length} {displayRows.length === 1 ? "registro" : "registros"}
+          </span>
+          {selectedIds.length > 0 && canDeleteRows ? (
+            <button
+              type="button"
+              onClick={() => setPendingDeleteIds(selectedIds)}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/35 px-3 text-xs font-semibold text-destructive hover:bg-destructive/5"
+            >
+              <Trash2 className="h-4 w-4" />
+              Excluir selecionados ({selectedIds.length})
+            </button>
+          ) : null}
+        </div>
+        <div className="relative w-full max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filtrar / pesquisar..."
+            placeholder="Filtrar por qualquer informação..."
+            aria-label={`Filtrar ${copy.title.toLowerCase()}`}
             className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
           />
         </div>
@@ -1148,6 +1190,22 @@ export function WorkspaceProcessRegistrations({
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead className="bg-muted/75 text-xs text-muted-foreground">
               <tr>
+                {canDeleteRows ? (
+                  <th className="w-10 px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      ref={(element) => {
+                        if (element) {
+                          element.indeterminate = selectedVisibleCount > 0 && !allVisibleSelected;
+                        }
+                      }}
+                      onChange={toggleVisibleSelection}
+                      aria-label="Selecionar todos os registros filtrados"
+                      className="h-4 w-4 cursor-pointer accent-[var(--gold)]"
+                    />
+                  </th>
+                ) : null}
                 <th className="w-12 px-4 py-3 font-semibold">#</th>
                 {copy.columns.map((column, colIndex) => (
                   <th key={column} className="px-4 py-3 font-semibold">
@@ -1167,6 +1225,17 @@ export function WorkspaceProcessRegistrations({
             <tbody>
               {displayRows.map((row, rowIndex) => (
                 <tr key={row.id} className="border-t border-border hover:bg-muted/45">
+                  {canDeleteRows ? (
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(row.id)}
+                        onChange={() => toggleRowSelection(row.id)}
+                        aria-label={`Selecionar registro ${row.values[0] || row.id}`}
+                        className="h-4 w-4 cursor-pointer accent-[var(--gold)]"
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">{rowIndex + 1}</td>
                   {row.values.map((value, index) => (
                     <td
@@ -1193,7 +1262,7 @@ export function WorkspaceProcessRegistrations({
                         <Pencil className="h-4 w-4" />
                       </IconButton>
                       {view !== "process-types" ? (
-                        <IconButton label="Excluir" onClick={() => setPendingDeleteRow(row)}>
+                        <IconButton label="Excluir" onClick={() => setPendingDeleteIds([row.id])}>
                           <Trash2 className="h-4 w-4" />
                         </IconButton>
                       ) : null}
@@ -1204,10 +1273,12 @@ export function WorkspaceProcessRegistrations({
               {!displayRows.length ? (
                 <tr>
                   <td
-                    colSpan={copy.columns.length + 2}
+                    colSpan={copy.columns.length + (canDeleteRows ? 3 : 2)}
                     className="p-10 text-center text-sm text-muted-foreground"
                   >
-                    Nenhum registro encontrado.
+                    {search
+                      ? "Nenhum registro corresponde ao filtro informado."
+                      : "Nenhum registro cadastrado."}
                   </td>
                 </tr>
               ) : null}
@@ -1407,19 +1478,23 @@ export function WorkspaceProcessRegistrations({
           </div>
         </div>
       ) : null}
-      {pendingDeleteRow ? (
+      {pendingDeleteIds.length ? (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/30 p-4 backdrop-blur-[2px]">
           <div className="w-full max-w-xl rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]">
             <div className="flex items-start gap-3">
               <div className="min-w-0">
-                <h2 className="font-display text-lg font-bold">Excluir registro</h2>
+                <h2 className="font-display text-lg font-bold">
+                  {pendingDeleteIds.length === 1 ? "Excluir registro" : "Excluir registros"}
+                </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Confirma excluir o registro "{pendingDeleteRow.values[0] || pendingDeleteRow.id}"?
+                  Você está prestes a excluir {pendingDeleteIds.length}{" "}
+                  {pendingDeleteIds.length === 1 ? "registro" : "registros"} de forma permanente.
+                  Deseja continuar?
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setPendingDeleteRow(null)}
+                onClick={() => setPendingDeleteIds([])}
                 className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Fechar"
                 title="Fechar"
@@ -1430,7 +1505,7 @@ export function WorkspaceProcessRegistrations({
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setPendingDeleteRow(null)}
+                onClick={() => setPendingDeleteIds([])}
                 className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
               >
                 Cancelar
@@ -1438,10 +1513,10 @@ export function WorkspaceProcessRegistrations({
               <button
                 type="button"
                 disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate(pendingDeleteRow.id)}
+                onClick={() => deleteMutation.mutate(pendingDeleteIds)}
                 className="rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-45"
               >
-                Excluir
+                {deleteMutation.isPending ? "Excluindo..." : "Excluir permanentemente"}
               </button>
             </div>
           </div>
