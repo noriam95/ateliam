@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { inferExplicitActivityArea } from "@/lib/mapping-actor-inference";
 
 export type MappingImportImage = { name: string; src: string };
 export type MappingImportSystem = { name: string; description: string; modality: string };
@@ -705,9 +706,7 @@ function parseEntries(
         currentSubstep.executionType = value;
       } else if (
         (currentActivity || currentSubstep) &&
-        (label === "tipo do ator" ||
-          label === "origem do ator" ||
-          label === "categoria do ator")
+        (label === "tipo do ator" || label === "origem do ator" || label === "categoria do ator")
       ) {
         const target = currentActivity ?? currentSubstep;
         const actorType = normalized(value);
@@ -724,6 +723,11 @@ function parseEntries(
         (label === "area ator" ||
           label === "area ou ator" ||
           label === "area ator do processo" ||
+          label === "area ator da atividade" ||
+          label === "area da atividade" ||
+          label === "area executora" ||
+          label === "area responsavel" ||
+          label === "area responsavel pela atividade" ||
           label === "ator" ||
           label === "ator do processo" ||
           label === "cargo")
@@ -908,6 +912,27 @@ function parseEntries(
   if (activitiesWithoutExecutionType) {
     result.warnings.push(
       `${activitiesWithoutExecutionType} atividade(s) sem forma de execução. Revise a classificação antes de salvar.`,
+    );
+  }
+  let activitiesWithoutExplicitArea = 0;
+  result.steps.forEach((step) => {
+    step.substeps.forEach((substep) => {
+      if (substep.kind === "activity" && !substep.actorName.trim()) {
+        substep.actorType = "area";
+        substep.actorName = inferExplicitActivityArea(substep.description);
+        if (substep.actorName === "A definir") activitiesWithoutExplicitArea += 1;
+      }
+      substep.activities.forEach((activity) => {
+        if (activity.actorName.trim()) return;
+        activity.actorType = "area";
+        activity.actorName = inferExplicitActivityArea(activity.description);
+        if (activity.actorName === "A definir") activitiesWithoutExplicitArea += 1;
+      });
+    });
+  });
+  if (activitiesWithoutExplicitArea) {
+    result.warnings.push(
+      `${activitiesWithoutExplicitArea} atividade(s) sem área responsável explícita. O campo foi preenchido como "A definir".`,
     );
   }
   if (result.stats.sections < 2) {

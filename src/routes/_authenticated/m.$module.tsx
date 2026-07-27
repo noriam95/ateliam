@@ -85,6 +85,7 @@ import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-m
 import { cn } from "@/lib/utils";
 import type { DocxDocumentImport } from "@/lib/docx-document-import";
 import type { MappingDocumentImport } from "@/lib/docx-mapping-import";
+import { inferExplicitActivityArea } from "@/lib/mapping-actor-inference";
 import {
   ProcessRegistrationDialog,
   SystemRegistrationDialog,
@@ -2392,6 +2393,46 @@ function normalizeLabel(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+function fillMissingActivityActors(steps: DdpFlowStep[]) {
+  let changed = false;
+  const nextSteps = steps.map((step) => {
+    let stepChanged = false;
+    const substeps = step.substeps.map((substep) => {
+      let substepChanged = false;
+      let nextSubstep = substep;
+
+      if (substep.tipo !== "subprocesso" && !substep.actorName.trim()) {
+        nextSubstep = {
+          ...nextSubstep,
+          actorType: "area",
+          actorName: inferExplicitActivityArea(substep.descricao),
+        };
+        substepChanged = true;
+      }
+
+      const activities = substep.activities.map((activity) => {
+        if (activity.actorName.trim()) return activity;
+        substepChanged = true;
+        return {
+          ...activity,
+          actorType: "area" as const,
+          actorName: inferExplicitActivityArea(activity.descricao),
+        };
+      });
+
+      if (!substepChanged) return substep;
+      stepChanged = true;
+      return { ...nextSubstep, activities };
+    });
+
+    if (!stepChanged) return step;
+    changed = true;
+    return { ...step, substeps };
+  });
+
+  return changed ? nextSteps : steps;
 }
 
 function cardText(snapshot: JsonObject, label: string) {
@@ -11441,6 +11482,12 @@ function DdpModule({
     update({ ...data, systems });
   }, [catalogs.systems, data, update]);
 
+  useEffect(() => {
+    const steps = fillMissingActivityActors(data.steps);
+    if (steps === data.steps) return;
+    update({ ...data, steps });
+  }, [data, update]);
+
   function findProcessValueChain(process: OrganizationProcess | null) {
     let current = process;
     const visited = new Set<string>();
@@ -12161,7 +12208,9 @@ function DdpModule({
             src: importResult.macroImages[0].src,
           }
         : data.macroprocess,
-      steps: importedSteps.length ? renumberFlowSteps(importedSteps) : data.steps,
+      steps: importedSteps.length
+        ? fillMissingActivityActors(renumberFlowSteps(importedSteps))
+        : data.steps,
       gaps: importResult.gaps.length
         ? importResult.gaps.map((gap) => ({
             id: id("gap"),
@@ -12232,9 +12281,7 @@ function DdpModule({
             <Field
               label={actorCatalogRequest.kind === "area" ? "Nome da área" : "Título do cargo"}
               value={actorCatalogRequest.initial}
-              onChange={(initial) =>
-                setActorCatalogRequest({ ...actorCatalogRequest, initial })
-              }
+              onChange={(initial) => setActorCatalogRequest({ ...actorCatalogRequest, initial })}
             />
             {actorCatalogRequest.kind === "area" ? (
               <Field
@@ -12441,10 +12488,14 @@ function DdpModule({
                     value={mappingAssistantText}
                     onChange={(event) => setMappingAssistantText(event.target.value)}
                     placeholder={
-                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nClassificação: Sistemas corporativos\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nClassificação: Documentos e comunicações\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\nProcesso: Receber demanda\nÁrea: Atendimento\nResponsável: Analista\nDescrição do processo: Receber e qualificar a solicitação\nAtividade: Registrar solicitação\nForma de execução: Manual no sistema\nTipo do ator: Cargo\nÁrea/Ator do processo: Analista de atendimento\nSistemas/Documentos: Fluig\nDescrição: Registrar os dados obrigatórios\nSubprocesso: Validar informações\nDescrição: Conferir a consistência dos dados\nAtividade: Conferir campos\nForma de execução: Manual no sistema\nTipo do ator: Área\nÁrea/Ator do processo: Atendimento\nSistemas/Documentos: Fluig, Política de atendimento\nDescrição: Verificar os campos e documentos recebidos\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
+                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nClassificação: Sistemas corporativos\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nClassificação: Documentos e comunicações\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\nProcesso: Receber demanda\nÁrea: Atendimento\nResponsável: Analista\nDescrição do processo: Receber e qualificar a solicitação\nAtividade: Registrar solicitação\nForma de execução: Manual no sistema\nÁrea responsável pela atividade: Atendimento\nSistemas/Documentos: Fluig\nDescrição: O Atendimento registra os dados obrigatórios.\nSubprocesso: Validar informações\nDescrição: Conferir a consistência dos dados\nAtividade: Conferir campos\nForma de execução: Manual no sistema\nÁrea responsável pela atividade: Qualidade\nSistemas/Documentos: Fluig, Política de atendimento\nDescrição: A Qualidade verifica os campos e documentos recebidos.\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
                     }
                     className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
                   />
+                  <span className="text-xs text-muted-foreground">
+                    Para atribuir a execução, use “Área responsável pela atividade:”. Sem indicação
+                    explícita, o campo será preenchido como “A definir”.
+                  </span>
                 </label>
                 <div className="flex justify-end gap-2">
                   <button
@@ -21178,7 +21229,7 @@ function ActivityActorField({
       />
       {actorType ? (
         <CatalogSearchField
-          label="Área/Ator do processo"
+          label="Área/ator da atividade"
           value={actorName}
           options={options}
           createLabel={actorType === "area" ? "Cadastrar nova área" : "Cadastrar novo cargo"}
@@ -21187,7 +21238,7 @@ function ActivityActorField({
         />
       ) : (
         <ReadOnlyField
-          label="Área/Ator do processo"
+          label="Área/ator da atividade"
           value="Selecione primeiro se o ator é uma área ou um cargo"
         />
       )}
