@@ -470,7 +470,7 @@ const ORGANIZATION_LINKED_RECORD_CHECKS: Array<{
   { table: "organization_departments", label: "áreas" },
   { table: "organization_process_owners", label: "donos de processo" },
   { table: "organization_value_chains", label: "cadeias de valor" },
-  { table: "organization_causes", label: "causas" },
+  { table: "organization_causes", label: "oportunidades de melhoria" },
   { table: "organization_processes", label: "processos" },
   { table: "documents", label: "documentos" },
   { table: "profiles", label: "usuários vinculados" },
@@ -1782,7 +1782,7 @@ function dashboardCauseRowsFromDocument(document: {
       return [
         {
           id: `mapping:${document.id}:${id}`,
-          cause: readString(gap.causa, "Causa sem título"),
+          cause: readString(gap.causa, "Oportunidade sem título"),
           source: "Mapeamento" as const,
           mapping: readString(meta.codigo, readString(meta.titulo, document.name)),
           process: readString(macroprocess.titulo, readString(legacy.processName)),

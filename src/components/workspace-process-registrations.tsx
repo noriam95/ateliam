@@ -610,7 +610,7 @@ export const DEMO_REGISTRY: RegistryData = {
       parent_process_id: null,
       department: "Processos & Qualidade",
       owner: "Coordenadora de Processos · Processos & Qualidade",
-      description: "Registro, análise de causa raiz, ação corretiva e verificação de eficácia.",
+      description: "Registro de oportunidades, ações de melhoria e verificação de eficácia.",
       status: "Ativo",
       current_version: 7,
     },

@@ -322,7 +322,7 @@ export function WorkspaceModulesTree({
           </TreeButton>
           {branch.moduleId === "ddp" ? (
             <TreeSection
-              title="Causas"
+              title="Oportunidades de melhoria"
               icon={<FlaskConical className="h-4 w-4" />}
               open={!!expanded.causes}
               onToggle={() => onToggle("causes")}

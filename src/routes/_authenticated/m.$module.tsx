@@ -4480,7 +4480,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     ["02", "Sistemas/Documentos Envolvidos"],
     ["03", "Análise SIPOC"],
     ["04", "Etapas do Processo"],
-    ["05", "Gaps e Causas-Raiz"],
+    ["05", "Oportunidades de Melhoria"],
     ["06", "Próximos Passos"],
     ["07", "Glossário"],
   ].forEach(([num, label]) => parts.push(doc.tocLine(num, label)));
@@ -4617,20 +4617,23 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     }
   });
 
-  parts.push(doc.sectionTitle("05 Causas-Raiz e Planos de Ação"));
+  parts.push(doc.sectionTitle("05 Oportunidades de Melhoria"));
   model.gaps.forEach((gap, index) => {
     parts.push(
       doc.table(
         [
           [
             {
-              xml: doc.p(`${String(index + 1).padStart(2, "0")} — ${gap.title || "Causa-raiz"}`, {
-                size: 11.5,
-                bold: true,
-                caps: true,
-                color: doc.C.white,
-                after: 0,
-              }),
+              xml: doc.p(
+                `${String(index + 1).padStart(2, "0")} — ${gap.title || "Oportunidade de melhoria"}`,
+                {
+                  size: 11.5,
+                  bold: true,
+                  caps: true,
+                  color: doc.C.white,
+                  after: 0,
+                },
+              ),
               fill: doc.C.gray700,
               gridSpan: 3,
             },
@@ -4671,7 +4674,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       ),
     );
   });
-  if (!model.gaps.length) parts.push(doc.p("Nenhuma causa-raiz cadastrada."));
+  if (!model.gaps.length) parts.push(doc.p("Nenhuma oportunidade de melhoria cadastrada."));
 
   parts.push(doc.sectionTitle("06 Próximos Passos"));
   parts.push(
@@ -5354,7 +5357,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     ["sistemas", "02 Sistemas/Documentos envolvidos"],
     ["sipoc", "03 SIPOC"],
     ["fluxo", "04 Etapas do processo"],
-    ["gaps", "05 Gaps e causas-raiz"],
+    ["gaps", "05 Oportunidades de melhoria"],
     ["proximos", "06 Próximos passos"],
     ["glossario", "07 Glossário"],
   ];
@@ -5485,7 +5488,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
     : emptyBlock("Nenhuma linha SIPOC informada.");
 
   const gapTable = model.gaps.length
-    ? `<div class="table-wrap gap-table"><table><thead><tr><th>Causa-raiz</th><th>Descrição</th><th>Impacto</th><th>Ação proposta</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Status</th></tr></thead><tbody>${model.gaps
+    ? `<div class="table-wrap gap-table"><table><thead><tr><th>Oportunidade de melhoria</th><th>Descrição</th><th>Impacto</th><th>Ação proposta</th><th>Responsável</th><th>Prazo</th><th>Prioridade</th><th>Status</th></tr></thead><tbody>${model.gaps
         .map(
           (gap) =>
             `<tr><td><strong>${html(gap.title || "Gap")}</strong></td><td>${html(
@@ -5586,7 +5589,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 <section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas/Documentos envolvidos", "Sistemas, documentos e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
 <section class="slide" id="sipoc">${sectionHead("03", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
 <section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
-<section class="slide" id="gaps">${sectionHead("05", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}${gapTable}</section>
+<section class="slide" id="gaps">${sectionHead("05", "Oportunidades de melhoria", "Oportunidades, impactos e planos de ação relacionados.")}${gapTable}</section>
 <section class="slide alt" id="proximos">${sectionHead("06", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
 <section class="slide" id="glossario">${sectionHead("07", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
 </main>
@@ -6481,7 +6484,10 @@ function ModuleWorkspacePage() {
 
   async function addCauseToCatalog(gap: GapItem) {
     const title = plain(gap.causa);
-    if (!title) throw new Error("Informe o nome da causa antes de cadastrar na biblioteca.");
+    if (!title)
+      throw new Error(
+        "Informe o nome da oportunidade de melhoria antes de cadastrar na biblioteca.",
+      );
     const existing = organizationCatalogs.causes.find(
       (item) => normalizeLabel(item.title) === normalizeLabel(title),
     );
@@ -6506,8 +6512,8 @@ function ModuleWorkspacePage() {
   }
 
   async function syncDdpGapsToCatalog(source: WorkspaceState) {
-    // Causas registradas no mapeamento pertencem ao próprio mapeamento. Elas só
-    // entram no catálogo quando o usuário as cadastra explicitamente como causa avulsa.
+    // Oportunidades registradas no mapeamento pertencem ao próprio mapeamento. Elas só
+    // entram no catálogo quando o usuário as cadastra explicitamente como oportunidade avulsa.
     return source;
   }
 
@@ -6696,7 +6702,8 @@ function ModuleWorkspacePage() {
 
     const snapshot = parseWorkspace(document.content_inline);
     const gapExists = snapshot.ddp.gaps.some((gap) => gap.id === record.gapId);
-    if (!gapExists) throw new Error("A causa não existe mais no mapeamento de origem.");
+    if (!gapExists)
+      throw new Error("A oportunidade de melhoria não existe mais no mapeamento de origem.");
 
     const nextStatus = normalizeCauseStatus(patch.status ?? record.status);
     const updatedWorkspace: WorkspaceState = {
@@ -6726,8 +6733,8 @@ function ModuleWorkspacePage() {
         description: payload.description,
         content: buildModuleJson("ddp", updatedWorkspace),
         comment: patch.comentarios
-          ? "[Mapeamento] Acompanhamento da causa atualizado"
-          : `[Mapeamento] Status da causa alterado para ${nextStatus}`,
+          ? "[Mapeamento] Acompanhamento da oportunidade de melhoria atualizado"
+          : `[Mapeamento] Status da oportunidade alterado para ${nextStatus}`,
         primaryProcessId: payload.primaryProcessId,
         primaryProcessVersion: payload.primaryProcessVersion,
       },
@@ -9050,7 +9057,7 @@ function DdpCausesModuleLegacy({
       initializedNew.current = true;
       openNewCause();
     }
-    // Inicializa o formulário de causa uma única vez ao entrar no modo "new"
+    // Inicializa o formulário de oportunidade uma única vez ao entrar no modo "new"
     // (guardado por initializedNew.current); depende apenas de `mode`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -9136,7 +9143,7 @@ function DdpCausesModuleLegacy({
     const normalized: GapItem = {
       ...draft,
       id: draft.id || id("gap"),
-      causa: draft.causa.trim() || "Causa sem nome",
+      causa: draft.causa.trim() || "Oportunidade sem nome",
       comentarios: draft.comentarios ?? [],
     };
 
@@ -9145,10 +9152,10 @@ function DdpCausesModuleLegacy({
         ...data,
         gaps: data.gaps.map((gap) => (gap.id === draft.id ? normalized : gap)),
       });
-      toast.success("Causa atualizada.");
+      toast.success("Oportunidade de melhoria atualizada.");
     } else {
       update({ ...data, gaps: [...data.gaps, normalized] });
-      toast.success("Causa cadastrada.");
+      toast.success("Oportunidade de melhoria cadastrada.");
     }
 
     setSelectedIds([normalized.id]);
@@ -9173,10 +9180,18 @@ function DdpCausesModuleLegacy({
       update({ ...data, gaps: data.gaps.filter((gap) => !ids.includes(gap.id)) });
       setSelectedIds([]);
       if (draft?.id && ids.includes(draft.id)) setDraft(null);
-      toast.success(ids.length > 1 ? "Causas excluidas." : "Causa excluida.");
+      toast.success(
+        ids.length > 1
+          ? "Oportunidades de melhoria excluídas."
+          : "Oportunidade de melhoria excluída.",
+      );
       setPendingDeleteIds([]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel excluir a causa.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a oportunidade de melhoria.",
+      );
     } finally {
       setDeleteSaving(false);
     }
@@ -9213,7 +9228,7 @@ function DdpCausesModuleLegacy({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-                processos · mapeamento · causas
+                processos · mapeamento · oportunidades de melhoria
               </div>
               <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
             </div>
@@ -9248,7 +9263,7 @@ function DdpCausesModuleLegacy({
                 <th className="w-12 px-4 py-3">
                   <input
                     type="checkbox"
-                    aria-label="Selecionar causas exibidas"
+                    aria-label="Selecionar oportunidades de melhoria exibidas"
                     checked={
                       !!filtered.length && filtered.every((gap) => selectedIds.includes(gap.id))
                     }
@@ -9258,8 +9273,8 @@ function DdpCausesModuleLegacy({
                   />
                 </th>
                 <th className="px-3 py-3 font-semibold">Origem</th>
-                <th className="px-3 py-3 font-semibold">Causa reutilizável</th>
-                <th className="px-3 py-3 font-semibold">Causa</th>
+                <th className="px-3 py-3 font-semibold">Oportunidade reutilizável</th>
+                <th className="px-3 py-3 font-semibold">Oportunidade de melhoria</th>
                 <th className="px-3 py-3 font-semibold">Descrição</th>
                 <th className="px-3 py-3 font-semibold">Impacto</th>
                 <th className="px-3 py-3 font-semibold">Ação proposta</th>
@@ -9303,7 +9318,7 @@ function DdpCausesModuleLegacy({
                   </td>
                   <td className="px-3 py-3 text-foreground">{gap.sharedCauseId ? "Sim" : "Não"}</td>
                   <td className="break-words px-3 py-3 font-medium text-foreground">
-                    {gap.causa || "Causa sem nome"}
+                    {gap.causa || "Oportunidade sem nome"}
                   </td>
                   <td className="break-words px-3 py-3 text-xs leading-5 text-muted-foreground">
                     <div className="max-w-[280px]">{gap.descricao || "-"}</div>
@@ -9397,7 +9412,7 @@ function DdpCausesModuleLegacy({
           <div className="my-auto max-h-[92vh] w-full max-w-4xl overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-foreground">
-                {draft.id ? "Editar causa" : "Nova causa"}
+                {draft.id ? "Editar oportunidade" : "Nova oportunidade"}
               </h2>
               <button
                 type="button"
@@ -9417,14 +9432,14 @@ function DdpCausesModuleLegacy({
                 <div className="grid gap-3 md:col-span-2">
                   <label className="block">
                     <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                      Causa reutilizável da organização
+                      Oportunidade reutilizável da organização
                     </span>
                     <select
                       value={draft.sharedCauseId ?? ""}
                       onChange={(event) => applySharedCauseToDraft(event.target.value)}
                       className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
                     >
-                      <option value="">Causa local / nova</option>
+                      <option value="">Oportunidade local / nova</option>
                       {catalogs.causes.map((cause) => (
                         <option key={cause.id} value={cause.id}>
                           {cause.title}
@@ -9434,7 +9449,7 @@ function DdpCausesModuleLegacy({
                   </label>
                 </div>
                 <Field
-                  label="Causa"
+                  label="Oportunidade de melhoria"
                   value={draft.causa}
                   onChange={(causa) => updateDraft({ causa })}
                 />
@@ -9486,7 +9501,7 @@ function DdpCausesModuleLegacy({
                   value={commentDraft}
                   onChange={(event) => setCommentDraft(event.target.value)}
                   rows={4}
-                  placeholder="Registre uma atualização, decisão ou pendência da causa."
+                  placeholder="Registre uma atualização, decisão ou pendência da oportunidade."
                   className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
                 <button
@@ -9544,7 +9559,7 @@ function DdpCausesModuleLegacy({
                 onClick={saveDraft}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
               >
-                Salvar causa
+                Salvar oportunidade
               </button>
             </div>
           </div>
@@ -9552,8 +9567,8 @@ function DdpCausesModuleLegacy({
       ) : null}
       {pendingDeleteIds.length ? (
         <Modal
-          title="Excluir causas selecionadas"
-          subtitle={`Confirma excluir ${pendingDeleteIds.length} causa(s) selecionada(s)?`}
+          title="Excluir oportunidades de melhoria selecionadas"
+          subtitle={`Confirma excluir ${pendingDeleteIds.length} oportunidade(s) selecionada(s)?`}
           onClose={() => setPendingDeleteIds([])}
         >
           <div className="flex justify-end gap-2">
@@ -9732,7 +9747,7 @@ function DdpCausesModuleV2({
     if (!draft || draft.source !== "standalone") return;
     const title = draft.gap.causa.trim();
     if (!title) {
-      toast.error("Informe a causa.");
+      toast.error("Informe a oportunidade de melhoria.");
       return;
     }
     setSaving(true);
@@ -9748,15 +9763,19 @@ function DdpCausesModuleV2({
           ...organizationCauseFromGap(normalized, draft.row.standalone),
           process_id: draft.processId || null,
         });
-        toast.success("Causa avulsa atualizada.");
+        toast.success("Oportunidade avulsa atualizada.");
       } else {
         await onCreateStandaloneCause(normalized, draft.processId || null);
-        toast.success("Causa avulsa cadastrada.");
+        toast.success("Oportunidade avulsa cadastrada.");
       }
       setDraft(null);
       setCommentDraft("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível salvar a causa.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar a oportunidade de melhoria.",
+      );
     } finally {
       setSaving(false);
     }
@@ -9790,9 +9809,13 @@ function DdpCausesModuleV2({
       }
       setSelectedIds([]);
       setPendingDeleteIds([]);
-      toast.success("Causa(s) avulsa(s) excluída(s).");
+      toast.success("Oportunidade(s) avulsa(s) excluída(s).");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível excluir a causa.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a oportunidade de melhoria.",
+      );
     } finally {
       setSaving(false);
     }
@@ -9824,11 +9847,13 @@ function DdpCausesModuleV2({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-                Processos · Mapeamento · Causas
+                Processos · Mapeamento · Oportunidades de melhoria
               </div>
-              <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar causas</h1>
+              <h1 className="mt-1 text-xl font-semibold text-foreground">
+                Consultar oportunidades de melhoria
+              </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Causas dos mapeamentos e registros avulsos da organização.
+                Oportunidades identificadas nos mapeamentos e registros avulsos da organização.
               </p>
             </div>
             <div className="flex gap-2">
@@ -9846,7 +9871,7 @@ function DdpCausesModuleV2({
                 onClick={openNewCause}
                 className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
               >
-                <Plus className="h-4 w-4" /> Nova causa avulsa
+                <Plus className="h-4 w-4" /> Nova oportunidade
               </button>
             </div>
           </div>
@@ -9855,7 +9880,7 @@ function DdpCausesModuleV2({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar causa, mapeamento ou responsável"
+              placeholder="Buscar oportunidade, mapeamento ou responsável"
               className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             />
           </div>
@@ -9867,7 +9892,7 @@ function DdpCausesModuleV2({
               <tr>
                 <th className="w-12 px-4 py-3" />
                 <th className="px-3 py-3">Origem</th>
-                <th className="px-3 py-3">Causa</th>
+                <th className="px-3 py-3">Oportunidade de melhoria</th>
                 <th className="px-3 py-3">Vínculo</th>
                 <th className="px-3 py-3">Impacto</th>
                 <th className="px-3 py-3">Ação proposta</th>
@@ -9882,13 +9907,13 @@ function DdpCausesModuleV2({
               {loading ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
-                    Carregando causas...
+                    Carregando oportunidades de melhoria...
                   </td>
                 </tr>
               ) : !filtered.length ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
-                    Nenhuma causa encontrada.
+                    Nenhuma oportunidade de melhoria encontrada.
                   </td>
                 </tr>
               ) : null}
@@ -9919,7 +9944,7 @@ function DdpCausesModuleV2({
                   </td>
                   <td className="max-w-[250px] px-3 py-3">
                     <div className="font-semibold text-foreground">
-                      {row.gap.causa || "Causa sem nome"}
+                      {row.gap.causa || "Oportunidade sem nome"}
                     </div>
                     <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
                       {row.gap.descricao || "-"}
@@ -9973,7 +9998,9 @@ function DdpCausesModuleV2({
                       <button
                         type="button"
                         title={
-                          row.mapping ? "Acompanhar causa sem abrir o mapeamento" : "Abrir causa"
+                          row.mapping
+                            ? "Acompanhar oportunidade sem abrir o mapeamento"
+                            : "Abrir oportunidade"
                         }
                         onClick={() => openRow(row)}
                         className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted"
@@ -9987,7 +10014,7 @@ function DdpCausesModuleV2({
                       </button>
                       <button
                         type="button"
-                        title={row.mapping ? "Editar no mapeamento" : "Editar causa"}
+                        title={row.mapping ? "Editar no mapeamento" : "Editar oportunidade"}
                         onClick={() =>
                           row.mapping
                             ? onOpenMapping(row.mapping).catch((error) =>
@@ -10037,10 +10064,10 @@ function DdpCausesModuleV2({
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-bold text-foreground">
                       {draft.source === "mapping"
-                        ? "Acompanhar causa do mapeamento"
+                        ? "Acompanhar oportunidade do mapeamento"
                         : draft.row
-                          ? "Editar causa avulsa"
-                          : "Nova causa avulsa"}
+                          ? "Editar oportunidade avulsa"
+                          : "Nova oportunidade avulsa"}
                     </h2>
                     <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       {draft.source === "mapping" ? "Mapeamento" : "Avulsa"}
@@ -10052,7 +10079,7 @@ function DdpCausesModuleV2({
                     </p>
                   ) : (
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Registre a causa, seus efeitos e o tratamento proposto.
+                      Registre a oportunidade, seus efeitos e o tratamento proposto.
                     </p>
                   )}
                 </div>
@@ -10079,10 +10106,12 @@ function DdpCausesModuleV2({
                 <section className="grid gap-4 rounded-lg border border-border p-4">
                   <div className="flex items-center gap-2 border-b border-border pb-3">
                     <ListChecks className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold text-foreground">Contexto da causa</h3>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Contexto da oportunidade
+                    </h3>
                   </div>
                   <Field
-                    label="Causa"
+                    label="Oportunidade de melhoria"
                     value={draft.gap.causa}
                     onChange={(causa) => updateDraft({ causa })}
                     disabled={draft.source === "mapping"}
@@ -10237,12 +10266,12 @@ function DdpCausesModuleV2({
                           comentarios: commentsForSave(),
                         });
                         setDraft(null);
-                        toast.success("Acompanhamento da causa atualizado.");
+                        toast.success("Acompanhamento da oportunidade atualizado.");
                       } catch (error) {
                         toast.error(
                           error instanceof Error
                             ? error.message
-                            : "Não foi possível atualizar a causa.",
+                            : "Não foi possível atualizar a oportunidade.",
                         );
                       } finally {
                         setSaving(false);
@@ -10271,7 +10300,7 @@ function DdpCausesModuleV2({
                   onClick={saveDraft}
                   className="rounded-lg border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50"
                 >
-                  Salvar causa
+                  Salvar oportunidade
                 </button>
               )}
             </div>
@@ -10281,8 +10310,8 @@ function DdpCausesModuleV2({
 
       {pendingDeleteIds.length ? (
         <Modal
-          title="Excluir causas avulsas"
-          subtitle={`Confirma excluir ${pendingDeleteIds.length} causa(s) avulsa(s)?`}
+          title="Excluir oportunidades de melhoria avulsas"
+          subtitle={`Confirma excluir ${pendingDeleteIds.length} oportunidade(s) avulsa(s)?`}
           onClose={() => setPendingDeleteIds([])}
         >
           <div className="flex justify-end gap-2">
@@ -10732,7 +10761,12 @@ function DdpModule({
     },
     { key: "sipoc", num: "03", title: "Análise SIPOC", pct: sectionProgress.sipoc },
     { key: "flowStage", num: "04", title: "Etapas do processo", pct: sectionProgress.flowStage },
-    { key: "gaps", num: "05", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
+    {
+      key: "gaps",
+      num: "05",
+      title: "Oportunidades de melhoria",
+      pct: sectionProgress.gaps,
+    },
     { key: "nextSteps", num: "06", title: "Próximos passos", pct: sectionProgress.nextSteps },
     { key: "glossary", num: "07", title: "Glossário", pct: sectionProgress.glossary },
   ];
@@ -11294,7 +11328,7 @@ function DdpModule({
                     value={mappingAssistantText}
                     onChange={(event) => setMappingAssistantText(event.target.value)}
                     placeholder={
-                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n05 Gaps e causas-raiz\nGap: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n06 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n07 Glossário\nSLA | Acordo de nível de serviço"
+                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n05 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n06 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n07 Glossário\nSLA | Acordo de nível de serviço"
                     }
                     className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
                   />
@@ -12232,7 +12266,7 @@ function DdpModule({
               id="sec-gaps"
               num="06"
               openSignal={openTarget === "gaps" ? openNonce : 0}
-              title="Gaps e causas-raiz"
+              title="Oportunidades de melhoria"
               progress={sectionProgress.gaps}
             >
               <div className="grid gap-3">
@@ -12241,9 +12275,9 @@ function DdpModule({
                     <table className="w-full min-w-[1540px] border-collapse text-left text-sm">
                       <thead className="bg-muted text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                         <tr>
-                          <th className="px-3 py-3">Usar causa cadastrada?</th>
-                          <th className="px-3 py-3">Causa cadastrada</th>
-                          <th className="px-3 py-3">Causa</th>
+                          <th className="px-3 py-3">Usar oportunidade cadastrada?</th>
+                          <th className="px-3 py-3">Oportunidade cadastrada</th>
+                          <th className="px-3 py-3">Oportunidade de melhoria</th>
                           <th className="px-3 py-3">Descrição</th>
                           <th className="px-3 py-3">Impacto</th>
                           <th className="px-3 py-3">Ação proposta</th>
@@ -12294,7 +12328,7 @@ function DdpModule({
                                   </div>
                                   <span className="text-[11px] leading-snug text-muted-foreground">
                                     {usesLibraryCause
-                                      ? "Dados bloqueados pela causa cadastrada."
+                                      ? "Dados preenchidos pela oportunidade cadastrada."
                                       : "Gap local/editavel neste mapeamento."}
                                   </span>
                                 </div>
@@ -12303,22 +12337,23 @@ function DdpModule({
                                 {usesLibraryCause ? (
                                   <div className="grid min-w-[230px] gap-2">
                                     <DropdownTextField
-                                      label="Causa cadastrada"
+                                      label="Oportunidade cadastrada"
                                       value={causeSearchValue}
                                       options={catalogs.causes.map((cause) => cause.title)}
-                                      placeholder="Pesquisar causa cadastrada"
+                                      placeholder="Pesquisar oportunidade cadastrada"
                                       onChange={(value) => selectSharedCauseByTitle(gap.id, value)}
                                       compact
                                     />
                                     {!selectedCause ? (
                                       <span className="text-[11px] text-muted-foreground">
-                                        Selecione uma causa da lista para preencher os campos.
+                                        Selecione uma oportunidade da lista para preencher os
+                                        campos.
                                       </span>
                                     ) : null}
                                   </div>
                                 ) : (
                                   <div className="min-w-[230px] rounded-md border border-dashed border-border bg-muted/25 px-2.5 py-2 text-xs text-muted-foreground">
-                                    Marque Sim para pesquisar uma causa existente.
+                                    Marque Sim para pesquisar uma oportunidade existente.
                                   </div>
                                 )}
                               </td>
@@ -12329,7 +12364,7 @@ function DdpModule({
                                   <TableInput
                                     value={gap.causa}
                                     onChange={(causa) => updateGap(gap.id, { causa })}
-                                    placeholder="Nome da causa"
+                                    placeholder="Nome da oportunidade"
                                   />
                                 )}
                               </td>
@@ -12340,7 +12375,7 @@ function DdpModule({
                                   <TableTextarea
                                     value={gap.descricao}
                                     onChange={(descricao) => updateGap(gap.id, { descricao })}
-                                    placeholder="Descreva a causa"
+                                    placeholder="Descreva a oportunidade"
                                   />
                                 )}
                               </td>

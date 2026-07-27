@@ -1875,7 +1875,7 @@ type DashboardCauseColumn = keyof Pick<
 >;
 
 const DASHBOARD_CAUSE_COLUMNS: Array<[DashboardCauseColumn, string]> = [
-  ["cause", "Causa"],
+  ["cause", "Oportunidade"],
   ["source", "Origem"],
   ["mapping", "Mapeamento"],
   ["process", "Processo"],
@@ -1925,12 +1925,13 @@ function CauseRecordsTable({ rows }: { rows: DashboardCauseRow[] }) {
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-muted-foreground">
-          {visibleRows.length} {visibleRows.length === 1 ? "causa" : "causas"}
+          {visibleRows.length}{" "}
+          {visibleRows.length === 1 ? "oportunidade de melhoria" : "oportunidades de melhoria"}
         </span>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Filtrar causas..."
+          placeholder="Filtrar oportunidades..."
           className="h-8 w-64 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
         />
       </div>
@@ -1976,7 +1977,7 @@ function CauseRecordsTable({ rows }: { rows: DashboardCauseRow[] }) {
                   colSpan={DASHBOARD_CAUSE_COLUMNS.length}
                   className="px-3 py-8 text-center text-muted-foreground"
                 >
-                  Nenhuma causa identificada.
+                  Nenhuma oportunidade de melhoria identificada.
                 </td>
               </tr>
             ) : null}
@@ -2721,7 +2722,7 @@ function WorkspaceContent({
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Visão operacional</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Acompanhe o status dos processos, causas e documentos.
+              Acompanhe o status dos processos, oportunidades de melhoria e documentos.
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -2781,9 +2782,9 @@ function WorkspaceContent({
           }
         />
         <OperationalMetricCard
-          label="Causas abertas"
+          label="Oportunidades abertas"
           value={openCauseRows.length}
-          detail="Causas aguardando tratamento"
+          detail="Oportunidades aguardando tratamento"
           icon={<CircleAlert className="h-5 w-5" />}
           color="#c58916"
           onClick={() =>
@@ -2856,7 +2857,7 @@ function WorkspaceContent({
         </ExpandableCard>
 
         <ExpandableCard
-          title="Causas que exigem atenção"
+          title="Oportunidades que exigem atenção"
           className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
           expanded={<CauseRecordsTable rows={causeRows} />}
           onNavigate={() =>
@@ -2897,7 +2898,7 @@ function WorkspaceContent({
             ))}
             {attentionCauses.length === 0 ? (
               <div className="py-10 text-center text-xs text-muted-foreground">
-                Nenhuma causa aberta exige atenção.
+                Nenhuma oportunidade aberta exige atenção.
               </div>
             ) : null}
           </div>
@@ -3213,8 +3214,8 @@ function getCatalogCopy(
 
   if (view === "causes") {
     return {
-      title: "Gestão de causas",
-      text: "Consulte causas cadastradas nos mapeamentos, acompanhe status, responsável, comentários e vínculos com processos.",
+      title: "Oportunidades de melhoria",
+      text: "Consulte oportunidades identificadas nos mapeamentos e acompanhe status, responsável, comentários e vínculos com processos.",
       metrics: [
         ...baseMetrics.slice(0, 2),
         {
@@ -3245,7 +3246,7 @@ function getCatalogCopy(
 
   return {
     title: "Catálogo de processos",
-    text: "Centralize macroprocessos, subprocessos, áreas, responsáveis, causas, sistemas e documentos.",
+    text: "Centralize macroprocessos, subprocessos, áreas, responsáveis, oportunidades de melhoria, sistemas e documentos.",
     metrics: baseMetrics,
   };
 }
@@ -3410,7 +3411,7 @@ function getModuleActions(moduleId: AteliamModule): Array<{
         description: "Inicie um mapeamento estruturado.",
         eyebrow: "novo mapeamento",
         title: "Criar mapeamento",
-        body: "Abra o editor para preencher identificação, escopo, sistemas, fluxo, SIPOC, causas, próximos passos e glossário.",
+        body: "Abra o editor para preencher identificação, escopo, sistemas, fluxo, SIPOC, oportunidades de melhoria, próximos passos e glossário.",
       },
       {
         key: "consult",
@@ -3591,7 +3592,7 @@ function getModuleFlow(moduleId: AteliamModule) {
   if (moduleId === "ddp") {
     return [
       "Criar ou abrir um mapeamento.",
-      "Preencher dados do processo, sistemas, fluxo, SIPOC, causas e próximos passos.",
+      "Preencher dados do processo, sistemas, fluxo, SIPOC, oportunidades de melhoria e próximos passos.",
       "Salvar o preenchimento como registro de mapeamento.",
       "Exportar apresentação HTML e relatório Word no modelo oficial.",
     ];

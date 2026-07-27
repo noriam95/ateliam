@@ -13,7 +13,7 @@ export const DEFAULT_DOCUMENT_MODELS: DocumentModelRow[] = [
   {
     model_key: "ddp-word",
     name: "Relatório de Mapeamento",
-    description: "Diagnóstico completo, SIPOC, causas e próximos passos",
+    description: "Diagnóstico completo, SIPOC, oportunidades de melhoria e próximos passos",
     logo_data_url: null,
     primary_color: "1D1F23",
   },

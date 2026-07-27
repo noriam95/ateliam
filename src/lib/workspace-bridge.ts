@@ -13,7 +13,7 @@ export const MODULES: Array<{
     title: "Mapeamento",
     tagline: "",
     description:
-      "Capture o estado atual do processo, sistemas envolvidos, fluxo, SIPOC, causas, próximos passos e glossário.",
+      "Capture o estado atual do processo, sistemas envolvidos, fluxo, SIPOC, oportunidades de melhoria, próximos passos e glossário.",
     accent: "var(--gold)",
     glyph: "M",
   },
