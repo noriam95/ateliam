@@ -2952,6 +2952,53 @@ type OrganizationSystem = {
   modality?: SystemModality;
   description: string;
 };
+
+function reconcileDdpSystemsWithCatalog(
+  systems: DdpSystem[],
+  catalogSystems: OrganizationSystem[],
+) {
+  if (!systems.length || !catalogSystems.length) return systems;
+
+  const catalogById = new Map(catalogSystems.map((system) => [system.id, system]));
+  const catalogByName = new Map(
+    catalogSystems.map((system) => [normalizeLabel(system.name), system]),
+  );
+  let changed = false;
+
+  const reconciled = systems.map((system) => {
+    const catalogSystem =
+      (system.systemId ? catalogById.get(system.systemId) : undefined) ??
+      catalogByName.get(normalizeLabel(system.nome));
+    if (!catalogSystem) return system;
+
+    const nextSystemId = catalogSystem.id;
+    const nextName = catalogSystem.name;
+    const nextType = normalizeSystemModality(catalogSystem.modality);
+    if (
+      system.systemId === nextSystemId &&
+      system.nome === nextName &&
+      normalizeSystemModality(system.tipo) === nextType
+    ) {
+      return system;
+    }
+
+    changed = true;
+    return {
+      ...system,
+      systemId: nextSystemId,
+      nome: nextName,
+      tipo: nextType,
+    };
+  });
+
+  return changed ? reconciled : systems;
+}
+
+function reconcileDdpWithCatalog(data: DdpState, catalogSystems: OrganizationSystem[]) {
+  const systems = reconcileDdpSystemsWithCatalog(data.systems, catalogSystems);
+  return systems === data.systems ? data : { ...data, systems };
+}
+
 type OrganizationPosition = { id: string; title: string; description: string | null };
 type OrganizationCatalogs = {
   departments: OrganizationCatalogItem[];
@@ -7184,7 +7231,8 @@ function ModuleWorkspacePage() {
     const snapshot = resolveRowSnapshot(row);
     let docHtml: string;
     if (snapshot && moduleId === "ddp") {
-      docHtml = buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html"));
+      const ddp = reconcileDdpWithCatalog(snapshot.ddp, organizationCatalogs.systems);
+      docHtml = buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html"));
     } else if (snapshot && moduleId === "pop") {
       docHtml = buildPopPresentationHtml(snapshot.pop, brandForDocumentPresentation());
     } else {
@@ -7196,7 +7244,8 @@ function ModuleWorkspacePage() {
   // Visualiza, em nova aba, o que está sendo preenchido agora no formulário,
   // na mesma modalidade somente-leitura disponível na consulta.
   function previewCurrentDdp() {
-    const docHtml = buildDdpPresentationHtml(workspace.ddp, brandForDocumentModel("ddp-html"));
+    const ddp = reconcileDdpWithCatalog(workspace.ddp, organizationCatalogs.systems);
+    const docHtml = buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html"));
     openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o preenchimento.");
   }
 
@@ -7215,31 +7264,30 @@ function ModuleWorkspacePage() {
     }
     const snapshot = resolveRowSnapshot(row);
     if (!snapshot) throw new Error("Documento salvo não encontrado.");
+    const ddp =
+      moduleId === "ddp"
+        ? reconcileDdpWithCatalog(snapshot.ddp, organizationCatalogs.systems)
+        : snapshot.ddp;
 
     if (format === "ddp-html") {
       const filename = cleanFileName(
-        `${snapshot.ddp.meta.codigo}-${snapshot.ddp.meta.titulo}-apresentacao-${stamp()}`,
+        `${ddp.meta.codigo}-${ddp.meta.titulo}-apresentacao-${stamp()}`,
       );
       downloadText(
         `${filename}.html`,
-        buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html")),
+        buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html")),
         "text/html;charset=utf-8",
       );
     } else if (format === "ddp-presentation-doc") {
-      const filename = cleanFileName(
-        `${snapshot.ddp.meta.codigo}-${snapshot.ddp.meta.titulo}-apresentacao`,
-      );
+      const filename = cleanFileName(`${ddp.meta.codigo}-${ddp.meta.titulo}-apresentacao`);
       downloadText(
         `${filename}.doc`,
-        buildDdpPresentationHtml(snapshot.ddp, brandForDocumentModel("ddp-html")),
+        buildDdpPresentationHtml(ddp, brandForDocumentModel("ddp-html")),
         "application/msword;charset=utf-8",
       );
     } else if (format === "ddp-docx") {
-      const filename = cleanFileName(`${snapshot.ddp.meta.codigo}-${snapshot.ddp.meta.titulo}`);
-      downloadBlob(
-        `${filename}.docx`,
-        buildDdpDocx(snapshot.ddp, brandForDocumentModel("ddp-word")),
-      );
+      const filename = cleanFileName(`${ddp.meta.codigo}-${ddp.meta.titulo}`);
+      downloadBlob(`${filename}.docx`, buildDdpDocx(ddp, brandForDocumentModel("ddp-word")));
     } else if (format === "pop-presentation-doc") {
       const filename = cleanFileName(
         `${snapshot.pop.meta.codigo}-${snapshot.pop.meta.titulo}-apresentacao`,
@@ -10641,6 +10689,12 @@ function DdpModule({
     if (!currentElaborator || data.meta.elaborador.trim()) return;
     update({ ...data, meta: { ...data.meta, elaborador: currentElaborator } });
   }, [currentElaborator, data, update]);
+
+  useEffect(() => {
+    const systems = reconcileDdpSystemsWithCatalog(data.systems, catalogs.systems);
+    if (systems === data.systems) return;
+    update({ ...data, systems });
+  }, [catalogs.systems, data, update]);
 
   function findProcessValueChain(process: OrganizationProcess | null) {
     let current = process;
