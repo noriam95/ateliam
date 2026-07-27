@@ -63,7 +63,23 @@ export type ProcessRegistrationView =
   | "process-types";
 
 type OwnerUser = { id: string; owner_id: string; user: string };
-type SystemItem = { id: string; name: string; description: string };
+type SystemModality =
+  | "Sistemas corporativos"
+  | "Ferramentas auxiliares"
+  | "Documentos e comunicações"
+  | "Fontes externas";
+const SYSTEM_MODALITY_OPTIONS: SystemModality[] = [
+  "Sistemas corporativos",
+  "Ferramentas auxiliares",
+  "Documentos e comunicações",
+  "Fontes externas",
+];
+type SystemItem = {
+  id: string;
+  name: string;
+  modality?: SystemModality;
+  description: string;
+};
 type Position = { id: string; title: string; description: string | null };
 
 type Area = { id: string; name: string; sigla: string | null };
@@ -176,9 +192,7 @@ const PROCESS_PARENT_LABEL: Record<Process["type"], string> = {
 
 function ownerDisplayName(owner: Pick<Owner, "name" | "role_title">) {
   const value = owner.role_title || owner.name || "";
-  return value
-    .replace(/\s*(?:·|•|Â·|Ã‚Â·|-)\s*.*$/u, "")
-    .trim() || value.trim();
+  return value.replace(/\s*(?:·|•|Â·|Ã‚Â·|-)\s*.*$/u, "").trim() || value.trim();
 }
 
 function normalizeLabel(value: string) {
@@ -253,9 +267,21 @@ export const DEMO_REGISTRY: RegistryData = {
     },
   ],
   positions: [
-    { id: "position-gerente-ti", title: "Gerente de TI", description: "Responsável pela gestão da área de Tecnologia da Informação." },
-    { id: "position-coordenador-processos", title: "Coordenador de Processos", description: "Responsável pela governança de processos e padronização documental." },
-    { id: "position-analista-bi", title: "Analista de BI", description: "Responsável por análise, construção e sustentação de relatórios e indicadores." },
+    {
+      id: "position-gerente-ti",
+      title: "Gerente de TI",
+      description: "Responsável pela gestão da área de Tecnologia da Informação.",
+    },
+    {
+      id: "position-coordenador-processos",
+      title: "Coordenador de Processos",
+      description: "Responsável pela governança de processos e padronização documental.",
+    },
+    {
+      id: "position-analista-bi",
+      title: "Analista de BI",
+      description: "Responsável por análise, construção e sustentação de relatórios e indicadores.",
+    },
   ],
   types: STRUCTURAL_PROCESS_TYPES,
   valueChains: [
@@ -608,12 +634,32 @@ export const DEMO_REGISTRY: RegistryData = {
     { id: "ou-fin", owner_id: "owner-ger-financeiro", user: "bruno.cardoso@bomfuturo.com" },
   ],
   systems: [
-    { id: "sys-erp", name: "ERP TOTVS", description: "Sistema transacional de gestão (financeiro, fiscal, estoque)." },
-    { id: "sys-powerbi", name: "Power BI", description: "Plataforma de dashboards e relatórios analíticos." },
-    { id: "sys-crm", name: "HubSpot CRM", description: "Gestão de leads, funil e atividades comerciais." },
-    { id: "sys-ats", name: "Gupy (ATS)", description: "Recrutamento e seleção: publicação de vagas e triagem." },
+    {
+      id: "sys-erp",
+      name: "ERP TOTVS",
+      description: "Sistema transacional de gestão (financeiro, fiscal, estoque).",
+    },
+    {
+      id: "sys-powerbi",
+      name: "Power BI",
+      description: "Plataforma de dashboards e relatórios analíticos.",
+    },
+    {
+      id: "sys-crm",
+      name: "HubSpot CRM",
+      description: "Gestão de leads, funil e atividades comerciais.",
+    },
+    {
+      id: "sys-ats",
+      name: "Gupy (ATS)",
+      description: "Recrutamento e seleção: publicação de vagas e triagem.",
+    },
     { id: "sys-jira", name: "Jira", description: "Gestão de demandas e projetos de TI." },
-    { id: "sys-workspace", name: "Google Workspace", description: "E-mail, colaboração e agenda corporativa." },
+    {
+      id: "sys-workspace",
+      name: "Google Workspace",
+      description: "E-mail, colaboração e agenda corporativa.",
+    },
   ],
 };
 
@@ -637,6 +683,7 @@ type Draft = {
   label: string;
   active: boolean;
   valueChainCategory: ValueChainCategory;
+  systemModality: SystemModality;
 };
 
 type RelatedCreateTarget = "valueChain" | "area" | "owner";
@@ -673,6 +720,7 @@ function emptyDraft(view: ProcessRegistrationView, data: RegistryData): Draft {
     label: "Processo",
     active: true,
     valueChainCategory: "primary",
+    systemModality: "Sistemas corporativos",
   };
 }
 
@@ -718,9 +766,9 @@ export function WorkspaceProcessRegistrations({
     process: Process;
     status: "Ativo" | "Arquivado";
   } | null>(null);
-  const [pendingDeleteRow, setPendingDeleteRow] = useState<ReturnType<typeof registryRows>[number] | null>(
-    null,
-  );
+  const [pendingDeleteRow, setPendingDeleteRow] = useState<
+    ReturnType<typeof registryRows>[number] | null
+  >(null);
 
   // O código do Processo (PR) depende da sigla da área selecionada no formulário.
   const processAreaSigla = areaSiglaByName(data.areas, draft.department);
@@ -745,18 +793,14 @@ export function WorkspaceProcessRegistrations({
   }, [view]);
   const displayRows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let result = q
-      ? rows.filter((row) => row.values.join(" ").toLowerCase().includes(q))
-      : rows;
+    let result = q ? rows.filter((row) => row.values.join(" ").toLowerCase().includes(q)) : rows;
     if (sortCol !== null) {
       const dir = sortDir === "asc" ? 1 : -1;
       result = [...result].sort(
         (a, b) =>
-          String(a.values[sortCol] ?? "").localeCompare(
-            String(b.values[sortCol] ?? ""),
-            "pt-BR",
-            { numeric: true },
-          ) * dir,
+          String(a.values[sortCol] ?? "").localeCompare(String(b.values[sortCol] ?? ""), "pt-BR", {
+            numeric: true,
+          }) * dir,
       );
     }
     return result;
@@ -835,6 +879,7 @@ export function WorkspaceProcessRegistrations({
             id: draft.id || undefined,
             organizationId,
             name: draft.name,
+            modality: draft.systemModality,
             description: draft.description || null,
           },
         });
@@ -906,7 +951,7 @@ export function WorkspaceProcessRegistrations({
                 ? "system"
                 : view === "positions"
                   ? "position"
-                : "owner";
+                  : "owner";
       await removeRegistration({ data: { organizationId, kind, id } });
     },
     onSuccess: async () => {
@@ -918,7 +963,13 @@ export function WorkspaceProcessRegistrations({
   });
 
   const processStatusMutation = useMutation({
-    mutationFn: async ({ process, status }: { process: Process; status: "Ativo" | "Arquivado" }) => {
+    mutationFn: async ({
+      process,
+      status,
+    }: {
+      process: Process;
+      status: "Ativo" | "Arquivado";
+    }) => {
       if (isDemo) {
         setDemoData((current) => ({
           ...current,
@@ -1040,9 +1091,7 @@ export function WorkspaceProcessRegistrations({
     setRelatedCreate((current) => {
       if (!current) return current;
       const nextDraft =
-        typeof update === "function"
-          ? (update as (draft: Draft) => Draft)(current.draft)
-          : update;
+        typeof update === "function" ? (update as (draft: Draft) => Draft)(current.draft) : update;
       return { ...current, draft: nextDraft };
     });
   }
@@ -1144,10 +1193,7 @@ export function WorkspaceProcessRegistrations({
                         <Pencil className="h-4 w-4" />
                       </IconButton>
                       {view !== "process-types" ? (
-                        <IconButton
-                          label="Excluir"
-                          onClick={() => setPendingDeleteRow(row)}
-                        >
+                        <IconButton label="Excluir" onClick={() => setPendingDeleteRow(row)}>
                           <Trash2 className="h-4 w-4" />
                         </IconButton>
                       ) : null}
@@ -1220,11 +1266,11 @@ export function WorkspaceProcessRegistrations({
                 codePreview={processCodePreview}
                 quickCreate={
                   view === "processes"
-                      ? {
-                          onCreateValueChain: (name) => openRelatedCreate("valueChain", name),
-                          onCreateArea: (name) => openRelatedCreate("area", name),
-                          onCreateOwner: (name) => openRelatedCreate("owner", name),
-                        }
+                    ? {
+                        onCreateValueChain: (name) => openRelatedCreate("valueChain", name),
+                        onCreateArea: (name) => openRelatedCreate("area", name),
+                        onCreateOwner: (name) => openRelatedCreate("owner", name),
+                      }
                     : undefined
                 }
               />
@@ -1243,8 +1289,7 @@ export function WorkspaceProcessRegistrations({
                 disabled={saveMutation.isPending || !isValidDraft(view, draft)}
                 className={primaryButtonClass}
               >
-                <Save className="h-4 w-4" />{" "}
-                {saveMutation.isPending ? "Salvando..." : "Salvar"}
+                <Save className="h-4 w-4" /> {saveMutation.isPending ? "Salvando..." : "Salvar"}
               </button>
             </footer>
           </form>
@@ -1439,7 +1484,10 @@ function RegistrationFields({
             onChange={(e) =>
               setDraft((d) => ({
                 ...d,
-                sigla: e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3),
+                sigla: e.target.value
+                  .replace(/[^A-Za-z]/g, "")
+                  .toUpperCase()
+                  .slice(0, 3),
               }))
             }
             maxLength={3}
@@ -1456,13 +1504,31 @@ function RegistrationFields({
   if (view === "systems")
     return (
       <>
-        <Field label="Sistema">
+        <Field label="Nome">
           <input
             value={draft.name}
             onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-            placeholder="Nome do sistema"
+            placeholder="Nome do sistema ou documento"
             className={inputClass}
           />
+        </Field>
+        <Field label="Classificação">
+          <select
+            value={draft.systemModality}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                systemModality: e.target.value as SystemModality,
+              }))
+            }
+            className={inputClass}
+          >
+            {SYSTEM_MODALITY_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Descrição">
           <textarea
@@ -1779,9 +1845,7 @@ function RegistrationFields({
             setDraft((d) => ({ ...d, department, departmentId: area?.id ?? d.departmentId }));
           }}
           onCreate={
-            quickCreate?.onCreateArea
-              ? (name) => quickCreate.onCreateArea?.(name)
-              : undefined
+            quickCreate?.onCreateArea ? (name) => quickCreate.onCreateArea?.(name) : undefined
           }
         />
         <SearchableCreateSelect
@@ -1794,9 +1858,7 @@ function RegistrationFields({
           createLabel="Cadastrar dono"
           onChange={(owner) => setDraft((d) => ({ ...d, owner }))}
           onCreate={
-            quickCreate?.onCreateOwner
-              ? (name) => quickCreate.onCreateOwner?.(name)
-              : undefined
+            quickCreate?.onCreateOwner ? (name) => quickCreate.onCreateOwner?.(name) : undefined
           }
         />
       </div>
@@ -1857,10 +1919,10 @@ function registryCopy(view: ProcessRegistrationView) {
     };
   if (view === "systems")
     return {
-      title: "Sistemas",
-      singular: "Sistema",
-      description: "Cadastre os sistemas da empresa para reutilizá-los nos mapeamentos.",
-      columns: ["Sistema", "Descrição"],
+      title: "Sistemas/Documentos",
+      singular: "Sistema/Documento",
+      description: "Cadastre sistemas e documentos para reutilizá-los nos mapeamentos.",
+      columns: ["Nome", "Classificação", "Descrição"],
       icon: <Database className="h-5 w-5" />,
     };
   if (view === "process-types")
@@ -1914,7 +1976,7 @@ function registryRows(view: ProcessRegistrationView, data: RegistryData) {
   if (view === "systems")
     return (data.systems ?? []).map((item) => ({
       id: item.id,
-      values: [item.name, item.description || "-"],
+      values: [item.name, item.modality || "Sistemas corporativos", item.description || "-"],
     }));
   if (view === "process-types")
     return data.types.map((item) => ({
@@ -1977,7 +2039,15 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
   }
   if (view === "systems") {
     const item = data.systems.find((row) => row.id === id);
-    return item ? { ...draft, id, name: item.name, description: item.description } : draft;
+    return item
+      ? {
+          ...draft,
+          id,
+          name: item.name,
+          systemModality: item.modality || "Sistemas corporativos",
+          description: item.description,
+        }
+      : draft;
   }
   if (view === "owners") {
     const item = data.owners.find((row) => row.id === id);
@@ -2042,7 +2112,9 @@ function saveDemoRegistration(
         processes:
           previous && previous.name !== draft.name
             ? current.processes.map((process) =>
-                process.department === previous.name ? { ...process, department: draft.name } : process,
+                process.department === previous.name
+                  ? { ...process, department: draft.name }
+                  : process,
               )
             : current.processes,
       };
@@ -2097,6 +2169,7 @@ function saveDemoRegistration(
         systems: upsert(current.systems, {
           id,
           name: draft.name.trim(),
+          modality: draft.systemModality,
           description: draft.description.trim(),
         }),
       };
@@ -2153,15 +2226,15 @@ function deleteDemoRegistration(
       ? { ...current, areas: current.areas.filter((item) => item.id !== id) }
       : view === "positions"
         ? { ...current, positions: current.positions.filter((item) => item.id !== id) }
-      : view === "owners"
-        ? { ...current, owners: current.owners.filter((item) => item.id !== id) }
-        : view === "owner-users"
-          ? { ...current, ownerUsers: current.ownerUsers.filter((item) => item.id !== id) }
-          : view === "systems"
-            ? { ...current, systems: current.systems.filter((item) => item.id !== id) }
-          : view === "value-chains"
-            ? { ...current, valueChains: current.valueChains.filter((item) => item.id !== id) }
-            : { ...current, processes: current.processes.filter((item) => item.id !== id) },
+        : view === "owners"
+          ? { ...current, owners: current.owners.filter((item) => item.id !== id) }
+          : view === "owner-users"
+            ? { ...current, ownerUsers: current.ownerUsers.filter((item) => item.id !== id) }
+            : view === "systems"
+              ? { ...current, systems: current.systems.filter((item) => item.id !== id) }
+              : view === "value-chains"
+                ? { ...current, valueChains: current.valueChains.filter((item) => item.id !== id) }
+                : { ...current, processes: current.processes.filter((item) => item.id !== id) },
   );
 }
 function upsert<T extends { id: string }>(rows: T[], row: T) {
@@ -2313,9 +2386,7 @@ function SearchableCreateSelect({
               </button>
             ))}
             {!visible.length ? (
-              <div className="px-2 py-2 text-sm text-muted-foreground">
-                Nenhum item encontrado.
-              </div>
+              <div className="px-2 py-2 text-sm text-muted-foreground">Nenhum item encontrado.</div>
             ) : null}
             {canCreate ? (
               <button
@@ -2513,9 +2584,7 @@ export function ProcessRegistrationDialog({
     setRelatedCreate((current) => {
       if (!current) return current;
       const nextDraft =
-        typeof update === "function"
-          ? (update as (draft: Draft) => Draft)(current.draft)
-          : update;
+        typeof update === "function" ? (update as (draft: Draft) => Draft)(current.draft) : update;
       return { ...current, draft: nextDraft };
     });
   }
@@ -2761,6 +2830,7 @@ export function SystemRegistrationDialog({
 }) {
   const saveSystem = useServerFn(saveSystemRegistration);
   const [name, setName] = useState(initialName);
+  const [modality, setModality] = useState<SystemModality>("Sistemas corporativos");
   const [description, setDescription] = useState("");
   const valid = name.trim().length >= 2;
 
@@ -2770,22 +2840,33 @@ export function SystemRegistrationDialog({
         return {
           id: `pending-system-${crypto.randomUUID()}`,
           name: name.trim(),
+          modality,
           description,
         };
       }
       if (isDemo) {
-        return { id: `demo-system-${Date.now()}`, name: name.trim(), description };
+        return { id: `demo-system-${Date.now()}`, name: name.trim(), modality, description };
       }
-      const row = await saveSystem({
-        data: { organizationId, name: name.trim(), description: description || null },
-      });
-      return { id: row.id, name: row.name, description: row.description ?? "" };
+      const row = (await saveSystem({
+        data: {
+          organizationId,
+          name: name.trim(),
+          modality,
+          description: description || null,
+        },
+      })) as unknown as SystemItem;
+      return {
+        id: row.id,
+        name: row.name,
+        modality: row.modality || modality,
+        description: row.description ?? "",
+      };
     },
     onSuccess: (system) => {
       toast.success(
         deferPersistence
-          ? "Sistema preparado. O cadastro será concluído ao salvar o mapeamento."
-          : "Sistema cadastrado.",
+          ? "Sistema/documento preparado. O cadastro será concluído ao salvar o mapeamento."
+          : "Sistema/documento cadastrado.",
       );
       onCreated(system);
     },
@@ -2800,7 +2881,7 @@ export function SystemRegistrationDialog({
     >
       <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-xl">
         <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
-          <h2 className="font-display text-lg font-bold">Novo sistema</h2>
+          <h2 className="font-display text-lg font-bold">Novo sistema/documento</h2>
           <button
             type="button"
             onClick={onClose}
@@ -2817,14 +2898,27 @@ export function SystemRegistrationDialog({
           }}
           className="grid gap-4 pt-4"
         >
-          <Field label="Sistema">
+          <Field label="Nome">
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nome do sistema"
+              placeholder="Nome do sistema ou documento"
               className={inputClass}
             />
+          </Field>
+          <Field label="Classificação">
+            <select
+              value={modality}
+              onChange={(event) => setModality(event.target.value as SystemModality)}
+              className={inputClass}
+            >
+              {SYSTEM_MODALITY_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Descrição">
             <textarea
@@ -2877,9 +2971,7 @@ function ProcessStatusSwitch({
       disabled={disabled}
       onClick={() => onRequest(process, active ? "Arquivado" : "Ativo")}
       className={`relative h-8 w-14 rounded-full border px-1 transition disabled:opacity-45 ${
-        active
-          ? "border-emerald-500/40 bg-emerald-500/15"
-          : "border-border bg-muted"
+        active ? "border-emerald-500/40 bg-emerald-500/15" : "border-border bg-muted"
       }`}
     >
       <span

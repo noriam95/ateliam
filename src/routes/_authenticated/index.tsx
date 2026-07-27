@@ -3229,13 +3229,13 @@ function getCatalogCopy(
 
   if (view === "systems") {
     return {
-      title: "Sistemas envolvidos",
-      text: "Cadastre sistemas para reutilizar nos mapeamentos e manter consistência entre processos.",
+      title: "Sistemas/Documentos",
+      text: "Cadastre sistemas e documentos para reutilizar nos mapeamentos e manter consistência entre processos.",
       metrics: [
         ...baseMetrics.slice(0, 2),
         {
           icon: <Database className="h-4 w-4" />,
-          label: "Sistemas",
+          label: "Sistemas/Documentos",
           value: 0,
           detail: "base local",
         },
@@ -3245,7 +3245,7 @@ function getCatalogCopy(
 
   return {
     title: "Catálogo de processos",
-    text: "Centralize macroprocessos, subprocessos, áreas, responsáveis, causas e sistemas.",
+    text: "Centralize macroprocessos, subprocessos, áreas, responsáveis, causas, sistemas e documentos.",
     metrics: baseMetrics,
   };
 }

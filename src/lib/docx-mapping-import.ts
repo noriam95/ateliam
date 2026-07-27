@@ -227,7 +227,7 @@ function detectSection(value: string): MappingSection {
   if (/^(dados do mapeamento|identificacao|informacoes do mapeamento)$/.test(text))
     return "metadata";
   if (/^(visao geral|objetivo escopo e contexto)$/.test(text)) return "overview";
-  if (/^sistemas envolvidos$/.test(text)) return "systems";
+  if (/^sistemas(?:\/documentos)? envolvidos$/.test(text)) return "systems";
   if (/^(analise )?sipoc( do processo)?$/.test(text)) return "sipoc";
   if (/^(etapas do processo|fluxo as is|fluxo to be)$/.test(text)) return "steps";
   if (/^(gaps? e causas? raiz|causas? raiz e planos? de acao)$/.test(text)) return "gaps";

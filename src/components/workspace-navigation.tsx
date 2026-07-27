@@ -260,7 +260,7 @@ const MODULES_TREE_REGISTRATIONS: Array<{
   { view: "positions", label: "Cargos", icon: <BriefcaseBusiness className="h-4 w-4" /> },
   { view: "owners", label: "Donos de Processo", icon: <Users className="h-4 w-4" /> },
   { view: "owner-users", label: "Vínculo Dono x Usuário", icon: <Link2 className="h-4 w-4" /> },
-  { view: "systems", label: "Sistemas", icon: <Database className="h-4 w-4" /> },
+  { view: "systems", label: "Sistemas/Documentos", icon: <Database className="h-4 w-4" /> },
   {
     view: "process-types",
     label: "Categorias de Processo",
@@ -281,14 +281,16 @@ export function WorkspaceModulesTree({
 }) {
   const branchIsActive = (moduleId: ModulesTreeModuleId) =>
     isActive({ kind: "module-root", moduleId }) ||
-    (["new", "consult", ...(moduleId === "ddp" ? ["cause-new", "cause-consult"] : [])] as ModulesTreeTask[]).some(
-      (task) => isActive({ kind: "module-task", moduleId, task }),
-    );
+    (
+      [
+        "new",
+        "consult",
+        ...(moduleId === "ddp" ? ["cause-new", "cause-consult"] : []),
+      ] as ModulesTreeTask[]
+    ).some((task) => isActive({ kind: "module-task", moduleId, task }));
   const registrationsAreActive =
     isActive({ kind: "registrations-root" }) ||
-    MODULES_TREE_REGISTRATIONS.some((item) =>
-      isActive({ kind: "registration", view: item.view }),
-    );
+    MODULES_TREE_REGISTRATIONS.some((item) => isActive({ kind: "registration", view: item.view }));
 
   return (
     <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">

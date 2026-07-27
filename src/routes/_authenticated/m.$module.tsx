@@ -263,6 +263,22 @@ type ModuleSettingsView = "theme";
 type TextItem = { id: string; text: string };
 type NextStepItem = TextItem & { responsavel?: string; prazo?: string };
 type ModuleImage = { id: string; titulo: string; legenda: string; src: string };
+type SystemModality =
+  | "Sistemas corporativos"
+  | "Ferramentas auxiliares"
+  | "Documentos e comunicações"
+  | "Fontes externas";
+const SYSTEM_MODALITY_OPTIONS: SystemModality[] = [
+  "Sistemas corporativos",
+  "Ferramentas auxiliares",
+  "Documentos e comunicações",
+  "Fontes externas",
+];
+function normalizeSystemModality(value?: string | null): SystemModality {
+  if (SYSTEM_MODALITY_OPTIONS.includes(value as SystemModality)) return value as SystemModality;
+  if (value === "Documento") return "Documentos e comunicações";
+  return "Sistemas corporativos";
+}
 type DdpSystem = {
   id: string;
   systemId?: string;
@@ -294,6 +310,7 @@ type DdpFlowSubstep = {
   codigo: string;
   titulo: string;
   descricao: string;
+  systemIds: string[];
   images: ModuleImage[];
 };
 type SipocRow = {
@@ -1910,6 +1927,9 @@ function normalizeImages(values: unknown[] | undefined, prefix: string) {
 function normalizeDdpSubsteps(values: unknown[] | undefined) {
   return (values ?? []).map((value, index) => {
     const row = asObject(value);
+    const systemValues = arrayAt(row, "systemIds").length
+      ? arrayAt(row, "systemIds")
+      : arrayAt(row, "systems");
     return {
       id: textAt(row, "id") || id("substep"),
       processId: textAt(row, "processId"),
@@ -1917,6 +1937,9 @@ function normalizeDdpSubsteps(values: unknown[] | undefined) {
       codigo: textAt(row, "codigo") || String(index + 1).padStart(2, "0"),
       titulo: textAt(row, "titulo") || textAt(row, "title") || `Subetapa ${index + 1}`,
       descricao: textAt(row, "descricao") || textAt(row, "desc") || textAt(row, "text"),
+      systemIds: systemValues
+        .map((item) => (typeof item === "string" ? item : textAt(asObject(item), "id")))
+        .filter(Boolean),
       images: normalizeImages(
         arrayAt(row, "images").length ? arrayAt(row, "images") : arrayAt(row, "imagens"),
         "subimg",
@@ -1939,7 +1962,7 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
         id: legacy.id || id("sys"),
         systemId: legacy.systemId || legacy.system_id || "",
         nome: legacy.nome || legacy.name || legacy.text || "",
-        tipo: legacy.tipo || "",
+        tipo: normalizeSystemModality(legacy.tipo),
         dono: legacy.dono || "",
         criticidade: legacy.criticidade || "Média",
         descricao: legacy.descricao || "",
@@ -2775,7 +2798,14 @@ function html(value: unknown) {
 
 type ExportImage = { title: string; caption: string; src: string };
 type ExportCard = { title: string; text: string };
-type ExportSystem = { name: string; type: string; description: string; items: string[] };
+type ExportSystem = {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  items: string[];
+};
+type ExportSubstepSystem = { name: string; type: string };
 type ExportFlowStep = {
   title: string;
   description: string;
@@ -2783,7 +2813,13 @@ type ExportFlowStep = {
   system: string;
   risk: string;
   images: ExportImage[];
-  substeps: Array<{ code: string; title: string; description: string; images: ExportImage[] }>;
+  substeps: Array<{
+    code: string;
+    title: string;
+    description: string;
+    systems: ExportSubstepSystem[];
+    images: ExportImage[];
+  }>;
 };
 type ExportGap = {
   title: string;
@@ -2910,7 +2946,12 @@ type OrganizationValueChain = {
   status: string;
   organization_id?: string;
 };
-type OrganizationSystem = { id: string; name: string; description: string };
+type OrganizationSystem = {
+  id: string;
+  name: string;
+  modality?: SystemModality;
+  description: string;
+};
 type OrganizationPosition = { id: string; title: string; description: string | null };
 type OrganizationCatalogs = {
   departments: OrganizationCatalogItem[];
@@ -2997,8 +3038,9 @@ function getDdpExportModel(data: DdpState) {
   ].filter((item) => item.text);
 
   const systems: ExportSystem[] = data.systems.map((system) => ({
+    id: system.id,
     name: system.nome,
-    type: system.tipo,
+    type: normalizeSystemModality(system.tipo),
     description: system.descricao,
     items: [],
   }));
@@ -3019,6 +3061,16 @@ function getDdpExportModel(data: DdpState) {
           code: substep.codigo,
           title: substep.titulo,
           description: substep.descricao,
+          systems: data.systems
+            .filter(
+              (system) =>
+                substep.systemIds.includes(system.id) ||
+                (!!system.systemId && substep.systemIds.includes(system.systemId)),
+            )
+            .map((system) => ({
+              name: system.nome,
+              type: normalizeSystemModality(system.tipo),
+            })),
           images: substep.images.map((image) => ({
             title: image.titulo,
             caption: image.legenda,
@@ -3419,7 +3471,7 @@ function buildDdpImportTemplate(data: DdpState) {
     {
       name: "Sistemas",
       rows: [
-        ["nome", "tipo", "dono", "criticidade", "descricao"],
+        ["nome", "classificacao", "dono", "criticidade", "descricao"],
         ...data.systems.map((item) => [
           item.nome,
           item.tipo,
@@ -3464,13 +3516,21 @@ function buildDdpImportTemplate(data: DdpState) {
     {
       name: "Subetapas Fluxo",
       rows: [
-        ["etapa", "codigo", "titulo", "descricao"],
+        ["etapa", "codigo", "titulo", "descricao", "sistemas_documentos"],
         ...data.steps.flatMap((step, index) =>
           step.substeps.map((substep) => [
             String(index + 1),
             substep.codigo,
             substep.titulo,
             substep.descricao,
+            data.systems
+              .filter(
+                (system) =>
+                  substep.systemIds.includes(system.id) ||
+                  (!!system.systemId && substep.systemIds.includes(system.systemId)),
+              )
+              .map((system) => system.nome)
+              .join("; "),
           ]),
         ),
       ],
@@ -3787,7 +3847,7 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
   const systems = rowObjects(sheetRows(sheets, "Sistemas")).map((row, index) => ({
     id: current.systems[index]?.id || id("sys"),
     nome: rowValue(row, "nome"),
-    tipo: rowValue(row, "tipo"),
+    tipo: normalizeSystemModality(rowValue(row, "classificacao") || rowValue(row, "tipo")),
     dono: rowValue(row, "dono"),
     criticidade: rowValue(row, "criticidade", "Média"),
     descricao: rowValue(row, "descricao"),
@@ -3817,6 +3877,12 @@ function importDdpTextWorkbook(sheets: Map<string, string[][]>, current: DdpStat
         codigo: rowValue(substep, "codigo") || `${index + 1}.${subIndex + 1}`,
         titulo: rowValue(substep, "titulo"),
         descricao: rowValue(substep, "descricao"),
+        systemIds: rowValue(substep, "sistemas_documentos")
+          .split(";")
+          .map((name) => normalizeLabel(name))
+          .filter(Boolean)
+          .map((name) => systems.find((system) => normalizeLabel(system.nome) === name)?.id)
+          .filter((systemId): systemId is string => Boolean(systemId)),
         images: current.steps[index]?.substeps[subIndex]?.images ?? [],
       })),
   }));
@@ -4411,7 +4477,7 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
   [
     ["00", "Dados do Mapeamento"],
     ["01", "Visão Geral"],
-    ["02", "Sistemas Envolvidos"],
+    ["02", "Sistemas/Documentos Envolvidos"],
     ["03", "Análise SIPOC"],
     ["04", "Etapas do Processo"],
     ["05", "Gaps e Causas-Raiz"],
@@ -4427,21 +4493,26 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
     parts.push(doc.p(card.text, { align: "both", line: 1.05 }));
   });
 
-  parts.push(doc.sectionTitle("02 Sistemas Envolvidos"));
+  parts.push(doc.sectionTitle("02 Sistemas/Documentos Envolvidos"));
   parts.push(
     model.systems.length
       ? doc.table(
           [
-            [doc.headerCell("Sistema"), doc.headerCell("Descrição / uso no processo")],
+            [
+              doc.headerCell("Classificação"),
+              doc.headerCell("Sistema/Documento"),
+              doc.headerCell("Descrição / uso no processo"),
+            ],
             ...model.systems.map((system) => [
+              doc.bodyCell(system.type),
               doc.bodyCell(system.name),
               doc.bodyCell(system.items.join("; ") || system.description),
             ]),
           ],
-          [3000, 7306],
+          [1700, 2700, 5906],
           { full: true },
         )
-      : doc.p("Nenhum sistema cadastrado."),
+      : doc.p("Nenhum sistema ou documento cadastrado."),
   );
 
   parts.push(doc.sectionTitle("03 Análise SIPOC do Processo"));
@@ -4515,14 +4586,23 @@ function buildDdpDocx(data: DdpState, brand?: OrganizationBrand) {
       parts.push(
         doc.table(
           [
-            [doc.headerCell("ID"), doc.headerCell("Atividade"), doc.headerCell("Descrição")],
+            [
+              doc.headerCell("ID"),
+              doc.headerCell("Atividade"),
+              doc.headerCell("Descrição"),
+              doc.headerCell("Sistemas/Documentos"),
+            ],
             ...step.substeps.map((substep) => [
               doc.bodyCell(substep.code),
               doc.bodyCell(substep.title),
               doc.bodyCell(substep.description),
+              doc.bodyCell(
+                substep.systems.map((system) => `${system.name} (${system.type})`).join("; ") ||
+                  "-",
+              ),
             ]),
           ],
-          [1000, 3100, 6206],
+          [800, 2400, 4300, 2806],
           { full: true },
         ),
       );
@@ -5271,7 +5351,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
   const nav = [
     ["capa", "00 Capa"],
     ["visao", "01 Visão geral"],
-    ["sistemas", "02 Sistemas envolvidos"],
+    ["sistemas", "02 Sistemas/Documentos envolvidos"],
     ["sipoc", "03 SIPOC"],
     ["fluxo", "04 Etapas do processo"],
     ["gaps", "05 Gaps e causas-raiz"],
@@ -5343,7 +5423,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
               2,
               "0",
             )}</div><h3>${html(system.name || "Sistema")}</h3>${
-              system.type ? `<p class="muted-line">${html(system.type)}</p>` : ""
+              system.type ? `<span class="type-tag">${html(system.type)}</span>` : ""
             }${system.description ? `<p>${html(system.description)}</p>` : ""}${
               system.items?.length
                 ? `<ul>${system.items.map((item) => `<li>${html(item)}</li>`).join("")}</ul>`
@@ -5351,7 +5431,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
             }</article>`,
         )
         .join("")
-    : emptyBlock("Nenhum sistema informado.");
+    : emptyBlock("Nenhum sistema ou documento informado.");
 
   const flowSteps = model.flowSteps.length
     ? model.flowSteps
@@ -5375,7 +5455,16 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
                 (substep) =>
                   `<details class="substep"><summary><h4>${html(
                     joinClean([substep.code, substep.title], " - ") || "Subetapa",
-                  )}</h4></summary><div class="substep-body">${substep.description ? `<p>${html(substep.description)}</p>` : ""}${substep.images
+                  )}</h4></summary><div class="substep-body">${
+                    substep.systems.length
+                      ? `<div class="tag-list">${substep.systems
+                          .map(
+                            (system) =>
+                              `<span class="type-tag">${html(system.name)} · ${html(system.type)}</span>`,
+                          )
+                          .join("")}</div>`
+                      : ""
+                  }${substep.description ? `<p>${html(substep.description)}</p>` : ""}${substep.images
                     .map(zoomImage)
                     .join("")}</div></details>`,
               )
@@ -5458,6 +5547,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
 .cover-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:44px;align-items:end;max-width:1180px}.cover h1{margin-top:18px}.cover-code{min-width:190px;border-left:4px solid #ffd47a;padding:0 0 3px 18px}.cover-code span{display:block;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase}.cover-code strong{display:block;margin-top:10px;color:#fff;font-size:28px;letter-spacing:.08em}.cover-context{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:1px;max-width:1180px;margin-top:52px;border-top:1px solid rgba(255,255,255,.24);border-bottom:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.18)}.cover-line{display:grid;gap:10px;margin:0;padding:22px 24px;background:rgba(0,0,0,.16)}.cover-line dt{color:#ffd47a;font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}.cover-line dd{margin:0;color:#fff;font-size:18px;font-weight:800;line-height:1.25}.cover-line small{display:block;margin-top:7px;color:rgba(255,255,255,.7);font-size:13px;font-weight:650;line-height:1.35}.cover-meta{margin-top:28px;display:flex;flex-wrap:wrap;gap:10px;max-width:1180px}.cover-meta .field{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);border-radius:999px;padding:9px 13px;box-shadow:none}.cover-meta .field span{display:inline;color:rgba(255,255,255,.62);margin-right:7px}.cover-meta .field strong{display:inline;color:#fff;font-size:13px}.overview-icon{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 18%,transparent),color-mix(in srgb,var(--gold) 15%,transparent));border:1px solid color-mix(in srgb,var(--accent) 28%,transparent)}.overview-icon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.presentation-controls{margin-top:auto;display:grid;grid-template-columns:1fr 40px;gap:8px;align-items:center}.presentation-controls .theme-toggle{margin-top:0}.fullscreen-button{display:grid;height:40px;width:40px;place-items:center;border:1px solid rgba(255,255,255,.28);border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);cursor:pointer}.fullscreen-button:hover{border-color:rgba(255,255,255,.48);background:rgba(255,255,255,.14);color:#fff}.fullscreen-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}[data-theme="dark"]{--bg:#101418;--surface:#171c22;--surface-2:#1d232a;--text:#f7f9fb;--muted:#c8d0da;--line:#3f4853;--shadow:0 20px 80px rgba(0,0,0,.58);--accent-strong:color-mix(in srgb,var(--accent) 28%,#f4f8fb)}[data-theme="dark"] body{background:linear-gradient(180deg,#101418,#14191f);color:var(--text)}[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#111820,#0b0f13);border-right:1px solid #303943;box-shadow:inset -1px 0 rgba(255,255,255,.04)}[data-theme="dark"] .brand-logo{filter:drop-shadow(0 2px 10px rgba(0,0,0,.35))}[data-theme="dark"] .doc-code{border-color:#66717d;background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.07));box-shadow:inset 0 1px rgba(255,255,255,.08)}[data-theme="dark"] .doc-code span,[data-theme="dark"] .cover-meta span{color:#d3dbe4;opacity:1}[data-theme="dark"] .doc-code strong,[data-theme="dark"] .nav a{color:#fff}[data-theme="dark"] .nav a{opacity:.95}[data-theme="dark"] .nav a:hover{background:rgba(255,255,255,.14)}[data-theme="dark"] .theme-toggle{border-color:#55606b;background:#06090c}[data-theme="dark"] .theme-toggle button{color:#dce3eb}[data-theme="dark"] .theme-toggle button.active{background:#f5f7fa;color:#111820}[data-theme="dark"] .slide{background:#151a20}[data-theme="dark"] .slide.alt{background:#11161b}[data-theme="dark"] .section-head>span{background:rgba(212,154,33,.16);color:#f2bc4b;border:1px solid rgba(242,188,75,.3)}[data-theme="dark"] .section-head p,[data-theme="dark"] .kicker{color:#f2bc4b}[data-theme="dark"] .section-head small{color:#cfd7df}[data-theme="dark"] .text-panel,[data-theme="dark"] .list-card,[data-theme="dark"] .flow-card,[data-theme="dark"] .glossary-card{background:#1b2128;border-color:#46505b}[data-theme="dark"] .field{background:#1a2027;border-color:#46505b}[data-theme="dark"] .text-panel h3,[data-theme="dark"] .list-card h3,[data-theme="dark"] .flow-card h3,[data-theme="dark"] .glossary-card h3,[data-theme="dark"] .diagram h3,[data-theme="dark"] .gap-table td:first-child{color:#f2bc4b}[data-theme="dark"] .text-panel p,[data-theme="dark"] .list-card p,[data-theme="dark"] .flow-card p,[data-theme="dark"] .glossary-card p,[data-theme="dark"] .diagram p,[data-theme="dark"] .list-card ul{color:#d5dce4}[data-theme="dark"] .table-wrap{background:#171d24;border-color:#505a66;box-shadow:0 16px 50px rgba(0,0,0,.35)}[data-theme="dark"] th{background:#232b34;color:#dfe6ee;border-color:#505a66}[data-theme="dark"] td{border-color:#404a55;color:#eef2f6}[data-theme="dark"] tr:hover td{background:rgba(242,188,75,.06)}[data-theme="dark"] .empty{background:#1b2128;border-color:#505a66;color:#d4dbe3}@media(max-width:980px){.cover-hero{grid-template-columns:1fr;gap:24px}.cover-context{grid-template-columns:1fr}.presentation-controls{grid-template-columns:1fr 40px}}
 </style>
 <style>
+.type-tag{display:inline-flex;width:max-content;align-items:center;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-strong);padding:4px 9px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}
 .flow-details{display:block;min-width:0}.flow-details>summary,.substep>summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;border-radius:12px}.flow-details>summary::-webkit-details-marker,.substep>summary::-webkit-details-marker{display:none}.flow-details>summary:before,.substep>summary:before{content:"";width:9px;height:9px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:.18s ease}.flow-details:not([open])>summary:before,.substep:not([open])>summary:before{transform:rotate(-45deg)}.flow-details>summary{margin-bottom:10px;padding:4px 2px}.flow-details>summary h3{margin:0}.substep>summary{padding:2px 0}.substep>summary h4{margin:0;color:var(--text)}.substep-body{padding-top:8px}.zoom-modal{overflow:hidden}.zoom-modal img{transition:transform .16s ease;transform:scale(var(--zoom-scale,1));transform-origin:center center}.zoom-help{position:fixed;left:28px;bottom:24px;color:rgba(255,255,255,.74);font-size:12px}.zoom-map{position:fixed;right:28px;bottom:24px;width:190px;height:126px;border:1px solid rgba(255,255,255,.32);border-radius:12px;background:rgba(255,255,255,.08);padding:8px;display:none;overflow:hidden}.zoom-modal.open .zoom-map{display:block}.zoom-map img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;transform:none;box-shadow:none;cursor:default}.zoom-map span{position:absolute;border:2px solid #d49a21;border-radius:8px;background:rgba(212,154,33,.14);box-shadow:0 0 0 999px rgba(0,0,0,.18);pointer-events:none;transition:inset .16s ease,left .16s ease,top .16s ease,width .16s ease,height .16s ease}
 </style>
 </head>
@@ -5493,7 +5583,7 @@ function buildDdpPresentationHtml(data: DdpState, brand?: OrganizationBrand) {
       textPanel("Oportunidades", data.overview.oportunidades),
     ].join("") || emptyBlock()
   }</div></section>
-<section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas envolvidos", "Sistemas, ferramentas e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
+<section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas/Documentos envolvidos", "Sistemas, documentos e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
 <section class="slide" id="sipoc">${sectionHead("03", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
 <section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
 <section class="slide" id="gaps">${sectionHead("05", "Gaps e causas-raiz", "Causas, impactos e planos de ação relacionados.")}${gapTable}</section>
@@ -5709,7 +5799,7 @@ function ModuleWorkspacePage() {
         processOwners: catalogsQ.data?.processOwners ?? [],
         positions:
           (catalogsQ.data as { positions?: OrganizationPosition[] } | undefined)?.positions ?? [],
-        causes: catalogsQ.data?.causes ?? [],
+        causes: (catalogsQ.data?.causes ?? []) as unknown as OrganizationCause[],
         processes: catalogsQ.data?.processes ?? [],
         valueChains: catalogsQ.data?.valueChains ?? [],
         systems: (catalogsQ.data as { systems?: OrganizationSystem[] } | undefined)?.systems ?? [],
@@ -6223,19 +6313,21 @@ function ModuleWorkspacePage() {
         continue;
       }
 
-      const saved = isDemo
+      const saved: OrganizationSystem = isDemo
         ? {
             id: `demo-system-${crypto.randomUUID()}`,
             name: system.nome.trim(),
+            modality: normalizeSystemModality(system.tipo),
             description: system.descricao.trim(),
           }
         : ((await saveSuggestedSystem({
             data: {
               organizationId: codeOrganizationId,
               name: system.nome.trim(),
+              modality: normalizeSystemModality(system.tipo),
               description: system.descricao.trim() || null,
             },
-          })) as OrganizationSystem);
+          })) as unknown as OrganizationSystem);
 
       resolvedByName.set(normalizedName, saved);
       replacements.set(system.id, saved);
@@ -6252,6 +6344,7 @@ function ModuleWorkspacePage() {
                 ...system,
                 systemId: resolved.id,
                 nome: resolved.name,
+                tipo: normalizeSystemModality(resolved.modality),
                 descricao: system.descricao || resolved.description || "",
               }
             : system;
@@ -10631,7 +10724,12 @@ function DdpModule({
       pct: sectionProgress.identification,
     },
     { key: "overview", num: "01", title: "Visão geral", pct: sectionProgress.overview },
-    { key: "systems", num: "02", title: "Sistemas envolvidos", pct: sectionProgress.systems },
+    {
+      key: "systems",
+      num: "02",
+      title: "Sistemas/Documentos envolvidos",
+      pct: sectionProgress.systems,
+    },
     { key: "sipoc", num: "03", title: "Análise SIPOC", pct: sectionProgress.sipoc },
     { key: "flowStage", num: "04", title: "Etapas do processo", pct: sectionProgress.flowStage },
     { key: "gaps", num: "05", title: "Gaps e causas-raiz", pct: sectionProgress.gaps },
@@ -10947,6 +11045,7 @@ function DdpModule({
           codigo: `1.${substepIndex + 1}`,
           titulo: substep.title,
           descricao: substep.description,
+          systemIds: [],
           images: substep.images.map(mappingImage),
         })),
       };
@@ -10959,7 +11058,7 @@ function DdpModule({
         id: id("sys"),
         systemId: catalogSystem?.id ?? "",
         nome: catalogSystem?.name ?? system.name,
-        tipo: "",
+        tipo: normalizeSystemModality(catalogSystem?.modality),
         dono: "",
         criticidade: "Média",
         descricao: system.description || catalogSystem?.description || "",
@@ -11121,6 +11220,7 @@ function DdpModule({
                       ...item,
                       systemId: system.id,
                       nome: system.name,
+                      tipo: normalizeSystemModality(system.modality),
                       descricao: item.descricao || system.description || "",
                     }
                   : item,
@@ -11194,7 +11294,7 @@ function DdpModule({
                     value={mappingAssistantText}
                     onChange={(event) => setMappingAssistantText(event.target.value)}
                     placeholder={
-                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n05 Gaps e causas-raiz\nGap: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n06 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n07 Glossário\nSLA | Acordo de nível de serviço"
+                      "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\n1 - Receber demanda\nResponsável: Analista\nAtividade: Registrar e qualificar a solicitação\n1.1 - Validar informações\nDescrição: Conferir os dados obrigatórios\n\n05 Gaps e causas-raiz\nGap: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n06 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n07 Glossário\nSLA | Acordo de nível de serviço"
                     }
                     className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
                   />
@@ -11613,7 +11713,7 @@ function DdpModule({
               id="sec-systems"
               num="03"
               openSignal={openTarget === "systems" ? openNonce : 0}
-              title="Sistemas envolvidos"
+              title="Sistemas/Documentos envolvidos"
               progress={sectionProgress.systems}
             >
               <div className="grid gap-3">
@@ -11623,11 +11723,11 @@ function DdpModule({
                     className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 lg:grid-cols-[1fr_auto]"
                   >
                     <RegisteredSystemSelect
-                      label="Sistema"
+                      label="Sistema/Documento"
                       value={system.systemId ?? ""}
                       displayValue={system.nome}
                       systems={catalogs.systems}
-                      placeholder="Buscar sistema cadastrado..."
+                      placeholder="Buscar sistema ou documento cadastrado..."
                       onSelect={(selectedSystem) =>
                         update({
                           ...data,
@@ -11637,6 +11737,7 @@ function DdpModule({
                                   ...item,
                                   systemId: selectedSystem?.id ?? "",
                                   nome: selectedSystem?.name ?? "",
+                                  tipo: normalizeSystemModality(selectedSystem?.modality),
                                   descricao: item.descricao || selectedSystem?.description || "",
                                 }
                               : item,
@@ -11658,6 +11759,11 @@ function DdpModule({
                     >
                       <Trash2 className="h-4 w-4" />
                     </IconButton>
+                    {system.nome ? (
+                      <span className="w-fit rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground lg:col-span-2">
+                        {normalizeSystemModality(system.tipo)}
+                      </span>
+                    ) : null}
                     <div className="lg:col-span-2">
                       <TextArea
                         label="Descrição / uso no processo"
@@ -11683,7 +11789,7 @@ function DdpModule({
                         {
                           id: id("sys"),
                           nome: "",
-                          tipo: "",
+                          tipo: "Sistemas corporativos",
                           dono: "",
                           criticidade: "Média",
                           descricao: "",
@@ -11694,7 +11800,7 @@ function DdpModule({
                   className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
-                  Adicionar sistema
+                  Adicionar sistema/documento
                 </button>
               </div>
             </Panel>
@@ -11989,6 +12095,63 @@ function DdpModule({
                                             updateSubstep(step.id, substep.id, { descricao })
                                           }
                                         />
+                                        <div className="mt-3 grid gap-2 rounded-lg border border-border bg-background p-3">
+                                          <span className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground">
+                                            Sistemas/Documentos utilizados
+                                          </span>
+                                          {data.systems.some((system) => system.nome.trim()) ? (
+                                            <div className="flex flex-wrap gap-2">
+                                              {data.systems
+                                                .filter((system) => system.nome.trim())
+                                                .map((system) => {
+                                                  const checked =
+                                                    substep.systemIds.includes(system.id) ||
+                                                    (!!system.systemId &&
+                                                      substep.systemIds.includes(system.systemId));
+                                                  return (
+                                                    <label
+                                                      key={system.id}
+                                                      className={[
+                                                        "inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition",
+                                                        checked
+                                                          ? "border-[var(--gold)] bg-[color-mix(in_oklab,var(--gold)_10%,transparent)] text-foreground"
+                                                          : "border-border bg-card text-muted-foreground hover:bg-muted",
+                                                      ].join(" ")}
+                                                    >
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(event) => {
+                                                          const nextIds = event.target.checked
+                                                            ? [...substep.systemIds, system.id]
+                                                            : substep.systemIds.filter(
+                                                                (item) =>
+                                                                  item !== system.id &&
+                                                                  item !== system.systemId,
+                                                              );
+                                                          updateSubstep(step.id, substep.id, {
+                                                            systemIds: Array.from(new Set(nextIds)),
+                                                          });
+                                                        }}
+                                                        className="h-4 w-4 accent-[var(--gold)]"
+                                                      />
+                                                      <span className="font-semibold">
+                                                        {system.nome}
+                                                      </span>
+                                                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                                        {normalizeSystemModality(system.tipo)}
+                                                      </span>
+                                                    </label>
+                                                  );
+                                                })}
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-muted-foreground">
+                                              Adicione primeiro os sistemas ou documentos na seção
+                                              02.
+                                            </p>
+                                          )}
+                                        </div>
                                         <div className="mt-3">
                                           <ImageManager
                                             label="Imagens da subetapa"
@@ -12015,6 +12178,7 @@ function DdpModule({
                                           codigo: `${index + 1}.${step.substeps.length + 1}`,
                                           titulo: "Nova subetapa",
                                           descricao: "",
+                                          systemIds: [],
                                           images: [],
                                         },
                                       ],
@@ -18848,14 +19012,14 @@ function RegisteredProcessSelect({
 }
 
 // Mesma lógica de busca + cadastro rápido do RegisteredProcessSelect, aplicada
-// ao catálogo de sistemas (Cadastros → Sistemas).
+// ao catálogo de sistemas e documentos (Cadastros → Sistemas/Documentos).
 function RegisteredSystemSelect({
   label,
   value,
   displayValue = "",
   systems,
   onSelect,
-  placeholder = "Buscar sistema cadastrado...",
+  placeholder = "Buscar sistema ou documento cadastrado...",
   onRequestCreate,
 }: {
   label: string;
@@ -18881,7 +19045,9 @@ function RegisteredSystemSelect({
     if (!normalizedQuery) return systems.slice(0, 12);
     return systems
       .filter((system) =>
-        normalizeLabel([system.name, system.description].join(" ")).includes(normalizedQuery),
+        normalizeLabel([system.name, system.modality, system.description].join(" ")).includes(
+          normalizedQuery,
+        ),
       )
       .slice(0, 12);
   }, [normalizedQuery, systems]);
@@ -18980,7 +19146,12 @@ function RegisteredSystemSelect({
                 }}
                 className={`grid min-h-11 w-full gap-1 rounded-md border border-transparent px-3 py-2.5 text-left text-sm hover:border-border hover:bg-muted ${activeIndex === index ? "bg-muted" : ""}`}
               >
-                <span className="truncate font-semibold text-foreground">{system.name}</span>
+                <span className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="truncate font-semibold text-foreground">{system.name}</span>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    {normalizeSystemModality(system.modality)}
+                  </span>
+                </span>
                 {system.description ? (
                   <span className="truncate text-xs text-muted-foreground">
                     {system.description}
@@ -18990,7 +19161,7 @@ function RegisteredSystemSelect({
             ))
           ) : (
             <div className="px-3 py-2 text-sm text-muted-foreground">
-              Nenhum sistema encontrado.
+              Nenhum sistema ou documento encontrado.
             </div>
           )}
           {canRequestCreate ? (
@@ -19004,7 +19175,7 @@ function RegisteredSystemSelect({
               className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-muted"
             >
               <Plus className="h-4 w-4" />
-              Cadastrar novo sistema{query.trim() ? ` "${query.trim()}"` : ""}
+              Cadastrar novo sistema/documento{query.trim() ? ` "${query.trim()}"` : ""}
             </button>
           ) : null}
         </div>

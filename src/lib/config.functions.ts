@@ -133,10 +133,7 @@ const moduleDocumentSchema = z.object({
   primaryProcessVersion: z.number().int().positive().optional().nullable(),
 });
 
-function uppercaseModuleDocumentContent(
-  content: string,
-  moduleId: "ddp" | "pop" | "bpmn",
-) {
+function uppercaseModuleDocumentContent(content: string, moduleId: "ddp" | "pop" | "bpmn") {
   try {
     const parsed = JSON.parse(content) as Record<string, unknown>;
     const uppercase = (value: unknown) =>
@@ -187,6 +184,14 @@ const valueChainSchema = organizationScopeSchema.extend({
 const systemRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(2).max(180),
+  modality: z
+    .enum([
+      "Sistemas corporativos",
+      "Ferramentas auxiliares",
+      "Documentos e comunicações",
+      "Fontes externas",
+    ])
+    .default("Sistemas corporativos"),
   description: z.string().trim().max(2000).optional().nullable(),
 });
 const positionRegistrationSchema = organizationScopeSchema.extend({
@@ -196,8 +201,10 @@ const positionRegistrationSchema = organizationScopeSchema.extend({
 });
 
 function isMissingExtendedCauseColumn(message: string) {
-  return /organization_causes|status|responsible|process_id|due_date|comments/i.test(message) &&
-    /column|schema cache|could not find/i.test(message);
+  return (
+    /organization_causes|status|responsible|process_id|due_date|comments/i.test(message) &&
+    /column|schema cache|could not find/i.test(message)
+  );
 }
 const ownerRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
@@ -339,7 +346,10 @@ export const listOrganizations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const access = await permissionContext(context);
-    let query = context.supabase.from("organizations").select("*").order("name", { ascending: true });
+    let query = context.supabase
+      .from("organizations")
+      .select("*")
+      .order("name", { ascending: true });
     if (!access.isAdmin) query = query.eq("id", access.organizationId);
     const { data, error } = await query;
     if (error) throw new Error(error.message);
@@ -447,7 +457,14 @@ export const updateOrganization = createServerFn({ method: "POST" })
   });
 
 const ORGANIZATION_LINKED_RECORD_CHECKS: Array<{
-  table: "organization_departments" | "organization_process_owners" | "organization_value_chains" | "organization_causes" | "organization_processes" | "documents" | "profiles";
+  table:
+    | "organization_departments"
+    | "organization_process_owners"
+    | "organization_value_chains"
+    | "organization_causes"
+    | "organization_processes"
+    | "documents"
+    | "profiles";
   label: string;
 }> = [
   { table: "organization_departments", label: "áreas" },
@@ -603,10 +620,21 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
         .order("name", { ascending: true }),
       (context.supabase as any)
         .from("organization_systems")
-        .select("id, name, description, organization_id, created_at, updated_at")
+        .select("*")
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }) as Promise<{
-        data: { id: string; name: string; description: string | null }[] | null;
+        data:
+          | {
+              id: string;
+              name: string;
+              modality?:
+                | "Sistemas corporativos"
+                | "Ferramentas auxiliares"
+                | "Documentos e comunicações"
+                | "Fontes externas";
+              description: string | null;
+            }[]
+          | null;
         error: { message: string } | null;
       }>,
       (context.supabase as any)
@@ -625,7 +653,9 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
       if (!isMissingExtendedCauseColumn(causesError.message)) throw new Error(causesError.message);
       const legacyResult = await context.supabase
         .from("organization_causes")
-        .select("id, title, description, impact, action, priority, organization_id, created_at, updated_at")
+        .select(
+          "id, title, description, impact, action, priority, organization_id, created_at, updated_at",
+        )
         .eq("organization_id", organizationId)
         .order("title", { ascending: true });
       if (legacyResult.error) throw new Error(legacyResult.error.message);
@@ -664,56 +694,68 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
     const organizationId = access.organizationId;
-    const [areas, owners, types, valueChains, processes, systems, positions, valueChainRelations] = await Promise.all([
-      context.supabase
-        .from("organization_departments")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("name"),
-      context.supabase
-        .from("organization_process_owners")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("name"),
-      context.supabase
-        .from("organization_process_types")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("code"),
-      context.supabase
-        .from("organization_value_chains")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("name"),
-      context.supabase
-        .from("organization_processes")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("name"),
-      (context.supabase as any)
-        .from("organization_systems")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("name") as Promise<{
-        data: { id: string; name: string; description: string | null }[] | null;
-        error: { message: string } | null;
-      }>,
-      (context.supabase as any)
-        .from("organization_positions")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("title") as Promise<{
-        data: { id: string; title: string; description: string | null }[] | null;
-        error: { message: string } | null;
-      }>,
-      (context.supabase as any)
-        .from("organization_value_chain_output_relations")
-        .select("output_id, chain_id")
-        .eq("organization_id", organizationId) as Promise<{
-        data: { output_id: string; chain_id: string }[] | null;
-        error: { message: string } | null;
-      }>,
-    ]);
+    const [areas, owners, types, valueChains, processes, systems, positions, valueChainRelations] =
+      await Promise.all([
+        context.supabase
+          .from("organization_departments")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("name"),
+        context.supabase
+          .from("organization_process_owners")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("name"),
+        context.supabase
+          .from("organization_process_types")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("code"),
+        context.supabase
+          .from("organization_value_chains")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("name"),
+        context.supabase
+          .from("organization_processes")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("name"),
+        (context.supabase as any)
+          .from("organization_systems")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("name") as Promise<{
+          data:
+            | {
+                id: string;
+                name: string;
+                modality?:
+                  | "Sistemas corporativos"
+                  | "Ferramentas auxiliares"
+                  | "Documentos e comunicações"
+                  | "Fontes externas";
+                description: string | null;
+              }[]
+            | null;
+          error: { message: string } | null;
+        }>,
+        (context.supabase as any)
+          .from("organization_positions")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("title") as Promise<{
+          data: { id: string; title: string; description: string | null }[] | null;
+          error: { message: string } | null;
+        }>,
+        (context.supabase as any)
+          .from("organization_value_chain_output_relations")
+          .select("output_id, chain_id")
+          .eq("organization_id", organizationId) as Promise<{
+          data: { output_id: string; chain_id: string }[] | null;
+          error: { message: string } | null;
+        }>,
+      ]);
     for (const result of [areas, owners, types, valueChains, processes]) {
       if (result.error) throw new Error(result.error.message);
     }
@@ -722,7 +764,10 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
     if (systems.error) console.error("organization_systems:", systems.error.message);
     if (positions.error) console.error("organization_positions:", positions.error.message);
     if (valueChainRelations.error) {
-      console.error("organization_value_chain_output_relations:", valueChainRelations.error.message);
+      console.error(
+        "organization_value_chain_output_relations:",
+        valueChainRelations.error.message,
+      );
     }
     return {
       organizationId,
@@ -975,6 +1020,7 @@ export const saveSystemRegistration = createServerFn({ method: "POST" })
     const payload = {
       organization_id: access.organizationId,
       name: data.name,
+      modality: data.modality,
       description: data.description ?? null,
       updated_at: new Date().toISOString(),
     };
@@ -1202,7 +1248,9 @@ export const createOrganizationCause = createServerFn({ method: "POST" })
       const legacyResult = await context.supabase
         .from("organization_causes")
         .insert(basePayload)
-        .select("id, title, description, impact, action, priority, organization_id, created_at, updated_at")
+        .select(
+          "id, title, description, impact, action, priority, organization_id, created_at, updated_at",
+        )
         .single();
       if (legacyResult.error) throw new Error(legacyResult.error.message);
       return {
@@ -1254,7 +1302,9 @@ export const updateOrganizationCause = createServerFn({ method: "POST" })
         .update(basePayload)
         .eq("id", data.id)
         .eq("organization_id", access.organizationId)
-        .select("id, title, description, impact, action, priority, organization_id, created_at, updated_at")
+        .select(
+          "id, title, description, impact, action, priority, organization_id, created_at, updated_at",
+        )
         .single();
       if (legacyResult.error) throw new Error(legacyResult.error.message);
       return {
@@ -1577,11 +1627,7 @@ function readString(value: unknown, fallback = "-") {
 function cleanOwnerLabel(value: unknown, fallback = "-") {
   const text = readString(value, fallback);
   if (text === fallback) return text;
-  return (
-    text
-      .replace(/\s*(?:·|•|Â·|Ã‚Â·|-)\s*.*$/u, "")
-      .trim() || text
-  );
+  return text.replace(/\s*(?:·|•|Â·|Ã‚Â·|-)\s*.*$/u, "").trim() || text;
 }
 
 function objectAt(value: unknown, key: string): Record<string, unknown> {
@@ -1593,11 +1639,7 @@ function objectAt(value: unknown, key: string): Record<string, unknown> {
 async function assertUsernameAvailable(username: string | null | undefined, exceptUserId?: string) {
   if (!username) return;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  let query = supabaseAdmin
-    .from("profiles")
-    .select("id")
-    .ilike("username", username)
-    .limit(1);
+  let query = supabaseAdmin.from("profiles").select("id").ilike("username", username).limit(1);
   if (exceptUserId) query = query.neq("id", exceptUserId);
   const { data, error } = await query.maybeSingle();
   if (error) throw new Error(error.message);
@@ -1641,7 +1683,8 @@ function collectDdpProcessReferences(contentInline: string | null) {
 
     const steps = Array.isArray(ddp.steps) ? ddp.steps : [];
     for (const stepValue of steps) {
-      const step = stepValue && typeof stepValue === "object" ? (stepValue as Record<string, unknown>) : {};
+      const step =
+        stepValue && typeof stepValue === "object" ? (stepValue as Record<string, unknown>) : {};
       addId(step.processId);
       addId(step.process_id);
       addName(step.etapa);
@@ -1736,19 +1779,21 @@ function dashboardCauseRowsFromDocument(document: {
       if (!value || typeof value !== "object") return [];
       const gap = value as Record<string, unknown>;
       const id = readString(gap.id, `${index + 1}`);
-      return [{
-        id: `mapping:${document.id}:${id}`,
-        cause: readString(gap.causa, "Causa sem título"),
-        source: "Mapeamento" as const,
-        mapping: readString(meta.codigo, readString(meta.titulo, document.name)),
-        process: readString(macroprocess.titulo, readString(legacy.processName)),
-        responsible: readString(gap.responsavel),
-        priority: readString(gap.prioridade, "Média"),
-        status: readString(gap.status, "Não iniciada"),
-        dueDate: readString(gap.prazo, ""),
-        updatedAt: document.updated_at,
-        sharedCauseId: readString(gap.sharedCauseId, ""),
-      }];
+      return [
+        {
+          id: `mapping:${document.id}:${id}`,
+          cause: readString(gap.causa, "Causa sem título"),
+          source: "Mapeamento" as const,
+          mapping: readString(meta.codigo, readString(meta.titulo, document.name)),
+          process: readString(macroprocess.titulo, readString(legacy.processName)),
+          responsible: readString(gap.responsavel),
+          priority: readString(gap.prioridade, "Média"),
+          status: readString(gap.status, "Não iniciada"),
+          dueDate: readString(gap.prazo, ""),
+          updatedAt: document.updated_at,
+          sharedCauseId: readString(gap.sharedCauseId, ""),
+        },
+      ];
     });
   } catch {
     return [];
@@ -1827,7 +1872,11 @@ function dashboardDocumentCatalogRowFromDocument(document: {
       code: "-",
       title: document.name || "Documento sem título",
       documentType:
-        document.module === "ddp" ? "Mapeamento" : document.module === "bpmn" ? "Fluxograma" : "POP",
+        document.module === "ddp"
+          ? "Mapeamento"
+          : document.module === "bpmn"
+            ? "Fluxograma"
+            : "POP",
       area: "-",
       process: "-",
       responsible: "-",
@@ -1933,7 +1982,9 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       concluido: dashboardMappingRows.filter((row) => row.status === "Concluído").length,
     };
 
-    const processNamesById = new Map((processes ?? []).map((process) => [process.id, process.name]));
+    const processNamesById = new Map(
+      (processes ?? []).map((process) => [process.id, process.name]),
+    );
     const mappingCauseRows = ddps.flatMap(dashboardCauseRowsFromDocument);
     const sharedCauseIds = new Set(
       mappingCauseRows.map((row) => row.sharedCauseId).filter((value) => value && value !== "-"),
@@ -1945,7 +1996,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         cause: cause.title,
         source: "Avulsa",
         mapping: "-",
-        process: cause.process_id ? processNamesById.get(cause.process_id) ?? "-" : "-",
+        process: cause.process_id ? (processNamesById.get(cause.process_id) ?? "-") : "-",
         responsible: cause.responsible || "-",
         priority: cause.priority || "Média",
         status: cause.status || "Não iniciada",
@@ -1957,7 +2008,11 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       ...standaloneCauseRows,
     ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const normalizeCauseStatus = (status: string) =>
-      status.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().toLowerCase();
+      status
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .trim()
+        .toLowerCase();
     const causeStatusCounts = {
       naoIniciada: causeRows.filter((row) => normalizeCauseStatus(row.status).includes("nao inici"))
         .length,
@@ -2026,15 +2081,19 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         valueChains: valueChains?.length ?? 0,
       },
       topDepartments: rank((processes ?? []).map((process) => process.department)),
-      topOwners: rank((processes ?? []).map((process) =>
-        process.owner ? cleanOwnerLabel(process.owner, "") : null,
-      )),
+      topOwners: rank(
+        (processes ?? []).map((process) =>
+          process.owner ? cleanOwnerLabel(process.owner, "") : null,
+        ),
+      ),
       mappingRows: dashboardMappingRows,
       mappingStatusCounts,
       causeRows,
       causeStatusCounts,
       documentCatalogRows,
-      recentDocuments: (documents ?? []).map(({ content_inline: _content, ...document }) => document).slice(0, 5),
+      recentDocuments: (documents ?? [])
+        .map(({ content_inline: _content, ...document }) => document)
+        .slice(0, 5),
       recentProcesses: (processes ?? []).slice(0, 5),
       mappingCoverage: {
         covered: coverageRows.filter((row) => row.mappings.length > 0).length,
@@ -2130,10 +2189,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
     await assertUsernameAvailable(data.username, data.userId);
     const nextRoles = data.roles;
 
-    if (
-      data.userId === context.userId &&
-      !nextRoles.some((role) => role === "admin")
-    ) {
+    if (data.userId === context.userId && !nextRoles.some((role) => role === "admin")) {
       throw new Error("Você não pode remover seu próprio acesso administrativo.");
     }
 
