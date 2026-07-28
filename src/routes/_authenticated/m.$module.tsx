@@ -6297,10 +6297,16 @@ function buildDdpPresentationHtml(
   const glossaryCards = model.glossary.length
     ? model.glossary
         .map(
-          (item) =>
-            `<article class="glossary-card"><h3>${html(item.termo || "Termo")}</h3><p>${html(
-              item.definicao,
-            )}</p></article>`,
+          (item, index) =>
+            `<details class="list-card system-card glossary-disclosure-card"><summary><span class="index">${String(
+              index + 1,
+            ).padStart(2, "0")}</span><span class="system-card-heading"><strong>${html(
+              item.termo || "Termo",
+            )}</strong></span></summary><div class="system-card-body">${
+              item.definicao
+                ? `<p>${html(item.definicao)}</p>`
+                : `<p class="system-card-empty">Nenhuma definição informada.</p>`
+            }</div></details>`,
         )
         .join("")
     : emptyBlock("Nenhum termo informado.");
@@ -6436,6 +6442,11 @@ function buildDdpPresentationHtml(
 #sistemas .system-card-heading{display:grid;align-content:center;justify-content:stretch;gap:9px}
 #sistemas .system-card-heading strong{font-size:15px;line-height:1.25;overflow-wrap:break-word;word-break:normal}
 #sistemas .system-card-heading .type-tag{max-width:100%;white-space:normal;line-height:1.2}
+#glossario .card-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+#glossario .glossary-disclosure-card{width:100%;min-height:96px}
+#glossario .glossary-disclosure-card>summary{min-height:94px;padding:16px 18px}
+#glossario .glossary-disclosure-card .system-card-heading{display:grid;align-content:center}
+#glossario .glossary-disclosure-card .system-card-heading strong{font-size:15px;line-height:1.3;overflow-wrap:break-word;word-break:normal}
 @media(min-width:1101px) and (min-height:760px){#quantitativa{display:flex;min-height:100vh;flex-direction:column;gap:10px;padding:28px 44px}#quantitativa .section-head{margin-bottom:2px}#quantitativa .section-head>span{width:50px;height:50px;border-radius:10px;font-size:22px}#quantitativa .section-head h2{font-size:34px}#quantitativa .section-head small{margin-top:5px;font-size:13px}#quantitativa .quant-overview{grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr);gap:12px;margin-top:0}#quantitativa .quant-insight{min-height:0;padding:20px 24px}#quantitativa .quant-insight h3{font-size:clamp(21px,2vw,29px)}#quantitativa .quant-insight p{margin:10px 0 14px;font-size:12px}#quantitativa .quant-chip{padding:6px 10px}#quantitativa .quant-waffle-card{padding:16px 18px}#quantitativa .quant-waffle-head{margin-bottom:10px}#quantitativa .quant-waffle{gap:4px;margin-bottom:11px}#quantitativa .quant-legend{gap:5px}#quantitativa .quant-summary{gap:12px;margin-top:0}#quantitativa .quant-panel{padding:15px 18px}#quantitativa .quant-panel>p{margin:3px 0 8px}#quantitativa .quant-bar{gap:4px;margin-top:7px}#quantitativa .quant-bar>i{height:5px}#quantitativa .quant-resource{padding:5px 0}#quantitativa .quant-resource span{height:23px}#quantitativa .quant-alert-heading{align-items:center;margin:2px 0 0}#quantitativa .quant-alert-heading .quant-eyebrow{margin-bottom:3px}#quantitativa .quant-alert-heading h3{font-size:16px}#quantitativa .quant-alert{min-height:70px;padding:11px 14px}#quantitativa .quant-alert strong{font-size:22px}#quantitativa .quant-alert span{margin-top:3px}}
 @media(min-width:1101px) and (min-height:760px){
   #quantitativa{height:100vh;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto 74px 208px 170px 32px 64px;align-content:start;gap:8px;padding:20px 34px}
@@ -6480,7 +6491,9 @@ function buildDdpPresentationHtml(
   #quantitativa .quant-alert span{margin-top:0;font-size:10px}
 }
 @media(min-width:721px) and (max-width:1350px){#sistemas .card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:721px) and (max-width:1350px){#glossario .card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:720px){.substep>summary{align-items:flex-start;flex-wrap:wrap}.substep-tags{width:100%;margin:2px 0 0 19px;justify-content:flex-start}}
+@media(max-width:720px){#glossario .card-grid{grid-template-columns:1fr}}
 @media(max-width:1100px){.quant-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.quant-metric{border-bottom:1px solid var(--line)}.quant-overview,.quant-summary{grid-template-columns:1fr}.quant-alerts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.quant-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.quant-metric{min-height:96px}.quant-overview{grid-template-columns:minmax(0,1fr)}.quant-insight{min-height:0;padding:24px}.quant-waffle-card{padding:18px}.quant-alerts{grid-template-columns:1fr}.quant-alert-heading{align-items:flex-start;flex-direction:column}}
 </style>
