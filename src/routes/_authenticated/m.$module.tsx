@@ -6104,19 +6104,43 @@ function buildDdpPresentationHtml(
     ? model.systems
         .map(
           (system, index) =>
-            `<article class="list-card"><div class="index">${String(index + 1).padStart(
-              2,
-              "0",
-            )}</div><h3>${html(system.name || "Sistema")}</h3>${
+            `<details class="list-card system-card"><summary><span class="index">${String(
+              index + 1,
+            ).padStart(2, "0")}</span><span class="system-card-heading"><strong>${html(
+              system.name || "Sistema",
+            )}</strong>${
               system.type ? `<span class="type-tag">${html(system.type)}</span>` : ""
-            }${system.description ? `<p>${html(system.description)}</p>` : ""}${
+            }</span></summary><div class="system-card-body">${
+              system.description ? `<p>${html(system.description)}</p>` : ""
+            }${
               system.items?.length
                 ? `<ul>${system.items.map((item) => `<li>${html(item)}</li>`).join("")}</ul>`
                 : ""
-            }</article>`,
+            }${
+              !system.description && !system.items?.length
+                ? `<p class="system-card-empty">Nenhum detalhamento informado.</p>`
+                : ""
+            }</div></details>`,
         )
         .join("")
     : emptyBlock("Nenhum sistema ou documento informado.");
+
+  const executionSummaryTags = (
+    activities: ExportFlowStep["substeps"][number]["activities"],
+  ) => {
+    const counts = new Map<FlowExecutionType, number>();
+    activities.forEach((activity) => {
+      const classification = activity.classification;
+      if (!classification) return;
+      counts.set(classification, (counts.get(classification) ?? 0) + 1);
+    });
+    return FLOW_EXECUTION_TYPES.filter((classification) => counts.has(classification))
+      .map(
+        (classification) =>
+          `<span class="type-tag">${html(classification)} · ${counts.get(classification)}</span>`,
+      )
+      .join("");
+  };
 
   const flowSteps = model.flowSteps.length
     ? model.flowSteps
@@ -6137,28 +6161,16 @@ function buildDdpPresentationHtml(
               .map(zoomImage)
               .join("")}${step.substeps
               .map(
-                (substep) =>
-                  `<details class="substep"><summary><h4>${html(
+                (substep) => {
+                  const modalityTags = executionSummaryTags(substep.activities);
+                  return `<details class="substep"><summary><h4>${html(
                     joinClean([substep.code, substep.title], " - ") ||
                       (substep.kind === "subprocesso" ? "Subprocesso" : "Atividade"),
-                  )}</h4><div class="tag-list substep-tags"><span class="type-tag">${html(
-                    substep.kind === "subprocesso" ? "Subprocesso / etapa" : "Atividade",
-                  )}</span><span class="type-tag">${html(substep.classification)}</span>${
-                    substep.actorName
-                      ? `<span class="type-tag">${html(
-                          substep.actorType === "position" ? "Cargo" : "Área",
-                        )}: ${html(substep.actorName)}</span>`
+                  )}</h4>${
+                    modalityTags
+                      ? `<div class="tag-list substep-tags">${modalityTags}</div>`
                       : ""
-                  }${
-                    substep.systems.length
-                      ? substep.systems
-                          .map(
-                            (system) =>
-                              `<span class="type-tag">${html(system.name)} · ${html(system.type)}</span>`,
-                          )
-                          .join("")
-                      : ""
-                  }</div></summary><div class="substep-body">${
+                  }</summary><div class="substep-body">${
                     substep.description ? `<p>${html(substep.description)}</p>` : ""
                   }${substep.images.map(zoomImage).join("")}${
                     substep.activities.length
@@ -6188,7 +6200,8 @@ function buildDdpPresentationHtml(
                           )
                           .join("")}</div>`
                       : ""
-                  }</div></details>`,
+                  }</div></details>`;
+                },
               )
               .join("")}</div></details></article>`,
         )
@@ -6321,7 +6334,7 @@ function buildDdpPresentationHtml(
 .cover-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:44px;align-items:end;max-width:1180px}.cover h1{margin-top:18px}.cover-code{min-width:190px;border-left:4px solid #ffd47a;padding:0 0 3px 18px}.cover-code span{display:block;color:rgba(255,255,255,.62);font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase}.cover-code strong{display:block;margin-top:10px;color:#fff;font-size:28px;letter-spacing:.08em}.cover-context{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:1px;max-width:1180px;margin-top:52px;border-top:1px solid rgba(255,255,255,.24);border-bottom:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.18)}.cover-line{display:grid;gap:10px;margin:0;padding:22px 24px;background:rgba(0,0,0,.16)}.cover-line dt{color:#ffd47a;font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase}.cover-line dd{margin:0;color:#fff;font-size:18px;font-weight:800;line-height:1.25}.cover-line small{display:block;margin-top:7px;color:rgba(255,255,255,.7);font-size:13px;font-weight:650;line-height:1.35}.cover-meta{margin-top:28px;display:flex;flex-wrap:wrap;gap:10px;max-width:1180px}.cover-meta .field{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);border-radius:999px;padding:9px 13px;box-shadow:none}.cover-meta .field span{display:inline;color:rgba(255,255,255,.62);margin-right:7px}.cover-meta .field strong{display:inline;color:#fff;font-size:13px}.overview-icon{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 18%,transparent),color-mix(in srgb,var(--gold) 15%,transparent));border:1px solid color-mix(in srgb,var(--accent) 28%,transparent)}.overview-icon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.presentation-controls{margin-top:auto;display:grid;grid-template-columns:1fr 40px;gap:8px;align-items:center}.presentation-controls .theme-toggle{margin-top:0}.fullscreen-button{display:grid;height:40px;width:40px;place-items:center;border:1px solid rgba(255,255,255,.28);border-radius:12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);cursor:pointer}.fullscreen-button:hover{border-color:rgba(255,255,255,.48);background:rgba(255,255,255,.14);color:#fff}.fullscreen-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}[data-theme="dark"]{--bg:#101418;--surface:#171c22;--surface-2:#1d232a;--text:#f7f9fb;--muted:#c8d0da;--line:#3f4853;--shadow:0 20px 80px rgba(0,0,0,.58);--accent-strong:color-mix(in srgb,var(--accent) 28%,#f4f8fb)}[data-theme="dark"] body{background:linear-gradient(180deg,#101418,#14191f);color:var(--text)}[data-theme="dark"] .sidebar{background:linear-gradient(180deg,#111820,#0b0f13);border-right:1px solid #303943;box-shadow:inset -1px 0 rgba(255,255,255,.04)}[data-theme="dark"] .brand-logo{filter:drop-shadow(0 2px 10px rgba(0,0,0,.35))}[data-theme="dark"] .doc-code{border-color:#66717d;background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.07));box-shadow:inset 0 1px rgba(255,255,255,.08)}[data-theme="dark"] .doc-code span,[data-theme="dark"] .cover-meta span{color:#d3dbe4;opacity:1}[data-theme="dark"] .doc-code strong,[data-theme="dark"] .nav a{color:#fff}[data-theme="dark"] .nav a{opacity:.95}[data-theme="dark"] .nav a:hover{background:rgba(255,255,255,.14)}[data-theme="dark"] .theme-toggle{border-color:#55606b;background:#06090c}[data-theme="dark"] .theme-toggle button{color:#dce3eb}[data-theme="dark"] .theme-toggle button.active{background:#f5f7fa;color:#111820}[data-theme="dark"] .slide{background:#151a20}[data-theme="dark"] .slide.alt{background:#11161b}[data-theme="dark"] .section-head>span{background:rgba(212,154,33,.16);color:#f2bc4b;border:1px solid rgba(242,188,75,.3)}[data-theme="dark"] .section-head p,[data-theme="dark"] .kicker{color:#f2bc4b}[data-theme="dark"] .section-head small{color:#cfd7df}[data-theme="dark"] .text-panel,[data-theme="dark"] .list-card,[data-theme="dark"] .flow-card,[data-theme="dark"] .glossary-card{background:#1b2128;border-color:#46505b}[data-theme="dark"] .field{background:#1a2027;border-color:#46505b}[data-theme="dark"] .text-panel h3,[data-theme="dark"] .list-card h3,[data-theme="dark"] .flow-card h3,[data-theme="dark"] .glossary-card h3,[data-theme="dark"] .diagram h3,[data-theme="dark"] .gap-table td:first-child{color:#f2bc4b}[data-theme="dark"] .text-panel p,[data-theme="dark"] .list-card p,[data-theme="dark"] .flow-card p,[data-theme="dark"] .glossary-card p,[data-theme="dark"] .diagram p,[data-theme="dark"] .list-card ul{color:#d5dce4}[data-theme="dark"] .table-wrap{background:#171d24;border-color:#505a66;box-shadow:0 16px 50px rgba(0,0,0,.35)}[data-theme="dark"] th{background:#232b34;color:#dfe6ee;border-color:#505a66}[data-theme="dark"] td{border-color:#404a55;color:#eef2f6}[data-theme="dark"] tr:hover td{background:rgba(242,188,75,.06)}[data-theme="dark"] .empty{background:#1b2128;border-color:#505a66;color:#d4dbe3}@media(max-width:980px){.cover-hero{grid-template-columns:1fr;gap:24px}.cover-context{grid-template-columns:1fr}.presentation-controls{grid-template-columns:1fr 40px}}
 </style>
 <style>
-.type-tag{display:inline-flex;width:max-content;align-items:center;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-strong);padding:4px 9px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}.substep-tags{margin:0 0 0 auto;justify-content:flex-end}
+.type-tag{display:inline-flex;width:max-content;align-items:center;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-strong);padding:4px 9px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}.substep-tags{margin:0 0 0 auto;justify-content:flex-end}.system-card{align-self:start;padding:0;overflow:hidden}.system-card>summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:13px;align-items:center;list-style:none;cursor:pointer;padding:18px 20px}.system-card>summary::-webkit-details-marker{display:none}.system-card>summary:after{content:"";width:8px;height:8px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:transform .18s ease}.system-card[open]>summary:after{transform:rotate(225deg)}.system-card .index{margin:0}.system-card-heading{display:flex;min-width:0;align-items:center;justify-content:space-between;gap:12px}.system-card-heading strong{overflow:hidden;color:var(--accent-strong);font-size:17px;text-overflow:ellipsis;white-space:nowrap}.system-card-body{border-top:1px solid var(--line);padding:16px 20px 20px}.system-card-empty{font-style:italic}
 .nested-activities{display:grid;gap:12px;margin-top:14px;padding-left:18px;border-left:2px solid color-mix(in srgb,var(--gold) 42%,var(--line))}.nested-activities .list-card{padding:16px;box-shadow:none}.nested-activities .list-card h3{margin-bottom:7px}
 .flow-details{display:block;min-width:0}.flow-details>summary,.substep>summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;border-radius:12px}.flow-details>summary::-webkit-details-marker,.substep>summary::-webkit-details-marker{display:none}.flow-details>summary:before,.substep>summary:before{content:"";width:9px;height:9px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:.18s ease}.flow-details:not([open])>summary:before,.substep:not([open])>summary:before{transform:rotate(-45deg)}.flow-details>summary{margin-bottom:10px;padding:4px 2px}.flow-details>summary h3{margin:0}.substep>summary{padding:2px 0}.substep>summary h4{margin:0;color:var(--text)}.substep-body{padding-top:8px}.zoom-modal{overflow:hidden}.zoom-modal img{transition:transform .16s ease;transform:scale(var(--zoom-scale,1));transform-origin:center center}.zoom-help{position:fixed;left:28px;bottom:24px;color:rgba(255,255,255,.74);font-size:12px}.zoom-map{position:fixed;right:28px;bottom:24px;width:190px;height:126px;border:1px solid rgba(255,255,255,.32);border-radius:12px;background:rgba(255,255,255,.08);padding:8px;display:none;overflow:hidden}.zoom-modal.open .zoom-map{display:block}.zoom-map img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;transform:none;box-shadow:none;cursor:default}.zoom-map span{position:absolute;border:2px solid #d49a21;border-radius:8px;background:rgba(212,154,33,.14);box-shadow:0 0 0 999px rgba(0,0,0,.18);pointer-events:none;transition:inset .16s ease,left .16s ease,top .16s ease,width .16s ease,height .16s ease}
 .quant-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.quant-metric,.quant-panel,.quant-alert{border:1px solid var(--line);background:var(--surface);border-radius:16px}.quant-metric{min-height:118px;padding:18px;display:flex;flex-direction:column;justify-content:space-between}.quant-metric span{color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.quant-metric strong{font-size:36px;color:var(--text)}.quant-summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.quant-panel{padding:20px}.quant-panel h3{margin:0 0 16px;color:var(--accent-strong);font-size:16px}.quant-highlights{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}.quant-highlight{border:1px solid var(--line);border-radius:14px;background:var(--surface-2);padding:15px}.quant-highlight strong{display:block;font-size:26px;color:var(--text)}.quant-highlight span{display:block;margin-top:6px;color:var(--muted);font-size:11px;line-height:1.35}.quant-bar{display:grid;gap:7px;margin-top:13px}.quant-bar>div{display:flex;justify-content:space-between;gap:16px;font-size:12px}.quant-bar>div span{color:var(--text);font-weight:700}.quant-bar>div strong{color:var(--muted)}.quant-bar i{display:block;height:7px;overflow:hidden;border-radius:999px;background:var(--line)}.quant-bar i b{display:block;height:100%;border-radius:inherit;background:var(--gold)}.quant-resource{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0}.quant-resource:last-child{border-bottom:0}.quant-resource span{display:grid;height:28px;place-items:center;border-radius:8px;background:color-mix(in srgb,var(--gold) 16%,transparent);color:var(--gold);font-size:11px;font-weight:900}.quant-resource strong{font-size:13px;color:var(--text)}.quant-resource b{font-size:15px}.quant-alerts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}.quant-alert{padding:15px}.quant-alert strong{display:block;font-size:26px;color:var(--text)}.quant-alert span{display:block;margin-top:5px;color:var(--muted);font-size:11px}.quant-subtitle{margin:26px 0 8px;color:var(--accent-strong);font-size:16px}
@@ -6364,7 +6377,7 @@ function buildDdpPresentationHtml(
   }</div></section>
 <section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas/Documentos envolvidos", "Sistemas, documentos e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
 <section class="slide" id="sipoc">${sectionHead("03", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
-<section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do macroprocesso e etapas detalhadas.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
+<section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do processo.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
 <section class="slide" id="quantitativa">${sectionHead("05", "Visão Quantitativa", "Indicadores calculados automaticamente a partir do mapeamento.")}<div class="quant-metrics">${quantitativeMetricCards}</div><div class="quant-highlights"><div class="quant-highlight"><strong>${model.stats.averageActivities.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong><span>Média de atividades por processo ou subprocesso</span></div><div class="quant-highlight"><strong>${model.stats.maxActivitiesInSubprocess}</strong><span>Maior quantidade de atividades em um subprocesso</span></div><div class="quant-highlight"><strong>${model.stats.automationPercentage}%</strong><span>Atividades com algum grau de automação</span></div><div class="quant-highlight"><strong>${model.stats.fullyManualPercentage}%</strong><span>Atividades totalmente manuais</span></div></div><div class="quant-summary"><article class="quant-panel"><h3>Distribuição por forma de execução</h3>${quantitativeBars(model.stats.execution)}</article><article class="quant-panel"><h3>Participação das áreas</h3>${quantitativeBars(model.stats.areaDistribution)}</article></div><div class="quant-summary"><article class="quant-panel"><h3>Recursos mais utilizados</h3>${quantitativeResources}</article><article class="quant-panel"><h3>Alertas analíticos</h3><div class="quant-alerts">${quantitativeAlerts}</div></article></div></section>
 <section class="slide alt" id="gaps">${sectionHead("06", "Oportunidades de melhoria", "Oportunidades, impactos e planos de ação relacionados.")}${gapTable}</section>
 <section class="slide" id="proximos">${sectionHead("07", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
