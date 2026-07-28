@@ -2066,12 +2066,18 @@ function normalizeDdpSubsteps(values: unknown[] | undefined) {
 
 function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState): DdpState {
   const legacySipoc = input?.sipoc;
+  const systems = Array.isArray(input?.systems) ? input.systems : fallback.systems;
+  const steps = Array.isArray(input?.steps) ? input.steps : fallback.steps;
+  const sipocRows = Array.isArray(input?.sipocRows) ? input.sipocRows : [];
+  const gaps = Array.isArray(input?.gaps) ? input.gaps : fallback.gaps;
+  const nextSteps = Array.isArray(input?.nextSteps) ? input.nextSteps : fallback.nextSteps;
+  const glossary = Array.isArray(input?.glossary) ? input.glossary : fallback.glossary;
   return {
     ...fallback,
     ...input,
     meta: { ...fallback.meta, ...(input?.meta ?? {}) },
     overview: { ...fallback.overview, ...(input?.overview ?? {}) },
-    systems: (input?.systems ?? fallback.systems).map((system) => {
+    systems: systems.map((system) => {
       const legacy = system as Partial<DdpSystem> &
         Partial<TextItem> & { system_id?: string; name?: string };
       return {
@@ -2090,7 +2096,7 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
       processId: textAt(asObject(input?.macroprocess ?? {}), "processId"),
       processVersion: Number(textAt(asObject(input?.macroprocess ?? {}), "processVersion") || 1),
     },
-    steps: (input?.steps ?? fallback.steps).map((step) => {
+    steps: steps.map((step) => {
       const legacy = step as Partial<DdpFlowStep> &
         Partial<TextItem> & {
           imagens?: unknown[];
@@ -2115,8 +2121,8 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
     }),
     sipoc: { ...fallback.sipoc, ...(input?.sipoc ?? {}) },
     sipocRows:
-      input?.sipocRows && input.sipocRows.length
-        ? input.sipocRows.map((row) => ({ ...row, id: row.id || id("sipoc") }))
+      sipocRows.length
+        ? sipocRows.map((row) => ({ ...row, id: row.id || id("sipoc") }))
         : [
             {
               id: id("sipoc"),
@@ -2127,7 +2133,7 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
               clientes: legacySipoc?.clientes ?? "",
             },
           ],
-    gaps: (input?.gaps ?? fallback.gaps).map((gap) => {
+    gaps: gaps.map((gap) => {
       const legacy = gap as Partial<GapItem> & {
         comments?: unknown;
         comentario?: unknown;
@@ -2150,8 +2156,8 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
         ),
       };
     }),
-    nextSteps: (input?.nextSteps ?? fallback.nextSteps).map(asNextStepItem),
-    glossary: (input?.glossary ?? fallback.glossary).map((item) => {
+    nextSteps: nextSteps.map(asNextStepItem),
+    glossary: glossary.map((item) => {
       const legacy = item as Partial<GlossaryItem> & { def?: string; text?: string };
       return {
         id: legacy.id || id("gloss"),
@@ -3302,15 +3308,17 @@ function reconcileDdpSystemsWithCatalog(
   systems: DdpSystem[],
   catalogSystems: OrganizationSystem[],
 ) {
-  if (!systems.length || !catalogSystems.length) return systems;
+  const safeSystems = Array.isArray(systems) ? systems : [];
+  const safeCatalogSystems = Array.isArray(catalogSystems) ? catalogSystems : [];
+  if (!safeSystems.length || !safeCatalogSystems.length) return safeSystems;
 
-  const catalogById = new Map(catalogSystems.map((system) => [system.id, system]));
+  const catalogById = new Map(safeCatalogSystems.map((system) => [system.id, system]));
   const catalogByName = new Map(
-    catalogSystems.map((system) => [normalizeLabel(system.name), system]),
+    safeCatalogSystems.map((system) => [normalizeLabel(system.name), system]),
   );
   let changed = false;
 
-  const reconciled = systems.map((system) => {
+  const reconciled = safeSystems.map((system) => {
     const catalogSystem =
       (system.systemId ? catalogById.get(system.systemId) : undefined) ??
       catalogByName.get(normalizeLabel(system.nome));
@@ -3336,12 +3344,13 @@ function reconcileDdpSystemsWithCatalog(
     };
   });
 
-  return changed ? reconciled : systems;
+  return changed ? reconciled : safeSystems;
 }
 
 function reconcileDdpWithCatalog(data: DdpState, catalogSystems: OrganizationSystem[]) {
-  const systems = reconcileDdpSystemsWithCatalog(data.systems, catalogSystems);
-  return systems === data.systems ? data : { ...data, systems };
+  const safeData = normalizeDdp(data, defaultWorkspace().ddp);
+  const systems = reconcileDdpSystemsWithCatalog(safeData.systems, catalogSystems);
+  return systems === safeData.systems ? safeData : { ...safeData, systems };
 }
 
 type OrganizationPosition = { id: string; title: string; description: string | null };
@@ -6048,7 +6057,9 @@ function buildDdpPresentationHtml(
   brand?: OrganizationBrand,
   processCatalog: OrganizationProcess[] = [],
 ) {
-  const model = getDdpExportModel(data, processCatalog);
+  const safeData = normalizeDdp(data, defaultWorkspace().ddp);
+  const safeProcessCatalog = Array.isArray(processCatalog) ? processCatalog : [];
+  const model = getDdpExportModel(safeData, safeProcessCatalog);
   const presentationColor = docxColor(brand?.word_header_color, "1D1F23");
   const assetBase =
     typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
@@ -6059,7 +6070,7 @@ function buildDdpPresentationHtml(
   const processOwner = model.owner;
   const code = model.meta.codigo || "MAP";
   const title = plain(model.meta.titulo).replace(/^Processo\s+de\s+/i, "") || processName;
-  const description = model.description || data.overview.objetivo;
+  const description = model.description || safeData.overview.objetivo;
   const nav = [
     ["capa", "00 Capa"],
     ["visao", "01 Visão geral"],
@@ -6397,13 +6408,13 @@ function buildDdpPresentationHtml(
 <section class="slide" id="visao">${sectionHead("01", "Visão geral", "Objetivo, escopo e contexto operacional do mapeamento.")}<div class="text-stack">${
     [
       textPanel("Objetivo", model.description, overviewIcon("target")),
-      textPanel("Escopo", data.overview.escopo, overviewIcon("scope")),
-      textPanel("Estado atual", data.overview.estadoAtual),
-      textPanel("Contexto", data.overview.kpis, overviewIcon("context")),
-      textPanel("Volume", data.overview.volume),
-      textPanel("Frequência", data.overview.frequencia),
-      textPanel("Dores", data.overview.dores),
-      textPanel("Oportunidades", data.overview.oportunidades),
+      textPanel("Escopo", safeData.overview.escopo, overviewIcon("scope")),
+      textPanel("Estado atual", safeData.overview.estadoAtual),
+      textPanel("Contexto", safeData.overview.kpis, overviewIcon("context")),
+      textPanel("Volume", safeData.overview.volume),
+      textPanel("Frequência", safeData.overview.frequencia),
+      textPanel("Dores", safeData.overview.dores),
+      textPanel("Oportunidades", safeData.overview.oportunidades),
     ].join("") || emptyBlock()
   }</div></section>
 <section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas/Documentos envolvidos", "Sistemas, documentos e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
@@ -8002,7 +8013,12 @@ function ModuleWorkspacePage() {
     } catch (error) {
       console.error("Falha ao preparar a visualização do documento.", error);
       opened.close();
-      toast.error("Não foi possível preparar a visualização deste registro.");
+      const detail = error instanceof Error ? error.message : String(error);
+      toast.error(
+        detail
+          ? `Não foi possível preparar a visualização: ${detail}`
+          : "Não foi possível preparar a visualização deste registro.",
+      );
     }
   }
 
@@ -8010,7 +8026,10 @@ function ModuleWorkspacePage() {
     openPresentationHtml(() => {
       const snapshot = resolveRowSnapshot(row);
       if (snapshot && moduleId === "ddp") {
-        const ddp = reconcileDdpWithCatalog(snapshot.ddp, organizationCatalogs.systems);
+        const ddp = reconcileDdpWithCatalog(
+          normalizeDdp(snapshot.ddp, defaultWorkspace().ddp),
+          organizationCatalogs.systems,
+        );
         return buildDdpPresentationHtml(
           ddp,
           brandForDocumentModel("ddp-html"),
