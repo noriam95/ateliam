@@ -3187,6 +3187,7 @@ function calculateMappingQuantitativeStats(
     fallbackArea?: string,
     fallbackOwner?: string,
   ) => {
+    const systemIds = Array.isArray(activity.systemIds) ? activity.systemIds : [];
     activities += 1;
     executionCounts.set(
       activity.classificacao,
@@ -3203,9 +3204,9 @@ function calculateMappingQuantitativeStats(
     areaActivityCounts.set(area, (areaActivityCounts.get(area) ?? 0) + 1);
     if (!plain(activity.actorName || process?.owner || fallbackOwner)) withoutOwner += 1;
     if (!plain(activity.descricao)) withoutDescription += 1;
-    if (!activity.systemIds.length) withoutSystem += 1;
+    if (!systemIds.length) withoutSystem += 1;
 
-    const resourceIds = new Set(activity.systemIds);
+    const resourceIds = new Set(systemIds);
     data.systems.forEach((system) => {
       if (!resourceIds.has(system.id) && (!system.systemId || !resourceIds.has(system.systemId))) {
         return;
@@ -3219,9 +3220,15 @@ function calculateMappingQuantitativeStats(
     const stepProcess = step.processId ? processById.get(step.processId) : undefined;
     step.substeps.forEach((substep) => {
       if (substep.tipo === "subprocesso") {
+        const substepActivities = Array.isArray(substep.activities)
+          ? substep.activities
+          : [];
         subprocesses += 1;
-        maxActivitiesInSubprocess = Math.max(maxActivitiesInSubprocess, substep.activities.length);
-        substep.activities.forEach((activity) =>
+        maxActivitiesInSubprocess = Math.max(
+          maxActivitiesInSubprocess,
+          substepActivities.length,
+        );
+        substepActivities.forEach((activity) =>
           countActivity(
             activity,
             substep.processId || step.processId,
@@ -3434,13 +3441,20 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
     owner: "",
     system: "",
     risk: "",
-    images: step.images.map((image) => ({
+    images: (Array.isArray(step.images) ? step.images : []).map((image) => ({
       title: image.titulo,
       caption: image.legenda,
       src: image.src,
     })),
-    substeps: step.substeps.length
-      ? step.substeps.map((substep) => ({
+    substeps: Array.isArray(step.substeps) && step.substeps.length
+      ? step.substeps.map((substep) => {
+          const substepSystemIds = Array.isArray(substep.systemIds)
+            ? substep.systemIds
+            : [];
+          const substepActivities = Array.isArray(substep.activities)
+            ? substep.activities
+            : [];
+          return {
           code: substep.codigo,
           title: substep.titulo,
           description: substep.descricao,
@@ -3451,19 +3465,23 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
           systems: data.systems
             .filter(
               (system) =>
-                substep.systemIds.includes(system.id) ||
-                (!!system.systemId && substep.systemIds.includes(system.systemId)),
+                substepSystemIds.includes(system.id) ||
+                (!!system.systemId && substepSystemIds.includes(system.systemId)),
             )
             .map((system) => ({
               name: system.nome,
               type: normalizeSystemModality(system.tipo),
             })),
-          images: substep.images.map((image) => ({
+          images: (Array.isArray(substep.images) ? substep.images : []).map((image) => ({
             title: image.titulo,
             caption: image.legenda,
             src: image.src,
           })),
-          activities: substep.activities.map((activity) => ({
+          activities: substepActivities.map((activity) => {
+            const activitySystemIds = Array.isArray(activity.systemIds)
+              ? activity.systemIds
+              : [];
+            return {
             code: activity.codigo,
             title: activity.titulo,
             description: activity.descricao,
@@ -3473,20 +3491,22 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
             systems: data.systems
               .filter(
                 (system) =>
-                  activity.systemIds.includes(system.id) ||
-                  (!!system.systemId && activity.systemIds.includes(system.systemId)),
+                  activitySystemIds.includes(system.id) ||
+                  (!!system.systemId && activitySystemIds.includes(system.systemId)),
               )
               .map((system) => ({
                 name: system.nome,
                 type: normalizeSystemModality(system.tipo),
               })),
-            images: activity.images.map((image) => ({
+            images: (Array.isArray(activity.images) ? activity.images : []).map((image) => ({
               title: image.titulo,
               caption: image.legenda,
               src: image.src,
             })),
-          })),
-        }))
+          };
+          }),
+        };
+        })
       : [],
   }));
 
