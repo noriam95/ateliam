@@ -3420,6 +3420,12 @@ function exportImages(items: unknown[], fallbackTitle = "Imagem") {
 
 function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[] = []) {
   const legacy = data.legacy ?? {};
+  const sourceSystems = Array.isArray(data.systems) ? data.systems : [];
+  const sourceSteps = Array.isArray(data.steps) ? data.steps : [];
+  const sourceGaps = Array.isArray(data.gaps) ? data.gaps : [];
+  const sourceNextSteps = Array.isArray(data.nextSteps) ? data.nextSteps : [];
+  const sourceSipocRows = Array.isArray(data.sipocRows) ? data.sipocRows : [];
+  const sourceGlossary = Array.isArray(data.glossary) ? data.glossary : [];
   const quantitativeStats = calculateMappingQuantitativeStats(data, processCatalog);
   const overviewCards: ExportCard[] = [
     { title: "Objetivo", text: data.overview.objetivo },
@@ -3427,7 +3433,7 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
     { title: "Contexto", text: data.overview.kpis },
   ].filter((item) => item.text);
 
-  const systems: ExportSystem[] = data.systems.map((system) => ({
+  const systems: ExportSystem[] = sourceSystems.map((system) => ({
     id: system.id,
     name: system.nome,
     type: normalizeSystemModality(system.tipo),
@@ -3435,7 +3441,7 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
     items: [],
   }));
 
-  const flowSteps: ExportFlowStep[] = data.steps.map((step) => ({
+  const flowSteps: ExportFlowStep[] = sourceSteps.map((step) => ({
     title: step.etapa,
     description: "",
     owner: "",
@@ -3462,7 +3468,7 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
           classification: substep.classificacao,
           actorType: substep.actorType,
           actorName: substep.actorName,
-          systems: data.systems
+          systems: sourceSystems
             .filter(
               (system) =>
                 substepSystemIds.includes(system.id) ||
@@ -3488,7 +3494,7 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
             classification: activity.classificacao,
             actorType: activity.actorType,
             actorName: activity.actorName,
-            systems: data.systems
+            systems: sourceSystems
               .filter(
                 (system) =>
                   activitySystemIds.includes(system.id) ||
@@ -3510,7 +3516,7 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
       : [],
   }));
 
-  const gaps: ExportGap[] = data.gaps.map((gap) => ({
+  const gaps: ExportGap[] = sourceGaps.map((gap) => ({
     title: gap.causa,
     description: gap.descricao || gap.causa,
     impact: gap.impacto,
@@ -3523,7 +3529,7 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
     comments: gap.comentarios,
   }));
 
-  const nextSteps: ExportNextStep[] = data.nextSteps.map((item) => ({
+  const nextSteps: ExportNextStep[] = sourceNextSteps.map((item) => ({
     title: plain(item.text),
     description: "",
     owner: item.responsavel || "",
@@ -3558,11 +3564,11 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
       src: currentMacro.src,
     },
     flowSteps,
-    sipocRows: data.sipocRows,
+    sipocRows: sourceSipocRows,
     gaps,
     nextSteps,
     images: [],
-    glossary: data.glossary,
+    glossary: sourceGlossary,
   };
 }
 
@@ -7976,57 +7982,65 @@ function ModuleWorkspacePage() {
     );
   }
 
-  function openPresentationHtml(docHtml: string, blockedMessage: string) {
-    const opened = window.open("", "_blank");
+  function openPresentationHtml(buildHtml: () => string, blockedMessage: string) {
+    // Reserve a aba durante o clique. Relatórios extensos gerados antes do
+    // window.open podem perder a ativação e ser bloqueados pelo navegador.
+    const opened = window.open("about:blank", "_blank");
     if (!opened) {
       toast.error(blockedMessage);
       return;
     }
 
     try {
-      opened.document.open();
-      opened.document.write(preparePresentationHtml(docHtml));
-      opened.document.close();
+      const docHtml = preparePresentationHtml(buildHtml());
+      const blob = new Blob([docHtml], { type: "text/html;charset=utf-8" });
+      const previewUrl = URL.createObjectURL(blob);
       opened.opener = null;
-    } catch {
+      opened.location.replace(previewUrl);
+      window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60_000);
+    } catch (error) {
+      console.error("Falha ao preparar a visualização do documento.", error);
       opened.close();
-      toast.error("Não foi possível abrir a visualização neste navegador.");
+      toast.error("Não foi possível preparar a visualização deste registro.");
     }
   }
 
   function viewDocumentRow(row: ModuleGridRow) {
-    const snapshot = resolveRowSnapshot(row);
-    let docHtml: string;
-    if (snapshot && moduleId === "ddp") {
-      const ddp = reconcileDdpWithCatalog(snapshot.ddp, organizationCatalogs.systems);
-      docHtml = buildDdpPresentationHtml(
-        ddp,
-        brandForDocumentModel("ddp-html"),
-        organizationCatalogs.processes,
-      );
-    } else if (snapshot && moduleId === "pop") {
-      docHtml = buildPopPresentationHtml(snapshot.pop, brandForDocumentPresentation());
-    } else {
-      docHtml = buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
-    }
-    openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o registro.");
+    openPresentationHtml(() => {
+      const snapshot = resolveRowSnapshot(row);
+      if (snapshot && moduleId === "ddp") {
+        const ddp = reconcileDdpWithCatalog(snapshot.ddp, organizationCatalogs.systems);
+        return buildDdpPresentationHtml(
+          ddp,
+          brandForDocumentModel("ddp-html"),
+          organizationCatalogs.processes,
+        );
+      }
+      if (snapshot && moduleId === "pop") {
+        return buildPopPresentationHtml(snapshot.pop, brandForDocumentPresentation());
+      }
+      return buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
+    }, "Habilite pop-ups para visualizar o registro.");
   }
 
   // Visualiza, em nova aba, o que está sendo preenchido agora no formulário,
   // na mesma modalidade somente-leitura disponível na consulta.
   function previewCurrentDdp() {
-    const ddp = reconcileDdpWithCatalog(workspace.ddp, organizationCatalogs.systems);
-    const docHtml = buildDdpPresentationHtml(
-      ddp,
-      brandForDocumentModel("ddp-html"),
-      organizationCatalogs.processes,
-    );
-    openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o preenchimento.");
+    openPresentationHtml(() => {
+      const ddp = reconcileDdpWithCatalog(workspace.ddp, organizationCatalogs.systems);
+      return buildDdpPresentationHtml(
+        ddp,
+        brandForDocumentModel("ddp-html"),
+        organizationCatalogs.processes,
+      );
+    }, "Habilite pop-ups para visualizar o preenchimento.");
   }
 
   function previewCurrentPop() {
-    const docHtml = buildPopPresentationHtml(workspace.pop, brandForDocumentPresentation());
-    openPresentationHtml(docHtml, "Habilite pop-ups para visualizar o preenchimento.");
+    openPresentationHtml(
+      () => buildPopPresentationHtml(workspace.pop, brandForDocumentPresentation()),
+      "Habilite pop-ups para visualizar o preenchimento.",
+    );
   }
 
   async function exportDocumentRow(
