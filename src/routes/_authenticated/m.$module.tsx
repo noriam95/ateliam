@@ -3154,6 +3154,8 @@ function calculateMappingQuantitativeStats(
   data: DdpState,
   processCatalog: OrganizationProcess[] = [],
 ): MappingQuantitativeStats {
+  const sourceSteps = Array.isArray(data.steps) ? data.steps : [];
+  const sourceSystems = Array.isArray(data.systems) ? data.systems : [];
   const processById = new Map(processCatalog.map((process) => [process.id, process]));
   const processKeys = new Set<string>();
   const areaActivityCounts = new Map<string, number>();
@@ -3176,7 +3178,7 @@ function calculateMappingQuantitativeStats(
     data.macroprocess.processId,
     textAt(data.legacy ?? {}, "processName") || data.macroprocess.titulo,
   );
-  data.steps.forEach((step) => addProcess(step.processId, step.etapa));
+  sourceSteps.forEach((step) => addProcess(step.processId, step.etapa));
 
   const countActivity = (
     activity: Pick<
@@ -3207,7 +3209,7 @@ function calculateMappingQuantitativeStats(
     if (!systemIds.length) withoutSystem += 1;
 
     const resourceIds = new Set(systemIds);
-    data.systems.forEach((system) => {
+    sourceSystems.forEach((system) => {
       if (!resourceIds.has(system.id) && (!system.systemId || !resourceIds.has(system.systemId))) {
         return;
       }
@@ -3216,9 +3218,10 @@ function calculateMappingQuantitativeStats(
     });
   };
 
-  data.steps.forEach((step) => {
+  sourceSteps.forEach((step) => {
     const stepProcess = step.processId ? processById.get(step.processId) : undefined;
-    step.substeps.forEach((substep) => {
+    const substeps = Array.isArray(step.substeps) ? step.substeps : [];
+    substeps.forEach((substep) => {
       if (substep.tipo === "subprocesso") {
         const substepActivities = Array.isArray(substep.activities)
           ? substep.activities
@@ -3268,7 +3271,7 @@ function calculateMappingQuantitativeStats(
     activities,
     areas: Array.from(areaActivityCounts.keys()).filter((area) => area !== "Área não definida")
       .length,
-    systems: data.systems.filter((system) => plain(system.nome)).length,
+    systems: sourceSystems.filter((system) => plain(system.nome)).length,
     averageActivities: structureBase ? Math.round((activities / structureBase) * 10) / 10 : 0,
     maxActivitiesInSubprocess,
     execution: toBreakdown(
@@ -3543,12 +3546,11 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
     // Área e Dono do documento vêm do processo vinculado (preenchido no cadastro).
     processName: textAt(legacy, "processName") || currentMacro.titulo,
     processCode: textAt(legacy, "processCode"),
-    valueChainName: (
+    valueChainName: plain(
       textAt(legacy, "processValueChainName") ||
       data.meta.valueChainName ||
       data.meta.valueChainId
     )
-      .trim()
       .toLocaleUpperCase("pt-BR"),
     area: textAt(legacy, "processArea") || data.meta.area,
     owner: textAt(legacy, "processOwner") || data.meta.responsavel,
@@ -7993,11 +7995,10 @@ function ModuleWorkspacePage() {
 
     try {
       const docHtml = preparePresentationHtml(buildHtml());
-      const blob = new Blob([docHtml], { type: "text/html;charset=utf-8" });
-      const previewUrl = URL.createObjectURL(blob);
+      opened.document.open();
+      opened.document.write(docHtml);
+      opened.document.close();
       opened.opener = null;
-      opened.location.replace(previewUrl);
-      window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60_000);
     } catch (error) {
       console.error("Falha ao preparar a visualização do documento.", error);
       opened.close();
