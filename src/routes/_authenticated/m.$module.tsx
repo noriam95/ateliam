@@ -3180,10 +3180,8 @@ function calculateMappingQuantitativeStats(
     const key = processId?.trim() || normalizeLabel(fallbackName || "");
     if (key) processKeys.add(key);
   };
-  addProcess(
-    data.macroprocess.processId,
-    textAt(data.legacy ?? {}, "processName") || data.macroprocess.titulo,
-  );
+  // O processo principal identifica o mapeamento; a estrutura quantitativa
+  // considera somente os processos efetivamente apresentados nas etapas.
   sourceSteps.forEach((step) => addProcess(step.processId, step.etapa));
 
   const countActivity = (
