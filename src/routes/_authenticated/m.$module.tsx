@@ -6126,10 +6126,10 @@ function buildDdpPresentationHtml(
     : emptyBlock("Nenhum sistema ou documento informado.");
 
   const executionSummaryTags = (
-    activities: ExportFlowStep["substeps"][number]["activities"],
+    activities?: ExportFlowStep["substeps"][number]["activities"],
   ) => {
     const counts = new Map<FlowExecutionType, number>();
-    activities.forEach((activity) => {
+    (Array.isArray(activities) ? activities : []).forEach((activity) => {
       const classification = activity.classification;
       if (!classification) return;
       counts.set(classification, (counts.get(classification) ?? 0) + 1);
@@ -6162,7 +6162,10 @@ function buildDdpPresentationHtml(
               .join("")}${step.substeps
               .map(
                 (substep) => {
-                  const modalityTags = executionSummaryTags(substep.activities);
+                  const activities = Array.isArray(substep.activities)
+                    ? substep.activities
+                    : [];
+                  const modalityTags = executionSummaryTags(activities);
                   return `<details class="substep"><summary><h4>${html(
                     joinClean([substep.code, substep.title], " - ") ||
                       (substep.kind === "subprocesso" ? "Subprocesso" : "Atividade"),
@@ -6173,8 +6176,8 @@ function buildDdpPresentationHtml(
                   }</summary><div class="substep-body">${
                     substep.description ? `<p>${html(substep.description)}</p>` : ""
                   }${substep.images.map(zoomImage).join("")}${
-                    substep.activities.length
-                      ? `<div class="nested-activities">${substep.activities
+                    activities.length
+                      ? `<div class="nested-activities">${activities
                           .map(
                             (activity) =>
                               `<article class="list-card"><div class="index">${html(
