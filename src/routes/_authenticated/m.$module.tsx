@@ -3227,7 +3227,11 @@ function calculateMappingQuantitativeStats(
     );
     const area = isDefinedQuantitativeValue(rawArea) ? rawArea : "A definir";
     areaActivityCounts.set(area, (areaActivityCounts.get(area) ?? 0) + 1);
-    if (!isDefinedQuantitativeValue(activity.actorName || process?.owner || fallbackOwner)) {
+    const responsible = activity.actorName || process?.owner || fallbackOwner;
+    if (
+      !isDefinedQuantitativeValue(rawArea) ||
+      !isDefinedQuantitativeValue(responsible)
+    ) {
       withoutOwner += 1;
     }
     if (!plain(activity.descricao)) withoutDescription += 1;
@@ -5333,7 +5337,7 @@ function buildDdpDocx(
       [
         [
           doc.headerCell("Atividades manuais"),
-          doc.headerCell("Sem responsável"),
+          doc.headerCell("Sem área ou responsável"),
           doc.headerCell("Sem descrição"),
           doc.headerCell("Sem sistema relacionado"),
         ],
@@ -6369,7 +6373,7 @@ function buildDdpPresentationHtml(
 
   const quantitativeAlerts = [
     ["Atividades manuais", model.stats.alerts.manualActivities],
-    ["Sem responsável", model.stats.alerts.withoutOwner],
+    ["Sem área ou responsável", model.stats.alerts.withoutOwner],
     ["Sem descrição", model.stats.alerts.withoutDescription],
     ["Sem sistema relacionado", model.stats.alerts.withoutSystem],
   ]
@@ -14231,7 +14235,7 @@ function DdpModule({
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {[
                       ["Atividades manuais", quantitativeStats.alerts.manualActivities],
-                      ["Sem responsável", quantitativeStats.alerts.withoutOwner],
+                      ["Sem área ou responsável", quantitativeStats.alerts.withoutOwner],
                       ["Sem descrição", quantitativeStats.alerts.withoutDescription],
                       ["Sem sistema relacionado", quantitativeStats.alerts.withoutSystem],
                     ].map(([label, value]) => (
