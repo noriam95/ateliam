@@ -6479,48 +6479,47 @@ function buildDdpPresentationHtml(
 #glossario .glossary-disclosure-card>summary{min-height:94px;padding:16px 18px}
 #glossario .glossary-disclosure-card .system-card-heading{display:grid;align-content:center}
 #glossario .glossary-disclosure-card .system-card-heading strong{font-size:15px;line-height:1.3;overflow-wrap:break-word;word-break:normal}
-@media(min-width:1101px) and (min-height:760px){#quantitativa{display:flex;min-height:100vh;flex-direction:column;gap:10px;padding:28px 44px}#quantitativa .section-head{margin-bottom:2px}#quantitativa .section-head>span{width:50px;height:50px;border-radius:10px;font-size:22px}#quantitativa .section-head h2{font-size:34px}#quantitativa .section-head small{margin-top:5px;font-size:13px}#quantitativa .quant-overview{grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr);gap:12px;margin-top:0}#quantitativa .quant-insight{min-height:0;padding:20px 24px}#quantitativa .quant-insight h3{font-size:clamp(21px,2vw,29px)}#quantitativa .quant-insight p{margin:10px 0 14px;font-size:12px}#quantitativa .quant-chip{padding:6px 10px}#quantitativa .quant-waffle-card{padding:16px 18px}#quantitativa .quant-waffle-head{margin-bottom:10px}#quantitativa .quant-waffle{gap:4px;margin-bottom:11px}#quantitativa .quant-legend{gap:5px}#quantitativa .quant-summary{gap:12px;margin-top:0}#quantitativa .quant-panel{padding:15px 18px}#quantitativa .quant-panel>p{margin:3px 0 8px}#quantitativa .quant-bar{gap:4px;margin-top:7px}#quantitativa .quant-bar>i{height:5px}#quantitativa .quant-resource{padding:5px 0}#quantitativa .quant-resource span{height:23px}#quantitativa .quant-alert-heading{align-items:center;margin:2px 0 0}#quantitativa .quant-alert-heading .quant-eyebrow{margin-bottom:3px}#quantitativa .quant-alert-heading h3{font-size:16px}#quantitativa .quant-alert{min-height:70px;padding:11px 14px}#quantitativa .quant-alert strong{font-size:22px}#quantitativa .quant-alert span{margin-top:3px}}
 @media(min-width:1101px) and (min-height:760px){
-  #quantitativa{height:100vh;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto 74px 208px 170px 32px 64px;align-content:start;gap:8px;padding:20px 34px}
-  #quantitativa .section-head{align-items:center;gap:16px}
-  #quantitativa .section-head>span{width:48px;height:48px}
-  #quantitativa .section-head h2{font-size:32px}
-  #quantitativa .section-head small{margin-top:3px;font-size:12px}
-  #quantitativa .quant-metrics{height:74px}
-  #quantitativa .quant-metric{min-height:0;height:74px;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;padding:10px 15px}
+  #quantitativa{height:100vh;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto clamp(78px,9vh,104px) minmax(220px,1.35fr) minmax(168px,1fr) auto clamp(68px,8vh,92px);align-content:stretch;gap:clamp(8px,1.15vh,14px);padding:clamp(18px,2.5vh,30px) clamp(32px,3vw,52px)}
+  #quantitativa .section-head{align-items:center;gap:18px;margin:0}
+  #quantitativa .section-head>span{width:clamp(48px,5.4vh,58px);height:clamp(48px,5.4vh,58px)}
+  #quantitativa .section-head h2{font-size:clamp(32px,3.6vh,40px)}
+  #quantitativa .section-head small{margin-top:4px;font-size:clamp(12px,1.35vh,14px)}
+  #quantitativa .quant-metrics{height:100%}
+  #quantitativa .quant-metric{min-height:0;height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:14px;padding:clamp(12px,1.6vh,18px) clamp(16px,1.5vw,22px)}
   #quantitativa .quant-metric span{line-height:1.25}
-  #quantitativa .quant-metric strong{font-size:28px}
-  #quantitativa .quant-overview{height:208px}
-  #quantitativa .quant-insight{height:208px;padding:18px 22px}
-  #quantitativa .quant-insight h3{font-size:23px}
-  #quantitativa .quant-insight p{margin:8px 0 10px;line-height:1.35}
-  #quantitativa .quant-chip{padding:5px 9px;font-size:10px}
-  #quantitativa .quant-chip strong{font-size:12px}
-  #quantitativa .quant-waffle-card{height:208px;padding:14px 17px}
-  #quantitativa .quant-waffle-head{margin-bottom:8px}
-  #quantitativa .quant-waffle{gap:4px;margin-bottom:8px}
-  #quantitativa .quant-waffle>i{height:19px;min-width:0;aspect-ratio:auto}
-  #quantitativa .quant-legend{grid-template-columns:1fr 1fr;column-gap:14px;row-gap:4px}
-  #quantitativa .quant-legend-row{gap:8px;font-size:10px}
-  #quantitativa .quant-legend-row strong{font-size:10px}
-  #quantitativa .quant-summary{height:170px}
-  #quantitativa .quant-panel{height:170px;overflow:hidden;padding:13px 16px}
-  #quantitativa .quant-panel h3{font-size:15px}
-  #quantitativa .quant-panel>p{font-size:10px}
-  #quantitativa .quant-bar{gap:3px;margin-top:5px}
-  #quantitativa .quant-bar>div{font-size:10px}
-  #quantitativa .quant-bar>i{height:4px}
-  #quantitativa .quant-resource{grid-template-columns:26px minmax(0,1fr) auto;gap:8px;padding:4px 0}
-  #quantitativa .quant-resource span{height:20px}
-  #quantitativa .quant-resource strong{font-size:10px;line-height:1.15}
-  #quantitativa .quant-resource b{font-size:11px}
-  #quantitativa .quant-alert-heading{height:32px;margin:0}
-  #quantitativa .quant-alert-heading h3{font-size:14px}
-  #quantitativa .quant-alert-heading p{font-size:10px}
-  #quantitativa .quant-alerts{height:64px}
-  #quantitativa .quant-alert{min-height:0;height:64px;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;padding:8px 12px}
-  #quantitativa .quant-alert strong{font-size:20px}
-  #quantitativa .quant-alert span{margin-top:0;font-size:10px}
+  #quantitativa .quant-metric strong{font-size:clamp(28px,3.4vh,36px)}
+  #quantitativa .quant-overview{height:auto;min-height:0;grid-template-columns:minmax(0,1.08fr) minmax(380px,.92fr);gap:clamp(12px,1vw,18px);margin:0}
+  #quantitativa .quant-insight{height:100%;min-height:0;padding:clamp(24px,3vh,38px);justify-content:center}
+  #quantitativa .quant-insight h3{max-width:850px;font-size:clamp(24px,2.6vh,32px);line-height:1.18}
+  #quantitativa .quant-insight p{margin:clamp(9px,1.2vh,14px) 0 clamp(13px,1.7vh,20px);font-size:clamp(12px,1.35vh,14px);line-height:1.45}
+  #quantitativa .quant-chip{padding:clamp(6px,.8vh,9px) 11px;font-size:clamp(10px,1.1vh,12px)}
+  #quantitativa .quant-chip strong{font-size:clamp(12px,1.35vh,15px)}
+  #quantitativa .quant-waffle-card{height:100%;min-height:0;display:flex;flex-direction:column;padding:clamp(18px,2.2vh,26px)}
+  #quantitativa .quant-waffle-head{margin-bottom:clamp(10px,1.3vh,16px)}
+  #quantitativa .quant-waffle{flex:1;min-height:0;grid-template-rows:repeat(5,minmax(0,1fr));gap:clamp(4px,.55vh,7px);margin-bottom:clamp(10px,1.3vh,16px)}
+  #quantitativa .quant-waffle>i{height:auto;min-width:0;aspect-ratio:auto}
+  #quantitativa .quant-legend{grid-template-columns:1fr 1fr;column-gap:18px;row-gap:clamp(5px,.65vh,8px)}
+  #quantitativa .quant-legend-row{gap:9px;font-size:clamp(10px,1.15vh,12px)}
+  #quantitativa .quant-legend-row strong{font-size:inherit}
+  #quantitativa .quant-summary{height:auto;min-height:0;gap:clamp(12px,1vw,18px);margin:0}
+  #quantitativa .quant-panel{height:100%;min-height:0;overflow:hidden;padding:clamp(17px,2vh,24px)}
+  #quantitativa .quant-panel h3{font-size:clamp(16px,1.8vh,20px)}
+  #quantitativa .quant-panel>p{margin:4px 0 clamp(10px,1.2vh,14px);font-size:clamp(10px,1.15vh,12px)}
+  #quantitativa .quant-bar{gap:clamp(4px,.55vh,7px);margin-top:clamp(6px,.7vh,9px)}
+  #quantitativa .quant-bar>div{font-size:clamp(10px,1.15vh,12px)}
+  #quantitativa .quant-bar>i{height:clamp(4px,.55vh,7px)}
+  #quantitativa .quant-resource{grid-template-columns:clamp(25px,2.6vh,31px) minmax(0,1fr) auto;gap:10px;padding:clamp(5px,.75vh,9px) 0}
+  #quantitativa .quant-resource span{height:clamp(22px,2.6vh,28px)}
+  #quantitativa .quant-resource strong{font-size:clamp(10px,1.2vh,13px);line-height:1.2}
+  #quantitativa .quant-resource b{font-size:clamp(11px,1.35vh,14px)}
+  #quantitativa .quant-alert-heading{height:auto;min-height:32px;margin:0;align-items:center}
+  #quantitativa .quant-alert-heading h3{font-size:clamp(15px,1.7vh,18px)}
+  #quantitativa .quant-alert-heading p{font-size:clamp(10px,1.1vh,12px)}
+  #quantitativa .quant-alerts{height:100%}
+  #quantitativa .quant-alert{min-height:0;height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;padding:clamp(10px,1.25vh,15px)}
+  #quantitativa .quant-alert strong{font-size:clamp(21px,2.7vh,28px)}
+  #quantitativa .quant-alert span{margin-top:0;font-size:clamp(10px,1.1vh,12px)}
 }
 @media(min-width:721px) and (max-width:1350px){#sistemas .card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:721px) and (max-width:1350px){#glossario .card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
