@@ -3156,6 +3156,24 @@ type MappingQuantitativeStats = {
   };
 };
 
+function isDefinedQuantitativeValue(value: unknown) {
+  const normalized = normalizeLabel(plain(value)).trim();
+  return (
+    !!normalized &&
+    ![
+      "-",
+      "a definir",
+      "indefinido",
+      "indefinida",
+      "nao definido",
+      "nao definida",
+      "nao informado",
+      "nao informada",
+      "area nao definida",
+    ].includes(normalized)
+  );
+}
+
 function calculateMappingQuantitativeStats(
   data: DdpState,
   processCatalog: OrganizationProcess[] = [],
@@ -3201,14 +3219,17 @@ function calculateMappingQuantitativeStats(
     );
 
     const process = processId ? processById.get(processId) : undefined;
-    const area = plain(
+    const rawArea = plain(
       (activity.actorType === "area" ? activity.actorName : "") ||
         process?.department ||
         fallbackArea ||
-        "Área não definida",
+        "A definir",
     );
+    const area = isDefinedQuantitativeValue(rawArea) ? rawArea : "A definir";
     areaActivityCounts.set(area, (areaActivityCounts.get(area) ?? 0) + 1);
-    if (!plain(activity.actorName || process?.owner || fallbackOwner)) withoutOwner += 1;
+    if (!isDefinedQuantitativeValue(activity.actorName || process?.owner || fallbackOwner)) {
+      withoutOwner += 1;
+    }
     if (!plain(activity.descricao)) withoutDescription += 1;
     if (!systemIds.length) withoutSystem += 1;
 
@@ -3273,8 +3294,7 @@ function calculateMappingQuantitativeStats(
     processes: processKeys.size,
     subprocesses,
     activities,
-    areas: Array.from(areaActivityCounts.keys()).filter((area) => area !== "Área não definida")
-      .length,
+    areas: Array.from(areaActivityCounts.keys()).filter(isDefinedQuantitativeValue).length,
     systems: sourceSystems.filter((system) => plain(system.nome)).length,
     averageActivities: structureBase ? Math.round((activities / structureBase) * 10) / 10 : 0,
     maxActivitiesInSubprocess,
