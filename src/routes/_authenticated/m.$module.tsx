@@ -6162,7 +6162,7 @@ function buildDdpPresentationHtml(
       if (!classification) return;
       counts.set(classification, (counts.get(classification) ?? 0) + 1);
     });
-    return FLOW_EXECUTION_TYPES.filter((classification) => counts.has(classification))
+    return FLOW_EXECUTION_TYPE_OPTIONS.filter((classification) => counts.has(classification))
       .map(
         (classification) =>
           `<span class="type-tag">${html(classification)} · ${counts.get(classification)}</span>`,
