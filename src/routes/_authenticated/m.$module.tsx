@@ -5336,7 +5336,7 @@ function buildDdpDocx(
     doc.table(
       [
         [
-          doc.headerCell("Atividades manuais"),
+          doc.headerCell("Atividades integralmente manuais"),
           doc.headerCell("Sem área ou responsável"),
           doc.headerCell("Sem descrição"),
           doc.headerCell("Sem sistema relacionado"),
@@ -6372,7 +6372,7 @@ function buildDdpPresentationHtml(
     : emptyBlock("Nenhum sistema ou documento foi vinculado às atividades.");
 
   const quantitativeAlerts = [
-    ["Atividades manuais", model.stats.alerts.manualActivities],
+    ["Atividades integralmente manuais", model.stats.alerts.manualActivities],
     ["Sem área ou responsável", model.stats.alerts.withoutOwner],
     ["Sem descrição", model.stats.alerts.withoutDescription],
     ["Sem sistema relacionado", model.stats.alerts.withoutSystem],
@@ -6419,16 +6419,26 @@ function buildDdpPresentationHtml(
     : emptyBlock("Nenhuma atividade classificada por forma de execução.");
 
   const manualActivities = model.stats.alerts.manualActivities;
+  const hybridActivities =
+    model.stats.execution.find((item) => normalizeLabel(item.label).startsWith("hibrid"))
+      ?.value ?? 0;
+  const hybridPercentage = model.stats.activities
+    ? Math.round((hybridActivities / model.stats.activities) * 100)
+    : 0;
   const manualRatio = model.stats.activities
     ? Math.round((manualActivities / model.stats.activities) * 10)
     : 0;
   const quantitativeInsightTitle = model.stats.activities
     ? manualActivities
-      ? `<em>${manualRatio} em cada 10 atividades</em> dependem de execução manual.`
+      ? `<em>${manualRatio} em cada 10 atividades</em> são integralmente manuais${
+          hybridPercentage
+            ? `, enquanto ${hybridPercentage}% combinam execução manual e processamento automático.`
+            : "."
+        }`
       : "O processo não registra atividades totalmente manuais."
     : "A composição será exibida após o cadastro das atividades.";
   const quantitativeInsightBody = model.stats.activities
-    ? `Das ${model.stats.activities} atividades identificadas, ${manualActivities} são totalmente manuais e ${model.stats.automationPercentage}% possuem algum grau de automação.`
+    ? `Das ${model.stats.activities} atividades identificadas, ${manualActivities} são integralmente manuais e ${hybridActivities} são híbridas.`
     : "Ainda não há atividades suficientes para calcular a distribuição operacional.";
 
   const macroDiagram = model.macroprocess.src
@@ -14234,7 +14244,10 @@ function DdpModule({
                   </div>
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {[
-                      ["Atividades manuais", quantitativeStats.alerts.manualActivities],
+                      [
+                        "Atividades integralmente manuais",
+                        quantitativeStats.alerts.manualActivities,
+                      ],
                       ["Sem área ou responsável", quantitativeStats.alerts.withoutOwner],
                       ["Sem descrição", quantitativeStats.alerts.withoutDescription],
                       ["Sem sistema relacionado", quantitativeStats.alerts.withoutSystem],
