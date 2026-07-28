@@ -905,7 +905,7 @@ export function WorkspaceProcessRegistrations({
           data: {
             id: draft.id || undefined,
             organizationId,
-            name: draft.name,
+            name: draft.name.trim().toLocaleUpperCase("pt-BR"),
             modality: draft.systemModality,
             description: draft.description || null,
           },
@@ -1582,7 +1582,12 @@ function RegistrationFields({
         <Field label="Nome">
           <input
             value={draft.name}
-            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                name: e.target.value.toLocaleUpperCase("pt-BR"),
+              }))
+            }
             placeholder="Nome do sistema ou documento"
             className={inputClass}
           />
@@ -2243,7 +2248,7 @@ function saveDemoRegistration(
         ...current,
         systems: upsert(current.systems, {
           id,
-          name: draft.name.trim(),
+          name: draft.name.trim().toLocaleUpperCase("pt-BR"),
           modality: draft.systemModality,
           description: draft.description.trim(),
         }),
@@ -2907,7 +2912,7 @@ export function SystemRegistrationDialog({
   onCreated: (system: SystemItem) => void;
 }) {
   const saveSystem = useServerFn(saveSystemRegistration);
-  const [name, setName] = useState(initialName);
+  const [name, setName] = useState(initialName.toLocaleUpperCase("pt-BR"));
   const [modality, setModality] = useState<SystemModality>("Sistemas corporativos");
   const [description, setDescription] = useState("");
   const valid = name.trim().length >= 2;
@@ -2917,18 +2922,23 @@ export function SystemRegistrationDialog({
       if (deferPersistence) {
         return {
           id: `pending-system-${crypto.randomUUID()}`,
-          name: name.trim(),
+          name: name.trim().toLocaleUpperCase("pt-BR"),
           modality,
           description,
         };
       }
       if (isDemo) {
-        return { id: `demo-system-${Date.now()}`, name: name.trim(), modality, description };
+        return {
+          id: `demo-system-${Date.now()}`,
+          name: name.trim().toLocaleUpperCase("pt-BR"),
+          modality,
+          description,
+        };
       }
       const row = (await saveSystem({
         data: {
           organizationId,
-          name: name.trim(),
+          name: name.trim().toLocaleUpperCase("pt-BR"),
           modality,
           description: description || null,
         },
@@ -2980,7 +2990,7 @@ export function SystemRegistrationDialog({
             <input
               autoFocus
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value.toLocaleUpperCase("pt-BR"))}
               placeholder="Nome do sistema ou documento"
               className={inputClass}
             />

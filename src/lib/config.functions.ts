@@ -183,7 +183,12 @@ const valueChainSchema = organizationScopeSchema.extend({
 });
 const systemRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
-  name: z.string().trim().min(2).max(180),
+  name: z
+    .string()
+    .trim()
+    .min(2)
+    .max(180)
+    .transform((value) => value.toLocaleUpperCase("pt-BR")),
   modality: z
     .enum([
       "Sistemas corporativos",
@@ -683,7 +688,10 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
         ...chain,
         name: chain.name.trim().toLocaleUpperCase("pt-BR"),
       })),
-      systems: systems ?? [],
+      systems: (systems ?? []).map((system) => ({
+        ...system,
+        name: system.name.trim().toLocaleUpperCase("pt-BR"),
+      })),
       positions: positions ?? [],
     };
   });
@@ -779,7 +787,10 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
         name: chain.name.trim().toLocaleUpperCase("pt-BR"),
       })),
       processes: (processes.data ?? []).filter((process) => process.type !== "macroprocess"),
-      systems: systems.data ?? [],
+      systems: (systems.data ?? []).map((system) => ({
+        ...system,
+        name: system.name.trim().toLocaleUpperCase("pt-BR"),
+      })),
       positions: positions.data ?? [],
       valueChainRelations: valueChainRelations.data ?? [],
     };
@@ -1019,7 +1030,7 @@ export const saveSystemRegistration = createServerFn({ method: "POST" })
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const payload = {
       organization_id: access.organizationId,
-      name: data.name,
+      name: data.name.trim().toLocaleUpperCase("pt-BR"),
       modality: data.modality,
       description: data.description ?? null,
       updated_at: new Date().toISOString(),
