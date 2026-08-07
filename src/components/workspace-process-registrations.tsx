@@ -1276,9 +1276,26 @@ export function WorkspaceProcessRegistrations({
                     colSpan={copy.columns.length + (canDeleteRows ? 3 : 2)}
                     className="p-10 text-center text-sm text-muted-foreground"
                   >
-                    {search
-                      ? "Nenhum registro corresponde ao filtro informado."
-                      : "Nenhum registro cadastrado."}
+                    <div className="grid justify-items-center gap-3">
+                      <div>
+                        {search
+                          ? "Nenhum registro corresponde ao filtro informado."
+                          : "Nenhum registro cadastrado."}
+                      </div>
+                      {!search && view !== "process-types" ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDraft(emptyDraft(view, data));
+                            setFormOpen(true);
+                          }}
+                          className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold text-foreground hover:bg-muted"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Cadastrar registro
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ) : null}

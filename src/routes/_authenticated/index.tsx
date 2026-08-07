@@ -1301,15 +1301,30 @@ function ExpandableCard({
                       </span>
                     </span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setOpen(false)}
-                    title="Fechar"
-                    aria-label="Fechar"
-                    className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {onNavigate ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpen(false);
+                          onNavigate();
+                        }}
+                        className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                        {navigateLabel}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setOpen(false)}
+                      title="Fechar"
+                      aria-label="Fechar"
+                      className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1 overflow-auto p-5">{expanded ?? children}</div>
               </div>
@@ -2481,6 +2496,54 @@ function WorkspaceContent({
   isDemo: boolean;
 }) {
   const navigate = useNavigate();
+
+  function openActivityItem(item: SystemNotification) {
+    const tag = item.tag
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    const filter = item.title;
+
+    if (tag.includes("mapeamento")) {
+      navigate({
+        to: "/m/$module",
+        params: { module: "ddp" },
+        search: { view: "consult", filter },
+      });
+      return;
+    }
+    if (tag.includes("fluxograma")) {
+      navigate({
+        to: "/m/$module",
+        params: { module: "bpmn" },
+        search: { view: "consult", filter },
+      });
+      return;
+    }
+    if (
+      tag.includes("pop") ||
+      tag.includes("norma") ||
+      tag.includes("instrucao") ||
+      tag.includes("documento")
+    ) {
+      navigate({
+        to: "/m/$module",
+        params: { module: "pop" },
+        search: { view: "consult", filter },
+      });
+      return;
+    }
+    if (tag.includes("sistema")) {
+      navigate({ to: "/", search: { area: "modules", view: "systems" } });
+      return;
+    }
+    if (tag.includes("processo")) {
+      navigate({ to: "/", search: { area: "modules", view: "processes" } });
+      return;
+    }
+    navigate({ to: "/", search: { area: "modules" } });
+  }
+
   if (String(view).startsWith("module:")) {
     const [, moduleId, task = "home"] = view.split(":") as [
       "module",
@@ -2957,6 +3020,8 @@ function WorkspaceContent({
           title="Atividade recente"
           titleClassName="text-sm font-semibold text-foreground"
           className={DASHBOARD_CARD_CLASS}
+          onNavigate={() => navigate({ to: "/", search: { area: "modules" } })}
+          navigateLabel="Abrir módulos"
         >
           <div className="mt-3">
             {activityItems.length === 0 ? (
@@ -2966,9 +3031,11 @@ function WorkspaceContent({
             ) : (
               <div className="divide-y divide-border border-l border-border pl-4">
                 {activityItems.map((item) => (
-                  <div
+                  <button
+                    type="button"
                     key={item.id}
-                    className="relative grid grid-cols-[76px_84px_minmax(0,1fr)] items-center gap-3 py-2.5"
+                    onClick={() => openActivityItem(item)}
+                    className="relative grid w-full grid-cols-[76px_84px_minmax(0,1fr)] items-center gap-3 py-2.5 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/25"
                   >
                     <span className="absolute -left-[20.5px] h-2.5 w-2.5 rounded-full border-2 border-card bg-[#009f7f]" />
                     <time className="font-data text-[10px] leading-tight text-muted-foreground">
@@ -2988,7 +3055,7 @@ function WorkspaceContent({
                         {item.description}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

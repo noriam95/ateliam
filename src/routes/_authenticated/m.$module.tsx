@@ -2120,19 +2120,18 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
       };
     }),
     sipoc: { ...fallback.sipoc, ...(input?.sipoc ?? {}) },
-    sipocRows:
-      sipocRows.length
-        ? sipocRows.map((row) => ({ ...row, id: row.id || id("sipoc") }))
-        : [
-            {
-              id: id("sipoc"),
-              fornecedores: legacySipoc?.fornecedores ?? "",
-              entradas: legacySipoc?.entradas ?? "",
-              processo: legacySipoc?.processo ?? "",
-              saidas: legacySipoc?.saidas ?? "",
-              clientes: legacySipoc?.clientes ?? "",
-            },
-          ],
+    sipocRows: sipocRows.length
+      ? sipocRows.map((row) => ({ ...row, id: row.id || id("sipoc") }))
+      : [
+          {
+            id: id("sipoc"),
+            fornecedores: legacySipoc?.fornecedores ?? "",
+            entradas: legacySipoc?.entradas ?? "",
+            processo: legacySipoc?.processo ?? "",
+            saidas: legacySipoc?.saidas ?? "",
+            clientes: legacySipoc?.clientes ?? "",
+          },
+        ],
     gaps: gaps.map((gap) => {
       const legacy = gap as Partial<GapItem> & {
         comments?: unknown;
@@ -3226,10 +3225,7 @@ function calculateMappingQuantitativeStats(
     const area = isDefinedQuantitativeValue(rawArea) ? rawArea : "A definir";
     areaActivityCounts.set(area, (areaActivityCounts.get(area) ?? 0) + 1);
     const responsible = activity.actorName || process?.owner || fallbackOwner;
-    if (
-      !isDefinedQuantitativeValue(rawArea) ||
-      !isDefinedQuantitativeValue(responsible)
-    ) {
+    if (!isDefinedQuantitativeValue(rawArea) || !isDefinedQuantitativeValue(responsible)) {
       withoutOwner += 1;
     }
     if (!plain(activity.descricao)) withoutDescription += 1;
@@ -3250,14 +3246,9 @@ function calculateMappingQuantitativeStats(
     const substeps = Array.isArray(step.substeps) ? step.substeps : [];
     substeps.forEach((substep) => {
       if (substep.tipo === "subprocesso") {
-        const substepActivities = Array.isArray(substep.activities)
-          ? substep.activities
-          : [];
+        const substepActivities = Array.isArray(substep.activities) ? substep.activities : [];
         subprocesses += 1;
-        maxActivitiesInSubprocess = Math.max(
-          maxActivitiesInSubprocess,
-          substepActivities.length,
-        );
+        maxActivitiesInSubprocess = Math.max(maxActivitiesInSubprocess, substepActivities.length);
         substepActivities.forEach((activity) =>
           countActivity(
             activity,
@@ -3484,68 +3475,65 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
       caption: image.legenda,
       src: image.src,
     })),
-    substeps: Array.isArray(step.substeps) && step.substeps.length
-      ? step.substeps.map((substep) => {
-          const substepSystemIds = Array.isArray(substep.systemIds)
-            ? substep.systemIds
-            : [];
-          const substepActivities = Array.isArray(substep.activities)
-            ? substep.activities
-            : [];
-          return {
-          code: substep.codigo,
-          title: substep.titulo,
-          description: substep.descricao,
-          kind: substep.tipo,
-          classification: substep.classificacao,
-          actorType: substep.actorType,
-          actorName: substep.actorName,
-          systems: sourceSystems
-            .filter(
-              (system) =>
-                substepSystemIds.includes(system.id) ||
-                (!!system.systemId && substepSystemIds.includes(system.systemId)),
-            )
-            .map((system) => ({
-              name: system.nome,
-              type: normalizeSystemModality(system.tipo),
-            })),
-          images: (Array.isArray(substep.images) ? substep.images : []).map((image) => ({
-            title: image.titulo,
-            caption: image.legenda,
-            src: image.src,
-          })),
-          activities: substepActivities.map((activity) => {
-            const activitySystemIds = Array.isArray(activity.systemIds)
-              ? activity.systemIds
-              : [];
+    substeps:
+      Array.isArray(step.substeps) && step.substeps.length
+        ? step.substeps.map((substep) => {
+            const substepSystemIds = Array.isArray(substep.systemIds) ? substep.systemIds : [];
+            const substepActivities = Array.isArray(substep.activities) ? substep.activities : [];
             return {
-            code: activity.codigo,
-            title: activity.titulo,
-            description: activity.descricao,
-            classification: activity.classificacao,
-            actorType: activity.actorType,
-            actorName: activity.actorName,
-            systems: sourceSystems
-              .filter(
-                (system) =>
-                  activitySystemIds.includes(system.id) ||
-                  (!!system.systemId && activitySystemIds.includes(system.systemId)),
-              )
-              .map((system) => ({
-                name: system.nome,
-                type: normalizeSystemModality(system.tipo),
+              code: substep.codigo,
+              title: substep.titulo,
+              description: substep.descricao,
+              kind: substep.tipo,
+              classification: substep.classificacao,
+              actorType: substep.actorType,
+              actorName: substep.actorName,
+              systems: sourceSystems
+                .filter(
+                  (system) =>
+                    substepSystemIds.includes(system.id) ||
+                    (!!system.systemId && substepSystemIds.includes(system.systemId)),
+                )
+                .map((system) => ({
+                  name: system.nome,
+                  type: normalizeSystemModality(system.tipo),
+                })),
+              images: (Array.isArray(substep.images) ? substep.images : []).map((image) => ({
+                title: image.titulo,
+                caption: image.legenda,
+                src: image.src,
               })),
-            images: (Array.isArray(activity.images) ? activity.images : []).map((image) => ({
-              title: image.titulo,
-              caption: image.legenda,
-              src: image.src,
-            })),
-          };
-          }),
-        };
-        })
-      : [],
+              activities: substepActivities.map((activity) => {
+                const activitySystemIds = Array.isArray(activity.systemIds)
+                  ? activity.systemIds
+                  : [];
+                return {
+                  code: activity.codigo,
+                  title: activity.titulo,
+                  description: activity.descricao,
+                  classification: activity.classificacao,
+                  actorType: activity.actorType,
+                  actorName: activity.actorName,
+                  systems: sourceSystems
+                    .filter(
+                      (system) =>
+                        activitySystemIds.includes(system.id) ||
+                        (!!system.systemId && activitySystemIds.includes(system.systemId)),
+                    )
+                    .map((system) => ({
+                      name: system.nome,
+                      type: normalizeSystemModality(system.tipo),
+                    })),
+                  images: (Array.isArray(activity.images) ? activity.images : []).map((image) => ({
+                    title: image.titulo,
+                    caption: image.legenda,
+                    src: image.src,
+                  })),
+                };
+              }),
+            };
+          })
+        : [],
   }));
 
   const gaps: ExportGap[] = sourceGaps.map((gap) => ({
@@ -3576,11 +3564,8 @@ function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[]
     processName: textAt(legacy, "processName") || currentMacro.titulo,
     processCode: textAt(legacy, "processCode"),
     valueChainName: plain(
-      textAt(legacy, "processValueChainName") ||
-      data.meta.valueChainName ||
-      data.meta.valueChainId
-    )
-      .toLocaleUpperCase("pt-BR"),
+      textAt(legacy, "processValueChainName") || data.meta.valueChainName || data.meta.valueChainId,
+    ).toLocaleUpperCase("pt-BR"),
     area: textAt(legacy, "processArea") || data.meta.area,
     owner: textAt(legacy, "processOwner") || data.meta.responsavel,
     description: data.overview.objetivo,
@@ -6184,9 +6169,7 @@ function buildDdpPresentationHtml(
         .join("")
     : emptyBlock("Nenhum sistema ou documento informado.");
 
-  const executionSummaryTags = (
-    activities?: ExportFlowStep["substeps"][number]["activities"],
-  ) => {
+  const executionSummaryTags = (activities?: ExportFlowStep["substeps"][number]["activities"]) => {
     const counts = new Map<FlowExecutionType, number>();
     (Array.isArray(activities) ? activities : []).forEach((activity) => {
       const classification = activity.classification;
@@ -6219,52 +6202,46 @@ function buildDdpPresentationHtml(
             }${step.description ? `<p>${html(step.description)}</p>` : ""}${step.images
               .map(zoomImage)
               .join("")}${step.substeps
-              .map(
-                (substep) => {
-                  const activities = Array.isArray(substep.activities)
-                    ? substep.activities
-                    : [];
-                  const modalityTags = executionSummaryTags(activities);
-                  return `<details class="substep"><summary><h4>${html(
-                    joinClean([substep.code, substep.title], " - ") ||
-                      (substep.kind === "subprocesso" ? "Subprocesso" : "Atividade"),
-                  )}</h4>${
-                    modalityTags
-                      ? `<div class="tag-list substep-tags">${modalityTags}</div>`
-                      : ""
-                  }</summary><div class="substep-body">${
-                    substep.description ? `<p>${html(substep.description)}</p>` : ""
-                  }${substep.images.map(zoomImage).join("")}${
-                    activities.length
-                      ? `<div class="nested-activities">${activities
-                          .map(
-                            (activity) =>
-                              `<article class="list-card"><div class="index">${html(
-                                activity.code,
-                              )}</div><div class="tag-list"><span class="type-tag">${html(
-                                activity.classification,
-                              )}</span>${
-                                activity.actorName
-                                  ? `<span class="type-tag">${html(
-                                      activity.actorType === "position" ? "Cargo" : "Área",
-                                    )}: ${html(activity.actorName)}</span>`
-                                  : ""
-                              }${activity.systems
-                                .map(
-                                  (system) =>
-                                    `<span class="type-tag">${html(system.name)} · ${html(
-                                      system.type,
-                                    )}</span>`,
-                                )
-                                .join("")}</div><h3>${html(activity.title)}</h3>${
-                                activity.description ? `<p>${html(activity.description)}</p>` : ""
-                              }${activity.images.map(zoomImage).join("")}</article>`,
-                          )
-                          .join("")}</div>`
-                      : ""
-                  }</div></details>`;
-                },
-              )
+              .map((substep) => {
+                const activities = Array.isArray(substep.activities) ? substep.activities : [];
+                const modalityTags = executionSummaryTags(activities);
+                return `<details class="substep"><summary><h4>${html(
+                  joinClean([substep.code, substep.title], " - ") ||
+                    (substep.kind === "subprocesso" ? "Subprocesso" : "Atividade"),
+                )}</h4>${
+                  modalityTags ? `<div class="tag-list substep-tags">${modalityTags}</div>` : ""
+                }</summary><div class="substep-body">${
+                  substep.description ? `<p>${html(substep.description)}</p>` : ""
+                }${substep.images.map(zoomImage).join("")}${
+                  activities.length
+                    ? `<div class="nested-activities">${activities
+                        .map(
+                          (activity) =>
+                            `<article class="list-card"><div class="index">${html(
+                              activity.code,
+                            )}</div><div class="tag-list"><span class="type-tag">${html(
+                              activity.classification,
+                            )}</span>${
+                              activity.actorName
+                                ? `<span class="type-tag">${html(
+                                    activity.actorType === "position" ? "Cargo" : "Área",
+                                  )}: ${html(activity.actorName)}</span>`
+                                : ""
+                            }${activity.systems
+                              .map(
+                                (system) =>
+                                  `<span class="type-tag">${html(system.name)} · ${html(
+                                    system.type,
+                                  )}</span>`,
+                              )
+                              .join("")}</div><h3>${html(activity.title)}</h3>${
+                              activity.description ? `<p>${html(activity.description)}</p>` : ""
+                            }${activity.images.map(zoomImage).join("")}</article>`,
+                        )
+                        .join("")}</div>`
+                    : ""
+                }</div></details>`;
+              })
               .join("")}</div></details></article>`,
         )
         .join("")
@@ -6418,8 +6395,8 @@ function buildDdpPresentationHtml(
 
   const manualActivities = model.stats.alerts.manualActivities;
   const hybridActivities =
-    model.stats.execution.find((item) => normalizeLabel(item.label).startsWith("hibrid"))
-      ?.value ?? 0;
+    model.stats.execution.find((item) => normalizeLabel(item.label).startsWith("hibrid"))?.value ??
+    0;
   const hybridPercentage = model.stats.activities
     ? Math.round((hybridActivities / model.stats.activities) * 100)
     : 0;
@@ -7311,8 +7288,7 @@ function ModuleWorkspacePage() {
       replacements.set(system.id, saved);
     }
 
-    const resolveSystemReference = (systemId: string) =>
-      replacements.get(systemId)?.id ?? systemId;
+    const resolveSystemReference = (systemId: string) => replacements.get(systemId)?.id ?? systemId;
     const normalizeSystemReferences = (systemIds?: string[]) =>
       Array.from(
         new Set(
@@ -7341,13 +7317,12 @@ function ModuleWorkspacePage() {
         steps: ws.ddp.steps.map((step) => ({
           ...step,
           substeps: (Array.isArray(step.substeps) ? step.substeps : []).map((substep) => {
-            const activities = (Array.isArray(substep.activities)
-              ? substep.activities
-              : []
-            ).map((activity) => ({
-              ...activity,
-              systemIds: normalizeSystemReferences(activity.systemIds),
-            }));
+            const activities = (Array.isArray(substep.activities) ? substep.activities : []).map(
+              (activity) => ({
+                ...activity,
+                systemIds: normalizeSystemReferences(activity.systemIds),
+              }),
+            );
             const activitySystemIds = Array.from(
               new Set(activities.flatMap((activity) => activity.systemIds)),
             );
@@ -17465,6 +17440,16 @@ function BpmnModuleV2({
     });
   }
 
+  function resetConnectorsForSelectedNodes() {
+    const ids = selectedNodeIds.length ? selectedNodeIds : selectedId ? [selectedId] : [];
+    if (!ids.length) return;
+    const nextFlows = data.flows.map((flow) =>
+      ids.includes(flow.sourceId) || ids.includes(flow.targetId) ? { ...flow, points: [] } : flow,
+    );
+    commit({ ...data, lanes, flows: nextFlows });
+    toast.success("Conectores recalculados.");
+  }
+
   function arrangeSelectedNodes(
     mode:
       | "left"
@@ -19183,6 +19168,12 @@ function BpmnModuleV2({
                         onClick={() => arrangeSelectedNodes("distribute-vertical")}
                       >
                         <AlignVerticalSpaceBetween className="h-4 w-4" />
+                      </IconButton>
+                      <IconButton
+                        label="Recalcular conectores"
+                        onClick={resetConnectorsForSelectedNodes}
+                      >
+                        <GitBranch className="h-4 w-4" />
                       </IconButton>
                     </div>
                     <p className="mt-2 text-[11px] text-muted-foreground">

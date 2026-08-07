@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FileSearch, ImageDown, Maximize2, Network, Pencil, Plus, Rows3, Save, Trash2, X } from "lucide-react";
+import {
+  FileSearch,
+  ImageDown,
+  Maximize2,
+  Network,
+  Pencil,
+  Plus,
+  Rows3,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteProcessRegistration,
@@ -639,8 +650,8 @@ function PorterDiagram({
                       large
                         ? "rounded-md border border-[#ded6ca]"
                         : index === 0
-                        ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
-                        : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
+                          ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
+                          : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
                     }`,
                     "bg-[#e7f5ef] text-black ring-2 ring-white/40",
                   ),
@@ -1166,7 +1177,9 @@ function ConsultationTable({
             type="button"
             onClick={() => setDensity((value) => (value === "compact" ? "comfortable" : "compact"))}
             title={density === "compact" ? "Usar linhas confortÃ¡veis" : "Usar linhas compactas"}
-            aria-label={density === "compact" ? "Usar linhas confortÃ¡veis" : "Usar linhas compactas"}
+            aria-label={
+              density === "compact" ? "Usar linhas confortÃ¡veis" : "Usar linhas compactas"
+            }
             aria-pressed={density === "compact"}
             className="inline-grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
           >
@@ -1247,7 +1260,9 @@ function ConsultationTable({
                     <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
                       <FileSearch className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Nenhum macroprocesso encontrado</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          Nenhum macroprocesso encontrado
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {query || statusFilter !== "all"
                             ? "Ajuste os filtros para ampliar os resultados."
@@ -1341,7 +1356,9 @@ function ConsultationTable({
                     <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
                       <FileSearch className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Nenhum processo encontrado</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          Nenhum processo encontrado
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Ajuste os filtros ou cadastre processos no menu Processos.
                         </p>
@@ -1413,14 +1430,15 @@ function buildDiagramSVG(
           status: "Ativa",
         },
       ];
-  const OUTPUT_LINE_H = 19;
+  const OUTPUT_BLOCK_H = 38;
+  const OUTPUT_TEXT_LINE_H = 13;
   const OUTPUT_TEXT_W = OUTPUT_W - OUTPUT_LABEL_W - 20;
   const outputColumnCount = Math.max(
     1,
     Math.min(2, outputRenderItems.length, Math.floor(OUTPUT_TEXT_W / 165)),
   );
   const outputRows = Math.ceil(outputRenderItems.length / outputColumnCount);
-  const outputContentH = 42 + outputRows * OUTPUT_LINE_H;
+  const outputContentH = 36 + outputRows * OUTPUT_BLOCK_H;
   const FLOW_H = Math.max(132, flowGrid.rows * FLOW_ROW_H + 22, outputContentH);
   const H =
     PAD +
@@ -1608,20 +1626,26 @@ function buildDiagramSVG(
     `<line x1="${outputStartX + OUTPUT_LABEL_W}" y1="${y + 16}" x2="${outputStartX + OUTPUT_LABEL_W}" y2="${y + FLOW_H - 16}" stroke="rgba(255,255,255,.2)"/>`,
     `<text x="${outputLabelX}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`,
   );
-  const outputTop = y + (FLOW_H - outputRows * OUTPUT_LINE_H) / 2 + 5;
+  const outputTop = y + (FLOW_H - outputRows * OUTPUT_BLOCK_H) / 2 + 8;
   const outputColumnWidth = OUTPUT_TEXT_W / outputColumnCount;
   outputRenderItems.forEach((item, index) => {
     const row = index % outputRows;
     const col = Math.floor(index / outputRows);
     const lineX = outputTextX + col * outputColumnWidth;
-    const lineY = outputTop + row * OUTPUT_LINE_H;
-    const maxChars = Math.max(18, Math.floor((outputColumnWidth - 22) / 6.2));
-    const outputLabel =
-      item.name.length > maxChars
-        ? `${item.name.slice(0, Math.max(12, maxChars - 3))}...`
-        : item.name;
+    const lineY = outputTop + row * OUTPUT_BLOCK_H;
+    const maxChars = Math.max(18, Math.floor((outputColumnWidth - 28) / 6.2));
+    const outputLines = wrapLabel(item.name, maxChars).slice(0, 2);
+    const textBlock = outputLines
+      .map(
+        (line, lineIndex) =>
+          `<tspan x="${lineX + 15}" dy="${lineIndex === 0 ? 0 : OUTPUT_TEXT_LINE_H}">${escapeSvg(
+            line,
+          )}</tspan>`,
+      )
+      .join("");
     parts.push(
-      `<text x="${lineX}" y="${lineY}" font-size="12" font-weight="700" fill="${C.white}"><tspan fill="${C.cyan}">›</tspan> ${escapeSvg(outputLabel)}</text>`,
+      `<text x="${lineX}" y="${lineY}" font-size="12" font-weight="800" fill="${C.cyan}">&rsaquo;</text>`,
+      `<text x="${lineX + 15}" y="${lineY}" font-size="11" font-weight="700" fill="${C.white}">${textBlock}</text>`,
     );
   });
   y += FLOW_H + SUPPORT_TOP_GAP;
