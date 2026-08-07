@@ -2079,12 +2079,20 @@ function normalizeDdp(input: Partial<DdpState> | undefined, fallback: DdpState):
     overview: { ...fallback.overview, ...(input?.overview ?? {}) },
     systems: systems.map((system) => {
       const legacy = system as Partial<DdpSystem> &
-        Partial<TextItem> & { system_id?: string; name?: string };
+        Partial<TextItem> & {
+          system_id?: string;
+          name?: string;
+          modality?: string;
+          classification?: string;
+          classificacao?: string;
+        };
       return {
         id: legacy.id || id("sys"),
         systemId: legacy.systemId || legacy.system_id || "",
         nome: legacy.nome || legacy.name || legacy.text || "",
-        tipo: normalizeSystemModality(legacy.tipo),
+        tipo: normalizeSystemModality(
+          legacy.tipo || legacy.modality || legacy.classification || legacy.classificacao,
+        ),
         dono: legacy.dono || "",
         criticidade: legacy.criticidade || "Média",
         descricao: legacy.descricao || "",
@@ -8186,15 +8194,20 @@ function ModuleWorkspacePage() {
     openPresentationHtml(() => {
       const snapshot = resolveRowSnapshot(row);
       if (snapshot && moduleId === "ddp") {
-        const ddp = reconcileDdpWithCatalog(
-          normalizeDdp(snapshot.ddp, defaultWorkspace().ddp),
-          organizationCatalogs.systems,
-        );
-        return buildDdpPresentationHtml(
-          ddp,
-          brandForDocumentModel("ddp-html"),
-          organizationCatalogs.processes,
-        );
+        try {
+          const ddp = reconcileDdpWithCatalog(
+            normalizeDdp(snapshot.ddp, defaultWorkspace().ddp),
+            organizationCatalogs.systems,
+          );
+          return buildDdpPresentationHtml(
+            ddp,
+            brandForDocumentModel("ddp-html"),
+            organizationCatalogs.processes,
+          );
+        } catch (error) {
+          console.error("Falha ao montar visualizacao do mapeamento.", error);
+          return buildReadonlyPreviewHtml(moduleId, row, organizationBrand);
+        }
       }
       if (snapshot && moduleId === "pop") {
         return buildPopPresentationHtml(snapshot.pop, brandForDocumentPresentation());
