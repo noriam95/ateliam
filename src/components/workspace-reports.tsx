@@ -1176,9 +1176,9 @@ function ConsultationTable({
           <button
             type="button"
             onClick={() => setDensity((value) => (value === "compact" ? "comfortable" : "compact"))}
-            title={density === "compact" ? "Usar linhas confortÃ¡veis" : "Usar linhas compactas"}
+            title={density === "compact" ? "Usar linhas confortáveis" : "Usar linhas compactas"}
             aria-label={
-              density === "compact" ? "Usar linhas confortÃ¡veis" : "Usar linhas compactas"
+              density === "compact" ? "Usar linhas confortáveis" : "Usar linhas compactas"
             }
             aria-pressed={density === "compact"}
             className="inline-grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"

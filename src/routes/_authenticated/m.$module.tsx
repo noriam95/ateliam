@@ -6991,7 +6991,7 @@ function ModuleWorkspacePage() {
     setModuleEditStarted(true);
     if (result.moduleId === "ddp") setDdpView("editor");
     window.localStorage.setItem(draftKey, JSON.stringify(result.workspace));
-    toast.success(`${result.label} aberto para edicao.`);
+    toast.success(`${result.label} aberto para edição.`);
 
     if (result.moduleId !== moduleId) {
       navigate({ to: "/m/$module", params: { module: result.moduleId } });
@@ -7021,7 +7021,7 @@ function ModuleWorkspacePage() {
       applyImportedDocument(await file.text(), file.name, handle);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel abrir o arquivo.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível abrir o arquivo.");
     }
   }
 
@@ -7033,7 +7033,7 @@ function ModuleWorkspacePage() {
     try {
       applyImportedDocument(await file.text(), file.name);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel importar o JSON.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível importar o JSON.");
     }
   }
 
@@ -7092,7 +7092,7 @@ function ModuleWorkspacePage() {
       await writable.close();
       toast.success("Arquivo local atualizado.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel salvar o arquivo.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o arquivo.");
     }
   }
 
@@ -7179,7 +7179,7 @@ function ModuleWorkspacePage() {
     try {
       await importSpreadsheet(file);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel importar o Excel.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível importar o Excel.");
     }
   }
 
@@ -7906,7 +7906,7 @@ function ModuleWorkspacePage() {
       toast.success("Copia criada. Revise e salve para gerar um novo registro.");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Nao foi possivel duplicar o mapeamento.",
+        error instanceof Error ? error.message : "Não foi possível duplicar o mapeamento.",
       );
     }
   }
@@ -8165,7 +8165,7 @@ function ModuleWorkspacePage() {
     } catch (error) {
       console.error("Falha ao preparar a visualização do documento.", error);
       const detail = error instanceof Error ? error.message : String(error);
-      const fallbackHtml = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Visualizacao indisponivel</title><style>:root{color-scheme:light dark;font-family:Inter,Arial,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7f8;color:#111827}main{width:min(560px,calc(100vw - 32px));border:1px solid #d6dbe1;border-radius:14px;background:#fff;padding:28px;box-shadow:0 20px 70px rgba(15,23,42,.14)}h1{margin:0 0 10px;font-size:22px}p{margin:0;color:#4b5563;line-height:1.55}code{display:block;margin-top:18px;padding:12px;border-radius:10px;background:#f1f5f9;white-space:pre-wrap;color:#991b1b}@media(prefers-color-scheme:dark){body{background:#111418;color:#f8fafc}main{background:#171b21;border-color:#343b46}p{color:#cbd5e1}code{background:#1f2937;color:#fecaca}}</style></head><body><main><h1>Nao foi possivel preparar a visualizacao</h1><p>O registro foi mantido. Volte para a consulta, abra a edicao do mapeamento e salve novamente para normalizar os dados.</p>${detail ? `<code>${html(detail)}</code>` : ""}</main></body></html>`;
+      const fallbackHtml = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Visualização indisponível</title><style>:root{color-scheme:light dark;font-family:Inter,Arial,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7f8;color:#111827}main{width:min(560px,calc(100vw - 32px));border:1px solid #d6dbe1;border-radius:14px;background:#fff;padding:28px;box-shadow:0 20px 70px rgba(15,23,42,.14)}h1{margin:0 0 10px;font-size:22px}p{margin:0;color:#4b5563;line-height:1.55}code{display:block;margin-top:18px;padding:12px;border-radius:10px;background:#f1f5f9;white-space:pre-wrap;color:#991b1b}@media(prefers-color-scheme:dark){body{background:#111418;color:#f8fafc}main{background:#171b21;border-color:#343b46}p{color:#cbd5e1}code{background:#1f2937;color:#fecaca}}</style></head><body><main><h1>Não foi possível preparar a visualização</h1><p>O registro foi mantido. Volte para a consulta, abra a edição do mapeamento e salve novamente para normalizar os dados.</p>${detail ? `<code>${html(detail)}</code>` : ""}</main></body></html>`;
       try {
         opened.document.open();
         opened.document.write(fallbackHtml);
@@ -17949,7 +17949,7 @@ function BpmnModuleV2({
       toast.success("Fluxograma importado.");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Nao foi possivel importar o arquivo.";
+        error instanceof Error ? error.message : "Não foi possível importar o arquivo.";
       toast.error(message);
     }
   }
@@ -19134,7 +19134,7 @@ function BpmnModuleV2({
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       <IconButton
-                        label="Alinhar Ã  esquerda"
+                        label="Alinhar à esquerda"
                         onClick={() => arrangeSelectedNodes("left")}
                       >
                         <AlignStartVertical className="h-4 w-4" />

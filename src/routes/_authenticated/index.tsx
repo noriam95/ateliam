@@ -1297,7 +1297,7 @@ function ExpandableCard({
                     <span className="min-w-0">
                       <span className="block truncate">{title}</span>
                       <span className="block text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                        VisualizaÃ§Ã£o detalhada
+                        Visualização detalhada
                       </span>
                     </span>
                   </span>
