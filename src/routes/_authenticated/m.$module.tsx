@@ -3213,10 +3213,8 @@ function calculateMappingQuantitativeStats(
   ) => {
     const systemIds = Array.isArray(activity.systemIds) ? activity.systemIds : [];
     activities += 1;
-    executionCounts.set(
-      activity.classificacao,
-      (executionCounts.get(activity.classificacao) ?? 0) + 1,
-    );
+    const executionType = normalizeFlowExecutionType(activity.classificacao);
+    executionCounts.set(executionType, (executionCounts.get(executionType) ?? 0) + 1);
 
     const process = processId ? processById.get(processId) : undefined;
     const rawArea = plain(
@@ -7313,6 +7311,17 @@ function ModuleWorkspacePage() {
       replacements.set(system.id, saved);
     }
 
+    const resolveSystemReference = (systemId: string) =>
+      replacements.get(systemId)?.id ?? systemId;
+    const normalizeSystemReferences = (systemIds?: string[]) =>
+      Array.from(
+        new Set(
+          (Array.isArray(systemIds) ? systemIds : [])
+            .map((systemId) => resolveSystemReference(systemId))
+            .filter(Boolean),
+        ),
+      );
+
     return {
       ...ws,
       ddp: {
@@ -7329,6 +7338,29 @@ function ModuleWorkspacePage() {
               }
             : system;
         }),
+        steps: ws.ddp.steps.map((step) => ({
+          ...step,
+          substeps: (Array.isArray(step.substeps) ? step.substeps : []).map((substep) => {
+            const activities = (Array.isArray(substep.activities)
+              ? substep.activities
+              : []
+            ).map((activity) => ({
+              ...activity,
+              systemIds: normalizeSystemReferences(activity.systemIds),
+            }));
+            const activitySystemIds = Array.from(
+              new Set(activities.flatMap((activity) => activity.systemIds)),
+            );
+            return {
+              ...substep,
+              systemIds:
+                substep.tipo === "subprocesso" && activitySystemIds.length
+                  ? activitySystemIds
+                  : normalizeSystemReferences(substep.systemIds),
+              activities,
+            };
+          }),
+        })),
       },
     };
   }
@@ -8150,14 +8182,23 @@ function ModuleWorkspacePage() {
 
     try {
       const docHtml = preparePresentationHtml(buildHtml());
+      if (!docHtml.trim()) throw new Error("Conteudo de visualizacao vazio.");
       opened.document.open();
       opened.document.write(docHtml);
       opened.document.close();
       opened.opener = null;
     } catch (error) {
       console.error("Falha ao preparar a visualização do documento.", error);
-      opened.close();
       const detail = error instanceof Error ? error.message : String(error);
+      const fallbackHtml = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Visualizacao indisponivel</title><style>:root{color-scheme:light dark;font-family:Inter,Arial,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7f8;color:#111827}main{width:min(560px,calc(100vw - 32px));border:1px solid #d6dbe1;border-radius:14px;background:#fff;padding:28px;box-shadow:0 20px 70px rgba(15,23,42,.14)}h1{margin:0 0 10px;font-size:22px}p{margin:0;color:#4b5563;line-height:1.55}code{display:block;margin-top:18px;padding:12px;border-radius:10px;background:#f1f5f9;white-space:pre-wrap;color:#991b1b}@media(prefers-color-scheme:dark){body{background:#111418;color:#f8fafc}main{background:#171b21;border-color:#343b46}p{color:#cbd5e1}code{background:#1f2937;color:#fecaca}}</style></head><body><main><h1>Nao foi possivel preparar a visualizacao</h1><p>O registro foi mantido. Volte para a consulta, abra a edicao do mapeamento e salve novamente para normalizar os dados.</p>${detail ? `<code>${html(detail)}</code>` : ""}</main></body></html>`;
+      try {
+        opened.document.open();
+        opened.document.write(fallbackHtml);
+        opened.document.close();
+        opened.opener = null;
+      } catch {
+        opened.close();
+      }
       toast.error(
         detail
           ? `Não foi possível preparar a visualização: ${detail}`

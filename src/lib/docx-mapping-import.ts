@@ -606,8 +606,13 @@ function parseEntries(
       if (nestedActivityHeading) {
         if (!currentStep) continue;
         if (!currentSubstep || currentSubstep.kind !== "subprocess") {
-          currentSubstep = emptySubstep("Subprocesso", [], "subprocess");
-          currentStep.substeps.push(currentSubstep);
+          if (currentSubstep) {
+            currentSubstep.kind = "subprocess";
+            currentSubstep.activities = [];
+          } else {
+            currentSubstep = emptySubstep("Subprocesso", [], "subprocess");
+            currentStep.substeps.push(currentSubstep);
+          }
         }
         currentActivity = emptySubstep(nestedActivityHeading[4].trim(), images);
         currentSubstep.activities.push(currentActivity);
@@ -696,12 +701,22 @@ function parseEntries(
         }
       } else if (
         currentActivity &&
-        (label === "forma de execucao" || label === "classificacao" || label === "tipo de execucao")
+        (label === "forma de execucao" ||
+          label === "classificacao" ||
+          label === "tipo de execucao" ||
+          label === "categoria de execucao" ||
+          label === "modalidade de execucao" ||
+          label === "execucao")
       ) {
         currentActivity.executionType = value;
       } else if (
         currentSubstep &&
-        (label === "forma de execucao" || label === "classificacao" || label === "tipo de execucao")
+        (label === "forma de execucao" ||
+          label === "classificacao" ||
+          label === "tipo de execucao" ||
+          label === "categoria de execucao" ||
+          label === "modalidade de execucao" ||
+          label === "execucao")
       ) {
         currentSubstep.executionType = value;
       } else if (
@@ -728,8 +743,15 @@ function parseEntries(
           label === "area executora" ||
           label === "area responsavel" ||
           label === "area responsavel pela atividade" ||
+          label === "responsavel pela atividade" ||
+          label === "responsavel da atividade" ||
+          label === "responsavel pela execucao" ||
+          label === "area cargo" ||
+          label === "area/cargo" ||
           label === "ator" ||
           label === "ator do processo" ||
+          label === "executante" ||
+          label === "executor" ||
           label === "cargo")
       ) {
         const target = currentActivity ?? currentSubstep;
@@ -743,8 +765,14 @@ function parseEntries(
           label === "sistemas" ||
           label === "documento" ||
           label === "documentos" ||
+          label === "sistema documento" ||
+          label === "sistema/documento" ||
+          label === "sistemas/documentos" ||
           label === "sistemas documentos" ||
-          label === "sistemas documentos envolvidos")
+          label === "sistemas documentos envolvidos" ||
+          label === "recursos utilizados" ||
+          label === "recurso" ||
+          label === "recursos")
       ) {
         const target = currentActivity ?? currentSubstep;
         if (target) target.systemNames = listValues(value);
