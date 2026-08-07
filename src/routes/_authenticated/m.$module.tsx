@@ -9582,7 +9582,7 @@ function ModuleDocumentGrid({
     setPendingDelete({
       ids: selected,
       title: "Excluir registros selecionados",
-      message: `Confirma excluir ${selected.length} registro(s) selecionado(s)?`,
+      message: `Você está prestes a excluir ${selected.length} registro(s) de forma permanente. Deseja continuar?`,
     });
   }
 
@@ -9590,7 +9590,7 @@ function ModuleDocumentGrid({
     setPendingDelete({
       ids: [row.id],
       title: "Excluir registro",
-      message: `Confirma excluir o registro "${row.code || row.name}"?`,
+      message: `Você está prestes a excluir "${row.code || row.name}" de forma permanente. Deseja continuar?`,
     });
   }
 
@@ -10624,7 +10624,7 @@ function DdpCausesModuleLegacy({
       {pendingDeleteIds.length ? (
         <Modal
           title="Excluir oportunidades de melhoria selecionadas"
-          subtitle={`Confirma excluir ${pendingDeleteIds.length} oportunidade(s) selecionada(s)?`}
+          subtitle={`Você está prestes a excluir ${pendingDeleteIds.length} oportunidade(s) de forma permanente. Deseja continuar?`}
           onClose={() => setPendingDeleteIds([])}
         >
           <div className="flex justify-end gap-2">
@@ -11367,7 +11367,7 @@ function DdpCausesModuleV2({
       {pendingDeleteIds.length ? (
         <Modal
           title="Excluir oportunidades de melhoria avulsas"
-          subtitle={`Confirma excluir ${pendingDeleteIds.length} oportunidade(s) avulsa(s)?`}
+          subtitle={`Você está prestes a excluir ${pendingDeleteIds.length} oportunidade(s) avulsa(s) de forma permanente. Deseja continuar?`}
           onClose={() => setPendingDeleteIds([])}
         >
           <div className="flex justify-end gap-2">
@@ -15794,10 +15794,12 @@ function PopModule({
                     <button
                       type="button"
                       onClick={addProcedureItem}
-                      className="inline-flex items-center gap-2 rounded-md bg-[var(--gold)] px-3 py-1.5 text-xs font-bold text-black transition hover:brightness-95"
+                      title="Novo item"
+                      aria-label="Novo item"
+                      className="grid h-8 w-8 place-items-center rounded-md bg-[var(--gold)] text-black transition hover:brightness-95"
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      Novo item
+                      <span className="sr-only">Novo item</span>
                     </button>
                     <button
                       type="button"
@@ -15835,7 +15837,7 @@ function PopModule({
                     }
                     className="group overflow-hidden rounded-lg border border-border bg-muted/20"
                   >
-                    <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 marker:hidden hover:bg-muted/40">
+                    <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 px-4 py-3 marker:hidden hover:bg-muted/40">
                       <span className="rounded-full bg-[color-mix(in_oklab,var(--gold)_16%,transparent)] px-3 py-1 text-xs font-bold text-[var(--gold)]">
                         {section.code}
                       </span>
@@ -15848,6 +15850,19 @@ function PopModule({
                           {(section.subitems ?? []).length === 1 ? "subitem" : "subitens"}
                         </small>
                       </span>
+                      <button
+                        type="button"
+                        title="Adicionar subitem"
+                        aria-label="Adicionar subitem"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          addProcedureSubitem(section);
+                        }}
+                        className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
                       <ChevronDown className="h-4 w-4 text-muted-foreground transition group-open:rotate-180" />
                     </summary>
                     <div className="border-t border-border p-3">
@@ -15933,7 +15948,7 @@ function PopModule({
                                 : ""
                             }`}
                           >
-                            <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 marker:hidden hover:bg-muted/40">
+                            <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2.5 marker:hidden hover:bg-muted/40">
                               <span className="font-mono text-xs font-bold text-[var(--gold)]">
                                 {subitem.code}
                               </span>
@@ -15946,6 +15961,19 @@ function PopModule({
                                   {subitem.clauses.length === 1 ? "alínea" : "alíneas"}
                                 </small>
                               </span>
+                              <button
+                                type="button"
+                                title="Adicionar alínea"
+                                aria-label="Adicionar alínea"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  addProcedureClause(section.id, subitem);
+                                }}
+                                className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
                               <ChevronDown className="h-4 w-4 text-muted-foreground transition group-open:rotate-180" />
                             </summary>
                             <div className="border-t border-border p-3">
@@ -15997,7 +16025,7 @@ function PopModule({
                                       data-procedure-clause={clause.id}
                                       open={procedureNodeOpen(
                                         `clause:${clause.id}`,
-                                        subitem.clauses[0]?.id === clause.id,
+                                        !isEditing && subitem.clauses[0]?.id === clause.id,
                                       )}
                                       onToggle={(event) =>
                                         setProcedureNodeOpen(

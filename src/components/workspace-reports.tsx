@@ -1402,8 +1402,25 @@ function buildDiagramSVG(
   const flowGrid = gridMetrics(primaryItems.length, FLOW_W - 48, 235, 5);
   const managementH = managementGrid.rows * CARD_H + Math.max(0, managementGrid.rows - 1) * ROW_GAP;
   const supportH = supportGrid.rows * CARD_H + Math.max(0, supportGrid.rows - 1) * ROW_GAP;
+  const outputRenderItems = outputItems.length
+    ? outputItems
+    : [
+        {
+          id: "empty-output",
+          name: "Nenhuma saída cadastrada.",
+          category: "output" as ChainCategory,
+          description: null,
+          status: "Ativa",
+        },
+      ];
   const OUTPUT_LINE_H = 19;
-  const outputContentH = 44 + Math.max(1, outputItems.length) * OUTPUT_LINE_H;
+  const OUTPUT_TEXT_W = OUTPUT_W - OUTPUT_LABEL_W - 20;
+  const outputColumnCount = Math.max(
+    1,
+    Math.min(2, outputRenderItems.length, Math.floor(OUTPUT_TEXT_W / 165)),
+  );
+  const outputRows = Math.ceil(outputRenderItems.length / outputColumnCount);
+  const outputContentH = 42 + outputRows * OUTPUT_LINE_H;
   const FLOW_H = Math.max(132, flowGrid.rows * FLOW_ROW_H + 22, outputContentH);
   const H =
     PAD +
@@ -1589,24 +1606,22 @@ function buildDiagramSVG(
   const outputTextX = outputStartX + OUTPUT_LABEL_W + 10;
   parts.push(
     `<line x1="${outputStartX + OUTPUT_LABEL_W}" y1="${y + 16}" x2="${outputStartX + OUTPUT_LABEL_W}" y2="${y + FLOW_H - 16}" stroke="rgba(255,255,255,.2)"/>`,
-    `<text x="${outputLabelX}" y="${y + 25}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`,
+    `<text x="${outputLabelX}" y="${y + FLOW_H / 2}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="900" fill="${C.white}">Saídas</text>`,
   );
-  (outputItems.length
-    ? outputItems
-    : [
-        {
-          id: "empty-output",
-          name: "Nenhuma saída cadastrada.",
-          category: "output" as ChainCategory,
-          description: null,
-          status: "Ativa",
-        },
-      ]
-  ).forEach((item, index) => {
-    const lineY = y + 25 + index * OUTPUT_LINE_H;
-    const outputLabel = item.name.length > 42 ? `${item.name.slice(0, 39)}...` : item.name;
+  const outputTop = y + (FLOW_H - outputRows * OUTPUT_LINE_H) / 2 + 5;
+  const outputColumnWidth = OUTPUT_TEXT_W / outputColumnCount;
+  outputRenderItems.forEach((item, index) => {
+    const row = index % outputRows;
+    const col = Math.floor(index / outputRows);
+    const lineX = outputTextX + col * outputColumnWidth;
+    const lineY = outputTop + row * OUTPUT_LINE_H;
+    const maxChars = Math.max(18, Math.floor((outputColumnWidth - 22) / 6.2));
+    const outputLabel =
+      item.name.length > maxChars
+        ? `${item.name.slice(0, Math.max(12, maxChars - 3))}...`
+        : item.name;
     parts.push(
-      `<text x="${outputTextX}" y="${lineY}" font-size="12" font-weight="700" fill="${C.white}"><tspan fill="${C.cyan}">›</tspan> ${escapeSvg(outputLabel)}</text>`,
+      `<text x="${lineX}" y="${lineY}" font-size="12" font-weight="700" fill="${C.white}"><tspan fill="${C.cyan}">›</tspan> ${escapeSvg(outputLabel)}</text>`,
     );
   });
   y += FLOW_H + SUPPORT_TOP_GAP;
