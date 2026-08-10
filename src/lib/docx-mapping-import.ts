@@ -364,6 +364,36 @@ function labelValue(line: string) {
   return match ? { label: normalized(match[1]), value: match[2].trim() } : null;
 }
 
+function emptySipocRow(): MappingImportSipoc {
+  return { suppliers: "", inputs: "", process: "", outputs: "", customers: "" };
+}
+
+function mapSipocFieldLabel(label: string): keyof MappingImportSipoc | null {
+  if (label === "fornecedor" || label === "fornecedores") return "suppliers";
+  if (label === "entrada" || label === "entradas" || label === "insumo" || label === "insumos")
+    return "inputs";
+  if (label === "processo" || label === "atividades do processo") return "process";
+  if (label === "saida" || label === "saidas" || label === "produto" || label === "produtos")
+    return "outputs";
+  if (label === "cliente" || label === "clientes") return "customers";
+  return null;
+}
+
+function isSipocHeaderLine(line: string) {
+  const value = normalized(line);
+  return (
+    value.includes("fornecedor") &&
+    value.includes("entrada") &&
+    value.includes("processo") &&
+    value.includes("saida") &&
+    value.includes("cliente")
+  );
+}
+
+function isSipocRowComplete(row: MappingImportSipoc | null) {
+  return Boolean(row?.suppliers && row.inputs && row.process && row.outputs && row.customers);
+}
+
 function isGapTitleLabel(label: string) {
   return [
     "gap",
@@ -857,6 +887,8 @@ function parseEntries(
   let currentActivity: MappingImportSubstep | null = null;
   let currentGap: MappingImportGap | null = null;
   let gapField: "description" | "impact" | "action" | null = null;
+  let currentSipoc: MappingImportSipoc | null = null;
+  let sipocField: keyof MappingImportSipoc | null = null;
   let currentNext: MappingDocumentImport["nextSteps"][number] | null = null;
   let currentGlossary: MappingDocumentImport["glossary"][number] | null = null;
 
@@ -881,6 +913,8 @@ function parseEntries(
       currentActivity = null;
       currentGap = null;
       gapField = null;
+      currentSipoc = null;
+      sipocField = null;
       currentNext = null;
       currentGlossary = null;
       continue;
@@ -955,6 +989,7 @@ function parseEntries(
     }
     if (section === "sipoc") {
       const cells = cellsFromLine(line);
+      if (isSipocHeaderLine(line)) continue;
       if (cells.length >= 5 && !cells.map(normalized).includes("fornecedores")) {
         result.sipoc.push({
           suppliers: cells[0],
@@ -963,6 +998,20 @@ function parseEntries(
           outputs: cells[3],
           customers: cells.slice(4).join(" | "),
         });
+        currentSipoc = result.sipoc.at(-1) ?? null;
+        sipocField = null;
+        continue;
+      }
+      const field = labeled ? mapSipocFieldLabel(label) : null;
+      if (field) {
+        if (!currentSipoc || isSipocRowComplete(currentSipoc)) {
+          currentSipoc = emptySipocRow();
+          result.sipoc.push(currentSipoc);
+        }
+        currentSipoc[field] = append(currentSipoc[field], value);
+        sipocField = field;
+      } else if (currentSipoc && sipocField) {
+        currentSipoc[sipocField] = append(currentSipoc[sipocField], line);
       }
       continue;
     }
