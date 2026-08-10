@@ -3207,7 +3207,7 @@ function calculateMappingQuantitativeStats(
 ): MappingQuantitativeStats {
   const sourceSteps = Array.isArray(data.steps) ? data.steps : [];
   const sourceSystems = (Array.isArray(data.systems) ? data.systems : []).filter(
-    (system) => !isPlaceholderCatalogName(system.nome),
+    isRenderableMappingSystem,
   );
   const processById = new Map(processCatalog.map((process) => [process.id, process]));
   const processKeys = new Set<string>();
@@ -3914,6 +3914,7 @@ function rowsFromFields(fields: Array<[string, string]>) {
 }
 
 function buildDdpImportTemplate(data: DdpState) {
+  const exportSystems = data.systems.filter(isRenderableMappingSystem);
   const sheets: XlsxSheet[] = [
     {
       name: "Instrucoes",
@@ -3956,7 +3957,7 @@ function buildDdpImportTemplate(data: DdpState) {
       name: "Sistemas",
       rows: [
         ["nome", "classificacao", "dono", "criticidade", "descricao"],
-        ...data.systems.map((item) => [
+        ...exportSystems.map((item) => [
           item.nome,
           item.tipo,
           item.dono,
@@ -4026,7 +4027,7 @@ function buildDdpImportTemplate(data: DdpState) {
               substep.actorName,
               substep.titulo,
               substep.descricao,
-              data.systems
+              exportSystems
                 .filter(
                   (system) =>
                     substep.systemIds.includes(system.id) ||
@@ -4048,7 +4049,7 @@ function buildDdpImportTemplate(data: DdpState) {
               activity.actorName,
               activity.titulo,
               activity.descricao,
-              data.systems
+              exportSystems
                 .filter(
                   (system) =>
                     activity.systemIds.includes(system.id) ||
@@ -7281,8 +7282,8 @@ function ModuleWorkspacePage() {
   async function persistMappingSystems(ws: WorkspaceState) {
     if (moduleId !== "ddp") return ws;
 
-    const rows = ws.ddp.systems.filter((system) => system.nome.trim());
-    if (!rows.length) return ws;
+    const rows = ws.ddp.systems.filter(isRenderableMappingSystem);
+    const validLocalSystemIds = new Set(rows.flatMap((system) => [system.id, system.systemId].filter(Boolean)));
 
     const resolvedByName = new Map(
       organizationCatalogs.systems.map((system) => [normalizeLabel(system.name), system]),
@@ -7325,6 +7326,7 @@ function ModuleWorkspacePage() {
       Array.from(
         new Set(
           (Array.isArray(systemIds) ? systemIds : [])
+            .filter((systemId) => validLocalSystemIds.has(systemId))
             .map((systemId) => resolveSystemReference(systemId))
             .filter(Boolean),
         ),
@@ -7334,7 +7336,7 @@ function ModuleWorkspacePage() {
       ...ws,
       ddp: {
         ...ws.ddp,
-        systems: ws.ddp.systems.map((system) => {
+        systems: rows.map((system) => {
           const resolved = replacements.get(system.id);
           return resolved
             ? {
@@ -12438,7 +12440,7 @@ function DdpModule({
         escopo: importResult.scope || data.overview.escopo,
         kpis: importResult.context || data.overview.kpis,
       },
-      systems: importedSystems.length ? importedSystems : data.systems,
+      systems: importedSystems,
       sipocRows: importResult.sipoc.length
         ? importResult.sipoc.map((row) => ({
             id: id("sipoc"),
