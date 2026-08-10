@@ -283,6 +283,228 @@ function labelValue(line: string) {
   return match ? { label: normalized(match[1]), value: match[2].trim() } : null;
 }
 
+function paragraphLines(entries: Entry[]) {
+  return entries
+    .filter((entry): entry is Extract<Entry, { kind: "paragraph" }> => entry.kind === "paragraph")
+    .map((entry) => entry.value.text.trim())
+    .filter(Boolean);
+}
+
+function cleanImportedTitle(value: string) {
+  return value
+    .replace(/^\s*(?:etapa|processo|subprocesso|atividade|subetapa)\s+/i, "")
+    .replace(/^\s*\d+(?:\.\d+){0,3}\s*[-\u2013\u2014.:)]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findExistingStep(result: MappingDocumentImport, title: string) {
+  const key = normalized(title);
+  return result.steps.find((step) => normalized(step.title) === key) ?? null;
+}
+
+function collectFollowingText(lines: string[], startIndex: number) {
+  const chunks: string[] = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (detectSection(line)) break;
+    if (
+      /^(?:etapa|processo|subprocesso|atividade|subetapa)?\s*\d+(?:\.\d+){0,3}\s*[-\u2013\u2014.:)]\s+/i.test(
+        line,
+      )
+    )
+      break;
+    if (labelValue(line)) break;
+    chunks.push(line);
+  }
+  return chunks.join("\n\n").trim();
+}
+
+function inferExecutionType(text: string) {
+  const value = normalized(text);
+  if (/automatic/.test(value) && !/manual/.test(value)) return "Automática";
+  if (/manual/.test(value) && /sistema/.test(value)) return "Manual no sistema";
+  if (/manual/.test(value) && /(fora do sistema|planilha|email|e mail|papel)/.test(value))
+    return "Manual fora do sistema";
+  if (/(hibrid|manual.*automatic|automatic.*manual)/.test(value)) return "Híbrida (manual/automática)";
+  return "";
+}
+
+function looseSectionRange(lines: string[], sectionNames: MappingSection[]) {
+  const start = lines.findIndex((line) => {
+    const detected = detectSection(line);
+    return detected ? sectionNames.includes(detected) : false;
+  });
+  if (start < 0) return lines;
+  const end = lines.findIndex((line, index) => index > start && Boolean(detectSection(line)));
+  return lines.slice(start + 1, end < 0 ? lines.length : end);
+}
+
+function inferLooseOverview(result: MappingDocumentImport, lines: string[]) {
+  let current: "objective" | "scope" | "context" | null = null;
+  for (const line of lines) {
+    const labeled = labelValue(line);
+    const label = labeled?.label ?? normalized(line.replace(/:$/, ""));
+    const value = labeled?.value ?? "";
+    if (label === "objetivo" || label === "finalidade") {
+      current = "objective";
+      if (value && !result.objective) result.objective = value;
+      continue;
+    }
+    if (label === "escopo" || label === "abrangencia") {
+      current = "scope";
+      if (value && !result.scope) result.scope = value;
+      continue;
+    }
+    if (label === "contexto" || label === "cenario" || label === "indicadores") {
+      current = "context";
+      if (value && !result.context) result.context = value;
+      continue;
+    }
+    if (current) result[current] = append(result[current], line);
+  }
+}
+
+function inferLooseSystems(result: MappingDocumentImport, lines: string[]) {
+  const known = new Set(result.systems.map((system) => normalized(system.name)));
+  lines.forEach((line) => {
+    const labeled = labelValue(line);
+    const label = labeled?.label ?? "";
+    if (
+      ![
+        "sistema",
+        "sistemas",
+        "documento",
+        "documentos",
+        "sistema documento",
+        "sistema/documento",
+        "recurso",
+        "recursos",
+      ].includes(label)
+    )
+      return;
+    listValues(labeled?.value ?? "").forEach((name) => {
+      const key = normalized(name);
+      if (!key || known.has(key)) return;
+      result.systems.push({
+        name,
+        description: "",
+        modality: label.includes("document") ? "Documentos e comunicações" : "",
+      });
+      known.add(key);
+    });
+  });
+}
+
+function inferLooseSteps(result: MappingDocumentImport, lines: string[]) {
+  let currentStep: MappingImportStep | null = result.steps.at(-1) ?? null;
+  let currentSubprocess: MappingImportSubstep | null = null;
+  const range = looseSectionRange(lines, ["steps"]);
+
+  range.forEach((line, index) => {
+    const trimmed = line.trim();
+    const nested = trimmed.match(
+      /^(?:(?:atividade)\s*)?(\d+)\.(\d+)\.(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i,
+    );
+    const secondLevel = trimmed.match(
+      /^(?:(subprocesso|subetapa|atividade)\s*)?(\d+)\.(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i,
+    );
+    const firstLevel = trimmed.match(
+      /^(?:(?:etapa|processo)\s*)?(\d{1,2})\s*[-\u2013\u2014.:)]\s*(.+)$/i,
+    );
+    const labeled = labelValue(trimmed);
+    const label = labeled?.label ?? "";
+
+    if (firstLevel) {
+      const title = cleanImportedTitle(firstLevel[2]);
+      currentStep =
+        findExistingStep(result, title) ??
+        ({
+          title,
+          area: "",
+          responsible: "",
+          input: "",
+          activity: collectFollowingText(range, index),
+          output: "",
+          system: "",
+          risk: "",
+          notes: "",
+          images: [],
+          substeps: [],
+        } satisfies MappingImportStep);
+      if (!findExistingStep(result, title)) result.steps.push(currentStep);
+      currentSubprocess = null;
+      return;
+    }
+
+    if (secondLevel) {
+      if (!currentStep) return;
+      const title = cleanImportedTitle(secondLevel[4]);
+      const explicitKind = normalized(secondLevel[1] ?? "");
+      const inferredKind =
+        explicitKind === "subprocesso" ||
+        (!explicitKind && /^(processo|subprocesso|etapa)\b/i.test(secondLevel[4]))
+          ? "subprocess"
+          : "activity";
+      const substep = {
+        ...emptySubstep(title, [], inferredKind),
+        description: collectFollowingText(range, index),
+        executionType: inferExecutionType(trimmed),
+      };
+      if (!substep.actorName) {
+        substep.actorType = "area";
+        substep.actorName = inferExplicitActivityArea(`${title}\n${substep.description}`);
+      }
+      currentStep.substeps.push(substep);
+      currentSubprocess = substep.kind === "subprocess" ? substep : null;
+      return;
+    }
+
+    if (nested) {
+      if (!currentStep) return;
+      if (!currentSubprocess) {
+        currentSubprocess = emptySubstep("Subprocesso", [], "subprocess");
+        currentStep.substeps.push(currentSubprocess);
+      }
+      const activity = {
+        ...emptySubstep(cleanImportedTitle(nested[4])),
+        description: collectFollowingText(range, index),
+        executionType: inferExecutionType(trimmed),
+      };
+      activity.actorType = "area";
+      activity.actorName = inferExplicitActivityArea(`${activity.title}\n${activity.description}`);
+      currentSubprocess.activities.push(activity);
+      return;
+    }
+
+    if (
+      currentSubprocess &&
+      (label === "atividade" || label === "titulo da atividade" || label === "subetapa")
+    ) {
+      const activity = {
+        ...emptySubstep(labeled?.value ?? ""),
+        description: "",
+        executionType: "",
+      };
+      currentSubprocess.activities.push(activity);
+      return;
+    }
+
+    if (currentStep && !labeled && !detectSection(trimmed)) {
+      if (currentSubprocess) currentSubprocess.description = append(currentSubprocess.description, trimmed);
+      else currentStep.activity = append(currentStep.activity, trimmed);
+    }
+  });
+}
+
+function inferLooseMapping(result: MappingDocumentImport, entries: Entry[], seenSections: Set<MappingSection>) {
+  const lines = paragraphLines(entries);
+  if (!lines.length) return;
+  inferLooseOverview(result, lines);
+  inferLooseSystems(result, lines);
+  if (!result.steps.length || seenSections.size < 2) inferLooseSteps(result, lines);
+}
+
 function headerIndex(headers: string[], fragments: string[]) {
   return headers.findIndex((header) => fragments.some((fragment) => header.includes(fragment)));
 }
@@ -884,6 +1106,8 @@ function parseEntries(
     }
   }
 
+  inferLooseMapping(result, entries, seenSections);
+
   result.stats = {
     sections: seenSections.size,
     systems: result.systems.length,
@@ -963,9 +1187,14 @@ function parseEntries(
       `${activitiesWithoutExplicitArea} atividade(s) sem área responsável explícita. O campo foi preenchido como "A definir".`,
     );
   }
-  if (result.stats.sections < 2) {
+  if (result.stats.sections < 2 && !result.steps.length) {
     throw new Error(
       "A estrutura do mapeamento não foi reconhecida. Use os títulos de seção apresentados no modelo do assistente.",
+    );
+  }
+  if (result.stats.sections < 2 && result.steps.length) {
+    result.warnings.push(
+      "A estrutura foi inferida por numeração e contexto. Revise os campos antes de salvar.",
     );
   }
   return result;
