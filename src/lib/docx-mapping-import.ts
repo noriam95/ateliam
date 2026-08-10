@@ -540,7 +540,7 @@ function inferLooseMapping(result: MappingDocumentImport, entries: Entry[], seen
   const lines = paragraphLines(entries);
   if (!lines.length) return;
   inferLooseOverview(result, lines);
-  inferLooseSystems(result, lines);
+  if (seenSections.has("systems")) inferLooseSystems(result, lines);
   if (!result.steps.length || seenSections.size < 2) inferLooseSteps(result, lines);
 }
 

@@ -299,6 +299,11 @@ function isPlaceholderCatalogName(value?: string | null) {
   );
 }
 
+function isRenderableMappingSystem(system: Pick<DdpSystem, "nome" | "descricao">) {
+  if (isPlaceholderCatalogName(system.nome)) return false;
+  return String(system.descricao ?? "").trim().length > 0;
+}
+
 type DdpSystem = {
   id: string;
   systemId?: string;
@@ -3468,7 +3473,9 @@ function exportImages(items: unknown[], fallbackTitle = "Imagem") {
 
 function getDdpExportModel(data: DdpState, processCatalog: OrganizationProcess[] = []) {
   const legacy = data.legacy ?? {};
-  const sourceSystems = Array.isArray(data.systems) ? data.systems : [];
+  const sourceSystems = (Array.isArray(data.systems) ? data.systems : []).filter(
+    isRenderableMappingSystem,
+  );
   const sourceSteps = Array.isArray(data.steps) ? data.steps : [];
   const sourceGaps = Array.isArray(data.gaps) ? data.gaps : [];
   const sourceNextSteps = Array.isArray(data.nextSteps) ? data.nextSteps : [];
