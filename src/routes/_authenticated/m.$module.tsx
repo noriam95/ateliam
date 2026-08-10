@@ -284,6 +284,21 @@ function normalizeSystemModality(value?: string | null): SystemModality {
   if (normalized.includes("fonte") || normalized.includes("extern")) return "Fontes externas";
   return "Sistemas corporativos";
 }
+
+function isPlaceholderCatalogName(value?: string | null) {
+  const normalized = normalizeLabel(value ?? "");
+  return (
+    !normalized ||
+    normalized === "-" ||
+    normalized === "a definir" ||
+    normalized === "indefinido" ||
+    normalized === "nao definido" ||
+    normalized === "nao informado" ||
+    normalized === "nenhum" ||
+    normalized === "n/a"
+  );
+}
+
 type DdpSystem = {
   id: string;
   systemId?: string;
@@ -3186,7 +3201,9 @@ function calculateMappingQuantitativeStats(
   processCatalog: OrganizationProcess[] = [],
 ): MappingQuantitativeStats {
   const sourceSteps = Array.isArray(data.steps) ? data.steps : [];
-  const sourceSystems = Array.isArray(data.systems) ? data.systems : [];
+  const sourceSystems = (Array.isArray(data.systems) ? data.systems : []).filter(
+    (system) => !isPlaceholderCatalogName(system.nome),
+  );
   const processById = new Map(processCatalog.map((process) => [process.id, process]));
   const processKeys = new Set<string>();
   const areaActivityCounts = new Map<string, number>();
@@ -12268,27 +12285,9 @@ function DdpModule({
     if (!importResult) return;
     const preparedProcesses: Record<string, CreatedProcess> = {};
     const nowIso = new Date().toISOString();
-    const referencedSystemNames = importResult.steps.flatMap((step) => [
-      step.system,
-      ...step.substeps.flatMap((substep) => [
-        ...substep.systemNames,
-        ...substep.activities.flatMap((activity) => activity.systemNames),
-      ]),
-    ]);
-    const systemImports = [
-      ...importResult.systems,
-      ...referencedSystemNames
-        .filter(Boolean)
-        .filter(
-          (name) =>
-            !importResult.systems.some(
-              (system) => normalizeLabel(system.name) === normalizeLabel(name),
-            ),
-        )
-        .map((name) => ({ name, description: "", modality: "" })),
-    ].filter(
+    const systemImports = importResult.systems.filter(
       (system, index, rows) =>
-        system.name.trim() &&
+        !isPlaceholderCatalogName(system.name) &&
         rows.findIndex(
           (candidate) => normalizeLabel(candidate.name) === normalizeLabel(system.name),
         ) === index,
@@ -12310,7 +12309,7 @@ function DdpModule({
     const systemIdsForNames = (names: string[]) =>
       Array.from(
         new Set(
-          names.flatMap((name) => {
+          names.filter((name) => !isPlaceholderCatalogName(name)).flatMap((name) => {
             const system = importedSystems.find(
               (item) => normalizeLabel(item.nome) === normalizeLabel(name),
             );

@@ -163,6 +163,19 @@ function normalized(value: string) {
     .toLowerCase();
 }
 
+function isPlaceholderCatalogName(value?: string | null) {
+  const key = normalized(value ?? "");
+  return (
+    !key ||
+    key === "a definir" ||
+    key === "indefinido" ||
+    key === "nao definido" ||
+    key === "nao informado" ||
+    key === "nenhum" ||
+    key === "n a"
+  );
+}
+
 function append(current: string, next: string) {
   const value = next.trim();
   if (!value) return current;
@@ -173,7 +186,7 @@ function listValues(value: string) {
   return value
     .split(/[,;|]/)
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter((item) => !isPlaceholderCatalogName(item));
 }
 
 function emptySubstep(
@@ -192,6 +205,32 @@ function emptySubstep(
     images,
     activities: [],
   };
+}
+
+function sanitizeImportResult(result: MappingDocumentImport) {
+  const seenSystems = new Set<string>();
+  result.systems = result.systems.filter((system) => {
+    const key = normalized(system.name);
+    if (isPlaceholderCatalogName(system.name) || seenSystems.has(key)) return false;
+    seenSystems.add(key);
+    return true;
+  });
+
+  const cleanSubstep = (substep: MappingImportSubstep) => {
+    const seenNames = new Set<string>();
+    substep.systemNames = substep.systemNames.filter((name) => {
+      const key = normalized(name);
+      if (isPlaceholderCatalogName(name) || seenNames.has(key)) return false;
+      seenNames.add(key);
+      return true;
+    });
+    substep.activities.forEach(cleanSubstep);
+  };
+
+  result.steps.forEach((step) => {
+    if (isPlaceholderCatalogName(step.system)) step.system = "";
+    step.substeps.forEach(cleanSubstep);
+  });
 }
 
 function mime(name: string) {
@@ -1107,6 +1146,7 @@ function parseEntries(
   }
 
   inferLooseMapping(result, entries, seenSections);
+  sanitizeImportResult(result);
 
   result.stats = {
     sections: seenSections.size,
