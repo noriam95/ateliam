@@ -179,7 +179,12 @@ function isPlaceholderCatalogName(value?: string | null) {
 function append(current: string, next: string) {
   const value = next.trim();
   if (!value) return current;
-  return current ? `${current}\n\n${value}` : value;
+  if (!current) return value;
+  const currentKey = normalized(current);
+  const valueKey = normalized(value);
+  if (currentKey === valueKey || currentKey.includes(valueKey)) return current;
+  if (valueKey.includes(currentKey)) return value;
+  return `${current}\n\n${value}`;
 }
 
 function listValues(value: string) {
@@ -296,11 +301,18 @@ function emptyImport(fileName: string): MappingDocumentImport {
 }
 
 function detectSection(value: string): MappingSection {
-  const text = normalized(value).replace(/^0?[0-8]\s+/, "");
+  const text = normalized(value)
+    .replace(/^\d{1,2}\s+/, "")
+    .replace(/^\d{1,2}\s*(?:[-.:])\s*/, "");
   if (/^(dados do mapeamento|identificacao|informacoes do mapeamento)$/.test(text))
     return "metadata";
   if (/^(visao geral|objetivo escopo e contexto)$/.test(text)) return "overview";
-  if (/^sistemas(?: documentos)? envolvidos$/.test(text)) return "systems";
+  if (
+    /^(sistemas documentos envolvidos|sistemas documentos|sistemas envolvidos|documentos envolvidos)$/.test(
+      text,
+    )
+  )
+    return "systems";
   if (/^(analise )?sipoc( do processo)?$/.test(text)) return "sipoc";
   if (/^(etapas do processo|fluxo as is|fluxo to be)$/.test(text)) return "steps";
   if (/^visao quantitativa$/.test(text)) return "quantitative";
@@ -381,7 +393,11 @@ function looseSectionRange(lines: string[], sectionNames: MappingSection[]) {
 
 function inferLooseOverview(result: MappingDocumentImport, lines: string[]) {
   let current: "objective" | "scope" | "context" | null = null;
-  for (const line of lines) {
+  const sourceLines = lines.some((line) => detectSection(line) === "overview")
+    ? looseSectionRange(lines, ["overview"])
+    : lines;
+  for (const line of sourceLines) {
+    if (detectSection(line)) continue;
     const labeled = labelValue(line);
     const label = labeled?.label ?? normalized(line.replace(/:$/, ""));
     const value = labeled?.value ?? "";
@@ -406,7 +422,10 @@ function inferLooseOverview(result: MappingDocumentImport, lines: string[]) {
 
 function inferLooseSystems(result: MappingDocumentImport, lines: string[]) {
   const known = new Set(result.systems.map((system) => normalized(system.name)));
-  lines.forEach((line) => {
+  const sourceLines = lines.some((line) => detectSection(line) === "systems")
+    ? looseSectionRange(lines, ["systems"])
+    : lines;
+  sourceLines.forEach((line) => {
     const labeled = labelValue(line);
     const label = labeled?.label ?? "";
     if (
@@ -539,7 +558,8 @@ function inferLooseSteps(result: MappingDocumentImport, lines: string[]) {
 function inferLooseMapping(result: MappingDocumentImport, entries: Entry[], seenSections: Set<MappingSection>) {
   const lines = paragraphLines(entries);
   if (!lines.length) return;
-  inferLooseOverview(result, lines);
+  if (!seenSections.has("overview") || !result.objective || !result.scope || !result.context)
+    inferLooseOverview(result, lines);
   if (seenSections.has("systems")) inferLooseSystems(result, lines);
   if (!result.steps.length || seenSections.size < 2) inferLooseSteps(result, lines);
 }
@@ -806,7 +826,13 @@ function parseEntries(
           modality: "",
         });
         currentSystem = result.systems.at(-1) ?? null;
-      } else if (label === "sistema" || label === "ferramenta" || label === "documento") {
+      } else if (
+        label === "sistema" ||
+        label === "sistema documento" ||
+        label === "sistema/documento" ||
+        label === "ferramenta" ||
+        label === "documento"
+      ) {
         currentSystem = {
           name: value,
           description: "",
