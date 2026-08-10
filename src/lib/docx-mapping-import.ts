@@ -154,8 +154,36 @@ function entriesFromXml(xml: string): Entry[] {
   });
 }
 
-function normalized(value: string) {
+function repairMojibake(value: string) {
   return value
+    .replace(/Ã‡/g, "Ç")
+    .replace(/Ã§/g, "ç")
+    .replace(/Ãƒ/g, "Ã")
+    .replace(/Ã¡|Ã |Ã¢|Ã£|Ã¤/g, "a")
+    .replace(/Ã‰|ÃŠ|Ãˆ|Ã‹/g, "E")
+    .replace(/Ã©|Ãª|Ã¨|Ã«/g, "e")
+    .replace(/Ã|ÃŽ|ÃŒ|Ã/g, "I")
+    .replace(/Ã­|Ã®|Ã¬|Ã¯/g, "i")
+    .replace(/Ã“|Ã”|Ã•|Ã’|Ã–/g, "O")
+    .replace(/Ã³|Ã´|Ãµ|Ã²|Ã¶/g, "o")
+    .replace(/Ãš|Ã›|Ã™|Ãœ/g, "U")
+    .replace(/Ãº|Ã»|Ã¹|Ã¼/g, "u")
+    .replace(/Ã‘/g, "N")
+    .replace(/Ã±/g, "n")
+    .replace(/Ã§Ã£o/g, "ção")
+    .replace(/Ã‡ÃƒO/g, "ÇÃO")
+    .replace(/Ã£/g, "a")
+    .replace(/Ãµ/g, "o")
+    .replace(/Ãª/g, "e")
+    .replace(/Ã­/g, "i")
+    .replace(/Ã¡/g, "a")
+    .replace(/Ã©/g, "e")
+    .replace(/Ã³/g, "o")
+    .replace(/Ãº/g, "u");
+}
+
+function normalized(value: string) {
+  return repairMojibake(value)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9]+/g, " ")
@@ -317,7 +345,9 @@ function detectSection(value: string): MappingSection {
   if (/^(etapas do processo|fluxo as is|fluxo to be)$/.test(text)) return "steps";
   if (/^visao quantitativa$/.test(text)) return "quantitative";
   if (
-    /^(oportunidades? de melhoria|gaps? e causas? raiz|causas? raiz e planos? de acao)$/.test(text)
+    /^(oportunidades?(?: de melhoria)?|melhorias?|pontos? de melhoria|gaps?(?: e causas? raiz)?|causas? raiz(?: e planos? de acao)?|causas? e oportunidades?)$/.test(
+      text,
+    )
   )
     return "gaps";
   if (/^proximos passos$/.test(text)) return "nextSteps";
@@ -332,6 +362,51 @@ function cellsFromLine(line: string) {
 function labelValue(line: string) {
   const match = line.match(/^([^:]{2,45}):\s*(.*)$/);
   return match ? { label: normalized(match[1]), value: match[2].trim() } : null;
+}
+
+function isGapTitleLabel(label: string) {
+  return [
+    "gap",
+    "causa",
+    "causa raiz",
+    "oportunidade",
+    "oportunidade de melhoria",
+    "melhoria",
+    "ponto de melhoria",
+  ].includes(label);
+}
+
+function mapGapFieldLabel(
+  label: string,
+): "description" | "impact" | "action" | "responsible" | "deadline" | "priority" | "status" | null {
+  if (
+    [
+      "descricao",
+      "descricao e causa raiz",
+      "detalhamento",
+      "problema",
+      "situacao atual",
+      "cenario atual",
+    ].includes(label)
+  )
+    return "description";
+  if (["impacto", "efeito", "efeitos", "impacto esperado"].includes(label)) return "impact";
+  if (
+    [
+      "acao",
+      "acao proposta",
+      "plano de acao",
+      "como implementar",
+      "recomendacao",
+      "encaminhamento",
+    ].includes(label)
+  )
+    return "action";
+  if (label === "responsavel") return "responsible";
+  if (label === "prazo" || label === "data") return "deadline";
+  if (label === "prioridade") return "priority";
+  if (label === "status" || label === "situacao") return "status";
+  return null;
 }
 
 function paragraphLines(entries: Entry[]) {
@@ -377,7 +452,8 @@ function inferExecutionType(text: string) {
   if (/manual/.test(value) && /sistema/.test(value)) return "Manual no sistema";
   if (/manual/.test(value) && /(fora do sistema|planilha|email|e mail|papel)/.test(value))
     return "Manual fora do sistema";
-  if (/(hibrid|manual.*automatic|automatic.*manual)/.test(value)) return "Híbrida (manual/automática)";
+  if (/(hibrid|manual.*automatic|automatic.*manual)/.test(value))
+    return "Híbrida (manual/automática)";
   return "";
 }
 
@@ -549,13 +625,18 @@ function inferLooseSteps(result: MappingDocumentImport, lines: string[]) {
     }
 
     if (currentStep && !labeled && !detectSection(trimmed)) {
-      if (currentSubprocess) currentSubprocess.description = append(currentSubprocess.description, trimmed);
+      if (currentSubprocess)
+        currentSubprocess.description = append(currentSubprocess.description, trimmed);
       else currentStep.activity = append(currentStep.activity, trimmed);
     }
   });
 }
 
-function inferLooseMapping(result: MappingDocumentImport, entries: Entry[], seenSections: Set<MappingSection>) {
+function inferLooseMapping(
+  result: MappingDocumentImport,
+  entries: Entry[],
+  seenSections: Set<MappingSection>,
+) {
   const lines = paragraphLines(entries);
   if (!lines.length) return;
   if (!seenSections.has("overview") || !result.objective || !result.scope || !result.context)
@@ -693,26 +774,46 @@ function mapTable(
     return true;
   }
 
-  const cause = headerIndex(headers, ["causa raiz", "causa", "gap"]);
+  const cause = headerIndex(headers, [
+    "oportunidade de melhoria",
+    "oportunidade",
+    "causa raiz",
+    "causa",
+    "gap",
+    "melhoria",
+    "ponto de melhoria",
+  ]);
+  const gapDescription = headerIndex(headers, [
+    "descricao",
+    "descricao e causa raiz",
+    "detalhamento",
+    "problema",
+    "situacao atual",
+  ]);
   const impact = headerIndex(headers, ["impacto"]);
-  const action = headerIndex(headers, ["acao proposta", "acao"]);
-  if (cause >= 0 && (impact >= 0 || action >= 0)) {
+  const action = headerIndex(headers, ["acao proposta", "acao", "plano de acao", "recomendacao"]);
+  if (cause >= 0) {
     const responsible = headerIndex(headers, ["responsavel"]);
     const deadline = headerIndex(headers, ["prazo"]);
     const priority = headerIndex(headers, ["prioridade"]);
-    const status = headerIndex(headers, ["status"]);
-    dataRows.forEach((row) =>
+    const status = headerIndex(headers, ["status", "situacao"]);
+    dataRows.forEach((row) => {
+      const causeValue = at(row, cause);
+      const descriptionValue = at(row, gapDescription);
+      const impactValue = at(row, impact);
+      const actionValue = at(row, action);
+      if (![causeValue, descriptionValue, impactValue, actionValue].some(Boolean)) return;
       result.gaps.push({
-        cause: at(row, cause),
-        description: at(row, description),
-        impact: at(row, impact),
-        action: at(row, action),
+        cause: causeValue || descriptionValue.slice(0, 90),
+        description: descriptionValue,
+        impact: impactValue,
+        action: actionValue,
         responsible: at(row, responsible),
         deadline: at(row, deadline),
         priority: at(row, priority),
         status: at(row, status),
-      }),
-    );
+      });
+    });
     return true;
   }
 
@@ -757,6 +858,7 @@ function parseEntries(
   let currentGap: MappingImportGap | null = null;
   let gapField: "description" | "impact" | "action" | null = null;
   let currentNext: MappingDocumentImport["nextSteps"][number] | null = null;
+  let currentGlossary: MappingDocumentImport["glossary"][number] | null = null;
 
   for (const entry of entries) {
     if (entry.kind === "table") {
@@ -780,6 +882,7 @@ function parseEntries(
       currentGap = null;
       gapField = null;
       currentNext = null;
+      currentGlossary = null;
       continue;
     }
     if (!line && !images.length) continue;
@@ -1093,12 +1196,22 @@ function parseEntries(
       continue;
     }
     if (section === "gaps") {
-      const gapHeading = line.match(/^(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i);
-      const heading = normalized(line.replace(/:$/, ""));
-      const cells = cellsFromLine(line);
-      if (gapHeading || label === "gap" || label === "causa" || label === "causa raiz") {
+      const cleanLine = line.replace(/^[•*-]\s*/, "").trim();
+      const gapLabeled = labelValue(cleanLine) ?? labeled;
+      const gapLabel = gapLabeled?.label || "";
+      const gapValue = gapLabeled?.value || "";
+      const gapHeading =
+        cleanLine.match(/^(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i) ??
+        cleanLine.match(
+          /^(?:oportunidade|melhoria|ponto de melhoria|gap|causa(?: raiz)?)\s*\d*\s*[-\u2013\u2014.:)]\s*(.+)$/i,
+        );
+      const heading = normalized(cleanLine.replace(/:$/, ""));
+      const cells = cellsFromLine(cleanLine);
+      if (gapHeading || isGapTitleLabel(gapLabel)) {
+        const title = gapHeading?.[2]?.trim() || gapHeading?.[1]?.trim() || gapValue;
+        if (!title) continue;
         currentGap = {
-          cause: gapHeading?.[2]?.trim() || value,
+          cause: title,
           description: "",
           impact: "",
           action: "",
@@ -1115,11 +1228,16 @@ function parseEntries(
           currentGap.responsible = cells[1];
           currentGap.deadline = cells[2];
           currentGap.status = cells[3];
-        } else if (heading === "descricao e causa raiz" || heading === "descricao") {
+        } else if (
+          heading === "descricao e causa raiz" ||
+          heading === "descricao" ||
+          heading === "detalhamento" ||
+          heading === "problema"
+        ) {
           gapField = "description";
         } else if (heading === "efeito" || heading === "efeitos") {
           gapField = "impact";
-        } else if (heading === "acao proposta") {
+        } else if (heading === "acao proposta" || heading === "plano de acao") {
           gapField = "action";
         } else if (heading === "como implementar") {
           gapField = "action";
@@ -1127,15 +1245,23 @@ function parseEntries(
         } else if (heading === "impacto esperado") {
           gapField = "impact";
           currentGap.impact = append(currentGap.impact, "Impacto esperado:");
-        } else if (label === "descricao") currentGap.description = value;
-        else if (label === "impacto" || label === "efeito") currentGap.impact = value;
-        else if (label === "acao" || label === "acao proposta") currentGap.action = value;
-        else if (label === "responsavel") currentGap.responsible = value;
-        else if (label === "prazo") currentGap.deadline = value;
-        else if (label === "prioridade") currentGap.priority = value;
-        else if (label === "status") currentGap.status = value;
-        else if (gapField) currentGap[gapField] = append(currentGap[gapField], line);
-        else currentGap.description = append(currentGap.description, line);
+        } else {
+          const mappedField = mapGapFieldLabel(gapLabel);
+          if (mappedField === "description") {
+            currentGap.description = append(currentGap.description, gapValue);
+            gapField = "description";
+          } else if (mappedField === "impact") {
+            currentGap.impact = append(currentGap.impact, gapValue);
+            gapField = "impact";
+          } else if (mappedField === "action") {
+            currentGap.action = append(currentGap.action, gapValue);
+            gapField = "action";
+          } else if (mappedField) {
+            currentGap[mappedField] = gapValue;
+            gapField = null;
+          } else if (gapField) currentGap[gapField] = append(currentGap[gapField], cleanLine);
+          else currentGap.description = append(currentGap.description, cleanLine);
+        }
       }
       continue;
     }
@@ -1165,9 +1291,20 @@ function parseEntries(
     }
     if (section === "glossary") {
       const cells = cellsFromLine(line);
-      if (cells.length >= 2)
+      if (cells.length >= 2) {
         result.glossary.push({ term: cells[0], definition: cells.slice(1).join(" | ") });
-      else if (labeled) result.glossary.push({ term: labeled.label, definition: value });
+        currentGlossary = result.glossary.at(-1) ?? null;
+      } else if (labeled && label === "termo") {
+        currentGlossary = { term: value, definition: "" };
+        result.glossary.push(currentGlossary);
+      } else if (labeled && (label === "definicao" || label === "conceito")) {
+        if (currentGlossary) currentGlossary.definition = append(currentGlossary.definition, value);
+      } else if (labeled) {
+        currentGlossary = { term: labeled.label, definition: value };
+        result.glossary.push(currentGlossary);
+      } else if (currentGlossary) {
+        currentGlossary.definition = append(currentGlossary.definition, line);
+      }
     }
   }
 
