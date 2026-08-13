@@ -759,6 +759,10 @@ type ActiveCloudDocument = {
   moduleId: AteliamModule;
   name: string;
 };
+type ModuleSaveMode = "draft" | "final";
+type DraftCatalogSnapshot = {
+  processes?: CreatedProcess[];
+};
 type ImportResult = {
   workspace: WorkspaceState;
   moduleId: AteliamModule;
@@ -2836,8 +2840,22 @@ function importWorkspaceFromJson(
   throw new Error("Nao reconheci este JSON como Mapeamento, POP ou workspace BF Flow.");
 }
 
-function buildModuleJson(moduleId: AteliamModule, workspace: WorkspaceState) {
+function buildModuleJson(
+  moduleId: AteliamModule,
+  workspace: WorkspaceState,
+  options: { saveMode?: ModuleSaveMode; draftCatalogs?: DraftCatalogSnapshot } = {},
+) {
   const updatedAt = new Date().toISOString();
+  const saveMode = options.saveMode ?? "final";
+  const persistence = {
+    saveMode,
+    draft: saveMode === "draft",
+    savedAt: updatedAt,
+  };
+  const draftCatalogs =
+    options.draftCatalogs && Object.keys(options.draftCatalogs).length
+      ? options.draftCatalogs
+      : undefined;
   if (moduleId === "ddp") {
     return JSON.stringify(
       {
@@ -2846,6 +2864,8 @@ function buildModuleJson(moduleId: AteliamModule, workspace: WorkspaceState) {
         titulo: workspace.ddp.meta.titulo,
         versao: workspace.ddp.meta.versao,
         updatedAt,
+        persistence,
+        draftCatalogs,
         ddp: workspace.ddp,
       },
       null,
@@ -2861,6 +2881,7 @@ function buildModuleJson(moduleId: AteliamModule, workspace: WorkspaceState) {
         titulo: workspace.pop.meta.titulo,
         versao: workspace.pop.meta.versao,
         updatedAt,
+        persistence,
         pop: workspace.pop,
       },
       null,
@@ -2873,11 +2894,27 @@ function buildModuleJson(moduleId: AteliamModule, workspace: WorkspaceState) {
       tipo: "bpmn",
       titulo: workspace.bpmn.poolName,
       updatedAt,
+      persistence,
       bpmn: workspace.bpmn,
     },
     null,
     2,
   );
+}
+
+function readDraftCatalogSnapshot(content: string | null | undefined): DraftCatalogSnapshot {
+  if (!content) return {};
+  try {
+    const parsed = JSON.parse(content) as { draftCatalogs?: DraftCatalogSnapshot };
+    const processes = Array.isArray(parsed.draftCatalogs?.processes)
+      ? parsed.draftCatalogs.processes.filter((process): process is CreatedProcess =>
+          Boolean(process && typeof process.id === "string" && typeof process.name === "string"),
+        )
+      : undefined;
+    return processes?.length ? { processes } : {};
+  } catch {
+    return {};
+  }
 }
 
 function withUppercaseModuleTitle(
@@ -7085,6 +7122,12 @@ function ModuleWorkspacePage() {
       if (!row.content_inline) throw new Error("Documento sem conteúdo salvo.");
       const result = importWorkspaceFromJson(row.content_inline, workspace, moduleId);
       setWorkspace(result.workspace);
+      const draftCatalogs = readDraftCatalogSnapshot(row.content_inline);
+      setPendingMappingProcesses(
+        result.moduleId === "ddp" && draftCatalogs.processes?.length
+          ? draftCatalogs.processes
+          : [],
+      );
       setOpenedLocalFile(null);
       setActiveCloudDocument({
         id: row.id,
@@ -7375,8 +7418,9 @@ function ModuleWorkspacePage() {
   }
 
   const saveMut = useMutation({
-    mutationFn: async () => {
-      if (moduleId === "ddp" && !workspace.ddp.macroprocess.processId) {
+    mutationFn: async (mode: ModuleSaveMode = "final") => {
+      const isDraftSave = mode === "draft";
+      if (!isDraftSave && moduleId === "ddp" && !workspace.ddp.macroprocess.processId) {
         throw new Error(
           "Selecione um processo previamente cadastrado antes de salvar o Mapeamento.",
         );
@@ -7384,12 +7428,12 @@ function ModuleWorkspacePage() {
       // Geração automática de código: reserva a sequência quando configurado e
       // o documento ainda não tem código.
       let workspaceToSave = withUppercaseModuleTitle(moduleId, workspace);
-      if (moduleId === "ddp") {
+      if (!isDraftSave && moduleId === "ddp") {
         workspaceToSave = await persistSuggestedMappingProcesses(workspaceToSave);
         workspaceToSave = await persistMappingSystems(workspaceToSave);
         workspaceToSave = await syncDdpGapsToCatalog(workspaceToSave);
       }
-      if (isAutoCodeModule && !currentModuleCode(workspaceToSave)) {
+      if (!isDraftSave && isAutoCodeModule && !currentModuleCode(workspaceToSave)) {
         const reserved = await reserveModuleCode();
         workspaceToSave = withModuleCode(workspaceToSave, reserved);
       }
@@ -7397,38 +7441,60 @@ function ModuleWorkspacePage() {
         setWorkspace(workspaceToSave);
         window.localStorage.setItem(draftKey, JSON.stringify(workspaceToSave));
       }
-      const fullComment = `[${moduleInfo.title}] ${
-        comment || (moduleId === "ddp" ? "Mapeamento salvo" : "Documento salvo")
-      }`;
-      if (isDemo) return saveDemoWorkspaceVersion(JSON.stringify(workspaceToSave), fullComment);
+      const defaultComment = isDraftSave
+        ? "Rascunho salvo"
+        : moduleId === "ddp"
+          ? "Mapeamento salvo"
+          : "Documento salvo";
+      const fullComment = `[${moduleInfo.title}] ${comment || defaultComment}`;
+      const draftCatalogs =
+        isDraftSave && moduleId === "ddp" && pendingMappingProcesses.length
+          ? { processes: pendingMappingProcesses }
+          : undefined;
+      const content = buildModuleJson(moduleId, workspaceToSave, {
+        saveMode: mode,
+        draftCatalogs,
+      });
+      if (isDemo) {
+        const result = saveDemoWorkspaceVersion(content, fullComment);
+        return { version: result.version, mode };
+      }
       const payload = currentModuleSavePayload(workspaceToSave);
       const row = await saveCloudDocument({
         data: {
           organizationId: selectedOrganizationId,
           id: activeCloudDocument?.moduleId === moduleId ? activeCloudDocument.id : null,
           moduleId: moduleId as "ddp" | "pop" | "bpmn",
-          code: payload.code,
-          title: payload.title,
+          code: isDraftSave ? payload.code || null : payload.code,
+          title: payload.title?.trim() || `${moduleInfo.title} - Rascunho`,
           description: payload.description,
-          content: buildModuleJson(moduleId, workspaceToSave),
+          content,
           comment: fullComment,
+          saveMode: mode,
           primaryProcessId: payload.primaryProcessId,
           primaryProcessVersion: payload.primaryProcessVersion,
         },
       });
-      return { version: row.current_version, document: row };
+      return { version: row.current_version, document: row, mode };
     },
     onSuccess: (result) => {
+      const isDraftSave = result.mode === "draft";
       const revisionVersion = Math.max(0, (result.version ?? 1) - 1);
       toast.success(
-        moduleId === "ddp" ? "Mapeamento salvo." : `Documento salvo. Revisão v${revisionVersion}.`,
+        isDraftSave
+          ? "Rascunho salvo."
+          : moduleId === "ddp"
+            ? "Mapeamento salvo."
+            : `Documento salvo. Revisão v${revisionVersion}.`,
       );
       setShowSave(false);
       setComment("");
       setSavedNonce((n) => n + 1);
       if (moduleId === "ddp") {
-        setPendingMappingProcesses([]);
-        if (!isDemo) catalogsQ.refetch();
+        if (!isDraftSave) {
+          setPendingMappingProcesses([]);
+          if (!isDemo) catalogsQ.refetch();
+        }
         if (!isDemo && "document" in result) {
           setActiveCloudDocument({
             id: result.document.id,
@@ -8412,6 +8478,7 @@ function ModuleWorkspacePage() {
               userOptions={elaboratorOptions}
               currentElaborator={currentElaborator}
               update={(ddp) => updateWorkspace((current) => ({ ...current, ddp }))}
+              onSaveDraft={() => saveMut.mutate("draft")}
               onSave={() => setShowSave(true)}
               onPreview={previewCurrentDdp}
               saving={saveMut.isPending}
@@ -8478,6 +8545,7 @@ function ModuleWorkspacePage() {
               }}
               autoCode={isAutoCodeModule}
               codePreview={autoCodePreview}
+              onSaveDraft={() => saveMut.mutate("draft")}
               onSave={() => setShowSave(true)}
               onPreview={previewCurrentPop}
               saving={saveMut.isPending}
@@ -8787,7 +8855,7 @@ function ModuleWorkspacePage() {
 
       {showSave && (
         <Modal
-          title={moduleId === "ddp" ? "Salvar mapeamento" : "Salvar documento"}
+          title={moduleId === "ddp" ? "Salvar mapeamento definitivo" : "Salvar documento definitivo"}
           subtitle={
             moduleId === "ddp"
               ? "Grava o preenchimento como registro de mapeamento."
@@ -8795,6 +8863,10 @@ function ModuleWorkspacePage() {
           }
           onClose={() => setShowSave(false)}
         >
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
+            Use <strong>Rascunho</strong> quando o preenchimento ainda estiver em revisao. O
+            salvamento definitivo converte pendencias temporarias em cadastros oficiais.
+          </div>
           <textarea
             rows={4}
             value={comment}
@@ -8814,11 +8886,11 @@ function ModuleWorkspacePage() {
               Cancelar
             </button>
             <button
-              onClick={() => saveMut.mutate()}
+              onClick={() => saveMut.mutate("final")}
               disabled={saveMut.isPending}
               className="rounded-lg bg-[#3f3f46] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
             >
-              {saveMut.isPending ? "Salvando..." : "Salvar agora"}
+              {saveMut.isPending ? "Salvando..." : "Salvar definitivo"}
             </button>
           </div>
         </Modal>
@@ -11607,6 +11679,7 @@ function DdpModule({
   userOptions = [],
   currentElaborator = "",
   update,
+  onSaveDraft,
   onSave,
   onPreview,
   saving = false,
@@ -11623,6 +11696,7 @@ function DdpModule({
   userOptions?: string[];
   currentElaborator?: string;
   update: (value: DdpState) => void;
+  onSaveDraft?: () => void;
   onSave?: () => void;
   onPreview?: () => void;
   // Salvamento em andamento (do mutation do pai).
@@ -12917,6 +12991,8 @@ function DdpModule({
         overallPct={overallPct}
         saveState={saveState}
         canSave={mappingReady}
+        canSaveDraft
+        onSaveDraft={onSaveDraft}
         onSave={onSave}
         onPreview={onPreview}
         eyebrow="Processos · Mapeamento"
@@ -14663,6 +14739,7 @@ function PopModule({
   onProcessCreated,
   autoCode = false,
   codePreview = "",
+  onSaveDraft,
   onSave,
   onPreview,
   saving = false,
@@ -14679,6 +14756,7 @@ function PopModule({
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
   autoCode?: boolean;
   codePreview?: string;
+  onSaveDraft?: () => void;
   onSave?: () => void;
   onPreview?: () => void;
   saving?: boolean;
@@ -15552,6 +15630,8 @@ function PopModule({
         overallPct={completion}
         saveState={saveState}
         canSave={canEditDocument}
+        canSaveDraft={canEditDocument}
+        onSaveDraft={onSaveDraft}
         onSave={onSave}
         onPreview={onPreview}
         eyebrow="Processos / Documentação"
@@ -20744,6 +20824,8 @@ function FlowCommandBar({
   overallPct,
   saveState,
   canSave,
+  canSaveDraft = true,
+  onSaveDraft,
   onSave,
   onPreview,
   eyebrow = "Processos",
@@ -20757,6 +20839,8 @@ function FlowCommandBar({
   overallPct: number;
   saveState: "idle" | "dirty" | "saving" | "saved";
   canSave: boolean;
+  canSaveDraft?: boolean;
+  onSaveDraft?: () => void;
   onSave?: () => void;
   onPreview?: () => void;
   eyebrow?: string;
@@ -20840,6 +20924,19 @@ function FlowCommandBar({
             >
               <Eye className="h-4 w-4" />
               <span className="hidden sm:inline">Visualizar</span>
+            </button>
+          ) : null}
+          {onSaveDraft ? (
+            <button
+              type="button"
+              onClick={onSaveDraft}
+              disabled={!canSaveDraft || saveState === "saving"}
+              aria-busy={saveState === "saving"}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45 sm:h-9 sm:px-3.5"
+              title="Salvar rascunho"
+            >
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline">Rascunho</span>
             </button>
           ) : null}
           {onSave ? (

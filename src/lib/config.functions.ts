@@ -129,6 +129,7 @@ const moduleDocumentSchema = z.object({
   description: z.string().trim().max(1000).optional().nullable(),
   content: z.string().min(2).max(20_000_000),
   comment: z.string().trim().max(500).optional().nullable(),
+  saveMode: z.enum(["draft", "final"]).default("final").optional(),
   primaryProcessId: z.string().uuid().optional().nullable(),
   primaryProcessVersion: z.number().int().positive().optional().nullable(),
 });
@@ -1519,6 +1520,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
     const title = data.title.trim().toLocaleUpperCase("pt-BR");
     const content = uppercaseModuleDocumentContent(data.content, data.moduleId);
     const name = data.code ? `${data.code} - ${title}` : title;
+    const isDraftSave = data.saveMode === "draft";
     let primaryProcessVersion = data.primaryProcessVersion ?? null;
 
     if (data.primaryProcessId) {
@@ -1568,8 +1570,10 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
     }
 
     const nextVersion =
-      data.moduleId === "ddp" ? (doc.current_version ?? 0) : (doc.current_version ?? 0) + 1;
-    if (data.moduleId !== "ddp") {
+      isDraftSave || data.moduleId === "ddp"
+        ? (doc.current_version ?? 0)
+        : (doc.current_version ?? 0) + 1;
+    if (!isDraftSave && data.moduleId !== "ddp") {
       const hash = await sha256Hex(content);
       const { error: versionError } = await context.supabase.from("document_versions").insert({
         document_id: doc.id,
