@@ -763,6 +763,38 @@ type ModuleSaveMode = "draft" | "final";
 type DraftCatalogSnapshot = {
   processes?: CreatedProcess[];
 };
+
+function withModuleSaveStatus(
+  moduleId: AteliamModule,
+  workspace: WorkspaceState,
+  mode: ModuleSaveMode,
+): WorkspaceState {
+  if (moduleId === "ddp") {
+    const status =
+      mode === "draft"
+        ? "Rascunho"
+        : workspace.ddp.meta.status === "Rascunho"
+          ? "Em andamento"
+          : workspace.ddp.meta.status;
+    return { ...workspace, ddp: { ...workspace.ddp, meta: { ...workspace.ddp.meta, status } } };
+  }
+  if (moduleId === "pop") {
+    const status =
+      mode === "draft"
+        ? "Rascunho"
+        : workspace.pop.meta.status === "Rascunho"
+          ? "Em andamento"
+          : workspace.pop.meta.status;
+    return { ...workspace, pop: { ...workspace.pop, meta: { ...workspace.pop.meta, status } } };
+  }
+  const status =
+    mode === "draft"
+      ? "Rascunho"
+      : workspace.bpmn.status === "Rascunho"
+        ? "Em andamento"
+        : workspace.bpmn.status;
+  return { ...workspace, bpmn: { ...workspace.bpmn, status } };
+}
 type ImportResult = {
   workspace: WorkspaceState;
   moduleId: AteliamModule;
@@ -7437,6 +7469,7 @@ function ModuleWorkspacePage() {
         const reserved = await reserveModuleCode();
         workspaceToSave = withModuleCode(workspaceToSave, reserved);
       }
+      workspaceToSave = withModuleSaveStatus(moduleId, workspaceToSave, mode);
       if (workspaceToSave !== workspace) {
         setWorkspace(workspaceToSave);
         window.localStorage.setItem(draftKey, JSON.stringify(workspaceToSave));
@@ -9440,7 +9473,7 @@ type ExportFormat =
   | "pop-docx"
   | "pop-presentation-doc";
 
-const MODULE_STATUS_OPTIONS = ["Em andamento", "Em revisão", "Aprovado", "Concluído"];
+const MODULE_STATUS_OPTIONS = ["Rascunho", "Em andamento", "Em revisão", "Aprovado", "Concluído"];
 type ModuleGridSortDir = "asc" | "desc";
 type ModuleGridColumn = keyof Pick<
   ModuleGridRow,
@@ -9485,6 +9518,13 @@ function compareModuleGridRows(
 
 function moduleStatusStyle(status: string): CSSProperties {
   const normalized = normalizeLabel(status);
+  if (normalized.includes("rascunho")) {
+    return {
+      backgroundColor: "color-mix(in oklab, var(--muted) 70%, var(--card))",
+      color: "var(--muted-foreground)",
+      borderColor: "var(--border)",
+    };
+  }
   if (normalized.includes("concluido")) {
     return { backgroundColor: "#DFF5E6", color: "#147A3A", borderColor: "#A8E5BA" };
   }
