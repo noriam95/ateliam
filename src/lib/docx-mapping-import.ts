@@ -366,6 +366,19 @@ function labelValue(line: string) {
   return match ? { label: normalized(match[1]), value: match[2].trim() } : null;
 }
 
+function numberedLabelValue(line: string, labels: string[]) {
+  const match = line.match(/^([^:]{2,45}?)\s+(\d+(?:\.\d+)*)\s*:\s*(.*)$/);
+  if (!match) return null;
+  const label = normalized(match[1]);
+  if (!labels.includes(label)) return null;
+  return { label, number: match[2], value: match[3].trim() };
+}
+
+function isStructuralMarker(line: string) {
+  const value = normalized(line);
+  return /^(linha|line)\s+\d+$/.test(value) || /^proximo passo\s+\d+$/.test(value);
+}
+
 function emptySipocRow(): MappingImportSipoc {
   return { suppliers: "", inputs: "", process: "", outputs: "", customers: "" };
 }
@@ -998,6 +1011,7 @@ function parseEntries(
     }
     if (section === "sipoc") {
       const cells = cellsFromLine(line);
+      if (isStructuralMarker(line)) continue;
       if (isSipocHeaderLine(line)) continue;
       if (cells.length >= 5 && !cells.map(normalized).includes("fornecedores")) {
         result.sipoc.push({
@@ -1026,6 +1040,9 @@ function parseEntries(
     }
     if (section === "steps") {
       const cells = cellsFromLine(line);
+      const numberedStep = numberedLabelValue(line, ["processo", "etapa"]);
+      const numberedSubprocess = numberedLabelValue(line, ["subprocesso", "subetapa"]);
+      const numberedActivity = numberedLabelValue(line, ["atividade"]);
       if (currentStep && cells.length >= 3 && /^\d+\.\d+$/.test(cells[0])) {
         currentSubstep = {
           ...emptySubstep(cells[1], images),
@@ -1051,7 +1068,39 @@ function parseEntries(
       const stepHeading = line.match(
         /^(?:(?:etapa|processo)\s*)?(\d+)\s*[-\u2013\u2014.:)]\s*(.+)$/i,
       );
-      if (nestedActivityHeading) {
+      if (numberedStep) {
+        currentStep = {
+          title: numberedStep.value,
+          area: "",
+          responsible: "",
+          input: "",
+          activity: "",
+          output: "",
+          system: "",
+          risk: "",
+          notes: "",
+          images,
+          substeps: [],
+        };
+        result.steps.push(currentStep);
+        currentSubstep = null;
+        currentActivity = null;
+      } else if (numberedSubprocess) {
+        if (!currentStep) continue;
+        currentSubstep = emptySubstep(numberedSubprocess.value, images, "subprocess");
+        currentStep.substeps.push(currentSubstep);
+        currentActivity = null;
+      } else if (numberedActivity) {
+        if (!currentStep) continue;
+        if (currentSubstep?.kind === "subprocess") {
+          currentActivity = emptySubstep(numberedActivity.value, images);
+          currentSubstep.activities.push(currentActivity);
+        } else {
+          currentSubstep = emptySubstep(numberedActivity.value, images);
+          currentStep.substeps.push(currentSubstep);
+          currentActivity = null;
+        }
+      } else if (nestedActivityHeading) {
         if (!currentStep) continue;
         if (!currentSubstep || currentSubstep.kind !== "subprocess") {
           if (currentSubstep) {
@@ -1326,6 +1375,10 @@ function parseEntries(
     if (section === "nextSteps") {
       const cells = cellsFromLine(line);
       const numbered = line.match(/^\d+[.)-]\s*(.+)$/);
+      if (isStructuralMarker(line)) {
+        currentNext = null;
+        continue;
+      }
       if (
         cells.length >= 3 &&
         !["acao", "proximo passo", "atividade"].includes(normalized(cells[0]))
@@ -1337,7 +1390,9 @@ function parseEntries(
         });
         currentNext = result.nextSteps.at(-1) ?? null;
       } else if (label === "acao" || label === "proximo passo" || numbered) {
-        currentNext = { text: value || numbered?.[1] || "", responsible: "", deadline: "" };
+        const text = value || numbered?.[1] || "";
+        if (!text.trim()) continue;
+        currentNext = { text, responsible: "", deadline: "" };
         result.nextSteps.push(currentNext);
       } else if (currentNext && label === "responsavel") currentNext.responsible = value;
       else if (currentNext && (label === "prazo" || label === "data")) currentNext.deadline = value;
