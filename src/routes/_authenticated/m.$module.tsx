@@ -300,6 +300,24 @@ function isPlaceholderCatalogName(value?: string | null) {
   );
 }
 
+function isPendingProcessId(value?: string | null) {
+  return typeof value === "string" && value.startsWith("pending-process:");
+}
+
+function isUuid(value?: string | null) {
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  );
+}
+
+function persistedProcessId(value?: string | null) {
+  if (isPendingProcessId(value)) return null;
+  return isUuid(value) ? value : null;
+}
+
 function isRenderableMappingSystem(system: Pick<DdpSystem, "nome" | "descricao">) {
   if (isPlaceholderCatalogName(system.nome)) return false;
   return String(system.descricao ?? "").trim().length > 0;
@@ -6978,7 +6996,7 @@ function ModuleWorkspacePage() {
         code: ws.ddp.meta.codigo,
         title: ws.ddp.meta.titulo,
         description: ws.ddp.overview.objetivo || ws.ddp.overview.escopo,
-        primaryProcessId: ws.ddp.macroprocess.processId || null,
+        primaryProcessId: persistedProcessId(ws.ddp.macroprocess.processId),
         primaryProcessVersion: null,
       };
     }
@@ -7064,8 +7082,13 @@ function ModuleWorkspacePage() {
       return ws;
     }
     const referencedIds = new Set(
-      ws.ddp.steps
-        .flatMap((step) => [step.processId, ...step.substeps.map((substep) => substep.processId)])
+      [
+        ws.ddp.macroprocess.processId,
+        ...ws.ddp.steps.flatMap((step) => [
+          step.processId,
+          ...step.substeps.map((substep) => substep.processId),
+        ]),
+      ]
         .filter(Boolean),
     );
     const pending = pendingMappingProcesses.filter((process) => referencedIds.has(process.id));
@@ -7096,7 +7119,8 @@ function ModuleWorkspacePage() {
               type: process.type,
               valueChainId: process.value_chain_id,
               parentProcessId:
-                replacements.get(process.parent_process_id ?? "")?.id ?? process.parent_process_id,
+                replacements.get(process.parent_process_id ?? "")?.id ??
+                persistedProcessId(process.parent_process_id),
               department: process.department,
               owner: process.owner,
               description: process.description,
@@ -7110,6 +7134,12 @@ function ModuleWorkspacePage() {
       ...ws,
       ddp: {
         ...ws.ddp,
+        macroprocess: {
+          ...ws.ddp.macroprocess,
+          processId:
+            replacements.get(ws.ddp.macroprocess.processId ?? "")?.id ??
+            ws.ddp.macroprocess.processId,
+        },
         steps: ws.ddp.steps.map((step) => ({
           ...step,
           processId: replacements.get(step.processId)?.id ?? step.processId,
@@ -7232,6 +7262,11 @@ function ModuleWorkspacePage() {
         workspaceToSave = await persistSuggestedMappingProcesses(workspaceToSave);
         workspaceToSave = await persistMappingSystems(workspaceToSave);
         workspaceToSave = await syncDdpGapsToCatalog(workspaceToSave);
+        if (!persistedProcessId(workspaceToSave.ddp.macroprocess.processId)) {
+          throw new Error(
+            "Não foi possível converter o processo sugerido pelo assistente em cadastro real. Revise o processo do mapeamento e tente salvar novamente.",
+          );
+        }
       }
       if (!isDraftSave && isAutoCodeModule && !currentModuleCode(workspaceToSave)) {
         const reserved = await reserveModuleCode();
