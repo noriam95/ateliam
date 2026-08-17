@@ -19,6 +19,7 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  ClipboardList,
   Copy,
   Diamond,
   Download,
@@ -11773,6 +11774,7 @@ function DdpModule({
     query: string;
   } | null>(null);
   const [mappingAssistantOpen, setMappingAssistantOpen] = useState(false);
+  const [mappingEntryMode, setMappingEntryMode] = useState<"manual" | "assistant">("manual");
   const [mappingAssistantSource, setMappingAssistantSource] = useState<"docx" | "text">("docx");
   const [mappingAssistantText, setMappingAssistantText] = useState("");
   const [mappingAssistantBusy, setMappingAssistantBusy] = useState(false);
@@ -11919,6 +11921,41 @@ function DdpModule({
         processOwner: process?.owner ?? "",
       },
     });
+  }
+
+  function patchPrimaryProcess(
+    process: OrganizationProcess | CreatedProcess | null,
+  ): Pick<DdpState, "meta" | "overview" | "macroprocess" | "legacy"> | null {
+    if (!process) return null;
+    const valueChain = findProcessValueChain(process as OrganizationProcess);
+    return {
+      meta: {
+        ...data.meta,
+        codigo: "",
+        area: "",
+        responsavel: "",
+        valueChainId: valueChain?.id ?? process.value_chain_id ?? "",
+        valueChainName: valueChain?.name ?? "",
+      },
+      overview: {
+        ...data.overview,
+        donoProcesso: process.owner ?? "",
+        escopo: "",
+      },
+      macroprocess: {
+        ...data.macroprocess,
+        processId: process.id,
+        processVersion: 1,
+      },
+      legacy: {
+        ...(data.legacy ?? {}),
+        processName: process.name,
+        processCode: process.code ?? "",
+        processValueChainName: valueChain?.name ?? "",
+        processArea: process.department ?? "",
+        processOwner: process.owner ?? "",
+      },
+    };
   }
 
   const sectionProgress = {
@@ -12408,6 +12445,37 @@ function DdpModule({
     if (!importResult) return;
     const preparedProcesses: Record<string, CreatedProcess> = {};
     const nowIso = new Date().toISOString();
+    const recognizedPrimaryProcessTitle = importResult.mappedProcess.trim();
+    let assistantPrimaryProcess: OrganizationProcess | CreatedProcess | null =
+      recognizedPrimaryProcessTitle
+        ? primaryProcessOptions.find(
+            (process) => normalizeLabel(process.name) === normalizeLabel(recognizedPrimaryProcessTitle),
+          ) ??
+          assistantCreatedProcesses[normalizeLabel(recognizedPrimaryProcessTitle)] ??
+          null
+        : null;
+    if (recognizedPrimaryProcessTitle && !assistantPrimaryProcess) {
+      assistantPrimaryProcess = {
+        id: `pending-process:${crypto.randomUUID()}`,
+        organization_id: organizationId ?? "",
+        current_version: 1,
+        code: null,
+        name: recognizedPrimaryProcessTitle.toLocaleUpperCase("pt-BR"),
+        type: "process",
+        value_chain_id: selectedProcess?.value_chain_id ?? null,
+        parent_process_id: null,
+        department: selectedProcess?.department ?? null,
+        owner: selectedProcess?.owner ?? null,
+        description: importResult.objective || importResult.scope || null,
+        status: "Ativo",
+        created_at: nowIso,
+        updated_at: nowIso,
+      };
+      preparedProcesses[normalizeLabel(recognizedPrimaryProcessTitle)] = assistantPrimaryProcess;
+      void onSuggestedProcessPrepared(assistantPrimaryProcess);
+    }
+    const primaryProcessId =
+      assistantPrimaryProcess?.id ?? selectedProcess?.id ?? data.macroprocess.processId ?? null;
     const systemImports = importResult.systems.filter(
       (system, index, rows) =>
         !isPlaceholderCatalogName(system.name) &&
@@ -12460,10 +12528,10 @@ function DdpModule({
           code: null,
           name: title,
           type: "subprocess",
-          value_chain_id: selectedProcess?.value_chain_id ?? null,
+          value_chain_id: assistantPrimaryProcess?.value_chain_id ?? selectedProcess?.value_chain_id ?? null,
           parent_process_id: parentProcessId,
-          department: department || selectedProcess?.department || null,
-          owner: owner || selectedProcess?.owner || null,
+          department: department || assistantPrimaryProcess?.department || selectedProcess?.department || null,
+          owner: owner || assistantPrimaryProcess?.owner || selectedProcess?.owner || null,
           description: description || null,
           status: "Ativo",
           created_at: nowIso,
@@ -12477,7 +12545,7 @@ function DdpModule({
     const importedSteps = importResult.steps.map((step): DdpFlowStep => {
       const process = findOrPrepareProcess(
         step.title,
-        selectedProcess?.id ?? data.macroprocess.processId ?? null,
+        primaryProcessId,
         step.area,
         step.responsible,
         step.activity || step.notes,
@@ -12538,10 +12606,12 @@ function DdpModule({
         }),
       };
     });
+    const primaryProcessPatch = patchPrimaryProcess(assistantPrimaryProcess);
     const nextState: DdpState = {
       ...data,
+      ...(primaryProcessPatch ?? {}),
       meta: {
-        ...data.meta,
+        ...(primaryProcessPatch ? primaryProcessPatch.meta : data.meta),
         titulo: importResult.title || data.meta.titulo,
         modalidade: importResult.modality || data.meta.modalidade,
         data: dateInputValue(importResult.date) || data.meta.data,
@@ -12549,7 +12619,7 @@ function DdpModule({
         revisor: importResult.reviewer || data.meta.revisor,
       },
       overview: {
-        ...data.overview,
+        ...(primaryProcessPatch ? primaryProcessPatch.overview : data.overview),
         objetivo: importResult.objective || data.overview.objetivo,
         escopo: importResult.scope || data.overview.escopo,
         kpis: importResult.context || data.overview.kpis,
@@ -12567,12 +12637,14 @@ function DdpModule({
         : data.sipocRows,
       macroprocess: importResult.macroImages.length
         ? {
-            ...data.macroprocess,
+            ...(primaryProcessPatch ? primaryProcessPatch.macroprocess : data.macroprocess),
             titulo: "Diagrama do processo",
             legenda: "",
             src: importResult.macroImages[0].src,
           }
-        : data.macroprocess,
+        : primaryProcessPatch
+          ? primaryProcessPatch.macroprocess
+          : data.macroprocess,
       steps: importedSteps.length
         ? fillMissingActivityActors(renumberFlowSteps(importedSteps))
         : data.steps,
@@ -12612,6 +12684,7 @@ function DdpModule({
     if (Object.keys(preparedProcesses).length) {
       setAssistantCreatedProcesses((current) => ({ ...current, ...preparedProcesses }));
     }
+    setMappingEntryMode("assistant");
     update(nextState);
     setMappingImport(importResult);
     if (Object.keys(preparedProcesses).length) {
@@ -13040,31 +13113,58 @@ function DdpModule({
         saveTitle="Salvar o preenchimento do mapeamento"
         previewTitle="Visualizar o que está sendo preenchido"
         processControl={
-          <div className="grid items-end gap-2 sm:grid-cols-[minmax(280px,1fr)_auto]">
-            <RegisteredProcessSelect
-              required
-              label="Processo do mapeamento"
-              value={data.macroprocess.processId ?? ""}
-              processes={primaryProcessOptions}
-              placeholder="Selecione o processo que será mapeado"
-              onSelect={selectPrimaryProcess}
-              displayName={(process) => process.name}
-              onRequestCreate={(name) => setCreateProcessName(name)}
-            />
-            <button
-              type="button"
-              disabled={!mappingReady}
-              onClick={() => setMappingAssistantOpen(true)}
-              className={`${secondaryButtonClass} h-10 disabled:cursor-not-allowed disabled:opacity-50`}
-              title={
-                mappingReady
-                  ? "Preencher a partir de DOCX ou texto"
-                  : "Selecione um processo primeiro"
-              }
-            >
-              <WandSparkles className="h-4 w-4" />
-              Assistente de preenchimento
-            </button>
+          <div className="grid gap-3">
+            <div className="inline-grid w-full grid-cols-2 rounded-lg border border-border bg-muted/40 p-1 sm:w-fit">
+              {(
+                [
+                  ["manual", "Manual", ClipboardList],
+                  ["assistant", "Assistente", WandSparkles],
+                ] as const
+              ).map(([mode, label, Icon]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setMappingEntryMode(mode);
+                    if (mode === "assistant") setMappingAssistantOpen(true);
+                  }}
+                  className={[
+                    "inline-flex h-9 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold transition",
+                    mappingEntryMode === mode
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="grid items-end gap-2 sm:grid-cols-[minmax(280px,1fr)_auto]">
+              <RegisteredProcessSelect
+                required={mappingEntryMode === "manual"}
+                label="Processo do mapeamento"
+                value={data.macroprocess.processId ?? ""}
+                processes={primaryProcessOptions}
+                placeholder={
+                  mappingEntryMode === "assistant"
+                    ? "O assistente poderá preencher este processo"
+                    : "Selecione o processo que será mapeado"
+                }
+                onSelect={selectPrimaryProcess}
+                displayName={(process) => process.name}
+                onRequestCreate={(name) => setCreateProcessName(name)}
+              />
+              <button
+                type="button"
+                onClick={() => setMappingAssistantOpen(true)}
+                className={`${secondaryButtonClass} h-10`}
+                title="Preencher a partir de DOCX ou texto"
+              >
+                <WandSparkles className="h-4 w-4" />
+                Assistente de preenchimento
+              </button>
+            </div>
           </div>
         }
       />
@@ -13135,9 +13235,20 @@ function DdpModule({
               Selecione um processo para começar
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Escolha, no campo acima, o processo cadastrado que será mapeado. As seções do
-              relatório serão liberadas em seguida.
+              Escolha o processo manualmente ou use o assistente para preencher o processo mapeado
+              a partir de DOCX ou texto estruturado.
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                setMappingEntryMode("assistant");
+                setMappingAssistantOpen(true);
+              }}
+              className={`${primaryButtonClass} mx-auto mt-2`}
+            >
+              <WandSparkles className="h-4 w-4" />
+              Usar assistente
+            </button>
           </div>
         </div>
       ) : (

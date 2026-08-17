@@ -48,6 +48,7 @@ export type MappingImportGap = {
 export type MappingDocumentImport = {
   fileName: string;
   title: string;
+  mappedProcess: string;
   modality: "AS IS" | "TO BE" | null;
   date: string;
   author: string;
@@ -309,6 +310,7 @@ function emptyImport(fileName: string): MappingDocumentImport {
   return {
     fileName,
     title: "",
+    mappedProcess: "",
     modality: null,
     date: "",
     author: "",
@@ -682,6 +684,13 @@ function headerIndex(headers: string[], fragments: string[]) {
 function applyMetadataField(result: MappingDocumentImport, rawLabel: string, value: string) {
   const label = normalized(rawLabel);
   if (label === "titulo" || label === "titulo do mapeamento") result.title = value;
+  else if (
+    label === "processo" ||
+    label === "processo mapeado" ||
+    label === "nome do processo" ||
+    label === "processo do mapeamento"
+  )
+    result.mappedProcess = value;
   else if (label === "modalidade")
     result.modality = /to be/i.test(value) ? "TO BE" : /as is/i.test(value) ? "AS IS" : null;
   else if (label === "data") result.date = value;
