@@ -5144,10 +5144,9 @@ function buildDdpDocx(
     ["02", "Sistemas/Documentos Envolvidos"],
     ["03", "Análise SIPOC"],
     ["04", "Etapas do Processo"],
-    ["05", "Visão Quantitativa"],
-    ["06", "Oportunidades de Melhoria"],
-    ["07", "Próximos Passos"],
-    ["08", "Glossário"],
+    ["05", "Oportunidades de Melhoria"],
+    ["06", "Próximos Passos"],
+    ["07", "Glossário"],
   ].forEach(([num, label]) => parts.push(doc.tocLine(num, label)));
   parts.push(doc.sectionBreak());
 
@@ -5317,129 +5316,7 @@ function buildDdpDocx(
     }
   });
 
-  parts.push(doc.sectionTitle("05 Visão Quantitativa"));
-  parts.push(
-    doc.table(
-      [
-        [
-          doc.headerCell("Processos"),
-          doc.headerCell("Subprocessos"),
-          doc.headerCell("Atividades"),
-          doc.headerCell("Áreas"),
-          doc.headerCell("Sistemas/Documentos"),
-        ],
-        [
-          doc.bodyCell(String(model.stats.processes)),
-          doc.bodyCell(String(model.stats.subprocesses)),
-          doc.bodyCell(String(model.stats.activities)),
-          doc.bodyCell(String(model.stats.areas)),
-          doc.bodyCell(String(model.stats.systems)),
-        ],
-      ],
-      [1800, 1900, 1900, 1700, 3006],
-      { full: true },
-    ),
-  );
-  parts.push(
-    doc.table(
-      [
-        [
-          doc.headerCell("Média de atividades"),
-          doc.headerCell("Maior subprocesso"),
-          doc.headerCell("Com automação"),
-          doc.headerCell("Totalmente manuais"),
-        ],
-        [
-          doc.bodyCell(
-            `${model.stats.averageActivities.toLocaleString("pt-BR", {
-              maximumFractionDigits: 1,
-            })} por processo ou subprocesso`,
-          ),
-          doc.bodyCell(`${model.stats.maxActivitiesInSubprocess} atividades`),
-          doc.bodyCell(`${model.stats.automationPercentage}%`),
-          doc.bodyCell(`${model.stats.fullyManualPercentage}%`),
-        ],
-      ],
-      [2800, 2700, 2400, 2406],
-      { full: true },
-    ),
-  );
-  parts.push(doc.subTitle("Distribuição por forma de execução"));
-  parts.push(
-    doc.table(
-      [
-        [doc.headerCell("Forma de execução"), doc.headerCell("Quantidade"), doc.headerCell("%")],
-        ...model.stats.execution.map((item) => [
-          doc.bodyCell(item.label),
-          doc.bodyCell(String(item.value)),
-          doc.bodyCell(`${item.percentage}%`),
-        ]),
-      ],
-      [6500, 1900, 1906],
-      { full: true },
-    ),
-  );
-  if (model.stats.areaDistribution.length) {
-    parts.push(doc.subTitle("Participação das áreas"));
-    parts.push(
-      doc.table(
-        [
-          [doc.headerCell("Área"), doc.headerCell("Atividades"), doc.headerCell("%")],
-          ...model.stats.areaDistribution.map((item) => [
-            doc.bodyCell(item.label),
-            doc.bodyCell(String(item.value)),
-            doc.bodyCell(`${item.percentage}%`),
-          ]),
-        ],
-        [6500, 1900, 1906],
-        { full: true },
-      ),
-    );
-  }
-  if (model.stats.resourceUsage.length) {
-    parts.push(doc.subTitle("Recursos mais utilizados"));
-    parts.push(
-      doc.table(
-        [
-          [
-            doc.headerCell("Sistema/Documento"),
-            doc.headerCell("Vínculos"),
-            doc.headerCell("% das atividades"),
-          ],
-          ...model.stats.resourceUsage.map((item) => [
-            doc.bodyCell(item.label),
-            doc.bodyCell(String(item.value)),
-            doc.bodyCell(`${item.percentage}%`),
-          ]),
-        ],
-        [6500, 1900, 1906],
-        { full: true },
-      ),
-    );
-  }
-  parts.push(doc.subTitle("Alertas analíticos"));
-  parts.push(
-    doc.table(
-      [
-        [
-          doc.headerCell("Atividades integralmente manuais"),
-          doc.headerCell("Sem área ou responsável"),
-          doc.headerCell("Sem descrição"),
-          doc.headerCell("Sem sistema relacionado"),
-        ],
-        [
-          doc.bodyCell(String(model.stats.alerts.manualActivities)),
-          doc.bodyCell(String(model.stats.alerts.withoutOwner)),
-          doc.bodyCell(String(model.stats.alerts.withoutDescription)),
-          doc.bodyCell(String(model.stats.alerts.withoutSystem)),
-        ],
-      ],
-      [2576, 2576, 2576, 2578],
-      { full: true },
-    ),
-  );
-
-  parts.push(doc.sectionTitle("06 Oportunidades de Melhoria"));
+  parts.push(doc.sectionTitle("05 Oportunidades de Melhoria"));
   model.gaps.forEach((gap, index) => {
     parts.push(
       doc.table(
@@ -5498,7 +5375,7 @@ function buildDdpDocx(
   });
   if (!model.gaps.length) parts.push(doc.p("Nenhuma oportunidade de melhoria cadastrada."));
 
-  parts.push(doc.sectionTitle("07 Próximos Passos"));
+  parts.push(doc.sectionTitle("06 Próximos Passos"));
   parts.push(
     model.nextSteps.length
       ? doc.table(
@@ -5517,7 +5394,7 @@ function buildDdpDocx(
   );
 
   parts.push(doc.pageBreak());
-  parts.push(doc.sectionTitle("08 Glossário"));
+  parts.push(doc.sectionTitle("07 Glossário"));
   parts.push(
     model.glossary.length
       ? doc.table(
@@ -6185,10 +6062,9 @@ function buildDdpPresentationHtml(
     ["sistemas", "02 Sistemas/Documentos envolvidos"],
     ["sipoc", "03 SIPOC"],
     ["fluxo", "04 Etapas do processo"],
-    ["quantitativa", "05 Visão Quantitativa"],
-    ["gaps", "06 Oportunidades de melhoria"],
-    ["proximos", "07 Próximos passos"],
-    ["glossario", "08 Glossário"],
+    ["gaps", "05 Oportunidades de melhoria"],
+    ["proximos", "06 Próximos passos"],
+    ["glossario", "07 Glossário"],
   ];
 
   const coverLine = (
@@ -6411,114 +6287,6 @@ function buildDdpPresentationHtml(
         .join("")
     : emptyBlock("Nenhum termo informado.");
 
-  const quantitativeMetricCards = [
-    ["Processos", model.stats.processes],
-    ["Subprocessos", model.stats.subprocesses],
-    ["Atividades", model.stats.activities],
-    ["Áreas", model.stats.areas],
-    ["Sistemas/Documentos", model.stats.systems],
-  ]
-    .map(
-      ([label, value], index) =>
-        `<article class="quant-metric quant-metric-${index + 1}"><strong>${html(
-          String(value),
-        )}</strong><span>${html(label)}</span></article>`,
-    )
-    .join("");
-
-  const quantitativeBars = (items: QuantitativeBreakdown[]) =>
-    items.length
-      ? items
-          .map(
-            (item) =>
-              `<div class="quant-bar"><div><span>${html(item.label)}</span><strong>${item.value} · ${
-                item.percentage
-              }%</strong></div><i><b style="width:${item.percentage}%"></b></i></div>`,
-          )
-          .join("")
-      : emptyBlock("Não há dados suficientes para esta análise.");
-
-  const quantitativeResources = model.stats.resourceUsage.length
-    ? model.stats.resourceUsage
-        .map(
-          (item, index) =>
-            `<div class="quant-resource"><span>${String(index + 1).padStart(2, "0")}</span><strong>${html(
-              item.label,
-            )}</strong><b>${item.value}</b></div>`,
-        )
-        .join("")
-    : emptyBlock("Nenhum sistema ou documento foi vinculado às atividades.");
-
-  const quantitativeAlerts = [
-    ["Atividades integralmente manuais", model.stats.alerts.manualActivities],
-    ["Sem área ou responsável", model.stats.alerts.withoutOwner],
-    ["Sem descrição", model.stats.alerts.withoutDescription],
-    ["Sem sistema relacionado", model.stats.alerts.withoutSystem],
-  ]
-    .map(
-      ([label, value]) =>
-        `<div class="quant-alert"><strong>${html(String(value))}</strong><span>${html(
-          label,
-        )}</span></div>`,
-    )
-    .join("");
-
-  const executionTone = (label: string) => {
-    const normalized = normalizeLabel(label);
-    if (normalized.includes("fora")) return "manual-outside";
-    if (normalized.includes("hibr")) return "hybrid";
-    if (normalized.includes("autom")) return "automatic";
-    return "manual-system";
-  };
-
-  const quantitativeWaffle = model.stats.execution
-    .flatMap((item) =>
-      Array.from(
-        { length: Math.max(0, item.value) },
-        () =>
-          `<i class="${executionTone(item.label)}" title="${html(
-            `${item.label}: ${item.value}`,
-          )}"></i>`,
-      ),
-    )
-    .join("");
-
-  const quantitativeLegend = model.stats.execution.length
-    ? model.stats.execution
-        .map(
-          (item) =>
-            `<div class="quant-legend-row"><span><i class="${executionTone(
-              item.label,
-            )}"></i>${html(item.label)}</span><strong>${item.value} · ${
-              item.percentage
-            }%</strong></div>`,
-        )
-        .join("")
-    : emptyBlock("Nenhuma atividade classificada por forma de execução.");
-
-  const manualActivities = model.stats.alerts.manualActivities;
-  const hybridActivities =
-    model.stats.execution.find((item) => normalizeLabel(item.label).startsWith("hibrid"))?.value ??
-    0;
-  const hybridPercentage = model.stats.activities
-    ? Math.round((hybridActivities / model.stats.activities) * 100)
-    : 0;
-  const manualRatio = model.stats.activities
-    ? Math.round((manualActivities / model.stats.activities) * 10)
-    : 0;
-  const quantitativeInsightTitle = model.stats.activities
-    ? manualActivities
-      ? `<em>${manualRatio} em cada 10 atividades</em> são integralmente manuais${
-          hybridPercentage
-            ? `, enquanto ${hybridPercentage}% combinam execução manual e processamento automático.`
-            : "."
-        }`
-      : "O processo não registra atividades totalmente manuais."
-    : "A composição será exibida após o cadastro das atividades.";
-  const quantitativeInsightBody = model.stats.activities
-    ? `Das ${model.stats.activities} atividades identificadas, ${manualActivities} são integralmente manuais e ${hybridActivities} são híbridas.`
-    : "Ainda não há atividades suficientes para calcular a distribuição operacional.";
-
   const macroDiagram = model.macroprocess.src
     ? zoomImage({
         title: model.macroprocess.title || "Macroprocesso",
@@ -6642,10 +6410,9 @@ function buildDdpPresentationHtml(
 <section class="slide alt" id="sistemas">${sectionHead("02", "Sistemas/Documentos envolvidos", "Sistemas, documentos e uso no processo.")}<div class="card-grid">${systemCards}</div></section>
 <section class="slide" id="sipoc">${sectionHead("03", "Análise SIPOC", "Fornecedores, entradas, processo, saídas e clientes.")}${sipocRows}</section>
 <section class="slide alt" id="fluxo">${sectionHead("04", "Etapas do processo", "Representação do processo.")}${macroDiagram}<div class="flow-stack">${flowSteps}</div></section>
-<section class="slide" id="quantitativa">${sectionHead("05", "Visão Quantitativa", "Leitura objetiva da estrutura, execução e concentração operacional do processo.")}<div class="quant-metrics">${quantitativeMetricCards}</div><div class="quant-overview"><article class="quant-insight"><span class="quant-eyebrow">A oportunidade</span><h3>${quantitativeInsightTitle}</h3><p>${html(quantitativeInsightBody)}</p><div class="quant-chips"><span class="quant-chip"><strong>${model.stats.averageActivities.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong> atividades por processo ou subprocesso</span><span class="quant-chip"><strong>${model.stats.maxActivitiesInSubprocess}</strong> maior concentração em um subprocesso</span><span class="quant-chip"><strong>${model.stats.automationPercentage}%</strong> com algum grau de automação</span></div></article><article class="quant-waffle-card"><div class="quant-waffle-head"><span>Composição das atividades</span><strong>${model.stats.activities} atividades</strong></div>${quantitativeWaffle ? `<div class="quant-waffle">${quantitativeWaffle}</div>` : emptyBlock("Nenhuma atividade classificada.")}<div class="quant-legend">${quantitativeLegend}</div></article></div><div class="quant-summary"><article class="quant-panel"><h3>Onde o esforço se concentra</h3><p>Participação das áreas nas atividades identificadas.</p>${quantitativeBars(model.stats.areaDistribution)}</article><article class="quant-panel"><h3>Com o que se trabalha</h3><p>Sistemas e documentos com maior número de vínculos.</p>${quantitativeResources}</article></div><div class="quant-alert-heading"><div><span class="quant-eyebrow">Pontos de atenção</span><h3>Alertas analíticos</h3></div><p>Registros que exigem revisão ou complementação.</p></div><div class="quant-alerts">${quantitativeAlerts}</div></section>
-<section class="slide alt" id="gaps">${sectionHead("06", "Oportunidades de melhoria", "Oportunidades, impactos e planos de ação relacionados.")}${gapTable}</section>
-<section class="slide" id="proximos">${sectionHead("07", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
-<section class="slide alt" id="glossario">${sectionHead("08", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
+<section class="slide alt" id="gaps">${sectionHead("05", "Oportunidades de melhoria", "Oportunidades, impactos e planos de ação relacionados.")}${gapTable}</section>
+<section class="slide" id="proximos">${sectionHead("06", "Próximos passos", "Encaminhamentos definidos para continuidade.")}<div class="card-grid">${nextCards}</div></section>
+<section class="slide alt" id="glossario">${sectionHead("07", "Glossário", "Termos utilizados no relatório.")}<div class="card-grid">${glossaryCards}</div></section>
 </main>
 </div>
 <div class="zoom-modal" id="zoom-modal" onclick="closeImageZoom()"><div class="zoom-title" id="zoom-title"></div><button class="zoom-close" onclick="closeImageZoom();event.stopPropagation()">Fechar</button><img id="zoom-img" alt="Imagem ampliada" onclick="changeImageZoom(0.25);event.stopPropagation()" oncontextmenu="changeImageZoom(-0.25);event.preventDefault();event.stopPropagation()"/><div class="zoom-help">Clique para ampliar. Botão direito para reduzir.</div><div class="zoom-map" id="zoom-map"><img id="zoom-map-img" alt="Miniatura"/><span id="zoom-map-window" aria-hidden="true"></span></div></div>
@@ -11829,17 +11596,6 @@ function DdpModule({
       ) ?? [],
     [assistantCreatedProcesses, flowProcessOptions, mappingImport],
   );
-  const quantitativeStats = useMemo(
-    () =>
-      calculateMappingQuantitativeStats(data, [
-        ...catalogs.processes,
-        ...Object.values(assistantCreatedProcesses).filter(
-          (process) => !catalogs.processes.some((item) => item.id === process.id),
-        ),
-      ]),
-    [assistantCreatedProcesses, catalogs.processes, data],
-  );
-
   // Cada etapa do fluxo AS IS começa recolhida; o usuário expande quando precisa.
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
@@ -12036,21 +11792,15 @@ function DdpModule({
     { key: "sipoc", num: "03", title: "Análise SIPOC", pct: sectionProgress.sipoc },
     { key: "flowStage", num: "04", title: "Etapas do processo", pct: sectionProgress.flowStage },
     {
-      key: "quantitative",
-      num: "05",
-      title: "Visão Quantitativa",
-      pct: 100,
-    },
-    {
       key: "gaps",
-      num: "06",
+      num: "05",
       title: "Oportunidades de melhoria",
       pct: sectionProgress.gaps,
     },
-    { key: "nextSteps", num: "07", title: "Próximos passos", pct: sectionProgress.nextSteps },
-    { key: "glossary", num: "08", title: "Glossário", pct: sectionProgress.glossary },
+    { key: "nextSteps", num: "06", title: "Próximos passos", pct: sectionProgress.nextSteps },
+    { key: "glossary", num: "07", title: "Glossário", pct: sectionProgress.glossary },
   ];
-  const fillableSections = sections.filter((section) => section.key !== "quantitative");
+  const fillableSections = sections;
   const overallPct = Math.round(
     fillableSections.reduce((sum, section) => sum + section.pct, 0) / fillableSections.length,
   );
@@ -12085,7 +11835,6 @@ function DdpModule({
       "systems",
       "sipoc",
       "flowStage",
-      "quantitative",
       "gaps",
       "nextSteps",
       "glossary",
@@ -14292,243 +14041,8 @@ function DdpModule({
               </div>
             </Panel>
             <Panel
-              id="sec-quantitative"
-              num="05"
-              openSignal={openTarget === "quantitative" ? openNonce : 0}
-              title="Visão Quantitativa"
-            >
-              <div className="grid gap-5">
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                  {[
-                    {
-                      label: "Processos",
-                      value: quantitativeStats.processes,
-                      icon: Workflow,
-                    },
-                    {
-                      label: "Subprocessos",
-                      value: quantitativeStats.subprocesses,
-                      icon: GitBranch,
-                    },
-                    {
-                      label: "Atividades",
-                      value: quantitativeStats.activities,
-                      icon: ListChecks,
-                    },
-                    {
-                      label: "Áreas",
-                      value: quantitativeStats.areas,
-                      icon: Building2,
-                    },
-                    {
-                      label: "Sistemas/Documentos",
-                      value: quantitativeStats.systems,
-                      icon: Database,
-                    },
-                  ].map((metric) => {
-                    const Icon = metric.icon;
-                    return (
-                      <article
-                        key={metric.label}
-                        className="flex min-h-[112px] flex-col justify-between rounded-lg border border-border bg-card p-4 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                            {metric.label}
-                          </span>
-                          <Icon className="h-4 w-4 text-[var(--gold)]" />
-                        </div>
-                        <strong className="text-3xl font-bold tabular-nums text-foreground">
-                          {metric.value}
-                        </strong>
-                      </article>
-                    );
-                  })}
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <article className="rounded-lg border border-border bg-card p-4">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                      Média de atividades
-                    </span>
-                    <div className="mt-2 flex items-end gap-2">
-                      <strong className="text-3xl font-bold tabular-nums text-foreground">
-                        {quantitativeStats.averageActivities.toLocaleString("pt-BR", {
-                          maximumFractionDigits: 1,
-                        })}
-                      </strong>
-                      <span className="pb-1 text-xs text-muted-foreground">
-                        por processo ou subprocesso
-                      </span>
-                    </div>
-                  </article>
-                  <article className="rounded-lg border border-border bg-card p-4">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                      Maior subprocesso
-                    </span>
-                    <div className="mt-2 flex items-end gap-2">
-                      <strong className="text-3xl font-bold tabular-nums text-foreground">
-                        {quantitativeStats.maxActivitiesInSubprocess}
-                      </strong>
-                      <span className="pb-1 text-xs text-muted-foreground">
-                        atividades vinculadas
-                      </span>
-                    </div>
-                  </article>
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
-                  <article className="rounded-lg border border-border bg-card p-4">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground">
-                          Distribuição por forma de execução
-                        </h3>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Composição das atividades classificadas no fluxo.
-                        </p>
-                      </div>
-                      <ListChecks className="h-5 w-5 text-[var(--gold)]" />
-                    </div>
-                    <div className="grid gap-3">
-                      {quantitativeStats.execution.map((item) => (
-                        <div key={item.label} className="grid gap-1.5">
-                          <div className="flex items-center justify-between gap-3 text-xs">
-                            <span className="font-medium text-foreground">{item.label}</span>
-                            <span className="tabular-nums text-muted-foreground">
-                              {item.value} · {item.percentage}%
-                            </span>
-                          </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-[var(--gold)] transition-[width] duration-300"
-                              style={{ width: `${item.percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-
-                  <article className="grid gap-3 rounded-lg border border-border bg-card p-4">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Indicadores de execução
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-lg bg-emerald-500/10 p-3">
-                        <strong className="block text-2xl tabular-nums text-emerald-700 dark:text-emerald-300">
-                          {quantitativeStats.automationPercentage}%
-                        </strong>
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          Com algum grau de automação
-                        </span>
-                      </div>
-                      <div className="rounded-lg bg-muted/60 p-3">
-                        <strong className="block text-2xl tabular-nums text-foreground">
-                          {quantitativeStats.fullyManualPercentage}%
-                        </strong>
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          Totalmente manuais
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <article className="rounded-lg border border-border bg-card p-4">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Participação das áreas
-                    </h3>
-                    <div className="mt-4 grid gap-3">
-                      {quantitativeStats.areaDistribution.length ? (
-                        quantitativeStats.areaDistribution.map((item) => (
-                          <div key={item.label} className="grid gap-1.5">
-                            <div className="flex items-center justify-between gap-3 text-xs">
-                              <span className="truncate font-medium text-foreground">
-                                {item.label}
-                              </span>
-                              <span className="shrink-0 tabular-nums text-muted-foreground">
-                                {item.value} · {item.percentage}%
-                              </span>
-                            </div>
-                            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full bg-primary"
-                                style={{ width: `${item.percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="rounded-lg border border-dashed border-border bg-muted/20 p-5 text-center text-xs text-muted-foreground">
-                          As áreas aparecerão quando houver atividades vinculadas a processos
-                          cadastrados.
-                        </p>
-                      )}
-                    </div>
-                  </article>
-
-                  <article className="rounded-lg border border-border bg-card p-4">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Recursos mais utilizados
-                    </h3>
-                    <div className="mt-4 grid gap-2">
-                      {quantitativeStats.resourceUsage.length ? (
-                        quantitativeStats.resourceUsage.map((item, index) => (
-                          <div
-                            key={item.label}
-                            className="flex items-center gap-3 rounded-lg bg-muted/45 px-3 py-2.5"
-                          >
-                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-background text-xs font-bold text-[var(--gold)]">
-                              {String(index + 1).padStart(2, "0")}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                              {item.label}
-                            </span>
-                            <strong className="tabular-nums text-sm text-foreground">
-                              {item.value}
-                            </strong>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="rounded-lg border border-dashed border-border bg-muted/20 p-5 text-center text-xs text-muted-foreground">
-                          Vincule sistemas ou documentos às atividades para identificar o uso.
-                        </p>
-                      )}
-                    </div>
-                  </article>
-                </div>
-
-                <article className="rounded-lg border border-border bg-card p-4">
-                  <div className="mb-4 flex items-center gap-2">
-                    <TriangleAlert className="h-4 w-4 text-[var(--gold)]" />
-                    <h3 className="text-sm font-semibold text-foreground">Alertas analíticos</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    {[
-                      [
-                        "Atividades integralmente manuais",
-                        quantitativeStats.alerts.manualActivities,
-                      ],
-                      ["Sem área ou responsável", quantitativeStats.alerts.withoutOwner],
-                      ["Sem descrição", quantitativeStats.alerts.withoutDescription],
-                      ["Sem sistema relacionado", quantitativeStats.alerts.withoutSystem],
-                    ].map(([label, value]) => (
-                      <div key={String(label)} className="rounded-lg border border-border p-3">
-                        <strong className="block text-2xl tabular-nums text-foreground">
-                          {value}
-                        </strong>
-                        <span className="mt-1 block text-xs text-muted-foreground">{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              </div>
-            </Panel>
-            <Panel
               id="sec-gaps"
-              num="06"
+              num="05"
               openSignal={openTarget === "gaps" ? openNonce : 0}
               title="Oportunidades de melhoria"
               progress={sectionProgress.gaps}
