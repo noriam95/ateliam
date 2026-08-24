@@ -269,11 +269,13 @@ export function WorkspaceSystemSettings({
   isDemo,
   organizationName,
   organizationId,
+  isAdmin,
 }: {
   view: WorkspaceSystemSettingsView;
   isDemo: boolean;
   organizationName: string;
   organizationId?: string | null;
+  isAdmin: boolean;
 }) {
   const queryClient = useQueryClient();
   const listOrgs = useServerFn(listAccessibleOrganizations);
@@ -360,6 +362,20 @@ export function WorkspaceSystemSettings({
     ? demoOrganizations
     : ((organizationsQ.data ?? []) as OrganizationRow[]);
   const users = isDemo ? demoUsers : ((usersQ.data ?? []) as UserAccessRow[]);
+
+  if (!isAdmin && (view === "users" || view === "organizations")) {
+    return (
+      <section className="rounded-lg border border-border bg-card p-6">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+          configurações
+        </div>
+        <h1 className="mt-3 font-display text-3xl font-bold text-foreground">Acesso restrito</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          O cadastro de usuários e organizações é permitido somente para administradores.
+        </p>
+      </section>
+    );
+  }
 
   if (view === "document-models") {
     const rows = isDemo

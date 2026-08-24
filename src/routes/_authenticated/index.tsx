@@ -461,6 +461,7 @@ function WorkspaceHome() {
     queryFn: () => me(),
     enabled: !isDemo,
   });
+  const isCurrentUserAdmin = isDemo || !!meQ.data?.roles?.some((role) => role === "admin");
   const accessibleOrganizationsQ = useQuery({
     queryKey: ["accessible-organizations", isDemo ? "demo" : "cloud"],
     queryFn: () => accessibleOrganizationsFn(),
@@ -1148,15 +1149,23 @@ function WorkspaceHome() {
 
                   {activeArea === "settings" ? (
                     <div key="settings" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                      <TreeButton active={view === "users"} onClick={() => setView("users")}>
-                        <Users className="h-4 w-4" /> Usuários
-                      </TreeButton>
-                      <TreeButton
-                        active={view === "organizations"}
-                        onClick={() => setView("organizations")}
-                      >
-                        <Building2 className="h-4 w-4" /> Organizações
-                      </TreeButton>
+                      {isCurrentUserAdmin ? (
+                        <>
+                          <TreeButton active={view === "users"} onClick={() => setView("users")}>
+                            <Users className="h-4 w-4" /> Usuários
+                          </TreeButton>
+                          <TreeButton
+                            active={view === "organizations"}
+                            onClick={() => setView("organizations")}
+                          >
+                            <Building2 className="h-4 w-4" /> Organizações
+                          </TreeButton>
+                        </>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+                          Configurações administrativas disponíveis apenas para administradores.
+                        </div>
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -1201,6 +1210,7 @@ function WorkspaceHome() {
               mappingCoverage={dashboard?.mappingCoverage ?? { covered: 0, total: 0, rows: [] }}
               isLoading={dashboardQ.isLoading && !isDemo}
               isDemo={isDemo}
+              isAdmin={isCurrentUserAdmin}
             />
           </main>
         </div>
@@ -2468,6 +2478,7 @@ function WorkspaceContent({
   mappingCoverage,
   isLoading,
   isDemo,
+  isAdmin,
 }: {
   view: WorkspaceView;
   organizationName: string;
@@ -2494,6 +2505,7 @@ function WorkspaceContent({
   mappingCoverage: MappingCoverage;
   isLoading: boolean;
   isDemo: boolean;
+  isAdmin: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -2584,6 +2596,21 @@ function WorkspaceContent({
   }
 
   if (view === "users" || view === "organizations" || view === "document-models") {
+    if (!isAdmin) {
+      return (
+        <section className="rounded-lg border border-border bg-card p-6">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+            configurações
+          </div>
+          <h1 className="mt-3 font-display text-3xl font-bold text-foreground">
+            Acesso restrito
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            O cadastro de usuários e organizações é permitido somente para administradores.
+          </p>
+        </section>
+      );
+    }
     return (
       <Suspense fallback={<LoadingSkeleton />}>
         <WorkspaceSystemSettings
@@ -2591,6 +2618,7 @@ function WorkspaceContent({
           isDemo={isDemo}
           organizationName={organizationName}
           organizationId={organizationId}
+          isAdmin={isAdmin}
         />
       </Suspense>
     );
