@@ -2186,6 +2186,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
     (d: {
       userId: string;
       username?: string | null;
+      password?: string | null;
       displayName?: string | null;
       organizationId?: string | null;
       organizationIds?: string[];
@@ -2195,6 +2196,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
         .object({
           userId: z.string().uuid(),
           username: usernameSchema,
+          password: z.string().trim().max(128).optional().nullable(),
           displayName: z.string().trim().min(2).max(120).optional().nullable(),
           organizationId: z.string().uuid().optional().nullable(),
           organizationIds: z.array(z.string().uuid()).optional(),
@@ -2209,9 +2211,13 @@ export const updateUserAccess = createServerFn({ method: "POST" })
     await assertOrganizationAdmin(context, targetOrgId);
     await assertUsernameAvailable(data.username, data.userId);
     const nextRoles = data.roles;
+    const nextPassword = data.password?.trim() ?? "";
 
     if (data.userId === context.userId && !nextRoles.some((role) => role === "admin")) {
       throw new Error("Você não pode remover seu próprio acesso administrativo.");
+    }
+    if (nextPassword && nextPassword.length < 6) {
+      throw new Error("A nova senha deve ter pelo menos 6 caracteres.");
     }
 
     const { error: profileError } = await supabaseAdmin
@@ -2224,6 +2230,13 @@ export const updateUserAccess = createServerFn({ method: "POST" })
       })
       .eq("id", data.userId);
     if (profileError) throw new Error(profileError.message);
+
+    if (nextPassword) {
+      const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+        password: nextPassword,
+      });
+      if (passwordError) throw new Error(passwordError.message);
+    }
 
     const { error: deleteError } = await supabaseAdmin
       .from("user_roles")

@@ -508,10 +508,18 @@ export function WorkspaceSystemSettings({
           return;
         }
         if (draft.id) {
+          const password = draft.password.trim();
+          if (password && password.length < 6) {
+            throw new Error("A nova senha deve ter pelo menos 6 caracteres.");
+          }
+          if (password && password !== draft.passwordConfirmation) {
+            throw new Error("A confirmação da nova senha não confere.");
+          }
           await updateUser({
             data: {
               userId: draft.id,
               username: draft.username || null,
+              password: password || null,
               displayName: draft.displayName || null,
               organizationId: draft.organizationId || null,
               organizationIds: draft.organizationIds,
@@ -519,6 +527,9 @@ export function WorkspaceSystemSettings({
             },
           });
         } else {
+          if (draft.password !== draft.passwordConfirmation) {
+            throw new Error("A confirmação da senha inicial não confere.");
+          }
           await createUser({
             data: {
               email: draft.email,
@@ -1226,6 +1237,7 @@ type UserDraft = {
   email: string;
   username: string;
   password: string;
+  passwordConfirmation: string;
   displayName: string;
   organizationId: string;
   organizationIds: string[];
@@ -1254,6 +1266,7 @@ function UsersSettings({
     email: "",
     username: "",
     password: "",
+    passwordConfirmation: "",
     displayName: "",
     organizationId: organizations[0]?.id ?? "",
     organizationIds: organizations[0]?.id ? [organizations[0].id] : [],
@@ -1300,6 +1313,7 @@ function UsersSettings({
       email: row.email,
       username: row.username ?? "",
       password: "",
+      passwordConfirmation: "",
       displayName: row.display_name ?? "",
       organizationId: defaultOrganizationId,
       organizationIds: accesses.length
@@ -1509,19 +1523,71 @@ function UsersSettings({
                 />
               </FormField>
               {!draft.id ? (
-                <FormField label="Senha inicial">
-                  <input
-                    required
-                    minLength={6}
-                    type="password"
-                    value={draft.password}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, password: event.target.value }))
-                    }
-                    className={inputClass}
-                  />
-                </FormField>
-              ) : null}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="Senha inicial">
+                    <input
+                      required
+                      minLength={6}
+                      type="password"
+                      value={draft.password}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, password: event.target.value }))
+                      }
+                      className={inputClass}
+                    />
+                  </FormField>
+                  <FormField label="Confirmar senha">
+                    <input
+                      required
+                      minLength={6}
+                      type="password"
+                      value={draft.passwordConfirmation}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          passwordConfirmation: event.target.value,
+                        }))
+                      }
+                      className={inputClass}
+                    />
+                  </FormField>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">
+                    Alterar senha
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FormField label="Nova senha">
+                      <input
+                        minLength={6}
+                        type="password"
+                        value={draft.password}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, password: event.target.value }))
+                        }
+                        placeholder="Manter senha atual"
+                        className={inputClass}
+                      />
+                    </FormField>
+                    <FormField label="Confirmar nova senha">
+                      <input
+                        minLength={6}
+                        type="password"
+                        value={draft.passwordConfirmation}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            passwordConfirmation: event.target.value,
+                          }))
+                        }
+                        placeholder="Repita a nova senha"
+                        className={inputClass}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              )}
               <div className="grid gap-2">
                 <div className="text-xs font-semibold text-muted-foreground">
                   Organizações permitidas
@@ -1580,6 +1646,8 @@ function UsersSettings({
                 disabled={
                   saveMut.isPending ||
                   !draft.email.trim() ||
+                  (!draft.id &&
+                    (!draft.password.trim() || !draft.passwordConfirmation.trim())) ||
                   !draft.organizationId ||
                   !draft.organizationIds.length
                 }
