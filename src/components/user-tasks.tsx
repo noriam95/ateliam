@@ -1,3 +1,12 @@
+import { TaskCalendar } from "./task-calendar";
+import {
+  TASK_PERIOD_LABELS,
+  periodRange,
+  periodColumns,
+  shiftPeriod,
+  validDay,
+  type TaskPeriod,
+} from "@/lib/task-period";
 import { TaskChecklist } from "./task-checklist";
 import { TaskRoutingActions } from "./task-routing-actions";
 import { TASK_STAGE_LABELS, type TaskAction } from "@/lib/user-tasks";
@@ -26,7 +35,6 @@ import {
   TASK_STATUS_LABELS,
   documentTaskUrl,
   localDay,
-  monthDays,
   taskDate,
   type TaskDocument,
   type TaskFeed,
@@ -40,6 +48,8 @@ type ViewState = TaskFilters & {
   layout?: "list" | "kanban" | "calendar";
   group?: "status" | "modality";
   month?: string;
+  anchor?: string;
+  period?: TaskPeriod;
   calendarView?: "month" | "gantt";
 };
 function parseState(raw?: string): ViewState {
@@ -50,6 +60,8 @@ function parseState(raw?: string): ViewState {
     const parsed: Record<string, unknown> = {};
     for (const key of strings) if (typeof value[key] === "string") parsed[key] = value[key];
     if (["list", "kanban", "calendar"].includes(value.layout)) parsed.layout = value.layout;
+    if (validDay(value.anchor)) parsed.anchor = value.anchor;
+    if (["day", "week", "month", "year"].includes(value.period)) parsed.period = value.period;
     if (["month", "gantt"].includes(value.calendarView)) parsed.calendarView = value.calendarView;
     if (["status", "modality"].includes(value.group)) parsed.group = value.group;
     if (typeof value.month === "string" && /^(19|20|21)\d{2}-(0[1-9]|1[0-2])$/.test(value.month))
@@ -79,12 +91,13 @@ export function UserTasks({
   const [search, setSearch] = useState(state.q || "");
   const [modal, setModal] = useState<"create" | null>(null);
   const load = useServerFn(loadUserTasks);
-  const month = state.month || localDay().slice(0, 7);
-  const days = monthDays(month);
+  const anchor = state.anchor || (state.month ? `${state.month}-01` : localDay());
+  const period = state.period || "month";
+  const range = periodRange(anchor, period);
   const filters: TaskFilters = overview
     ? { status: "open" }
     : state.layout === "calendar"
-      ? { ...state, id: undefined, from: days[0], until: days[41] }
+      ? { ...state, id: undefined, from: range.from, until: range.until }
       : { ...state, id: undefined };
   const query = useQuery({
     queryKey: ["user-tasks", organizationId, overview, filters],
@@ -100,10 +113,6 @@ export function UserTasks({
   };
   const open = (id: string) => change({ id, offset: state.offset });
   const selected = state.id;
-  function changeMonth(offset: number) {
-    const [y, m] = month.split("-").map(Number);
-    change({ month: localDay(new Date(y, m - 1 + offset, 1)).slice(0, 7) });
-  }
   return (
     <section className="ut-root">
       <nav className="ut-tabs" aria-label="Área pessoal">
@@ -380,28 +389,50 @@ export function UserTasks({
                   <>
                     <div className="ut-heading">
                       <div className="ut-inline">
-                        <button aria-label="Mês anterior" onClick={() => changeMonth(-1)}>
+                        <button
+                          aria-label="Período anterior"
+                          onClick={() => change({ anchor: shiftPeriod(anchor, period, -1) })}
+                        >
                           <ChevronLeft size={16} />
                         </button>
-                        <h2>
-                          {new Date(`${month}-15T12:00:00`).toLocaleDateString("pt-BR", {
-                            month: "long",
-                            year: "numeric",
-                          })}
-                        </h2>
-                        <button aria-label="Próximo mês" onClick={() => changeMonth(1)}>
+                        <h2>{range.label}</h2>
+                        <button
+                          aria-label="Próximo período"
+                          onClick={() => change({ anchor: shiftPeriod(anchor, period, 1) })}
+                        >
                           <ChevronRight size={16} />
                         </button>
-                        <button onClick={() => change({ month: localDay().slice(0, 7) })}>
-                          Hoje
-                        </button>
+                        <button onClick={() => change({ anchor: localDay() })}>Hoje</button>
                       </div>
+                      <label className="ut-inline">
+                        Período
+                        <select
+                          value={period}
+                          onChange={(e) => change({ period: e.target.value as TaskPeriod })}
+                        >
+                          {Object.entries(TASK_PERIOD_LABELS).map(([key, label]) => (
+                            <option key={key} value={key}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="ut-inline">
+                        Ir para
+                        <input
+                          type="date"
+                          value={anchor}
+                          onChange={(e) => {
+                            if (validDay(e.target.value)) change({ anchor: e.target.value });
+                          }}
+                        />
+                      </label>
                       <div className="ut-view-switch" aria-label="Formato do calendário">
                         <button
                           aria-pressed={state.calendarView !== "gantt"}
                           onClick={() => change({ calendarView: "month" })}
                         >
-                          Mensal
+                          Calendário
                         </button>
                         <button
                           aria-pressed={state.calendarView === "gantt"}
@@ -416,43 +447,19 @@ export function UserTasks({
                       detalhes.
                     </p>
                     {state.calendarView === "gantt" ? (
-                      <TaskGantt tasks={data.tasks} days={days} open={open} />
+                      <TaskGantt
+                        tasks={data.tasks}
+                        columns={periodColumns(anchor, period)}
+                        open={open}
+                      />
                     ) : (
-                      <div className="ut-calendar-wrap">
-                        <div className="ut-calendar">
-                          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-                            <strong className="ut-weekday" key={day}>
-                              {day}
-                            </strong>
-                          ))}
-                          {days.map((day) => (
-                            <section
-                              className={`ut-day ${day.startsWith(month) ? "" : "ut-other-month"}`}
-                              key={day}
-                              aria-label={taskDate(day)}
-                            >
-                              <time dateTime={day} className={day === localDay() ? "ut-today" : ""}>
-                                {Number(day.slice(-2))}
-                              </time>
-                              {data.tasks
-                                .filter((t) => t.starts_on <= day && t.due_on >= day)
-                                .map((t) => (
-                                  <button
-                                    key={t.id}
-                                    title={`${t.code ? `${t.code} · ` : ""}${t.title}`}
-                                    onClick={() => open(t.id)}
-                                  >
-                                    <span>
-                                      {t.code && `${t.code} · `}
-                                      {t.title}
-                                    </span>
-                                    {t.due_on === day && <b>Prazo</b>}
-                                  </button>
-                                ))}
-                            </section>
-                          ))}
-                        </div>
-                      </div>
+                      <TaskCalendar
+                        tasks={data.tasks}
+                        anchor={anchor}
+                        period={period}
+                        open={open}
+                        selectDay={(day) => change({ anchor: day, period: "day" })}
+                      />
                     )}
                   </>
                 ) : (
@@ -515,11 +522,11 @@ export function UserTasks({
 }
 function TaskGantt({
   tasks,
-  days,
+  columns,
   open,
 }: {
   tasks: UserTask[];
-  days: string[];
+  columns: ReturnType<typeof periodColumns>;
   open: (id: string) => void;
 }) {
   return (
@@ -529,25 +536,29 @@ function TaskGantt({
       role="region"
       aria-label="Gráfico de Gantt — role horizontalmente para consultar o período"
     >
-      <table className="ut-gantt">
+      <table className="ut-gantt" style={{ width: `max(100%, ${260 + columns.length * 60}px)` }}>
         <thead>
           <tr>
             <th scope="col">Tarefa / responsável</th>
-            {days.map((day) => (
-              <th scope="col" key={day} className={day === localDay() ? "ut-gantt-today" : ""}>
-                <time dateTime={day}>
-                  {day.slice(8)}/{day.slice(5, 7)}
-                </time>
+            {columns.map((col) => (
+              <th
+                scope="col"
+                key={col.from}
+                className={
+                  col.from <= localDay() && col.until >= localDay() ? "ut-gantt-today" : ""
+                }
+              >
+                <time dateTime={col.from}>{col.label}</time>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {tasks.map((task) => {
-            const start = days.findIndex((day) => day >= task.starts_on);
-            const end = days.reduce((last, day, i) => (day <= task.due_on ? i : last), -1);
+            const start = columns.findIndex((col) => col.until >= task.starts_on);
+            const end = columns.reduce((last, col, i) => (col.from <= task.due_on ? i : last), -1);
             const first = Math.max(0, start);
-            const last = Math.min(days.length - 1, end);
+            const last = Math.min(columns.length - 1, end);
             return (
               <tr key={task.id}>
                 <th scope="row">
@@ -559,13 +570,15 @@ function TaskGantt({
                     {taskDate(task.starts_on)} — {taskDate(task.due_on)}
                   </small>
                 </th>
-                <td colSpan={days.length} className="ut-gantt-track">
-                  <div style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
-                    {days.map((day, i) => (
+                <td colSpan={columns.length} className="ut-gantt-track">
+                  <div style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
+                    {columns.map((col, i) => (
                       <span
-                        key={day}
+                        key={col.from}
                         aria-hidden="true"
-                        className={day === localDay() ? "ut-gantt-today" : ""}
+                        className={
+                          col.from <= localDay() && col.until >= localDay() ? "ut-gantt-today" : ""
+                        }
                         style={{ gridColumn: i + 1, gridRow: 1 }}
                       />
                     ))}

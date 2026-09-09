@@ -43,3 +43,7 @@ Fonte de negócio: requisitos explícitos do usuário nesta tarefa em 09/09/2026
 Fonte: tabela e instruções explícitas do usuário. Operacional: Mapeamento (módulo ddp), Fluxograma (arquivo), POP (módulo pop), Comunicado opcional (arquivo). Sistemas, Automação & IA e Dados / BI: Mapeamento (ddp), Fluxograma (arquivo), Premissas (arquivo).
 
 TaskChecklist é o componente canônico para grupos de entregas. Cada grupo aceita novos preenchimentos/anexos independentes; novos itens permitem escolher formulário, arquivo ou texto. Cada formulário cria um documento separado no módulo existente. Rascunhos não concluem entregas. Arquivos privados de até 20 MB ficam vinculados à tarefa e respeitam participantes e organização. Não se sobrescrevem arquivos: adicionar outro anexo preserva o anterior. O download usa link temporário. Itens opcionais não entram nas pendências de encaminhamento. Tarefas concluídas mantêm o histórico; nas demais, entregas antigas preenchidas são preservadas como itens adicionais durante a migração.
+
+## Períodos do calendário e Gantt
+
+Dia, Semana (domingo a sábado), Mês e Ano compartilham data de referência e filtros, persistidos na URL. Hoje e setas respeitam a escala ativa. Calendário anual possui 12 meses com acesso ao dia; Gantt anual agrupa por mês. Datas sem horário são mostradas como atividades do dia, sem criar horários fictícios. A paginação e os avisos de página atual continuam visíveis em todas as escalas.

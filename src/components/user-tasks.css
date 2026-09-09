@@ -839,3 +839,67 @@
     flex-wrap: wrap;
   }
 }
+
+.ut-calendar.ut-calendar-day {
+  grid-template-columns: 1fr;
+  min-width: 0;
+}
+.ut-calendar-day .ut-day,
+.ut-calendar-week .ut-day {
+  min-height: 380px;
+}
+.ut-calendar-day .ut-day button,
+.ut-calendar-week .ut-day button {
+  white-space: normal;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.ut-day-label {
+  display: block;
+  margin: 8px 0;
+  text-transform: capitalize;
+}
+.ut-year {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.ut-mini-month {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+.ut-mini-month h3 {
+  text-transform: capitalize;
+  margin-bottom: 12px;
+}
+.ut-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  text-align: center;
+}
+.ut-root .ut-mini-grid button {
+  flex-direction: column;
+  padding: 4px 0;
+  gap: 0;
+  min-height: 38px;
+  border-color: transparent;
+}
+.ut-mini-grid small {
+  font-size: 9px;
+}
+.ut-root .ut-has-tasks {
+  background: var(--muted);
+  font-weight: 650;
+}
+.ut-root .ut-current-day {
+  border-color: var(--gold);
+}
+.ut-year > p {
+  grid-column: 1 / -1;
+}
+
+.ut-root .ut-gantt thead th:not(:first-child) { width: auto; }
