@@ -1,3 +1,5 @@
+import type { SearchSchemaInput } from "@tanstack/react-router";
+import { TaskEditorContext } from "@/components/task-editor-context";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -217,11 +219,24 @@ const MODULE_ROUTE_VIEWS = new Set<ModuleRouteView>([
 
 export const Route = createFileRoute("/_authenticated/m/$module")({
   component: ModuleWorkspacePage,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) => ({
     view:
       typeof search.view === "string" && MODULE_ROUTE_VIEWS.has(search.view as ModuleRouteView)
         ? (search.view as ModuleRouteView)
         : undefined,
+    document:
+      typeof search.document === "string" && /^[0-9a-f-]{36}$/i.test(search.document)
+        ? search.document
+        : undefined,
+    task:
+      typeof search.task === "string" && /^[0-9a-f-]{36}$/i.test(search.task)
+        ? search.task
+        : undefined,
+    taskOrg:
+      typeof search.taskOrg === "string" && /^[0-9a-f-]{36}$/i.test(search.taskOrg)
+        ? search.taskOrg
+        : undefined,
+    item: typeof search.item === "string" ? search.item.slice(0, 80) : undefined,
     filter: typeof search.filter === "string" ? search.filter.slice(0, 120) : undefined,
   }),
   beforeLoad: ({ params }) => {
@@ -307,9 +322,7 @@ function isPendingProcessId(value?: string | null) {
 function isUuid(value?: string | null) {
   return (
     typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      value,
-    )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
   );
 }
 
@@ -6505,6 +6518,7 @@ function ModuleWorkspacePage() {
   // Incrementa a cada salvamento concluído — informa ao formulário de mapeamento
   // que o estado "não salvo" pode ser limpo.
   const [savedNonce, setSavedNonce] = useState(0);
+  const [taskDocumentError, setTaskDocumentError] = useState("");
   const [demoVersion, setDemoVersion] = useState(() => getDemoWorkspaceVersion());
   const [demoOrganizationLogo, setDemoOrganizationLogo] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -6572,14 +6586,20 @@ function ModuleWorkspacePage() {
     () => (accessibleOrganizationsQ.data ?? []) as AccessibleOrganization[],
     [accessibleOrganizationsQ.data],
   );
-  const selectedOrganizationId = isDemo
-    ? null
-    : accessibleOrganizations.some((organization) => organization.id === activeOrganizationId)
-      ? activeOrganizationId
-      : (accessibleOrganizations.find((organization) => organization.isDefault)?.id ??
-        accessibleOrganizations[0]?.id ??
-        meQ.data?.organization?.id ??
-        null);
+  const taskOrganization =
+    search.taskOrg && accessibleOrganizations.some((o) => o.id === search.taskOrg)
+      ? search.taskOrg
+      : null;
+  const selectedOrganizationId =
+    taskOrganization ||
+    (isDemo
+      ? null
+      : accessibleOrganizations.some((organization) => organization.id === activeOrganizationId)
+        ? activeOrganizationId
+        : (accessibleOrganizations.find((organization) => organization.isDefault)?.id ??
+          accessibleOrganizations[0]?.id ??
+          meQ.data?.organization?.id ??
+          null));
   const selectedOrganization =
     accessibleOrganizations.find((organization) => organization.id === selectedOrganizationId) ??
     null;
@@ -6770,6 +6790,7 @@ function ModuleWorkspacePage() {
   }, []);
 
   useEffect(() => {
+    if (search.document) return;
     if (search.view === "new") {
       const fresh = defaultWorkspace();
       setWorkspace((current) =>
@@ -6797,7 +6818,7 @@ function ModuleWorkspacePage() {
       setWorkspace(parseWorkspace(draft ?? wsQ.data.content_inline));
       setLoaded(true);
     }
-  }, [draftKey, isDemo, moduleId, search.view, wsQ.data]);
+  }, [draftKey, isDemo, moduleId, search.view, search.document, wsQ.data]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -6942,9 +6963,7 @@ function ModuleWorkspacePage() {
       setWorkspace(result.workspace);
       const draftCatalogs = readDraftCatalogSnapshot(row.content_inline);
       setPendingMappingProcesses(
-        result.moduleId === "ddp" && draftCatalogs.processes?.length
-          ? draftCatalogs.processes
-          : [],
+        result.moduleId === "ddp" && draftCatalogs.processes?.length ? draftCatalogs.processes : [],
       );
       setOpenedLocalFile(null);
       setActiveCloudDocument({
@@ -6966,6 +6985,37 @@ function ModuleWorkspacePage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível abrir o documento.");
     }
   }
+
+  useEffect(() => {
+    if (!search.document || isDemo) return;
+    let cancelled = false;
+    setLoaded(false);
+    setTaskDocumentError("");
+    void getCloudDocument({ data: { id: search.document } })
+      .then((row) => {
+        if (cancelled) return;
+        if (row.module !== moduleId || !row.content_inline)
+          throw new Error("Documento indisponível neste módulo.");
+        const result = importWorkspaceFromJson(row.content_inline, defaultWorkspace(), moduleId);
+        setWorkspace(result.workspace);
+        setOpenedLocalFile(null);
+        setActiveCloudDocument({ id: row.id, moduleId: result.moduleId, name: row.name });
+        setPendingMappingProcesses([]);
+        setModuleSurface("editor");
+        setModuleEditStarted(true);
+        setDdpView("editor");
+        setLoaded(true);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setTaskDocumentError(error.message);
+          toast.error(error.message);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [search.document, isDemo, moduleId, getCloudDocument]);
 
   async function saveOpenedDocument() {
     if (!openedLocalFile || openedLocalFile.moduleId !== moduleId) return;
@@ -7088,8 +7138,7 @@ function ModuleWorkspacePage() {
           step.processId,
           ...step.substeps.map((substep) => substep.processId),
         ]),
-      ]
-        .filter(Boolean),
+      ].filter(Boolean),
     );
     const pending = pendingMappingProcesses.filter((process) => referencedIds.has(process.id));
     if (!pending.length) return ws;
@@ -7156,7 +7205,9 @@ function ModuleWorkspacePage() {
     if (moduleId !== "ddp") return ws;
 
     const rows = ws.ddp.systems.filter(isRenderableMappingSystem);
-    const validLocalSystemIds = new Set(rows.flatMap((system) => [system.id, system.systemId].filter(Boolean)));
+    const validLocalSystemIds = new Set(
+      rows.flatMap((system) => [system.id, system.systemId].filter(Boolean)),
+    );
 
     const resolvedByName = new Map(
       organizationCatalogs.systems.map((system) => [normalizeLabel(system.name), system]),
@@ -7326,6 +7377,18 @@ function ModuleWorkspacePage() {
       setShowSave(false);
       setComment("");
       setSavedNonce((n) => n + 1);
+      if (search.task && search.item && "document" in result) {
+        window.dispatchEvent(
+          new CustomEvent("bf-task-document-saved", {
+            detail: {
+              documentId: result.document.id,
+              version: result.document.current_version,
+              updatedAt: result.document.updated_at,
+              draft: isDraftSave,
+            },
+          }),
+        );
+      }
       if (moduleId === "ddp") {
         if (!isDraftSave) {
           setPendingMappingProcesses([]);
@@ -8260,7 +8323,24 @@ function ModuleWorkspacePage() {
       />
     ) : (
       <>
-        {!loaded && !isDemo ? (
+        {search.task &&
+          search.item &&
+          search.taskOrg &&
+          search.document &&
+          activeCloudDocument?.id === search.document && (
+            <TaskEditorContext
+              organizationId={search.taskOrg}
+              taskId={search.task}
+              itemKey={search.item}
+              documentId={search.document}
+            />
+          )}
+        {taskDocumentError && search.document ? (
+          <Panel>
+            <p role="alert">{taskDocumentError}</p>
+            <a href="/?view=tasks">Voltar às tarefas</a>
+          </Panel>
+        ) : !loaded && !isDemo ? (
           <Panel>
             <div className="grid gap-4 p-2" role="status" aria-label="Carregando módulo">
               <div className="h-16 animate-pulse rounded-lg bg-muted" />
@@ -8691,7 +8771,9 @@ function ModuleWorkspacePage() {
 
       {showSave && (
         <Modal
-          title={moduleId === "ddp" ? "Salvar mapeamento definitivo" : "Salvar documento definitivo"}
+          title={
+            moduleId === "ddp" ? "Salvar mapeamento definitivo" : "Salvar documento definitivo"
+          }
           subtitle={
             moduleId === "ddp"
               ? "Grava o preenchimento como registro de mapeamento."
@@ -12232,11 +12314,12 @@ function DdpModule({
     const recognizedPrimaryProcessTitle = importResult.mappedProcess.trim();
     let assistantPrimaryProcess: OrganizationProcess | CreatedProcess | null =
       recognizedPrimaryProcessTitle
-        ? primaryProcessOptions.find(
-            (process) => normalizeLabel(process.name) === normalizeLabel(recognizedPrimaryProcessTitle),
+        ? (primaryProcessOptions.find(
+            (process) =>
+              normalizeLabel(process.name) === normalizeLabel(recognizedPrimaryProcessTitle),
           ) ??
           assistantCreatedProcesses[normalizeLabel(recognizedPrimaryProcessTitle)] ??
-          null
+          null)
         : null;
     if (recognizedPrimaryProcessTitle && !assistantPrimaryProcess) {
       assistantPrimaryProcess = {
@@ -12284,12 +12367,14 @@ function DdpModule({
     const systemIdsForNames = (names: string[]) =>
       Array.from(
         new Set(
-          names.filter((name) => !isPlaceholderCatalogName(name)).flatMap((name) => {
-            const system = importedSystems.find(
-              (item) => normalizeLabel(item.nome) === normalizeLabel(name),
-            );
-            return system ? [system.id] : [];
-          }),
+          names
+            .filter((name) => !isPlaceholderCatalogName(name))
+            .flatMap((name) => {
+              const system = importedSystems.find(
+                (item) => normalizeLabel(item.nome) === normalizeLabel(name),
+              );
+              return system ? [system.id] : [];
+            }),
         ),
       );
     const findOrPrepareProcess = (
@@ -12312,9 +12397,14 @@ function DdpModule({
           code: null,
           name: title,
           type: "subprocess",
-          value_chain_id: assistantPrimaryProcess?.value_chain_id ?? selectedProcess?.value_chain_id ?? null,
+          value_chain_id:
+            assistantPrimaryProcess?.value_chain_id ?? selectedProcess?.value_chain_id ?? null,
           parent_process_id: parentProcessId,
-          department: department || assistantPrimaryProcess?.department || selectedProcess?.department || null,
+          department:
+            department ||
+            assistantPrimaryProcess?.department ||
+            selectedProcess?.department ||
+            null,
           owner: owner || assistantPrimaryProcess?.owner || selectedProcess?.owner || null,
           description: description || null,
           status: "Ativo",
@@ -13019,8 +13109,8 @@ function DdpModule({
               Selecione um processo para começar
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Escolha o processo manualmente ou use o assistente para preencher o processo mapeado
-              a partir de DOCX ou texto estruturado.
+              Escolha o processo manualmente ou use o assistente para preencher o processo mapeado a
+              partir de DOCX ou texto estruturado.
             </p>
             <button
               type="button"

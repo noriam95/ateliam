@@ -1,3 +1,5 @@
+import type { SearchSchemaInput } from "@tanstack/react-router";
+import { UserTasks } from "@/components/user-tasks";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -93,7 +95,7 @@ function readNavigationState(defaults: Record<string, boolean>) {
 
 export const Route = createFileRoute("/_authenticated/")({
   component: WorkspaceHome,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown> & SearchSchemaInput) => ({
     area:
       search.area === "reports"
         ? "value-chain"
@@ -102,6 +104,7 @@ export const Route = createFileRoute("/_authenticated/")({
           : search.area === "modules" || search.area === "value-chain" || search.area === "settings"
             ? search.area
             : undefined,
+    taskState: typeof search.taskState === "string" ? search.taskState.slice(0, 2000) : undefined,
     view: typeof search.view === "string" ? search.view : undefined,
   }),
 });
@@ -399,7 +402,9 @@ function WorkspaceHome() {
   useEffect(() => {
     if (window.matchMedia("(max-width: 1023px)").matches) setTreeOpen(false);
   }, []);
-  const [activeArea, setActiveArea] = useState<WorkspaceArea>(search.area ?? "home");
+  const [activeArea, setActiveArea] = useState<WorkspaceArea>(
+    (search.area as WorkspaceArea | undefined) ?? "home",
+  );
   const [view, setView] = useState<WorkspaceView>(
     (search.view as WorkspaceView | undefined) ?? "overview",
   );
@@ -860,6 +865,7 @@ function WorkspaceHome() {
   function selectArea(area: WorkspaceArea) {
     setActiveArea(area);
     if (area === "home") {
+      void navigate({ to: "/", search: {} });
       setView("overview");
       setTreeOpen(false);
       return;
@@ -1021,7 +1027,11 @@ function WorkspaceHome() {
       </header>
 
       <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-[52px_minmax(0,1fr)]">
-        <WorkspaceRail activeArea={activeArea} onSelect={selectArea} />
+        <WorkspaceRail
+          activeArea={activeArea}
+          activeTask={activeArea === "home" && String(view) === "tasks"}
+          onSelect={selectArea}
+        />
 
         <div
           className={`grid min-w-0 transition-[grid-template-columns] duration-200 ${
@@ -1174,44 +1184,55 @@ function WorkspaceHome() {
           ) : null}
 
           <main className={`min-w-0 ${activeArea === "home" ? "p-3 sm:p-5 lg:p-7" : "p-3 sm:p-5"}`}>
-            <WorkspaceContent
-              view={view}
-              organizationName={organizationName}
-              organizationId={dashboard?.organization?.id ?? null}
-              organizationSlug={activeOrganization?.slug ?? null}
-              codeSettings={activeOrganization?.code_settings ?? null}
-              totals={totals}
-              mappingRows={(dashboard?.mappingRows ?? []) as DashboardMappingRow[]}
-              mappingStatusCounts={
-                (dashboard?.mappingStatusCounts ?? {
-                  emAndamento: 0,
-                  emRevisao: 0,
-                  aprovado: 0,
-                  concluido: 0,
-                }) as DashboardMappingStatusCounts
-              }
-              causeRows={(dashboard?.causeRows ?? []) as DashboardCauseRow[]}
-              causeStatusCounts={
-                (dashboard?.causeStatusCounts ?? {
-                  naoIniciada: 0,
-                  emAndamento: 0,
-                  encerrada: 0,
-                  cancelada: 0,
-                }) as DashboardCauseStatusCounts
-              }
-              documentCatalogRows={
-                (dashboard?.documentCatalogRows ?? []) as DashboardDocumentCatalogRow[]
-              }
-              topDepartments={dashboard?.topDepartments ?? []}
-              topOwners={dashboard?.topOwners ?? []}
-              recentDocuments={dashboard?.recentDocuments ?? []}
-              recentProcesses={dashboard?.recentProcesses ?? []}
-              activityItems={activityFeed.slice(0, 5)}
-              mappingCoverage={dashboard?.mappingCoverage ?? { covered: 0, total: 0, rows: [] }}
-              isLoading={dashboardQ.isLoading && !isDemo}
-              isDemo={isDemo}
-              isAdmin={isCurrentUserAdmin}
-            />
+            {activeArea === "home" ? (
+              <UserTasks
+                organizationId={selectedOrganizationId || ""}
+                overview={String(view) !== "tasks"}
+                state={search.taskState}
+                onState={(taskState) => {
+                  void navigate({ to: "/", search: { view: "tasks", taskState } });
+                }}
+              />
+            ) : (
+              <WorkspaceContent
+                view={view}
+                organizationName={organizationName}
+                organizationId={dashboard?.organization?.id ?? null}
+                organizationSlug={activeOrganization?.slug ?? null}
+                codeSettings={activeOrganization?.code_settings ?? null}
+                totals={totals}
+                mappingRows={(dashboard?.mappingRows ?? []) as DashboardMappingRow[]}
+                mappingStatusCounts={
+                  (dashboard?.mappingStatusCounts ?? {
+                    emAndamento: 0,
+                    emRevisao: 0,
+                    aprovado: 0,
+                    concluido: 0,
+                  }) as DashboardMappingStatusCounts
+                }
+                causeRows={(dashboard?.causeRows ?? []) as DashboardCauseRow[]}
+                causeStatusCounts={
+                  (dashboard?.causeStatusCounts ?? {
+                    naoIniciada: 0,
+                    emAndamento: 0,
+                    encerrada: 0,
+                    cancelada: 0,
+                  }) as DashboardCauseStatusCounts
+                }
+                documentCatalogRows={
+                  (dashboard?.documentCatalogRows ?? []) as DashboardDocumentCatalogRow[]
+                }
+                topDepartments={dashboard?.topDepartments ?? []}
+                topOwners={dashboard?.topOwners ?? []}
+                recentDocuments={dashboard?.recentDocuments ?? []}
+                recentProcesses={dashboard?.recentProcesses ?? []}
+                activityItems={activityFeed.slice(0, 5)}
+                mappingCoverage={dashboard?.mappingCoverage ?? { covered: 0, total: 0, rows: [] }}
+                isLoading={dashboardQ.isLoading && !isDemo}
+                isDemo={isDemo}
+                isAdmin={isCurrentUserAdmin}
+              />
+            )}
           </main>
         </div>
       </div>
@@ -2602,9 +2623,7 @@ function WorkspaceContent({
           <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
             configurações
           </div>
-          <h1 className="mt-3 font-display text-3xl font-bold text-foreground">
-            Acesso restrito
-          </h1>
+          <h1 className="mt-3 font-display text-3xl font-bold text-foreground">Acesso restrito</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             O cadastro de usuários e organizações é permitido somente para administradores.
           </p>

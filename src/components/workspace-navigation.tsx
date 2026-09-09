@@ -25,19 +25,30 @@ export type WorkspaceRailArea = "home" | "modules" | "value-chain" | "reports" |
 export function WorkspaceRail({
   activeArea,
   onSelect,
+  activeTask = false,
 }: {
+  activeTask?: boolean;
   activeArea: WorkspaceRailArea;
   onSelect: (area: WorkspaceRailArea) => void;
 }) {
   return (
     <nav className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col border-r border-border bg-card/70 py-3">
       <WorkspaceRailButton
-        active={activeArea === "home"}
+        active={activeArea === "home" && !activeTask}
         label="Início"
         onClick={() => onSelect("home")}
       >
         <Home className="h-4 w-4" />
       </WorkspaceRailButton>
+      <a
+        href="/?view=tasks"
+        title="Minhas tarefas"
+        aria-label="Minhas tarefas"
+        aria-current={activeTask ? "page" : undefined}
+        className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-lg ${activeTask ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+      >
+        <ListChecks className="h-4 w-4" />
+      </a>
       <WorkspaceRailButton
         active={activeArea === "modules"}
         label="Processos"
