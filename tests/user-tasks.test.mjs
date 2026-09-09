@@ -258,3 +258,67 @@ test("routing between users, adjustment loops, owner approval, comments and admi
     await db.close();
   }
 });
+
+test("creation without document keeps selected requester, author and initial comment; links document later", async () => {
+  const { db, user, command, read } = await setup();
+  try {
+    await user("coordinator");
+    const input = payload({
+      documentId: undefined,
+      requestedBy: ids.owner,
+      note: "Priorizar levantamento de requisitos.",
+    });
+    await command("create", input);
+    await command("create", input);
+    let task = await read(taskId);
+    assert.equal(task.document_id, null);
+    assert.equal(task.requested_by, ids.owner);
+    assert.equal(task.created_by, ids.coordinator);
+    const events = (await feed(db, { id: taskId })).events;
+    assert.equal(events.length, 2);
+    assert.equal(events.find((e) => e.action === "Comentário").note, input.note);
+    assert.equal(events.find((e) => e.action === "Comentário").actor_name, "coordinator");
+    await assert.rejects(
+      command(
+        "create",
+        payload({ id: crypto.randomUUID(), documentId: undefined, requestedBy: ids.outsider }),
+      ),
+      /solicitante/,
+    );
+    await user("owner");
+    assert.equal((await feed(db, { id: taskId })).total, 1);
+    await user("analyst");
+    assert.equal((await feed(db)).total, 1);
+    assert.equal((await feed(db)).tasks[0].code, "");
+    await command("item", {
+      id: taskId,
+      revision: 0,
+      key: "mapping",
+      content: "Levantamento iniciado",
+      completed: false,
+    });
+    await assert.rejects(
+      command("item", {
+        id: taskId,
+        revision: 1,
+        key: "mapping",
+        content: "Texto",
+        completed: true,
+      }),
+      /documento principal/,
+    );
+    await command("item", {
+      id: taskId,
+      revision: 1,
+      key: "mapping",
+      documentId: doc,
+      content: "",
+      completed: false,
+    });
+    task = await read(taskId);
+    assert.equal(task.document_id, doc);
+    assert.equal((await feed(db)).tasks[0].code, "MAP.ADM.001");
+  } finally {
+    await db.close();
+  }
+});

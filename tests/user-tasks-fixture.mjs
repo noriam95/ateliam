@@ -39,6 +39,12 @@ async function setup() {
  insert into organization_processes values('${ids.process}','${ids.org}','Manutenção','Operações');
  insert into documents(id,organization_id,name,owner_id,module,content_inline) values('40000000-0000-4000-8000-000000000001','${ids.org}','Legado','${ids.analyst}','ddp','{"ddp":{"meta":{"codigo":"MAP.ADM.001"}},"persistence":{"saveMode":"final"}}');`);
   await db.exec(migration);
+  await db.exec(
+    await readFile(
+      new URL("../supabase/migrations/20260909210000_user_tasks_creation.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   const user = async (who) => {
     await db.exec("reset role");
     await db.query("select set_config('test.user',$1,false)", [ids[who] || who]);

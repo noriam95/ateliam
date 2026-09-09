@@ -32,7 +32,7 @@ export type TaskDocument = {
 export type UserTask = {
   id: string;
   organization_id: string;
-  document_id: string;
+  document_id: string | null;
   title: string;
   kind: keyof typeof TASK_KINDS;
   modality: string | null;

@@ -14,7 +14,7 @@ Fonte de negócio: requisitos explícitos do usuário nesta tarefa em 09/09/2026
 
 ## Fluxo
 
-- Criar tarefa vinculada a documento com código existente. Responsável inicial é o documentador; solicitante é o usuário que cadastrou a tarefa.
+- Criar tarefa sem exigir documento. Responsável e solicitante são selecionados entre usuários da organização; o responsável precisa de edição. Comentário inicial opcional entra no histórico com autoria real. O criador continua participante e é distinto do solicitante. O vínculo e o código do documento são incorporados na execução do checklist.
 - Salvar rascunho deixa o item em andamento e não oferece conclusão. Salvamento definitivo persiste antes de perguntar se o item deve ser concluído.
 - Documentação permite selecionar o responsável técnico. Enviar atribui a tarefa a esse usuário.
 - Revisão técnica permite aprovar ou pedir ajustes com descrição obrigatória. Aprovar retorna ao documentador para coletar aprovação do dono do processo.
@@ -35,3 +35,5 @@ Fonte de negócio: requisitos explícitos do usuário nesta tarefa em 09/09/2026
 | Toast          | sonner                         | App existente         | success, error                           | Browser                                 |
 | CRUD           | user_tasks_command             | Migração de tarefas   | create, item, encaminhamento, comentário | tests/user-tasks.test.mjs               |
 | Modal          | TaskDialog                     | Este contrato         | padrão, detalhe em duas colunas          | Browser desktop, celular e Escape       |
+
+- Calendário oferece Mensal e Gantt no mesmo período de seis semanas, com filtros e mês compartilhados. Gantt mostra uma linha por tarefa, início/prazo, responsável e situação; barra e título abrem o detalhe. Rolagem horizontal e cabeçalho fixo preservam leitura em telas pequenas.

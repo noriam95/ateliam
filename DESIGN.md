@@ -34,7 +34,7 @@ Modelo B: fonte canônica em src/styles.css. Cores, fontes e bordas permanecem a
 
 ## Comportamento
 
-O código da tarefa é lido do documento vinculado, sem numeração paralela. Lista, Kanban e calendário consultam o mesmo conjunto paginado. Filtros e visualização permanecem na URL. Calendário mensal representa o período da tarefa e destaca a data limite. A Home resume somente tarefas atribuídas ao usuário atual.
+A criação não exige documento. O código da tarefa passa a ser lido do documento quando vinculado no checklist, sem numeração paralela. Lista, Kanban e calendário consultam o mesmo conjunto paginado. Filtros e visualização permanecem na URL. Calendário mensal representa o período da tarefa e destaca a data limite. A opção Gantt compartilha mês e filtros, com uma linha por tarefa e barras entre início e prazo. A Home resume somente tarefas atribuídas ao usuário atual.
 
 ## Detalhe
 

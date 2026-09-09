@@ -40,6 +40,7 @@ type ViewState = TaskFilters & {
   layout?: "list" | "kanban" | "calendar";
   group?: "status" | "modality";
   month?: string;
+  calendarView?: "month" | "gantt";
 };
 function parseState(raw?: string): ViewState {
   try {
@@ -49,6 +50,7 @@ function parseState(raw?: string): ViewState {
     const parsed: Record<string, unknown> = {};
     for (const key of strings) if (typeof value[key] === "string") parsed[key] = value[key];
     if (["list", "kanban", "calendar"].includes(value.layout)) parsed.layout = value.layout;
+    if (["month", "gantt"].includes(value.calendarView)) parsed.calendarView = value.calendarView;
     if (["status", "modality"].includes(value.group)) parsed.group = value.group;
     if (typeof value.month === "string" && /^(19|20|21)\d{2}-(0[1-9]|1[0-2])$/.test(value.month))
       parsed.month = value.month;
@@ -394,42 +396,64 @@ export function UserTasks({
                           Hoje
                         </button>
                       </div>
-                      <p>Distribuição pelo período da atividade. O prazo aparece no último dia.</p>
-                    </div>
-                    <div className="ut-calendar-wrap">
-                      <div className="ut-calendar">
-                        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-                          <strong className="ut-weekday" key={day}>
-                            {day}
-                          </strong>
-                        ))}
-                        {days.map((day) => (
-                          <section
-                            className={`ut-day ${day.startsWith(month) ? "" : "ut-other-month"}`}
-                            key={day}
-                            aria-label={taskDate(day)}
-                          >
-                            <time dateTime={day} className={day === localDay() ? "ut-today" : ""}>
-                              {Number(day.slice(-2))}
-                            </time>
-                            {data.tasks
-                              .filter((t) => t.starts_on <= day && t.due_on >= day)
-                              .map((t) => (
-                                <button
-                                  key={t.id}
-                                  title={`${t.code} · ${t.title}`}
-                                  onClick={() => open(t.id)}
-                                >
-                                  <span>
-                                    {t.code} · {t.title}
-                                  </span>
-                                  {t.due_on === day && <b>Prazo</b>}
-                                </button>
-                              ))}
-                          </section>
-                        ))}
+                      <div className="ut-view-switch" aria-label="Formato do calendário">
+                        <button
+                          aria-pressed={state.calendarView !== "gantt"}
+                          onClick={() => change({ calendarView: "month" })}
+                        >
+                          Mensal
+                        </button>
+                        <button
+                          aria-pressed={state.calendarView === "gantt"}
+                          onClick={() => change({ calendarView: "gantt" })}
+                        >
+                          Gantt
+                        </button>
                       </div>
                     </div>
+                    <p className="ut-muted">
+                      Distribuição pelo período da atividade. Selecione a tarefa para abrir os
+                      detalhes.
+                    </p>
+                    {state.calendarView === "gantt" ? (
+                      <TaskGantt tasks={data.tasks} days={days} open={open} />
+                    ) : (
+                      <div className="ut-calendar-wrap">
+                        <div className="ut-calendar">
+                          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
+                            <strong className="ut-weekday" key={day}>
+                              {day}
+                            </strong>
+                          ))}
+                          {days.map((day) => (
+                            <section
+                              className={`ut-day ${day.startsWith(month) ? "" : "ut-other-month"}`}
+                              key={day}
+                              aria-label={taskDate(day)}
+                            >
+                              <time dateTime={day} className={day === localDay() ? "ut-today" : ""}>
+                                {Number(day.slice(-2))}
+                              </time>
+                              {data.tasks
+                                .filter((t) => t.starts_on <= day && t.due_on >= day)
+                                .map((t) => (
+                                  <button
+                                    key={t.id}
+                                    title={`${t.code ? `${t.code} · ` : ""}${t.title}`}
+                                    onClick={() => open(t.id)}
+                                  >
+                                    <span>
+                                      {t.code && `${t.code} · `}
+                                      {t.title}
+                                    </span>
+                                    {t.due_on === day && <b>Prazo</b>}
+                                  </button>
+                                ))}
+                            </section>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   renderTable(data.tasks, open)
@@ -489,6 +513,83 @@ export function UserTasks({
     </section>
   );
 }
+function TaskGantt({
+  tasks,
+  days,
+  open,
+}: {
+  tasks: UserTask[];
+  days: string[];
+  open: (id: string) => void;
+}) {
+  return (
+    <div
+      className="ut-gantt-wrap"
+      tabIndex={0}
+      role="region"
+      aria-label="Gráfico de Gantt — role horizontalmente para consultar o período"
+    >
+      <table className="ut-gantt">
+        <thead>
+          <tr>
+            <th scope="col">Tarefa / responsável</th>
+            {days.map((day) => (
+              <th scope="col" key={day} className={day === localDay() ? "ut-gantt-today" : ""}>
+                <time dateTime={day}>
+                  {day.slice(8)}/{day.slice(5, 7)}
+                </time>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((task) => {
+            const start = days.findIndex((day) => day >= task.starts_on);
+            const end = days.reduce((last, day, i) => (day <= task.due_on ? i : last), -1);
+            const first = Math.max(0, start);
+            const last = Math.min(days.length - 1, end);
+            return (
+              <tr key={task.id}>
+                <th scope="row">
+                  <button onClick={() => open(task.id)}>{task.title}</button>
+                  <small>
+                    {task.assignee_name} · {TASK_STATUS_LABELS[task.status]}
+                  </small>
+                  <small>
+                    {taskDate(task.starts_on)} — {taskDate(task.due_on)}
+                  </small>
+                </th>
+                <td colSpan={days.length} className="ut-gantt-track">
+                  <div style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
+                    {days.map((day, i) => (
+                      <span
+                        key={day}
+                        aria-hidden="true"
+                        className={day === localDay() ? "ut-gantt-today" : ""}
+                        style={{ gridColumn: i + 1, gridRow: 1 }}
+                      />
+                    ))}
+                    {start !== -1 && last >= first && (
+                      <button
+                        className={`ut-gantt-bar ut-gantt-${task.status}`}
+                        style={{ gridColumn: `${first + 1} / ${last + 2}`, gridRow: 1 }}
+                        onClick={() => open(task.id)}
+                        title={`${task.title}: ${taskDate(task.starts_on)} a ${taskDate(task.due_on)} · ${TASK_STATUS_LABELS[task.status]}`}
+                        aria-label={`Abrir ${task.title}, ${TASK_STATUS_LABELS[task.status]}, ${taskDate(task.starts_on)} a ${taskDate(task.due_on)}`}
+                      >
+                        <span>{task.title}</span>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 function renderTable(tasks: UserTask[], open: (id: string) => void) {
   return (
     <div className="ut-table-wrap">
@@ -509,7 +610,8 @@ function renderTable(tasks: UserTask[], open: (id: string) => void) {
             <tr key={t.id}>
               <td>
                 <small>
-                  {t.code} · {t.modality || TASK_KINDS[t.kind]}
+                  {t.code && `${t.code} · `}
+                  {t.modality || TASK_KINDS[t.kind]}
                 </small>
                 <strong>{t.title}</strong>
                 {attention(t).length > 0 && (
@@ -621,26 +723,31 @@ function CreateTask({
 }) {
   const command = useServerFn(updateUserTask);
   const [id] = useState(() => crypto.randomUUID());
-  const [doc, setDoc] = useState<TaskDocument | null>(null);
+  const [comment, setComment] = useState("");
+  const [dirty, setDirty] = useState(false);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<"mapping" | "improvement" | "document">("mapping");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
-    <TaskDialog title="Nova tarefa" onClose={close} busy={busy} dirty={!!title || !!doc}>
+    <TaskDialog title="Nova tarefa" onClose={close} busy={busy} dirty={dirty}>
       <form
         noValidate
+        onChange={() => setDirty(true)}
         onSubmit={async (e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
           if (
-            !doc ||
-            !doc.code ||
             title.trim().length < 2 ||
             !f.get("dueOn") ||
-            !f.get("assignedTo")
+            !f.get("assignedTo") ||
+            !f.get("requestedBy") ||
+            !f.get("startsOn") ||
+            String(f.get("dueOn")) < String(f.get("startsOn"))
           ) {
-            setError("Preencha título, documento com código, responsável e prazo.");
+            setError(
+              "Preencha título, responsável, solicitante e período. O prazo deve ser igual ou posterior ao início.",
+            );
             return;
           }
           setBusy(true);
@@ -652,7 +759,8 @@ function CreateTask({
                 action: "create",
                 payload: {
                   id,
-                  documentId: doc.id,
+                  requestedBy: f.get("requestedBy"),
+                  note: comment,
                   title,
                   kind,
                   modality: kind === "mapping" ? f.get("modality") : null,
@@ -682,14 +790,6 @@ function CreateTask({
               ))}
             </select>
           </label>
-          <DocumentPicker
-            organizationId={organizationId}
-            value={doc?.id || ""}
-            onChange={(d) => {
-              setDoc(d);
-              if (!title) setTitle(d.name);
-            }}
-          />
           <label>
             Título
             <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
@@ -716,7 +816,27 @@ function CreateTask({
                 ))}
             </select>
           </label>
-          <p>Solicitante: {data.people.find((p) => p.id === data.userId)?.name || "Você"}</p>
+          <label>
+            Solicitante
+            <select name="requestedBy" defaultValue={data.userId}>
+              {data.people.map((p) => (
+                <option value={p.id} key={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Comentário inicial (opcional)
+            <textarea
+              className="resize-none"
+              rows={4}
+              maxLength={10000}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Descreva a solicitação ou as orientações para esta tarefa."
+            />
+          </label>
           <div className="ut-form-row">
             <label>
               Início
@@ -799,7 +919,7 @@ function TaskDetails({
     <TaskDialog
       wide
       dirty={!!comment.trim()}
-      title={t ? `${t.code} · ${t.title}` : "Detalhes da tarefa"}
+      title={t ? `${t.code ? `${t.code} · ` : ""}${t.title}` : "Detalhes da tarefa"}
       onClose={close}
       busy={busy}
     >
@@ -1094,7 +1214,8 @@ function ItemEditor({
           />
         )}
         <p className="ut-muted">
-          {task.code} · {task.title}
+          {task.code && `${task.code} · `}
+          {task.title}
         </p>
         {error && (
           <p role="alert" className="ut-error">

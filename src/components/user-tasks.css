@@ -696,3 +696,109 @@
     width: calc(100vw - 20px);
   }
 }
+
+.ut-gantt-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 65vh;
+}
+.ut-root .ut-gantt {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  width: 2024px;
+}
+.ut-gantt th,
+.ut-gantt td {
+  border-bottom: 1px solid var(--border);
+}
+.ut-gantt thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card);
+  width: 42px;
+  height: 40px;
+  font-size: 11px;
+  text-align: center;
+}
+.ut-gantt thead th:first-child,
+.ut-gantt tbody th {
+  position: sticky;
+  left: 0;
+  width: 260px;
+  background: var(--card);
+  z-index: 1;
+  padding: 10px 12px;
+  text-align: left;
+  border-right: 1px solid var(--border);
+}
+.ut-gantt thead th:first-child {
+  z-index: 3;
+}
+.ut-gantt tbody th button {
+  display: block;
+  max-width: 100%;
+  text-align: left;
+  font-weight: 600;
+}
+.ut-gantt tbody th small {
+  display: block;
+  font-weight: 400;
+  margin-top: 4px;
+  color: var(--muted-foreground);
+}
+.ut-root .ut-gantt-track {
+  padding: 0;
+}
+.ut-gantt-track > div {
+  display: grid;
+  min-height: 94px;
+  height: 100%;
+  align-items: center;
+}
+.ut-gantt-track > div > span {
+  align-self: stretch;
+  border-right: 1px solid var(--border);
+}
+.ut-root .ut-gantt-today {
+  background: var(--muted);
+}
+.ut-root .ut-gantt-bar {
+  z-index: 0;
+  margin: 0 2px;
+  background: var(--gold);
+  color: var(--primary-foreground);
+  border-color: var(--gold);
+  min-width: 0;
+  justify-content: flex-start;
+  min-height: 32px;
+}
+.ut-gantt-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ut-root .ut-gantt-bar:hover {
+  filter: brightness(0.94);
+}
+.ut-root .ut-gantt-completed {
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+@media (max-width: 600px) {
+  .ut-gantt thead th:first-child,
+  .ut-gantt tbody th {
+    width: 170px;
+  }
+  .ut-root .ut-gantt {
+    width: 1934px;
+  }
+}
+
+.ut-root .ut-gantt thead th:not(:first-child) {
+  padding: 0;
+  overflow: visible;
+}
