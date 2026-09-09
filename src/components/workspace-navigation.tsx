@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   CheckCircle2,
   ChevronDown,
@@ -31,6 +32,7 @@ export function WorkspaceRail({
 }) {
   return (
     <nav className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col border-r border-border bg-card/70 py-3">
+      <Link to="/mapping" search={{view:"tasks"}} title="Minhas tarefas" aria-label="Minhas tarefas" className="mx-auto mb-1 grid h-10 w-10 place-items-center rounded-lg text-muted-foreground hover:bg-muted"><ListChecks className="h-4 w-4"/></Link>
       <WorkspaceRailButton
         active={activeArea === "home"}
         label="Início"
@@ -294,6 +296,7 @@ export function WorkspaceModulesTree({
 
   return (
     <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+      <Link to="/mapping" search={{view:"board"}} className="mb-2 flex items-center gap-2 rounded-md bg-accent px-2 py-2 text-sm"><Layers className="h-4 w-4 text-[var(--gold)]"/>Demandas e tarefas</Link>
       {MODULES_TREE_BRANCHES.map((branch) => (
         <ModuleBranch
           key={branch.moduleId}
@@ -307,7 +310,7 @@ export function WorkspaceModulesTree({
           <TreeButton
             active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
             onClick={() =>
-              onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
+              branch.moduleId === "ddp" ? window.location.assign("/mapping?view=tasks") : onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
             }
           >
             <Plus className="h-4 w-4" /> Novo

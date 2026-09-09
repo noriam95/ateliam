@@ -1,5 +1,6 @@
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { MappingDocumentBanner } from "@/components/mapping-document-banner";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlignCenterHorizontal,
@@ -223,8 +224,10 @@ export const Route = createFileRoute("/_authenticated/m/$module")({
         ? (search.view as ModuleRouteView)
         : undefined,
     filter: typeof search.filter === "string" ? search.filter.slice(0, 120) : undefined,
+    document: typeof search.document === "string" && /^[0-9a-f-]{36}$/i.test(search.document) ? search.document : undefined,
   }),
-  beforeLoad: ({ params }) => {
+  beforeLoad: ({ params, search }) => {
+    if (params.module === "ddp" && search.view === "new") throw redirect({to:"/mapping",search:{view:"tasks"}});
     if (!MODULES.some((m) => m.id === params.module)) throw notFound();
   },
 });
@@ -6770,6 +6773,7 @@ function ModuleWorkspacePage() {
   }, []);
 
   useEffect(() => {
+    if (search.document) return;
     if (search.view === "new") {
       const fresh = defaultWorkspace();
       setWorkspace((current) =>
@@ -6797,7 +6801,29 @@ function ModuleWorkspacePage() {
       setWorkspace(parseWorkspace(draft ?? wsQ.data.content_inline));
       setLoaded(true);
     }
-  }, [draftKey, isDemo, moduleId, search.view, wsQ.data]);
+  }, [draftKey, isDemo, moduleId, search.view, search.document, wsQ.data]);
+
+  useEffect(() => {
+    if (!search.document) return;
+    let cancelled = false;
+    setLoaded(false);
+    getCloudDocument({data:{id:search.document}}).then(row => {
+      if (cancelled) return;
+      if (!row.content_inline || row.module !== moduleId) throw new Error("Documento indisponível neste módulo.");
+      const result = importWorkspaceFromJson(row.content_inline, defaultWorkspace(), moduleId);
+      setWorkspace(result.workspace);
+      setPendingMappingProcesses(readDraftCatalogSnapshot(row.content_inline).processes ?? []);
+      setActiveCloudDocument({id:row.id,moduleId:result.moduleId,name:row.name});
+      setOpenedLocalFile(null);
+      setModuleSurface("editor");
+      setModuleEditStarted(true);
+      if (moduleId === "ddp") setDdpView("editor");
+      setLoaded(true);
+    }).catch(error => {
+      if (!cancelled) { toast.error(error instanceof Error ? error.message : "Não foi possível abrir o documento."); setLoaded(true); }
+    });
+    return () => {cancelled=true};
+  }, [search.document, moduleId, getCloudDocument]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -6853,6 +6879,7 @@ function ModuleWorkspacePage() {
   }
 
   function newModuleDocument() {
+    if (moduleId === "ddp") { window.location.assign("/mapping?view=tasks"); return; }
     const fresh = defaultWorkspace();
     setDdpView("editor");
     setWorkspace((current) => {
@@ -7532,6 +7559,7 @@ function ModuleWorkspacePage() {
   }
 
   function openNewForModule(targetModule: AteliamModule) {
+    if (targetModule === "ddp") { window.location.assign("/mapping?view=tasks"); return; }
     if (targetModule !== moduleId) {
       navigate({ to: "/m/$module", params: { module: targetModule }, search: { view: "new" } });
       return;
@@ -7800,51 +7828,9 @@ function ModuleWorkspacePage() {
     if (document) await openCloudModuleDocument(document);
   }
 
-  async function duplicateDocumentRow(row: ModuleGridRow) {
-    if (moduleId !== "ddp") return;
-    if (row.id.startsWith("demo-row:")) {
-      toast.info("Registro de demonstracao. Use um registro salvo para duplicar.");
-      return;
-    }
-
-    try {
-      let snapshot = resolveRowSnapshot(row);
-      if (!snapshot && !isDemo) {
-        const document = await getCloudDocument({ data: { id: row.id } });
-        if (!document.content_inline) throw new Error("Registro sem conteudo salvo.");
-        snapshot = parseWorkspace(document.content_inline);
-      }
-      if (!snapshot) throw new Error("Registro salvo nao encontrado.");
-
-      const duplicated: WorkspaceState = {
-        ...snapshot,
-        ddp: {
-          ...snapshot.ddp,
-          meta: {
-            ...snapshot.ddp.meta,
-            codigo: "",
-            titulo: snapshot.ddp.meta.titulo
-              ? `${snapshot.ddp.meta.titulo} - copia`
-              : "Copia do mapeamento",
-            data: today(),
-            dataRelatorio: today(),
-            status: "Em andamento",
-          },
-        },
-      };
-      setWorkspace(duplicated);
-      setOpenedLocalFile(null);
-      setActiveCloudDocument(null);
-      setModuleSurface("editor");
-      setModuleEditStarted(true);
-      setDdpView("editor");
-      window.localStorage.setItem(draftKey, JSON.stringify(duplicated));
-      toast.success("Copia criada. Revise e salve para gerar um novo registro.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Não foi possível duplicar o mapeamento.",
-      );
-    }
+  async function duplicateDocumentRow(_row: ModuleGridRow) {
+    toast.info("Para um novo mapeamento, registre pela tarefa de direcionamento e importe o conteúdo desejado no editor.");
+    window.location.assign("/mapping?view=tasks");
   }
 
   async function deleteDocumentRows(ids: string[]) {
@@ -8276,6 +8262,7 @@ function ModuleWorkspacePage() {
             </div>
           </Panel>
         ) : null}
+        {loaded && activeCloudDocument?.moduleId === moduleId && <MappingDocumentBanner documentId={activeCloudDocument.id} savedNonce={savedNonce}/>}
         {loaded && moduleId === "ddp" ? (
           ddpView === "causes" ? (
             <DdpCausesModuleV2
