@@ -1,3 +1,4 @@
+import { TaskChecklist } from "./task-checklist";
 import { TaskRoutingActions } from "./task-routing-actions";
 import { TASK_STAGE_LABELS, type TaskAction } from "@/lib/user-tasks";
 import { useEffect, useState } from "react";
@@ -5,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CalendarDays,
-  Check,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -901,15 +901,28 @@ function TaskDetails({
     setBusy(true);
     setError("");
     try {
-      await command({
+      const result = await command({
         data: { organizationId, action, payload: { id, revision: t.revision, ...payload } },
       });
       await query.refetch();
       await changed();
       toast.success(action === "comment" ? "Comentário registrado." : "Tarefa atualizada.");
+      if (action === "begin_document" && result.documentId) {
+        const item = t.checklist.find((i) => i.key === payload.key)!;
+        window.location.assign(
+          documentTaskUrl(t, item, {
+            id: result.documentId,
+            module: item.entry_type === "pop" ? "pop" : "ddp",
+            name: item.label,
+            code: "",
+            current_version: 0,
+          }),
+        );
+      }
       return true;
     } catch (err) {
       setError((err as Error).message);
+      await query.refetch();
       return false;
     } finally {
       setBusy(false);
@@ -996,55 +1009,15 @@ function TaskDetails({
                   />
                 </div>
                 <p className="ut-muted">Rascunhos permanecem em andamento.</p>
-                {t.checklist
-                  .filter((i) => !hideDone || !i.completed)
-                  .map((item) => {
-                    const doc = item.document_id
-                      ? {
-                          id: item.document_id,
-                          module: item.document_module || t.document_module,
-                          name: item.label,
-                          code: "",
-                          current_version: 0,
-                        }
-                      : null;
-                    return (
-                      <div className="ut-checklist-row" key={item.key}>
-                        <span className={`ut-check ${item.completed ? "ut-checked" : ""}`}>
-                          {item.completed && <Check size={14} />}
-                        </span>
-                        <div>
-                          <strong>{item.label}</strong>
-                          <small>
-                            {item.completed
-                              ? "Concluído"
-                              : item.stale
-                                ? "Em andamento · documento alterado"
-                                : item.saved_version !== null || item.content
-                                  ? "Em andamento"
-                                  : "A fazer"}
-                          </small>
-                        </div>
-                        {doc ? (
-                          <a className="ut-button" href={documentTaskUrl(t, item, doc)}>
-                            {canEdit
-                              ? item.completed
-                                ? "Editar"
-                                : "Preencher"
-                              : "Abrir documento"}
-                          </a>
-                        ) : (
-                          <button disabled={busy} onClick={() => setEditing(item)}>
-                            {canEdit && !(t.kind === "mapping" && item.key === "validation")
-                              ? item.completed
-                                ? "Editar"
-                                : "Preencher"
-                              : "Visualizar"}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                <TaskChecklist
+                  task={t}
+                  canEdit={!!canEdit}
+                  busy={busy}
+                  hideDone={hideDone}
+                  edit={setEditing}
+                  write={write}
+                  setBusy={setBusy}
+                />
               </section>
               {canAct && data && (
                 <TaskRoutingActions

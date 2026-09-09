@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setup, ids } from "./user-tasks-fixture.mjs";
+import { setup, ids, installDeliveries } from "./user-tasks-fixture.mjs";
 const doc = "40000000-0000-4000-8000-000000000001";
 const taskId = "50000000-0000-4000-8000-000000000001";
 const payload = (extra = {}) => ({
@@ -318,6 +318,170 @@ test("creation without document keeps selected requester, author and initial com
     task = await read(taskId);
     assert.equal(task.document_id, doc);
     assert.equal((await feed(db)).tasks[0].code, "MAP.ADM.001");
+  } finally {
+    await db.close();
+  }
+});
+
+test("modality templates support repeated forms, optional files, custom items and private attachments", async () => {
+  const { db, user, command, read } = await setup(true);
+  try {
+    await user("analyst");
+    for (const modality of ["Operacional", "Sistemas", "Automação & IA", "Dados / BI"]) {
+      const id = crypto.randomUUID();
+      await command("create", payload({ id, documentId: undefined, modality }));
+      const t = await read(id);
+      assert.deepEqual(
+        t.checklist.map((i) => i.label),
+        modality === "Operacional"
+          ? ["Mapeamento", "Fluxograma", "POP", "Comunicado"]
+          : ["Mapeamento", "Fluxograma", "Premissas"],
+      );
+    }
+    await command("create", payload({ documentId: undefined, modality: "Operacional" }));
+    let t = await read(taskId);
+    const form = await command("begin_document", {
+      id: taskId,
+      revision: t.revision,
+      key: "mapping",
+    });
+    let d = (await db.query("select * from documents where id=$1", [form.documentId])).rows[0];
+    assert.equal(d.module, "ddp");
+    assert.equal(JSON.parse(d.content_inline).persistence.saveMode, "draft");
+    t = await read(taskId);
+    assert.equal(t.checklist[0].completed, false);
+    await assert.rejects(
+      command("item", {
+        id: taskId,
+        revision: t.revision,
+        key: "mapping",
+        documentId: form.documentId,
+        completed: true,
+      }),
+      /Rascunho/,
+    );
+    const second = crypto.randomUUID();
+    await command("add_entry", {
+      id: taskId,
+      revision: t.revision,
+      key: "mapping",
+      entryId: second,
+    });
+    t = await read(taskId);
+    const secondDoc = await command("begin_document", {
+      id: taskId,
+      revision: t.revision,
+      key: second,
+    });
+    assert.notEqual(secondDoc.documentId, form.documentId);
+    t = await read(taskId);
+    const pop = await command("begin_document", { id: taskId, revision: t.revision, key: "pop" });
+    assert.equal(
+      (await db.query("select module from documents where id=$1", [pop.documentId])).rows[0].module,
+      "pop",
+    );
+    t = await read(taskId);
+    await command("add_item", {
+      id: taskId,
+      revision: t.revision,
+      entryId: crypto.randomUUID(),
+      label: "Evidência adicional",
+      entryType: "file",
+      optional: true,
+    });
+    t = await read(taskId);
+    const path = `${ids.org}/${taskId}/flowchart/${crypto.randomUUID()}/fluxo.pdf`;
+    await assert.rejects(
+      command("attach_file", {
+        id: taskId,
+        revision: t.revision,
+        key: "flowchart",
+        attachment: { path, name: "fluxo.pdf", size: 10 },
+      }),
+      /Envie o arquivo/,
+    );
+    await db.query("insert into storage.objects(bucket_id,name) values('user-task-files',$1)", [
+      path,
+    ]);
+    await command("attach_file", {
+      id: taskId,
+      revision: t.revision,
+      key: "flowchart",
+      attachment: { path, name: "fluxo.pdf", size: 10 },
+    });
+    t = await read(taskId);
+    assert.equal(t.checklist.find((i) => i.key === "flowchart").completed, true);
+    await assert.rejects(
+      command("item", { id: taskId, revision: t.revision, key: "flowchart", completed: true }),
+      /envio de anexo/,
+    );
+    await user("outsider");
+    assert.equal((await db.query("select * from storage.objects")).rows.length, 0);
+    await assert.rejects(
+      db.query("insert into storage.objects(bucket_id,name) values('user-task-files',$1)", [
+        path + "2",
+      ]),
+      /row-level security/,
+    );
+    await user("analyst");
+    await command("send_review", {
+      id: taskId,
+      revision: t.revision,
+      reviewerId: ids.coordinator,
+      confirmPending: true,
+    });
+    t = await read(taskId);
+    assert.ok(!t.pending_at_transition.includes("Comunicado"));
+    assert.ok(!t.pending_at_transition.includes("Evidência adicional"));
+    await assert.rejects(
+      db.query("insert into storage.objects(bucket_id,name) values('user-task-files',$1)", [
+        path + "2",
+      ]),
+      /row-level security/,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("upgrading templates preserves completed historical tasks and recorded deliveries", async () => {
+  const { db, user, command, read } = await setup();
+  try {
+    await user("analyst");
+    await command("create", payload());
+    await command("item", {
+      id: taskId,
+      revision: 0,
+      key: "requirements",
+      content: "Requisito registrado antes da migração",
+      completed: true,
+    });
+    const closed = crypto.randomUUID();
+    await command("create", payload({ id: closed }));
+    await user("admin");
+    await command("admin_move", {
+      id: closed,
+      revision: 0,
+      stage: "completed",
+      assignedTo: ids.admin,
+      note: "Encerramento histórico",
+    });
+    const before = (await read(closed)).checklist;
+    await db.exec("reset role");
+    await installDeliveries(db);
+    await user("analyst");
+    const t = await read(taskId);
+    assert.deepEqual(
+      t.checklist.slice(0, 3).map((i) => i.label),
+      ["Mapeamento", "Fluxograma", "Premissas"],
+    );
+    assert.equal(
+      t.checklist.find((i) => i.key === "legacy-requirements").content,
+      "Requisito registrado antes da migração",
+    );
+    assert.equal(t.checklist.find((i) => i.key === "legacy-requirements").completed, true);
+    await user("admin");
+    assert.deepEqual((await read(closed)).checklist, before);
   } finally {
     await db.close();
   }

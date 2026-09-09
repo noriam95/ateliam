@@ -29,7 +29,7 @@ export function TaskRoutingActions({
     if (action) confirmation.current?.focus();
   }, [action]);
   const missing = task.checklist.filter(
-    (i) => !i.completed && (task.kind !== "mapping" || i.key !== "validation"),
+    (i) => !i.optional && !i.completed && (task.kind !== "mapping" || i.key !== "validation"),
   );
   async function submit(kind: TaskAction, payload: Record<string, unknown>, label: string) {
     setError("");

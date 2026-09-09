@@ -12,6 +12,10 @@ export const TASK_KINDS = {
   document: "Documentos",
 };
 export type TaskItem = {
+  group_key?: string;
+  entry_type?: "mapping" | "pop" | "file" | "note";
+  optional?: boolean;
+  attachment?: { path: string; name: string; size: number };
   key: string;
   label: string;
   completed: boolean;
@@ -103,6 +107,10 @@ export const TASK_STAGE_LABELS = {
 };
 
 export type TaskAction =
+  | "add_item"
+  | "add_entry"
+  | "begin_document"
+  | "attach_file"
   | "item"
   | "transition"
   | "assign"

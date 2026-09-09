@@ -37,3 +37,9 @@ Fonte de negócio: requisitos explícitos do usuário nesta tarefa em 09/09/2026
 | Modal          | TaskDialog                     | Este contrato         | padrão, detalhe em duas colunas          | Browser desktop, celular e Escape       |
 
 - Calendário oferece Mensal e Gantt no mesmo período de seis semanas, com filtros e mês compartilhados. Gantt mostra uma linha por tarefa, início/prazo, responsável e situação; barra e título abrem o detalhe. Rolagem horizontal e cabeçalho fixo preservam leitura em telas pequenas.
+
+## Entregas por modalidade — revisão de 09/09/2026
+
+Fonte: tabela e instruções explícitas do usuário. Operacional: Mapeamento (módulo ddp), Fluxograma (arquivo), POP (módulo pop), Comunicado opcional (arquivo). Sistemas, Automação & IA e Dados / BI: Mapeamento (ddp), Fluxograma (arquivo), Premissas (arquivo).
+
+TaskChecklist é o componente canônico para grupos de entregas. Cada grupo aceita novos preenchimentos/anexos independentes; novos itens permitem escolher formulário, arquivo ou texto. Cada formulário cria um documento separado no módulo existente. Rascunhos não concluem entregas. Arquivos privados de até 20 MB ficam vinculados à tarefa e respeitam participantes e organização. Não se sobrescrevem arquivos: adicionar outro anexo preserva o anterior. O download usa link temporário. Itens opcionais não entram nas pendências de encaminhamento. Tarefas concluídas mantêm o histórico; nas demais, entregas antigas preenchidas são preservadas como itens adicionais durante a migração.

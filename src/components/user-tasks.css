@@ -802,3 +802,40 @@
   padding: 0;
   overflow: visible;
 }
+
+.ut-delivery-group {
+  padding: 14px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.ut-delivery-group h4 {
+  font-size: 14px;
+  font-weight: 650;
+}
+.ut-delivery-entry {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.ut-delivery-entry > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ut-delivery-entry small {
+  display: block;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+.ut-delivery-entry button,
+.ut-delivery-entry a {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .ut-delivery-entry {
+    flex-wrap: wrap;
+  }
+}

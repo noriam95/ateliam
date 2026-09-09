@@ -17,7 +17,7 @@ const migration = await readFile(
   new URL("../supabase/migrations/20260909190000_user_tasks.sql", import.meta.url),
   "utf8",
 );
-async function setup() {
+async function setup(deliveries = false) {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.user',true),'')::uuid $$;
@@ -45,6 +45,7 @@ async function setup() {
       "utf8",
     ),
   );
+  if (deliveries) await installDeliveries(db);
   const user = async (who) => {
     await db.exec("reset role");
     await db.query("select set_config('test.user',$1,false)", [ids[who] || who]);
@@ -61,4 +62,16 @@ async function setup() {
   const read = async (id) => (await db.query("select * from user_tasks where id=$1", [id])).rows[0];
   return { db, user, command, read };
 }
-export { setup, ids };
+async function installDeliveries(db) {
+  await db.exec(`create schema storage; grant usage on schema storage to authenticated;
+      create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint);
+      create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
+      alter table storage.objects enable row level security; grant select,insert on storage.objects to authenticated;`);
+  await db.exec(
+    await readFile(
+      new URL("../supabase/migrations/20260909230000_user_tasks_deliveries.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+}
+export { setup, ids, installDeliveries };

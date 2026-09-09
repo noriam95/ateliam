@@ -47,6 +47,10 @@ export const updateUserTask = createServerFn({ method: "POST" })
       .extend({
         action: z.enum([
           "create",
+          "add_item",
+          "add_entry",
+          "begin_document",
+          "attach_file",
           "item",
           "transition",
           "assign",
@@ -71,5 +75,5 @@ export const updateUserTask = createServerFn({ method: "POST" })
       p_payload: data.payload,
     });
     if (error) throw new Error(error.message);
-    return result as { id: string };
+    return result as { id: string; documentId?: string };
   });
