@@ -13,7 +13,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedMappingRouteImport } from './routes/_authenticated/mapping'
 import { Route as AuthenticatedMModuleRouteImport } from './routes/_authenticated/m.$module'
 
 const AuthRoute = AuthRouteImport.update({
@@ -35,11 +34,6 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedMappingRoute = AuthenticatedMappingRouteImport.update({
-  id: '/mapping',
-  path: '/mapping',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedMModuleRoute = AuthenticatedMModuleRouteImport.update({
   id: '/m/$module',
   path: '/m/$module',
@@ -49,13 +43,11 @@ const AuthenticatedMModuleRoute = AuthenticatedMModuleRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/mapping': typeof AuthenticatedMappingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/m/$module': typeof AuthenticatedMModuleRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/mapping': typeof AuthenticatedMappingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
   '/m/$module': typeof AuthenticatedMModuleRoute
@@ -64,21 +56,19 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/mapping': typeof AuthenticatedMappingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/m/$module': typeof AuthenticatedMModuleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/mapping' | '/settings' | '/m/$module'
+  fullPaths: '/' | '/auth' | '/settings' | '/m/$module'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/mapping' | '/settings' | '/' | '/m/$module'
+  to: '/auth' | '/settings' | '/' | '/m/$module'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/mapping'
     | '/_authenticated/settings'
     | '/_authenticated/'
     | '/_authenticated/m/$module'
@@ -119,13 +109,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/mapping': {
-      id: '/_authenticated/mapping'
-      path: '/mapping'
-      fullPath: '/mapping'
-      preLoaderRoute: typeof AuthenticatedMappingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/m/$module': {
       id: '/_authenticated/m/$module'
       path: '/m/$module'
@@ -137,14 +120,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedMappingRoute: typeof AuthenticatedMappingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedMModuleRoute: typeof AuthenticatedMModuleRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedMappingRoute: AuthenticatedMappingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedMModuleRoute: AuthenticatedMModuleRoute,

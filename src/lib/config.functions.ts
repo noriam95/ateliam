@@ -1545,18 +1545,12 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(error.message);
       doc = existing;
-      if (doc.module !== data.moduleId || doc.organization_id !== access.organizationId) {
-        throw new Error("O documento não pertence ao módulo e à organização ativos.");
-      }
       if (!access.isAdmin && doc.organization_id !== access.organizationId) {
         throw new Error("Você só pode salvar documentos da sua organização.");
       }
     }
 
     if (!doc) {
-      if (data.moduleId === "ddp") {
-        throw new Error("Crie o mapeamento pela tarefa de registro direcionada pelo Coordenador. Acesse Minhas tarefas.");
-      }
       const { data: created, error } = await context.supabase
         .from("documents")
         .insert({
