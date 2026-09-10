@@ -71,122 +71,141 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
       {[...groups].map(([key, items]) => {
         if (hideDone && items.every((i) => i.completed)) return null;
         const first = items[0];
+        const completed = items.filter((item) => item.completed).length;
+        const started = items.some(
+          (item) =>
+            item.completed ||
+            item.stale ||
+            item.saved_version != null ||
+            item.saved_at ||
+            item.document_id ||
+            item.attachment ||
+            item.content.trim(),
+        );
+        const status =
+          completed === items.length ? "Concluído" : started ? "Em andamento" : "Não iniciado";
         return (
-          <section className="ut-delivery-group" key={key}>
-            <div className="ut-heading">
-              <h4>
+          <details className="ut-delivery-group ut-delivery-disclosure" key={key}>
+            <summary className="ut-delivery-summary">
+              <span className="ut-delivery-name">
                 {first.label}
-                {first.optional ? " (Opcional)" : ""}
-              </h4>
-              <small>
-                {items.filter((i) => i.completed).length}/{items.length} concluído(s)
-              </small>
-            </div>
-            {items
-              .filter((i) => !hideDone || !i.completed)
-              .map((item) => {
-                const index = items.indexOf(item);
-                const module =
-                  item.entry_type === "pop"
-                    ? "pop"
-                    : item.entry_type === "mapping"
-                      ? "ddp"
-                      : item.document_module || task.document_module;
-                return (
-                  <div className="ut-delivery-entry" key={item.key}>
-                    <div>
-                      <strong>
-                        {item.entry_type === "file"
-                          ? item.attachment?.name || `Anexo ${index + 1}`
-                          : `Preenchimento ${index + 1}`}
-                      </strong>
-                      <small>
-                        {item.completed
-                          ? "Concluído"
-                          : item.stale || item.saved_version !== null || item.content
-                            ? "Em andamento"
-                            : "A fazer"}
-                      </small>
-                    </div>
-                    {item.entry_type === "file" ? (
-                      item.attachment ? (
-                        <button
-                          disabled={busy}
-                          onClick={async () => {
-                            setError("");
-                            setDownload(null);
-                            try {
-                              const { data, error: err } = await supabase.storage
-                                .from("user-task-files")
-                                .createSignedUrl(item.attachment!.path, 60, {
-                                  download: item.attachment!.name,
-                                });
-                              if (err) throw err;
-                              setDownload({ url: data.signedUrl, name: item.attachment!.name });
-                            } catch (err) {
-                              setError((err as Error).message);
-                            }
-                          }}
-                        >
-                          Baixar anexo
-                        </button>
-                      ) : (
-                        canEdit && (
+                {first.optional ? " · Opcional" : ""}
+              </span>
+              <span className="ut-delivery-status">{status}</span>
+              <strong
+                className="ut-delivery-count"
+                aria-label={`${completed} de ${items.length} entregas concluídas`}
+              >
+                {completed}/{items.length}
+              </strong>
+            </summary>
+            <div className="ut-delivery-content">
+              {items
+                .filter((i) => !hideDone || !i.completed)
+                .map((item) => {
+                  const index = items.indexOf(item);
+                  const module =
+                    item.entry_type === "pop"
+                      ? "pop"
+                      : item.entry_type === "mapping"
+                        ? "ddp"
+                        : item.document_module || task.document_module;
+                  return (
+                    <div className="ut-delivery-entry" key={item.key}>
+                      <div>
+                        <strong>
+                          {item.entry_type === "file"
+                            ? item.attachment?.name || `Anexo ${index + 1}`
+                            : `Preenchimento ${index + 1}`}
+                        </strong>
+                        <small>
+                          {item.completed
+                            ? "Concluído"
+                            : item.stale || item.saved_version !== null || item.content
+                              ? "Em andamento"
+                              : "A fazer"}
+                        </small>
+                      </div>
+                      {item.entry_type === "file" ? (
+                        item.attachment ? (
                           <button
-                            disabled={busy || !!retry}
-                            onClick={() => {
-                              setUploadKey(item.key);
-                              fileInput.current?.click();
+                            disabled={busy}
+                            onClick={async () => {
+                              setError("");
+                              setDownload(null);
+                              try {
+                                const { data, error: err } = await supabase.storage
+                                  .from("user-task-files")
+                                  .createSignedUrl(item.attachment!.path, 60, {
+                                    download: item.attachment!.name,
+                                  });
+                                if (err) throw err;
+                                setDownload({ url: data.signedUrl, name: item.attachment!.name });
+                              } catch (err) {
+                                setError((err as Error).message);
+                              }
                             }}
                           >
-                            Enviar arquivo
+                            Baixar anexo
+                          </button>
+                        ) : (
+                          canEdit && (
+                            <button
+                              disabled={busy || !!retry}
+                              onClick={() => {
+                                setUploadKey(item.key);
+                                fileInput.current?.click();
+                              }}
+                            >
+                              Enviar arquivo
+                            </button>
+                          )
+                        )
+                      ) : item.document_id ? (
+                        <a
+                          className="ut-button"
+                          href={documentTaskUrl(task, item, {
+                            id: item.document_id,
+                            module,
+                            name: item.label,
+                            code: "",
+                            current_version: 0,
+                          })}
+                        >
+                          {canEdit ? (item.completed ? "Editar" : "Preencher") : "Abrir"}
+                        </a>
+                      ) : item.entry_type === "mapping" || item.entry_type === "pop" ? (
+                        canEdit && (
+                          <button
+                            disabled={busy}
+                            onClick={() => void write("begin_document", { key: item.key })}
+                          >
+                            Preencher {item.entry_type === "pop" ? "POP" : "mapeamento"}
                           </button>
                         )
-                      )
-                    ) : item.document_id ? (
-                      <a
-                        className="ut-button"
-                        href={documentTaskUrl(task, item, {
-                          id: item.document_id,
-                          module,
-                          name: item.label,
-                          code: "",
-                          current_version: 0,
-                        })}
-                      >
-                        {canEdit ? (item.completed ? "Editar" : "Preencher") : "Abrir"}
-                      </a>
-                    ) : item.entry_type === "mapping" || item.entry_type === "pop" ? (
-                      canEdit && (
-                        <button
-                          disabled={busy}
-                          onClick={() => void write("begin_document", { key: item.key })}
-                        >
-                          Preencher {item.entry_type === "pop" ? "POP" : "mapeamento"}
+                      ) : (
+                        <button disabled={busy} onClick={() => edit(item)}>
+                          {canEdit ? "Preencher" : "Visualizar"}
                         </button>
-                      )
-                    ) : (
-                      <button disabled={busy} onClick={() => edit(item)}>
-                        {canEdit ? "Preencher" : "Visualizar"}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            {canEdit && (
-              <button
-                disabled={busy}
-                onClick={() =>
-                  void write("add_entry", { key: first.key, entryId: crypto.randomUUID() })
-                }
-              >
-                +{" "}
-                {first.entry_type === "file"
-                  ? "Adicionar outro anexo"
-                  : "Adicionar outro preenchimento"}
-              </button>
-            )}
-          </section>
+                      )}
+                    </div>
+                  );
+                })}
+              {canEdit && (
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void write("add_entry", { key: first.key, entryId: crypto.randomUUID() })
+                  }
+                >
+                  +{" "}
+                  {first.entry_type === "file"
+                    ? "Adicionar outro anexo"
+                    : "Adicionar outro preenchimento"}
+                </button>
+              )}
+            </div>
+          </details>
         );
       })}
       {download && (

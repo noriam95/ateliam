@@ -47,3 +47,5 @@ TaskChecklist é o componente canônico para grupos de entregas. Cada grupo acei
 ## Períodos do calendário e Gantt
 
 Dia, Semana (domingo a sábado), Mês e Ano compartilham data de referência e filtros, persistidos na URL. Hoje e setas respeitam a escala ativa. Calendário anual possui 12 meses com acesso ao dia; Gantt anual agrupa por mês. Datas sem horário são mostradas como atividades do dia, sem criar horários fictícios. A paginação e os avisos de página atual continuam visíveis em todas as escalas.
+
+Cada grupo do checklist começa recolhido ao abrir o detalhe da tarefa. O summary nativo mostra nome, status agregado e concluídos/total (ex.: 1/2). Rascunhos permanecem em andamento e não contam como concluídos. Expandir mantém visíveis as ações e entregas do grupo; atualizações preservam a expansão na sessão do detalhe.
