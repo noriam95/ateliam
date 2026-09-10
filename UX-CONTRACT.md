@@ -55,3 +55,5 @@ Kanban: TaskKanbanCard apresenta referência TAR derivada do UUID da tarefa (nã
 ## Seletor global de módulos
 
 WorkspaceLauncher é o proprietário canônico, usado na Home e nos módulos. Popover nativo não modal: aberto pelo botão de grade, fecha com Escape, clique fora ou seleção de destino; foco retorna ao acionador ao dispensar pelo teclado. Botões de expansão mantêm o seletor aberto, enquanto itens recolhidos ficam inertes. Configurações mantêm as regras de acesso existentes. O seletor tem rolagem própria dentro do viewport, sem alterar a largura ou rolagem dos formulários. Fonte: vídeo e pedido explícito do usuário em 10/09/2026.
+
+Revisão de 10/09/2026: Página inicial precede Minhas tarefas no seletor. Configurações tem um único acesso global no UserProfileMenu, antes de Sair do sistema; a rota /settings mantém a autorização existente. A página administrativa oferece navegação entre Organizações e Usuários.

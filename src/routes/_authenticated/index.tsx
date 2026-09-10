@@ -2540,15 +2540,38 @@ function WorkspaceContent({
       );
     }
     return (
-      <Suspense fallback={<LoadingSkeleton />}>
-        <WorkspaceSystemSettings
-          view={view === "document-models" ? "organizations" : view}
-          isDemo={isDemo}
-          organizationName={organizationName}
-          organizationId={organizationId}
-          isAdmin={isAdmin}
-        />
-      </Suspense>
+      <div>
+        <nav
+          aria-label="Seções de configurações"
+          className="mb-5 flex gap-2 border-b border-border pb-3"
+        >
+          <Link
+            to="/"
+            search={{ area: "settings", view: "organizations" }}
+            aria-current={view !== "users" ? "page" : undefined}
+            className="rounded-md px-3 py-2 text-sm hover:bg-muted aria-[current=page]:bg-accent"
+          >
+            Organizações
+          </Link>
+          <Link
+            to="/"
+            search={{ area: "settings", view: "users" }}
+            aria-current={view === "users" ? "page" : undefined}
+            className="rounded-md px-3 py-2 text-sm hover:bg-muted aria-[current=page]:bg-accent"
+          >
+            Usuários
+          </Link>
+        </nav>
+        <Suspense fallback={<LoadingSkeleton />}>
+          <WorkspaceSystemSettings
+            view={view === "document-models" ? "organizations" : view}
+            isDemo={isDemo}
+            organizationName={organizationName}
+            organizationId={organizationId}
+            isAdmin={isAdmin}
+          />
+        </Suspense>
+      </div>
     );
   }
 

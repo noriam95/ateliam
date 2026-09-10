@@ -18,7 +18,6 @@ import {
   Network,
   Plus,
   Search,
-  Settings,
   Users,
   Workflow,
 } from "lucide-react";
@@ -59,12 +58,6 @@ export function WorkspaceLauncher({
       description: "Estrutura e relacionamento dos processos",
       icon: Network,
     },
-    {
-      area: "settings" as const,
-      label: "Configurações",
-      description: "Administração e preferências",
-      icon: Settings,
-    },
   ];
   return (
     <div className="workspace-launcher">
@@ -93,21 +86,7 @@ export function WorkspaceLauncher({
           <div className="workspace-launcher-heading">
             BF Flow <span>Módulos</span>
           </div>
-          <Link
-            to="/"
-            search={{ view: "tasks" }}
-            onClick={close}
-            aria-current={activeTask ? "page" : undefined}
-            className="workspace-launcher-entry"
-          >
-            <span className="workspace-launcher-icon">
-              <ListChecks size={22} />
-            </span>
-            <span>
-              <strong>Minhas tarefas</strong>
-              <small>Acompanhe entregas e prazos</small>
-            </span>
-          </Link>
+
           {entries.map(({ area, label, description, icon: Icon }) => (
             <div key={area}>
               <button
@@ -126,10 +105,25 @@ export function WorkspaceLauncher({
                   <strong>{label}</strong>
                   <small>{description}</small>
                 </span>
-                {(area === "modules" || area === "settings") && (
-                  <ChevronRight size={16} aria-hidden="true" />
-                )}
+                {area === "modules" && <ChevronRight size={16} aria-hidden="true" />}
               </button>
+              {area === "home" && (
+                <Link
+                  to="/"
+                  search={{ view: "tasks" }}
+                  onClick={close}
+                  aria-current={activeTask ? "page" : undefined}
+                  className="workspace-launcher-entry"
+                >
+                  <span className="workspace-launcher-icon">
+                    <ListChecks size={22} />
+                  </span>
+                  <span>
+                    <strong>Minhas tarefas</strong>
+                    <small>Acompanhe entregas e prazos</small>
+                  </span>
+                </Link>
+              )}
               {activeArea === area && area !== "home" && children && (
                 <div className="workspace-launcher-context">{children}</div>
               )}

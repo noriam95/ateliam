@@ -1,4 +1,5 @@
-import { Camera, KeyRound, LogOut, Monitor, Moon, Palette, Sun, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Camera, KeyRound, LogOut, Monitor, Moon, Palette, Settings, Sun, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -64,7 +65,9 @@ export function UserProfileMenu({
   const [themeOpen, setThemeOpen] = useState(false);
   const [activeTheme, setActiveTheme] = useState<"light" | "dark" | "system">(() => {
     if (typeof window === "undefined") return "system";
-    return (window.localStorage.getItem("ateliam-theme") as "light" | "dark" | "system") ?? "system";
+    return (
+      (window.localStorage.getItem("ateliam-theme") as "light" | "dark" | "system") ?? "system"
+    );
   });
   const [photo, setPhoto] = useState("");
   const [password, setPassword] = useState("");
@@ -205,6 +208,14 @@ export function UserProfileMenu({
             >
               Trocar senha
             </ProfileAction>
+            <Link
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-popover-foreground transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <Settings className="h-4 w-4" />
+              Configurações
+            </Link>
             <ProfileAction icon={<LogOut className="h-4 w-4" />} onClick={onSignOut} danger>
               Sair do sistema
             </ProfileAction>
@@ -218,7 +229,9 @@ export function UserProfileMenu({
             <header className="flex items-start justify-between border-b border-border px-5 py-4">
               <div>
                 <h2 className="text-base font-semibold">Tema da interface</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Escolha a aparência do sistema.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Escolha a aparência do sistema.
+                </p>
               </div>
               <button
                 type="button"
