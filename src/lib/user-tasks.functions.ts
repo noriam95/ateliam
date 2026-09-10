@@ -38,7 +38,28 @@ export const loadUserTasks = createServerFn({ method: "POST" })
           ? "Minhas tarefas aguarda a atualização do banco de dados."
           : error.message,
       );
-    return result as TaskFeed;
+    const feed = result as TaskFeed;
+    if (feed.tasks.length) {
+      const { data: rows, error: activityError } = await db
+        .from("user_tasks")
+        .select("id,user_task_events(action,note,created_at)")
+        .in(
+          "id",
+          feed.tasks.map((task) => task.id),
+        )
+        .order("created_at", { referencedTable: "user_task_events", ascending: false })
+        .order("id", { referencedTable: "user_task_events", ascending: false })
+        .limit(1, { referencedTable: "user_task_events" });
+      if (activityError) throw new Error(activityError.message);
+      const latest = new Map(
+        (rows || []).map((row) => [row.id, row.user_task_events?.[0] || null]),
+      );
+      feed.tasks = feed.tasks.map((task) => ({
+        ...task,
+        latest_activity: latest.get(task.id) || null,
+      }));
+    }
+    return feed;
   });
 export const updateUserTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

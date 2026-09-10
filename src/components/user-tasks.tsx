@@ -1,3 +1,4 @@
+import { TaskKanbanCard } from "./task-kanban-card";
 import { TaskCalendar } from "./task-calendar";
 import {
   TASK_PERIOD_LABELS,
@@ -36,6 +37,7 @@ import {
   documentTaskUrl,
   localDay,
   taskDate,
+  taskCode,
   type TaskDocument,
   type TaskFeed,
   type TaskFilters,
@@ -355,27 +357,7 @@ export function UserTasks({
                             </h3>
                             {tasks.length ? (
                               tasks.map((t) => (
-                                <button className="ut-card" key={t.id} onClick={() => open(t.id)}>
-                                  <small>{t.code}</small>
-                                  <strong>{t.title}</strong>
-                                  <span>{t.modality || TASK_KINDS[t.kind]}</span>
-                                  <span>{t.assignee_name}</span>
-                                  <span
-                                    className={
-                                      t.due_on < localDay() && t.status !== "completed"
-                                        ? "ut-late"
-                                        : ""
-                                    }
-                                  >
-                                    Prazo: {taskDate(t.due_on)}
-                                  </span>
-                                  <footer>
-                                    {t.checklist.length - pending(t).length}/{t.checklist.length}{" "}
-                                    itens concluídos
-                                    {pending(t).length > 0 &&
-                                      t.pending_at_transition.length > 0 && <b>Pendências</b>}
-                                  </footer>
-                                </button>
+                                <TaskKanbanCard key={t.id} task={t} open={() => open(t.id)} />
                               ))
                             ) : (
                               <p className="ut-muted">Nenhuma tarefa nesta coluna.</p>
@@ -945,7 +927,7 @@ function TaskDetails({
     <TaskDialog
       wide
       dirty={!!comment.trim()}
-      title={t ? `${t.code ? `${t.code} · ` : ""}${t.title}` : "Detalhes da tarefa"}
+      title={t ? `${taskCode(t.id)} · ${t.title}` : "Detalhes da tarefa"}
       onClose={close}
       busy={busy}
     >

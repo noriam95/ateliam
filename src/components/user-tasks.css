@@ -973,3 +973,154 @@
     grid-row: 1 / 3;
   }
 }
+
+.ut-column button.ut-rich-card {
+  gap: 0;
+  padding: 14px;
+  font-size: 12px;
+}
+.ut-rich-card .ut-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.ut-card-top > small {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+}
+.ut-rich-card .ut-modality {
+  font-size: 10px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  white-space: normal;
+}
+.ut-modality-systems {
+  background: #eaf1fb;
+  color: #24588b;
+}
+.ut-modality-operational {
+  background: #eaf3ee;
+  color: #2b664c;
+}
+.ut-modality-bi {
+  background: #faf0d9;
+  color: #806019;
+}
+.ut-modality-automation {
+  background: #f1eaf7;
+  color: #72518d;
+}
+.ut-rich-card .ut-card-title {
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 12px 0 5px;
+}
+.ut-rich-card .ut-card-stage {
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+}
+.ut-rich-card .ut-card-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  width: 100%;
+}
+.ut-rich-card progress {
+  width: 100%;
+  height: 4px;
+  margin: 6px 0 12px;
+  accent-color: var(--gold);
+}
+.ut-rich-card .ut-card-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+.ut-rich-card .ut-card-checkitem {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: start;
+  font-size: 11px;
+}
+.ut-rich-card .ut-card-checkmark {
+  display: flex;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--muted-foreground);
+  border-radius: 2px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.ut-rich-card .ut-card-checkmark-done {
+  background: var(--gold);
+  color: var(--primary-foreground);
+  border-color: var(--gold);
+}
+.ut-rich-card .ut-card-owner {
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 12px;
+  font-size: 10px;
+}
+.ut-rich-card .ut-card-person {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ut-rich-card .ut-avatar {
+  flex-shrink: 0;
+  width: 25px;
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--muted);
+  font-size: 10px;
+}
+.ut-rich-card .ut-card-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px;
+  background: var(--muted);
+  border-radius: 4px;
+}
+.ut-card-activity > small,
+.ut-card-activity > time {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.ut-card-activity > span {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.ut-rich-card .ut-card-pending {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.ut-rich-card progress { appearance: none; border: 0; background: var(--border); }
+.ut-rich-card progress::-webkit-progress-bar { background: var(--border); }
+.ut-rich-card progress::-webkit-progress-value { background: var(--gold); }
+.ut-rich-card progress::-moz-progress-bar { background: var(--gold); }

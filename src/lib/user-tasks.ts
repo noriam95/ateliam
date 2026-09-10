@@ -33,7 +33,9 @@ export type TaskDocument = {
   code: string;
   current_version: number;
 };
+export const taskCode = (id: string) => `TAR-${(id.slice(0, 4) + id.slice(-8)).toUpperCase()}`;
 export type UserTask = {
+  latest_activity?: { action: string; note: string; created_at: string } | null;
   id: string;
   organization_id: string;
   document_id: string | null;
