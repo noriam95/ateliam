@@ -1,0 +1,104 @@
+/* Seletor global de módulos: popover não modal, ancorado ao cabeçalho. */
+.workspace-launcher-trigger {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.workspace-launcher-trigger:hover,
+.workspace-launcher-trigger[aria-expanded="true"] {
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+.workspace-launcher-trigger:focus-visible,
+.workspace-launcher-panel :is(button, a):focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.workspace-launcher-panel {
+  position: fixed;
+  inset: 60px auto auto 12px;
+  margin: 0;
+  width: min(400px, calc(100vw - 24px));
+  max-height: calc(100dvh - 76px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 16px 45px #0003;
+}
+.workspace-launcher-heading {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px 14px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.workspace-launcher-heading span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.workspace-launcher-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.workspace-launcher-entry:hover {
+  background: var(--muted);
+}
+.workspace-launcher-entry[aria-current="page"] {
+  background: var(--accent);
+}
+.workspace-launcher-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--muted);
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.workspace-launcher-entry > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.workspace-launcher-entry strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+.workspace-launcher-entry small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+.workspace-launcher-context {
+  margin: 4px 8px 10px 20px;
+  padding: 8px 4px 4px 12px;
+  border-left: 2px solid var(--border);
+}
+@media print {
+  .workspace-launcher {
+    display: none;
+  }
+}

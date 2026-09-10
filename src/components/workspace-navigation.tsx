@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import "./workspace-launcher.css";
 import {
   CheckCircle2,
   ChevronDown,
@@ -10,6 +12,7 @@ import {
   GitBranch,
   Home,
   Layers,
+  LayoutGrid,
   Link2,
   ListChecks,
   Network,
@@ -22,84 +25,119 @@ import {
 
 export type WorkspaceRailArea = "home" | "modules" | "value-chain" | "reports" | "settings";
 
-export function WorkspaceRail({
+export function WorkspaceLauncher({
   activeArea,
   onSelect,
   activeTask = false,
+  children,
 }: {
-  activeTask?: boolean;
   activeArea: WorkspaceRailArea;
   onSelect: (area: WorkspaceRailArea) => void;
+  activeTask?: boolean;
+  children?: ReactNode;
 }) {
+  const id = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const close = () => panel.current?.hidePopover();
+  const entries = [
+    {
+      area: "home" as const,
+      label: "Página inicial",
+      description: "Resumo das suas atividades",
+      icon: Home,
+    },
+    {
+      area: "modules" as const,
+      label: "Processos",
+      description: "Mapeamento, POP, fluxogramas e cadastros",
+      icon: GitBranch,
+    },
+    {
+      area: "value-chain" as const,
+      label: "Cadeia de Valor",
+      description: "Estrutura e relacionamento dos processos",
+      icon: Network,
+    },
+    {
+      area: "settings" as const,
+      label: "Configurações",
+      description: "Administração e preferências",
+      icon: Settings,
+    },
+  ];
   return (
-    <nav className="sticky top-14 flex h-[calc(100vh-3.5rem)] flex-col border-r border-border bg-card/70 py-3">
-      <WorkspaceRailButton
-        active={activeArea === "home" && !activeTask}
-        label="Início"
-        onClick={() => onSelect("home")}
+    <div className="workspace-launcher">
+      <button
+        type="button"
+        popoverTarget={id}
+        aria-expanded={open}
+        aria-controls={id}
+        aria-label="Abrir módulos"
+        title="Módulos"
+        className="workspace-launcher-trigger"
       >
-        <Home className="h-4 w-4" />
-      </WorkspaceRailButton>
-      <a
-        href="/?view=tasks"
-        title="Minhas tarefas"
-        aria-label="Minhas tarefas"
-        aria-current={activeTask ? "page" : undefined}
-        className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-lg ${activeTask ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+        <LayoutGrid size={20} aria-hidden="true" />
+      </button>
+      <div
+        id={id}
+        ref={panel}
+        popover="auto"
+        className="workspace-launcher-panel"
+        onToggle={(event) => setOpen(event.newState === "open")}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("[data-workspace-destination]")) close();
+        }}
       >
-        <ListChecks className="h-4 w-4" />
-      </a>
-      <WorkspaceRailButton
-        active={activeArea === "modules"}
-        label="Processos"
-        onClick={() => onSelect("modules")}
-      >
-        <GitBranch className="h-4 w-4" />
-      </WorkspaceRailButton>
-      <WorkspaceRailButton
-        active={activeArea === "value-chain"}
-        label="Cadeia de Valor"
-        onClick={() => onSelect("value-chain")}
-      >
-        <Network className="h-4 w-4" />
-      </WorkspaceRailButton>
-      <div className="flex-1" />
-      <WorkspaceRailButton
-        active={activeArea === "settings"}
-        label="Configurações"
-        onClick={() => onSelect("settings")}
-      >
-        <Settings className="h-4 w-4" />
-      </WorkspaceRailButton>
-    </nav>
-  );
-}
-
-function WorkspaceRailButton({
-  active,
-  label,
-  children,
-  onClick,
-}: {
-  active?: boolean;
-  label: string;
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-lg transition ${
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
+        <nav aria-label="Módulos do BF Flow">
+          <div className="workspace-launcher-heading">
+            BF Flow <span>Módulos</span>
+          </div>
+          <Link
+            to="/"
+            search={{ view: "tasks" }}
+            onClick={close}
+            aria-current={activeTask ? "page" : undefined}
+            className="workspace-launcher-entry"
+          >
+            <span className="workspace-launcher-icon">
+              <ListChecks size={22} />
+            </span>
+            <span>
+              <strong>Minhas tarefas</strong>
+              <small>Acompanhe entregas e prazos</small>
+            </span>
+          </Link>
+          {entries.map(({ area, label, description, icon: Icon }) => (
+            <div key={area}>
+              <button
+                type="button"
+                className="workspace-launcher-entry"
+                aria-current={activeArea === area && !activeTask ? "page" : undefined}
+                onClick={() => {
+                  onSelect(area);
+                  if (area === "home" || area === "value-chain") close();
+                }}
+              >
+                <span className="workspace-launcher-icon">
+                  <Icon size={22} />
+                </span>
+                <span>
+                  <strong>{label}</strong>
+                  <small>{description}</small>
+                </span>
+                {(area === "modules" || area === "settings") && (
+                  <ChevronRight size={16} aria-hidden="true" />
+                )}
+              </button>
+              {activeArea === area && area !== "home" && children && (
+                <div className="workspace-launcher-context">{children}</div>
+              )}
+            </div>
+          ))}
+        </nav>
+      </div>
+    </div>
   );
 }
 
@@ -118,6 +156,7 @@ export function TreeButton({
     <button
       type="button"
       onClick={onClick}
+      data-workspace-destination
       className={`mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold)] ${
         active
           ? "bg-accent text-foreground"
@@ -147,6 +186,7 @@ export function TreeSection({
       <button
         type="button"
         onClick={onToggle}
+        aria-expanded={open}
         className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -156,7 +196,7 @@ export function TreeSection({
       <div
         className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
       >
-        <div className="overflow-hidden">
+        <div className="overflow-hidden" inert={!open}>
           <div className="ml-3 pl-2">{children}</div>
         </div>
       </div>
@@ -174,7 +214,9 @@ export function ModuleBranch({
   children,
   onSelect,
   onToggle,
+  destination = true,
 }: {
+  destination?: boolean;
   title: string;
   icon?: ReactNode;
   active?: boolean;
@@ -197,6 +239,7 @@ export function ModuleBranch({
         <button
           type="button"
           onClick={onSelect}
+          data-workspace-destination={destination || undefined}
           className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left"
         >
           {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
@@ -208,7 +251,8 @@ export function ModuleBranch({
           type="button"
           onClick={onToggle}
           className="grid w-8 place-items-center rounded-r-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          title={open ? "Recolher módulo" : "Expandir módulo"}
+          title={`${open ? "Recolher" : "Expandir"} ${title}`}
+          aria-expanded={open}
         >
           {open ? (
             <ChevronDown className="h-3.5 w-3.5" />
@@ -220,7 +264,7 @@ export function ModuleBranch({
       <div
         className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
       >
-        <div className="overflow-hidden">
+        <div className="overflow-hidden" inert={!open}>
           <div className="ml-5 py-1 pl-2">{children}</div>
         </div>
       </div>
@@ -360,6 +404,7 @@ export function WorkspaceModulesTree({
       ))}
 
       <ModuleBranch
+        destination={false}
         title="Cadastros"
         icon={<Database className="h-4 w-4" />}
         active={registrationsAreActive}

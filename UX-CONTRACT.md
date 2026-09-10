@@ -4,7 +4,7 @@ Fonte de negócio: requisitos explícitos do usuário nesta tarefa em 09/09/2026
 
 | Capacidade     | Responsável canônico           | Regra                                                           |
 | -------------- | ------------------------------ | --------------------------------------------------------------- |
-| Navegação      | WorkspaceHome / WorkspaceRail  | Home e Minhas tarefas preservam o shell atual                   |
+| Navegação      | WorkspaceHome / WorkspaceLauncher  | Seletor de módulos no cabeçalho, sem barra lateral fixa                   |
 | Select/Listbox | native                         | Popup da plataforma, rótulo associado                           |
 | Date           | native                         | Datas de formulário nativas; calendário de atividades em pt-BR  |
 | Form           | UserTasks / TaskRoutingActions | noValidate, erro visível, salvamento com bloqueio de duplicação |
@@ -51,3 +51,7 @@ Dia, Semana (domingo a sábado), Mês e Ano compartilham data de referência e f
 Cada grupo do checklist começa recolhido ao abrir o detalhe da tarefa. O summary nativo mostra nome, status agregado e concluídos/total (ex.: 1/2). Rascunhos permanecem em andamento e não contam como concluídos. Expandir mantém visíveis as ações e entregas do grupo; atualizações preservam a expansão na sessão do detalhe.
 
 Kanban: TaskKanbanCard apresenta referência TAR derivada do UUID da tarefa (não do documento), modalidade, etapa, checklist agrupado com concluídos/total, responsável, prazo e última atividade. A atividade vem de user_task_events, um registro por tarefa, respeitando RLS. O card abre o detalhe; os marcadores de checklist são informativos.
+
+## Seletor global de módulos
+
+WorkspaceLauncher é o proprietário canônico, usado na Home e nos módulos. Popover nativo não modal: aberto pelo botão de grade, fecha com Escape, clique fora ou seleção de destino; foco retorna ao acionador ao dispensar pelo teclado. Botões de expansão mantêm o seletor aberto, enquanto itens recolhidos ficam inertes. Configurações mantêm as regras de acesso existentes. O seletor tem rolagem própria dentro do viewport, sem alterar a largura ou rolagem dos formulários. Fonte: vídeo e pedido explícito do usuário em 10/09/2026.

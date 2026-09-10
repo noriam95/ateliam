@@ -39,7 +39,6 @@ import {
   Link2,
   ListChecks,
   Maximize2,
-  Menu,
   Network,
   Plus,
   Search,
@@ -52,7 +51,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { ThemeControl } from "@/components/theme-control";
 import { UserProfileMenu } from "@/components/user-profile-menu";
-import { TreeButton, WorkspaceModulesTree, WorkspaceRail } from "@/components/workspace-navigation";
+import {
+  TreeButton,
+  WorkspaceModulesTree,
+  WorkspaceLauncher,
+} from "@/components/workspace-navigation";
 import {
   WorkspaceProcessRegistrations,
   type ProcessRegistrationView,
@@ -397,11 +400,6 @@ function WorkspaceHome() {
       ? null
       : window.localStorage.getItem("ateliam-demo-organization-logo"),
   );
-  const [treeOpen, setTreeOpen] = useState(!!search.area);
-  // Em telas pequenas o painel de navegação começa recolhido (vira gaveta).
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 1023px)").matches) setTreeOpen(false);
-  }, []);
   const [activeArea, setActiveArea] = useState<WorkspaceArea>(
     (search.area as WorkspaceArea | undefined) ?? "home",
   );
@@ -448,7 +446,7 @@ function WorkspaceHome() {
     const isRegistration = isRegistrationView(nextView);
     setActiveArea(nextArea);
     setView(nextView);
-    setTreeOpen(!!search.area && !window.matchMedia("(max-width: 1023px)").matches);
+
     setExpanded((current) => ({
       ...current,
       modules: current.modules || nextArea === "modules",
@@ -867,10 +865,10 @@ function WorkspaceHome() {
     if (area === "home") {
       void navigate({ to: "/", search: {} });
       setView("overview");
-      setTreeOpen(false);
+
       return;
     }
-    setTreeOpen(true);
+
     if (area === "modules") {
       setExpanded((current) => ({ ...current, modules: true }));
       if (
@@ -966,19 +964,85 @@ function WorkspaceHome() {
   return (
     <div className="min-h-screen bg-background text-foreground" style={workspaceGrayVars}>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
-        {activeArea === "home" ? (
-          <div className="h-9 w-9" aria-hidden="true" />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setTreeOpen((current) => !current)}
-            className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            title={treeOpen ? "Ocultar navegação" : "Mostrar navegação"}
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-        )}
+        <WorkspaceLauncher
+          activeArea={activeArea}
+          activeTask={activeArea === "home" && String(view) === "tasks"}
+          onSelect={selectArea}
+        >
+          {activeArea === "modules" ? (
+            <WorkspaceModulesTree
+              key="modules"
+              expanded={expanded}
+              onToggle={toggle}
+              isActive={(target) =>
+                target.kind === "module-root"
+                  ? isModuleView(view, target.moduleId)
+                  : target.kind === "registrations-root"
+                    ? isRegistrationView(view)
+                    : target.kind === "registration"
+                      ? view === target.view
+                      : false
+              }
+              onNavigate={(target) => {
+                if (target.kind === "module-root") {
+                  navigate({
+                    to: "/m/$module",
+                    params: { module: target.moduleId },
+                    search: { view: "consult" },
+                  });
+                } else if (target.kind === "module-task") {
+                  navigate({
+                    to: "/m/$module",
+                    params: { module: target.moduleId },
+                    search: { view: target.task },
+                  });
+                } else if (target.kind === "registrations-root") {
+                  toggle("registrations");
+                } else {
+                  navigate({
+                    to: "/",
+                    search: { area: "modules", view: target.view },
+                  });
+                }
+              }}
+            />
+          ) : null}
 
+          {activeArea === "value-chain" ? (
+            <div key="value-chain" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+              {/* O cadastro foi incorporado ao relatório (tabela editável),
+                          por isso a única entrada é o "Cadastro". */}
+              <TreeButton
+                active={view === "value-chain-report"}
+                onClick={() => setView("value-chain-report")}
+              >
+                <Database className="h-4 w-4" /> Cadastro
+              </TreeButton>
+            </div>
+          ) : null}
+
+          {activeArea === "settings" ? (
+            <div key="settings" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+              {isCurrentUserAdmin ? (
+                <>
+                  <TreeButton active={view === "users"} onClick={() => setView("users")}>
+                    <Users className="h-4 w-4" /> Usuários
+                  </TreeButton>
+                  <TreeButton
+                    active={view === "organizations"}
+                    onClick={() => setView("organizations")}
+                  >
+                    <Building2 className="h-4 w-4" /> Organizações
+                  </TreeButton>
+                </>
+              ) : (
+                <div className="rounded-lg border border-border bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+                  Configurações administrativas disponíveis apenas para administradores.
+                </div>
+              )}
+            </div>
+          ) : null}
+        </WorkspaceLauncher>
         <button
           type="button"
           onClick={() => selectArea("home")}
@@ -1026,163 +1090,8 @@ function WorkspaceHome() {
         />
       </header>
 
-      <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-[52px_minmax(0,1fr)]">
-        <WorkspaceRail
-          activeArea={activeArea}
-          activeTask={activeArea === "home" && String(view) === "tasks"}
-          onSelect={selectArea}
-        />
-
-        <div
-          className={`grid min-w-0 transition-[grid-template-columns] duration-200 ${
-            activeArea === "home"
-              ? "lg:grid-cols-[minmax(0,1fr)]"
-              : treeOpen
-                ? "lg:grid-cols-[320px_minmax(0,1fr)]"
-                : "lg:grid-cols-[0_minmax(0,1fr)]"
-          }`}
-        >
-          {activeArea !== "home" && treeOpen ? (
-            <button
-              type="button"
-              aria-label="Fechar navegação"
-              onClick={() => setTreeOpen(false)}
-              className="fixed bottom-0 left-[372px] right-0 top-14 z-30 bg-foreground/10 backdrop-blur-[1px] lg:hidden"
-            />
-          ) : null}
-          {activeArea !== "home" ? (
-            <aside
-              className={`fixed bottom-0 left-[52px] top-14 z-30 min-h-0 w-[min(320px,calc(100vw-52px))] overflow-hidden border-r border-border bg-card shadow-xl lg:sticky lg:top-14 lg:bottom-auto lg:z-auto lg:h-[calc(100vh-3.5rem)] lg:w-auto lg:self-start lg:bg-card/58 lg:shadow-none ${
-                treeOpen ? "block" : "hidden lg:block"
-              }`}
-            >
-              <div className="flex h-full flex-col">
-                <div className="border-b border-border p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                      navegação
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setTreeOpen(false)}
-                      className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                      title="Recolher painel"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    {activeArea === "home" ? (
-                      <Building2 className="h-4 w-4 text-foreground" />
-                    ) : activeArea === "modules" ? (
-                      <GitBranch className="h-4 w-4 text-foreground" />
-                    ) : activeArea === "value-chain" ? (
-                      <Network className="h-4 w-4 text-foreground" />
-                    ) : activeArea === "reports" ? (
-                      <BarChart2 className="h-4 w-4 text-foreground" />
-                    ) : (
-                      <Settings className="h-4 w-4 text-foreground" />
-                    )}
-                    <div className="truncate font-display text-base font-bold">
-                      {activeArea === "home"
-                        ? organizationName
-                        : activeArea === "modules"
-                          ? "Processos"
-                          : activeArea === "value-chain"
-                            ? "Cadeia de Valor"
-                            : activeArea === "reports"
-                              ? "Relatórios"
-                              : "Configurações"}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{organizationName}</span>
-                  </div>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                  {activeArea === "modules" ? (
-                    <WorkspaceModulesTree
-                      key="modules"
-                      expanded={expanded}
-                      onToggle={toggle}
-                      isActive={(target) =>
-                        target.kind === "module-root"
-                          ? isModuleView(view, target.moduleId)
-                          : target.kind === "registrations-root"
-                            ? isRegistrationView(view)
-                            : target.kind === "registration"
-                              ? view === target.view
-                              : false
-                      }
-                      onNavigate={(target) => {
-                        if (target.kind === "module-root") {
-                          navigate({
-                            to: "/m/$module",
-                            params: { module: target.moduleId },
-                            search: { view: "consult" },
-                          });
-                        } else if (target.kind === "module-task") {
-                          navigate({
-                            to: "/m/$module",
-                            params: { module: target.moduleId },
-                            search: { view: target.task },
-                          });
-                        } else if (target.kind === "registrations-root") {
-                          toggle("registrations");
-                        } else {
-                          navigate({
-                            to: "/",
-                            search: { area: "modules", view: target.view },
-                          });
-                        }
-                      }}
-                    />
-                  ) : null}
-
-                  {activeArea === "value-chain" ? (
-                    <div
-                      key="value-chain"
-                      className="grid gap-1 animate-[slideDown_0.18s_ease-out]"
-                    >
-                      {/* O cadastro foi incorporado ao relatório (tabela editável),
-                          por isso a única entrada é o "Cadastro". */}
-                      <TreeButton
-                        active={view === "value-chain-report"}
-                        onClick={() => setView("value-chain-report")}
-                      >
-                        <Database className="h-4 w-4" /> Cadastro
-                      </TreeButton>
-                    </div>
-                  ) : null}
-
-                  {activeArea === "settings" ? (
-                    <div key="settings" className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                      {isCurrentUserAdmin ? (
-                        <>
-                          <TreeButton active={view === "users"} onClick={() => setView("users")}>
-                            <Users className="h-4 w-4" /> Usuários
-                          </TreeButton>
-                          <TreeButton
-                            active={view === "organizations"}
-                            onClick={() => setView("organizations")}
-                          >
-                            <Building2 className="h-4 w-4" /> Organizações
-                          </TreeButton>
-                        </>
-                      ) : (
-                        <div className="rounded-lg border border-border bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
-                          Configurações administrativas disponíveis apenas para administradores.
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </aside>
-          ) : null}
-
+      <div className="min-h-[calc(100vh-3.5rem)]">
+        <div className="min-w-0">
           <main className={`min-w-0 ${activeArea === "home" ? "p-3 sm:p-5 lg:p-7" : "p-3 sm:p-5"}`}>
             {activeArea === "home" ? (
               <UserTasks

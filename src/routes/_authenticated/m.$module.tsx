@@ -44,7 +44,6 @@ import {
   Network,
   Palette,
   Users,
-  Menu,
   MessageSquare,
   Pencil,
   Plus,
@@ -81,7 +80,7 @@ import { UserProfileMenu } from "@/components/user-profile-menu";
 import {
   TreeButton as ModuleTreeButton,
   WorkspaceModulesTree,
-  WorkspaceRail,
+  WorkspaceLauncher,
   type WorkspaceRailArea,
 } from "@/components/workspace-navigation";
 import { DEFAULT_DOCUMENT_MODELS, type DocumentModelRow } from "@/lib/document-models";
@@ -6481,11 +6480,6 @@ function ModuleWorkspacePage() {
   const [workspace, setWorkspace] = useState<WorkspaceState>(() => defaultWorkspace());
   const [loaded, setLoaded] = useState(false);
   const [railArea, setRailArea] = useState<RailArea>("modules");
-  const [treeOpen, setTreeOpen] = useState(true);
-
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 1023px)").matches) setTreeOpen(false);
-  }, []);
   const [contentMode, setContentMode] = useState<ModuleContentMode>("module");
   const [moduleSurface, setModuleSurface] = useState<ModuleSurface>(() =>
     search.view === "consult" ? "consult" : "editor",
@@ -6845,7 +6839,7 @@ function ModuleWorkspacePage() {
       setRailArea("modules");
       setContentMode("module");
       setModuleSurface("consult");
-      setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
+
       return;
     }
     if (search.view?.startsWith("cause-") && moduleId === "ddp") {
@@ -6853,7 +6847,7 @@ function ModuleWorkspacePage() {
       setContentMode("module");
       setModuleSurface("editor");
       setDdpView("causes");
-      setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
+
       return;
     }
     if (search.view === "new") {
@@ -6862,7 +6856,7 @@ function ModuleWorkspacePage() {
       setModuleSurface("editor");
       setDdpView("editor");
       setModuleEditStarted(true);
-      setTreeOpen(window.matchMedia("(min-width: 1024px)").matches);
+
       return;
     }
     // No view param — always reset to editor to avoid stale surface from previous navigation
@@ -7563,7 +7557,7 @@ function ModuleWorkspacePage() {
       return;
     }
     setRailArea(area);
-    setTreeOpen(true);
+
     if (area === "modules") {
       setContentMode("module");
       setExpandedTree((current) => ({ ...current, modules: true }));
@@ -7587,7 +7581,7 @@ function ModuleWorkspacePage() {
   function openModuleBranch(targetModule: AteliamModule) {
     setRailArea("modules");
     setContentMode("module");
-    setTreeOpen(true);
+
     setExpandedTree((current) => ({ ...current, modules: true, [targetModule]: true }));
     if (targetModule !== moduleId) {
       navigate({ to: "/m/$module", params: { module: targetModule }, search: {} });
@@ -8500,14 +8494,74 @@ function ModuleWorkspacePage() {
   return (
     <div className="min-h-screen bg-background text-foreground" style={moduleGrayVars}>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={() => setTreeOpen((current) => !current)}
-          className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          title={treeOpen ? "Ocultar navegação" : "Mostrar navegação"}
-        >
-          <Menu className="h-4 w-4" />
-        </button>
+        <WorkspaceLauncher activeArea={railArea} onSelect={selectRailArea}>
+          {railArea === "modules" ? (
+            <WorkspaceModulesTree
+              expanded={expandedTree}
+              onToggle={toggleTree}
+              isActive={(target) =>
+                target.kind === "module-root"
+                  ? moduleId === target.moduleId && contentMode === "module"
+                  : target.kind === "module-task"
+                    ? moduleId === target.moduleId &&
+                      contentMode === "module" &&
+                      (target.task === "consult"
+                        ? moduleSurface === "consult"
+                        : target.task === "new"
+                          ? moduleSurface === "editor" && ddpView === "editor"
+                          : target.task === "cause-new"
+                            ? ddpView === "causes" && search.view === "cause-new"
+                            : ddpView === "causes")
+                    : target.kind === "registrations-root"
+                      ? contentMode === "registrations"
+                      : target.kind === "registration"
+                        ? contentMode === "registrations" && registrationView === target.view
+                        : false
+              }
+              onNavigate={(target) => {
+                if (target.kind === "module-root") {
+                  openModuleBranch(target.moduleId);
+                } else if (target.kind === "module-task") {
+                  if (target.task === "new") openNewForModule(target.moduleId);
+                  else if (target.task === "consult") openSearchForModule(target.moduleId);
+                  else if (target.task === "cause-new") openCauses("new");
+                  else openCauses("consult");
+                } else if (target.kind === "registrations-root") {
+                  toggleTree("registrations");
+                } else {
+                  selectRegistration(target.view as ModuleRegistrationView);
+                }
+              }}
+            />
+          ) : null}
+
+          {railArea === "settings" ? (
+            <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
+              {/* Mesmos itens/ícones da página inicial (componentes compartilhados). */}
+              <ModuleTreeButton
+                onClick={() => navigate({ to: "/", search: { area: "settings", view: "users" } })}
+              >
+                <Users className="h-4 w-4" /> Usuários
+              </ModuleTreeButton>
+              <ModuleTreeButton
+                onClick={() =>
+                  navigate({ to: "/", search: { area: "settings", view: "organizations" } })
+                }
+              >
+                <Building2 className="h-4 w-4" /> Organizações
+              </ModuleTreeButton>
+              <ModuleTreeButton
+                active={settingsView === "theme"}
+                onClick={() => selectSettings("theme")}
+              >
+                <Palette className="h-4 w-4" /> Tema
+              </ModuleTreeButton>
+              <ModuleTreeButton onClick={signOut}>
+                <LogOut className="h-4 w-4" /> Sair
+              </ModuleTreeButton>
+            </div>
+          ) : null}
+        </WorkspaceLauncher>
         <button
           type="button"
           onClick={() => navigate({ to: "/" })}
@@ -8568,137 +8622,8 @@ function ModuleWorkspacePage() {
         />
       </header>
 
-      <div className="grid min-h-[calc(100vh-3.5rem)] grid-cols-[52px_minmax(0,1fr)]">
-        <WorkspaceRail activeArea={railArea} onSelect={selectRailArea} />
-
-        <div
-          className={`relative min-w-0 transition-[grid-template-columns] duration-200 lg:grid ${
-            treeOpen ? "lg:grid-cols-[320px_minmax(0,1fr)]" : "lg:grid-cols-[0_minmax(0,1fr)]"
-          }`}
-        >
-          {treeOpen ? (
-            <button
-              type="button"
-              aria-label="Fechar navegação"
-              onClick={() => setTreeOpen(false)}
-              className="fixed bottom-0 left-[372px] right-0 top-14 z-20 bg-foreground/10 backdrop-blur-[1px] lg:hidden"
-            />
-          ) : null}
-          <aside
-            className={`fixed bottom-0 left-[52px] top-14 z-30 min-h-0 w-[min(320px,calc(100vw-52px))] overflow-hidden border-r border-border bg-card shadow-xl lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:self-start lg:w-auto lg:bg-card/58 lg:shadow-none ${
-              treeOpen ? "block" : "hidden lg:block"
-            }`}
-          >
-            <div className="flex h-full flex-col">
-              <div className="border-b border-border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                    navegação
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setTreeOpen(false)}
-                    className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                    title="Recolher painel"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  {railArea === "home" ? (
-                    <Home className="h-4 w-4 text-foreground" />
-                  ) : railArea === "modules" ? (
-                    <GitBranch className="h-4 w-4 text-foreground" />
-                  ) : (
-                    <Settings className="h-4 w-4 text-foreground" />
-                  )}
-                  <div className="truncate font-display text-base font-bold">
-                    {railArea === "home"
-                      ? "Home"
-                      : railArea === "modules"
-                        ? "Processos"
-                        : "Configurações"}
-                  </div>
-                  <div className="mt-2 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{organizationBrand.name ?? "BF Flow"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                {railArea === "modules" ? (
-                  <WorkspaceModulesTree
-                    expanded={expandedTree}
-                    onToggle={toggleTree}
-                    isActive={(target) =>
-                      target.kind === "module-root"
-                        ? moduleId === target.moduleId && contentMode === "module"
-                        : target.kind === "module-task"
-                          ? moduleId === target.moduleId &&
-                            contentMode === "module" &&
-                            (target.task === "consult"
-                              ? moduleSurface === "consult"
-                              : target.task === "new"
-                                ? moduleSurface === "editor" && ddpView === "editor"
-                                : target.task === "cause-new"
-                                  ? ddpView === "causes" && search.view === "cause-new"
-                                  : ddpView === "causes")
-                          : target.kind === "registrations-root"
-                            ? contentMode === "registrations"
-                            : target.kind === "registration"
-                              ? contentMode === "registrations" && registrationView === target.view
-                              : false
-                    }
-                    onNavigate={(target) => {
-                      if (target.kind === "module-root") {
-                        openModuleBranch(target.moduleId);
-                      } else if (target.kind === "module-task") {
-                        if (target.task === "new") openNewForModule(target.moduleId);
-                        else if (target.task === "consult") openSearchForModule(target.moduleId);
-                        else if (target.task === "cause-new") openCauses("new");
-                        else openCauses("consult");
-                      } else if (target.kind === "registrations-root") {
-                        toggleTree("registrations");
-                      } else {
-                        selectRegistration(target.view as ModuleRegistrationView);
-                      }
-                    }}
-                  />
-                ) : null}
-
-                {railArea === "settings" ? (
-                  <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
-                    {/* Mesmos itens/ícones da página inicial (componentes compartilhados). */}
-                    <ModuleTreeButton
-                      onClick={() =>
-                        navigate({ to: "/", search: { area: "settings", view: "users" } })
-                      }
-                    >
-                      <Users className="h-4 w-4" /> Usuários
-                    </ModuleTreeButton>
-                    <ModuleTreeButton
-                      onClick={() =>
-                        navigate({ to: "/", search: { area: "settings", view: "organizations" } })
-                      }
-                    >
-                      <Building2 className="h-4 w-4" /> Organizações
-                    </ModuleTreeButton>
-                    <ModuleTreeButton
-                      active={settingsView === "theme"}
-                      onClick={() => selectSettings("theme")}
-                    >
-                      <Palette className="h-4 w-4" /> Tema
-                    </ModuleTreeButton>
-                    <ModuleTreeButton onClick={signOut}>
-                      <LogOut className="h-4 w-4" /> Sair
-                    </ModuleTreeButton>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </aside>
-
+      <div className="min-h-[calc(100vh-3.5rem)]">
+        <div className="min-w-0">
           <main className="min-w-0 p-3 sm:p-5">
             <section className="min-w-0">
               {saveMut.isError ? (
