@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import { Fragment, useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import "./workspace-launcher.css";
 import {
@@ -344,34 +344,40 @@ export function WorkspaceModulesTree({
   return (
     <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
       {MODULES_TREE_BRANCHES.map((branch) => (
-        <ModuleBranch
-          key={branch.moduleId}
-          title={branch.title}
-          icon={branch.icon}
-          active={branchIsActive(branch.moduleId)}
-          open={!!expanded[branch.moduleId]}
-          onSelect={() => onNavigate({ kind: "module-root", moduleId: branch.moduleId })}
-          onToggle={() => onToggle(branch.moduleId)}
-        >
-          <TreeButton
-            active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
-            onClick={() =>
-              onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
-            }
+        <Fragment key={branch.moduleId}>
+          <ModuleBranch
+            title={branch.title}
+            icon={branch.icon}
+            active={branchIsActive(branch.moduleId)}
+            open={!!expanded[branch.moduleId]}
+            onSelect={() => onNavigate({ kind: "module-root", moduleId: branch.moduleId })}
+            onToggle={() => onToggle(branch.moduleId)}
           >
-            <Plus className="h-4 w-4" /> Novo
-          </TreeButton>
-          <TreeButton
-            active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })}
-            onClick={() =>
-              onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
-            }
-          >
-            <Search className="h-4 w-4" /> Consultar
-          </TreeButton>
+            <TreeButton
+              active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
+              onClick={() =>
+                onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
+              }
+            >
+              <Plus className="h-4 w-4" /> Novo
+            </TreeButton>
+            <TreeButton
+              active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })}
+              onClick={() =>
+                onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
+              }
+            >
+              <Search className="h-4 w-4" /> Consultar
+            </TreeButton>
+          </ModuleBranch>
           {branch.moduleId === "ddp" ? (
-            <TreeSection
+            <ModuleBranch
+              destination={false}
               title="Oportunidades de melhoria"
+              active={["cause-new", "cause-consult"].some((task) =>
+                isActive({ kind: "module-task", moduleId: "ddp", task: task as ModulesTreeTask }),
+              )}
+              onSelect={() => onToggle("causes")}
               icon={<FlaskConical className="h-4 w-4" />}
               open={!!expanded.causes}
               onToggle={() => onToggle("causes")}
@@ -392,9 +398,9 @@ export function WorkspaceModulesTree({
               >
                 <Search className="h-4 w-4" /> Consultar
               </TreeButton>
-            </TreeSection>
+            </ModuleBranch>
           ) : null}
-        </ModuleBranch>
+        </Fragment>
       ))}
 
       <ModuleBranch
