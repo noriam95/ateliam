@@ -1,3 +1,4 @@
+import { visibleModulesFor } from "@/lib/module-visibility";
 import type { SearchSchemaInput } from "@tanstack/react-router";
 import { TaskEditorContext } from "@/components/task-editor-context";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
@@ -8494,9 +8495,20 @@ function ModuleWorkspacePage() {
   return (
     <div className="min-h-screen bg-background text-foreground" style={moduleGrayVars}>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
-        <WorkspaceLauncher activeArea={railArea} onSelect={selectRailArea}>
+        <WorkspaceLauncher
+          visibleModules={visibleModulesFor(
+            meQ.data?.profile,
+            !!meQ.data?.roles?.includes("admin"),
+          )}
+          activeArea={railArea}
+          onSelect={selectRailArea}
+        >
           {railArea === "modules" ? (
             <WorkspaceModulesTree
+              visibleModules={visibleModulesFor(
+                meQ.data?.profile,
+                !!meQ.data?.roles?.includes("admin"),
+              )}
               expanded={expandedTree}
               onToggle={toggleTree}
               isActive={(target) =>
@@ -8599,6 +8611,7 @@ function ModuleWorkspacePage() {
           </select>
         ) : null}
         <UserProfileMenu
+          canConfigure={!!meQ.data?.roles?.includes("admin")}
           email={isDemo ? "analista.local@bfflow.local" : (meQ.data?.profile?.email ?? "")}
           organizationName={organizationBrand.name ?? "BF Flow"}
           profilePhoto={meQ.data?.profile?.avatar_data_url ?? ""}

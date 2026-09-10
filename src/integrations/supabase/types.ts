@@ -617,6 +617,7 @@ export type Database = {
       };
       profiles: {
         Row: {
+          visible_modules?: string[];
           avatar_data_url: string | null;
           created_at: string;
           display_name: string | null;
@@ -627,6 +628,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          visible_modules?: string[];
           avatar_data_url?: string | null;
           created_at?: string;
           display_name?: string | null;
@@ -637,6 +639,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          visible_modules?: string[];
           avatar_data_url?: string | null;
           created_at?: string;
           display_name?: string | null;

@@ -1,3 +1,4 @@
+import { MODULE_IDS } from "@/lib/module-visibility";
 import { Fragment, useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import "./workspace-launcher.css";
@@ -28,11 +29,13 @@ export function WorkspaceLauncher({
   activeArea,
   onSelect,
   activeTask = false,
+  visibleModules = MODULE_IDS,
   children,
 }: {
   activeArea: WorkspaceRailArea;
   onSelect: (area: WorkspaceRailArea) => void;
   activeTask?: boolean;
+  visibleModules?: readonly string[];
   children?: ReactNode;
 }) {
   const id = useId();
@@ -87,48 +90,58 @@ export function WorkspaceLauncher({
             BF Flow <span>Módulos</span>
           </div>
 
-          {entries.map(({ area, label, description, icon: Icon }) => (
-            <div key={area}>
-              <button
-                type="button"
-                className="workspace-launcher-entry"
-                aria-current={activeArea === area && !activeTask ? "page" : undefined}
-                onClick={() => {
-                  onSelect(area);
-                  if (area === "home" || area === "value-chain") close();
-                }}
-              >
-                <span className="workspace-launcher-icon">
-                  <Icon size={22} />
-                </span>
-                <span>
-                  <strong>{label}</strong>
-                  <small>{description}</small>
-                </span>
-                {area === "modules" && <ChevronRight size={16} aria-hidden="true" />}
-              </button>
-              {area === "home" && (
-                <Link
-                  to="/"
-                  search={{ view: "tasks" }}
-                  onClick={close}
-                  aria-current={activeTask ? "page" : undefined}
+          {entries
+            .filter(
+              (entry) =>
+                entry.area === "home" ||
+                (entry.area === "value-chain"
+                  ? visibleModules.includes("value-chain")
+                  : ["ddp", "pop", "bpmn", "improvements", "registrations"].some((id) =>
+                      visibleModules.includes(id),
+                    )),
+            )
+            .map(({ area, label, description, icon: Icon }) => (
+              <div key={area}>
+                <button
+                  type="button"
                   className="workspace-launcher-entry"
+                  aria-current={activeArea === area && !activeTask ? "page" : undefined}
+                  onClick={() => {
+                    onSelect(area);
+                    if (area === "home" || area === "value-chain") close();
+                  }}
                 >
                   <span className="workspace-launcher-icon">
-                    <ListChecks size={22} />
+                    <Icon size={22} />
                   </span>
                   <span>
-                    <strong>Minhas tarefas</strong>
-                    <small>Acompanhe entregas e prazos</small>
+                    <strong>{label}</strong>
+                    <small>{description}</small>
                   </span>
-                </Link>
-              )}
-              {activeArea === area && area !== "home" && children && (
-                <div className="workspace-launcher-context">{children}</div>
-              )}
-            </div>
-          ))}
+                  {area === "modules" && <ChevronRight size={16} aria-hidden="true" />}
+                </button>
+                {area === "home" && visibleModules.includes("tasks") && (
+                  <Link
+                    to="/"
+                    search={{ view: "tasks" }}
+                    onClick={close}
+                    aria-current={activeTask ? "page" : undefined}
+                    className="workspace-launcher-entry"
+                  >
+                    <span className="workspace-launcher-icon">
+                      <ListChecks size={22} />
+                    </span>
+                    <span>
+                      <strong>Minhas tarefas</strong>
+                      <small>Acompanhe entregas e prazos</small>
+                    </span>
+                  </Link>
+                )}
+                {activeArea === area && area !== "home" && children && (
+                  <div className="workspace-launcher-context">{children}</div>
+                )}
+              </div>
+            ))}
         </nav>
       </div>
     </div>
@@ -322,7 +335,9 @@ export function WorkspaceModulesTree({
   onToggle,
   isActive,
   onNavigate,
+  visibleModules = MODULE_IDS,
 }: {
+  visibleModules?: readonly string[];
   expanded: Record<string, boolean>;
   onToggle: (key: string) => void;
   isActive: (target: ModulesTreeTarget) => boolean;
@@ -345,32 +360,38 @@ export function WorkspaceModulesTree({
     <div className="grid gap-1 animate-[slideDown_0.18s_ease-out]">
       {MODULES_TREE_BRANCHES.map((branch) => (
         <Fragment key={branch.moduleId}>
-          <ModuleBranch
-            title={branch.title}
-            icon={branch.icon}
-            active={branchIsActive(branch.moduleId)}
-            open={!!expanded[branch.moduleId]}
-            onSelect={() => onNavigate({ kind: "module-root", moduleId: branch.moduleId })}
-            onToggle={() => onToggle(branch.moduleId)}
-          >
-            <TreeButton
-              active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
-              onClick={() =>
-                onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
-              }
+          {visibleModules.includes(branch.moduleId) && (
+            <ModuleBranch
+              title={branch.title}
+              icon={branch.icon}
+              active={branchIsActive(branch.moduleId)}
+              open={!!expanded[branch.moduleId]}
+              onSelect={() => onNavigate({ kind: "module-root", moduleId: branch.moduleId })}
+              onToggle={() => onToggle(branch.moduleId)}
             >
-              <Plus className="h-4 w-4" /> Novo
-            </TreeButton>
-            <TreeButton
-              active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })}
-              onClick={() =>
-                onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
-              }
-            >
-              <Search className="h-4 w-4" /> Consultar
-            </TreeButton>
-          </ModuleBranch>
-          {branch.moduleId === "ddp" ? (
+              <TreeButton
+                active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
+                onClick={() =>
+                  onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
+                }
+              >
+                <Plus className="h-4 w-4" /> Novo
+              </TreeButton>
+              <TreeButton
+                active={isActive({
+                  kind: "module-task",
+                  moduleId: branch.moduleId,
+                  task: "consult",
+                })}
+                onClick={() =>
+                  onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
+                }
+              >
+                <Search className="h-4 w-4" /> Consultar
+              </TreeButton>
+            </ModuleBranch>
+          )}
+          {branch.moduleId === "ddp" && visibleModules.includes("improvements") ? (
             <ModuleBranch
               destination={false}
               title="Oportunidades de melhoria"
@@ -403,25 +424,27 @@ export function WorkspaceModulesTree({
         </Fragment>
       ))}
 
-      <ModuleBranch
-        destination={false}
-        title="Cadastros"
-        icon={<Database className="h-4 w-4" />}
-        active={registrationsAreActive}
-        open={!!expanded.registrations}
-        onSelect={() => onToggle("registrations")}
-        onToggle={() => onToggle("registrations")}
-      >
-        {MODULES_TREE_REGISTRATIONS.map((item) => (
-          <TreeButton
-            key={item.view}
-            active={isActive({ kind: "registration", view: item.view })}
-            onClick={() => onNavigate({ kind: "registration", view: item.view })}
-          >
-            {item.icon} {item.label}
-          </TreeButton>
-        ))}
-      </ModuleBranch>
+      {visibleModules.includes("registrations") && (
+        <ModuleBranch
+          destination={false}
+          title="Cadastros"
+          icon={<Database className="h-4 w-4" />}
+          active={registrationsAreActive}
+          open={!!expanded.registrations}
+          onSelect={() => onToggle("registrations")}
+          onToggle={() => onToggle("registrations")}
+        >
+          {MODULES_TREE_REGISTRATIONS.map((item) => (
+            <TreeButton
+              key={item.view}
+              active={isActive({ kind: "registration", view: item.view })}
+              onClick={() => onNavigate({ kind: "registration", view: item.view })}
+            >
+              {item.icon} {item.label}
+            </TreeButton>
+          ))}
+        </ModuleBranch>
+      )}
     </div>
   );
 }

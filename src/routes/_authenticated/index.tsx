@@ -1,3 +1,4 @@
+import { visibleModulesFor } from "@/lib/module-visibility";
 import type { SearchSchemaInput } from "@tanstack/react-router";
 import { UserTasks } from "@/components/user-tasks";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -965,12 +966,14 @@ function WorkspaceHome() {
     <div className="min-h-screen bg-background text-foreground" style={workspaceGrayVars}>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
         <WorkspaceLauncher
+          visibleModules={visibleModulesFor(meQ.data?.profile, isCurrentUserAdmin)}
           activeArea={activeArea}
           activeTask={activeArea === "home" && String(view) === "tasks"}
           onSelect={selectArea}
         >
           {activeArea === "modules" ? (
             <WorkspaceModulesTree
+              visibleModules={visibleModulesFor(meQ.data?.profile, isCurrentUserAdmin)}
               key="modules"
               expanded={expanded}
               onToggle={toggle}
@@ -1081,6 +1084,7 @@ function WorkspaceHome() {
         <SystemNotificationsMenu items={activityFeed} />
 
         <UserProfileMenu
+          canConfigure={isCurrentUserAdmin}
           email={email}
           organizationName={organizationName}
           profilePhoto={meQ.data?.profile?.avatar_data_url ?? ""}

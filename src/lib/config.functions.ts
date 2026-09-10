@@ -1,3 +1,4 @@
+import { MODULE_IDS } from "@/lib/module-visibility";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -2133,7 +2134,7 @@ export const listUserAccess = createServerFn({ method: "GET" })
 
     let profilesQuery = supabaseAdmin
       .from("profiles")
-      .select("id, email, username, display_name, organization_id, created_at, updated_at")
+      .select("*")
       .order("created_at", { ascending: true });
     if (!access.isAdmin) {
       const { data: scopedMemberships, error: scopedError } = await supabaseAdmin
@@ -2191,6 +2192,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
       organizationId?: string | null;
       organizationIds?: string[];
       roles: AppRole[];
+      visibleModules?: string[];
     }) =>
       z
         .object({
@@ -2201,6 +2203,9 @@ export const updateUserAccess = createServerFn({ method: "POST" })
           organizationId: z.string().uuid().optional().nullable(),
           organizationIds: z.array(z.string().uuid()).optional(),
           roles: z.array(appRoleSchema).min(1),
+          visibleModules: z
+            .array(z.string().refine((value) => (MODULE_IDS as readonly string[]).includes(value)))
+            .optional(),
         })
         .parse(d),
   )
@@ -2223,6 +2228,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .update({
+        ...(data.visibleModules ? { visible_modules: data.visibleModules } : {}),
         username: data.username ?? null,
         display_name: data.displayName ?? targetProfile.display_name,
         organization_id: targetOrgId,
@@ -2285,6 +2291,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
       organizationId?: string | null;
       organizationIds?: string[];
       roles: AppRole[];
+      visibleModules?: string[];
     }) =>
       z
         .object({
@@ -2295,6 +2302,9 @@ export const createUserAccess = createServerFn({ method: "POST" })
           organizationId: z.string().uuid().optional().nullable(),
           organizationIds: z.array(z.string().uuid()).optional(),
           roles: z.array(appRoleSchema).min(1),
+          visibleModules: z
+            .array(z.string().refine((value) => (MODULE_IDS as readonly string[]).includes(value)))
+            .optional(),
         })
         .parse(d),
   )
@@ -2307,6 +2317,13 @@ export const createUserAccess = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertUsernameAvailable(data.username);
 
+    if (data.visibleModules) {
+      const { error } = await supabaseAdmin.from("profiles").select("visible_modules").limit(0);
+      if (error)
+        throw new Error(
+          "Aplique a atualização de visibilidade de módulos no Supabase antes de salvar usuários.",
+        );
+    }
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
@@ -2325,6 +2342,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: userId,
       email: data.email,
+      ...(data.visibleModules ? { visible_modules: data.visibleModules } : {}),
       username: data.username ?? null,
       display_name: data.displayName || data.email.split("@")[0],
       organization_id: organizationId,

@@ -1,3 +1,4 @@
+import { MODULE_IDS, MODULE_OPTIONS } from "@/lib/module-visibility";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -154,6 +155,7 @@ type OrganizationRow = {
   updated_at?: string;
 };
 type UserAccessRow = {
+  visible_modules?: string[];
   id: string;
   email: string;
   username: string | null;
@@ -514,6 +516,7 @@ export function WorkspaceSystemSettings({
               ? { id: organization.id, name: organization.name, slug: organization.slug }
               : null,
             roles: [draft.role],
+              visible_modules: draft.visibleModules,
             organization_access: organizationAccess,
           };
           setDemoUsers((current) =>
@@ -540,6 +543,7 @@ export function WorkspaceSystemSettings({
               organizationId: draft.organizationId || null,
               organizationIds: draft.organizationIds,
               roles: [draft.role],
+              visibleModules: draft.visibleModules,
             },
           });
         } else {
@@ -555,6 +559,7 @@ export function WorkspaceSystemSettings({
               organizationId: draft.organizationId || null,
               organizationIds: draft.organizationIds,
               roles: [draft.role],
+              visibleModules: draft.visibleModules,
             },
           });
         }
@@ -1249,6 +1254,7 @@ function OrganizationDocumentModelSettings({
 }
 
 type UserDraft = {
+  visibleModules: string[];
   id: string;
   email: string;
   username: string;
@@ -1287,6 +1293,7 @@ function UsersSettings({
     organizationId: organizations[0]?.id ?? "",
     organizationIds: organizations[0]?.id ? [organizations[0].id] : [],
     role: "viewer",
+    visibleModules: [...MODULE_IDS],
   });
   const [draft, setDraft] = useState<UserDraft>(emptyDraft);
   const [formOpen, setFormOpen] = useState(false);
@@ -1338,6 +1345,7 @@ function UsersSettings({
           ? [defaultOrganizationId]
           : [],
       role,
+      visibleModules: row.visible_modules ?? [...MODULE_IDS],
     });
     setFormOpen(true);
   }
@@ -1657,6 +1665,34 @@ function UsersSettings({
                   ))}
                 </select>
               </FormField>
+              <fieldset className="col-span-full rounded-lg border border-border p-4">
+                  <legend className="px-1 text-sm font-semibold">Módulos visíveis</legend>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Todos vêm habilitados por padrão. Administradores visualizam todos os módulos.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {MODULE_OPTIONS.map((option) => (
+                      <label key={option.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          disabled={draft.role === "admin"}
+                          checked={
+                            draft.role === "admin" || draft.visibleModules.includes(option.id)
+                          }
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              visibleModules: event.target.checked
+                                ? [...current.visibleModules, option.id]
+                                : current.visibleModules.filter((id) => id !== option.id),
+                            }))
+                          }
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
               <button
                 type="submit"
                 disabled={

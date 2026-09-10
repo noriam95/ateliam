@@ -50,7 +50,9 @@ export function UserProfileMenu({
   isDemo = false,
   onProfileUpdated,
   onSignOut,
+  canConfigure = false,
 }: {
+  canConfigure?: boolean;
   email: string;
   organizationName: string;
   profilePhoto?: string | null;
@@ -208,14 +210,16 @@ export function UserProfileMenu({
             >
               Trocar senha
             </ProfileAction>
-            <Link
-              to="/settings"
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-popover-foreground transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              <Settings className="h-4 w-4" />
-              Configurações
-            </Link>
+            {canConfigure && (
+              <Link
+                to="/settings"
+                onClick={() => setOpen(false)}
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-popover-foreground transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                <Settings className="h-4 w-4" />
+                Configurações
+              </Link>
+            )}
             <ProfileAction icon={<LogOut className="h-4 w-4" />} onClick={onSignOut} danger>
               Sair do sistema
             </ProfileAction>
