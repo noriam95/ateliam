@@ -28,7 +28,7 @@ export function outlookMeetingUrl(m: TaskMeeting, email = "") {
     subject: m.title,
     startdt: new Date(m.starts_at).toISOString(),
     enddt: new Date(m.ends_at).toISOString(),
-    body: m.agenda + "\nParticipantes: " + m.attendees.join("; "),
+    body: m.agenda,
     to: m.attendees.join(","),
     login_hint: email,
     allday: "false",
@@ -213,6 +213,19 @@ export function TaskMeetings({
                   .split(/[;,\n]+/)
                   .map((x) => x.trim().toLowerCase())
                   .filter(Boolean);
+                const startTime = new Date(String(f.startsAt)).getTime();
+                const endTime = new Date(String(f.endsAt)).getTime();
+                if (
+                  !Number.isFinite(startTime) ||
+                  !Number.isFinite(endTime) ||
+                  endTime <= startTime
+                ) {
+                  setError(
+                    "O fim da reunião deve ser posterior ao início. Confira a data e o horário dos dois campos.",
+                  );
+                  e.currentTarget.querySelector<HTMLInputElement>('[name="endsAt"]')?.focus();
+                  return;
+                }
                 if (
                   String(f.title).trim().length < 2 ||
                   !f.startsAt ||

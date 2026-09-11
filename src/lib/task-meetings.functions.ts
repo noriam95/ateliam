@@ -57,17 +57,22 @@ export const saveTaskMeeting = createServerFn({ method: "POST" })
     z
       .object({
         organizationId: z.string().uuid(),
-        payload: z.object({
-          id: z.string().uuid(),
-          revision: z.number().int().optional(),
-          taskId: z.string().uuid().nullable(),
-          title: z.string().trim().min(2).max(200),
-          startsAt: z.string().datetime(),
-          endsAt: z.string().datetime(),
-          attendees: z.array(z.string().email()).max(50),
-          agenda: z.string().max(2000),
-          status: z.enum(["scheduled", "completed", "cancelled"]),
-        }),
+        payload: z
+          .object({
+            id: z.string().uuid(),
+            revision: z.number().int().optional(),
+            taskId: z.string().uuid().nullable(),
+            title: z.string().trim().min(2).max(200),
+            startsAt: z.string().datetime(),
+            endsAt: z.string().datetime(),
+            attendees: z.array(z.string().email()).max(50),
+            agenda: z.string().max(2000),
+            status: z.enum(["scheduled", "completed", "cancelled"]),
+          })
+          .refine((p) => new Date(p.endsAt).getTime() > new Date(p.startsAt).getTime(), {
+            message: "O fim da reunião deve ser posterior ao início.",
+            path: ["endsAt"],
+          }),
       })
       .parse(v),
   )

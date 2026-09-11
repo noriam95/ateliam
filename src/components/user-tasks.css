@@ -1403,7 +1403,7 @@
   width: 100%;
 }
 .ut-meeting-participants {
-  width: 50%;
+  width: 100%;
 }
 @media (max-width: 540px) {
   .ut-meeting-period {
@@ -1414,4 +1414,7 @@
   }
 }
 
-.ut-dialog .ut-meeting-participants textarea { min-height: 80px; height: 80px; }
+.ut-dialog .ut-meeting-participants textarea {
+  min-height: 80px;
+  height: 80px;
+}
