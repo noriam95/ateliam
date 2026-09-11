@@ -77,3 +77,5 @@ Limpar filtros preserva data, período e formato da agenda. Filtros de tarefas s
 Card de tarefa: encaminhamento único por etapa, com descrição obrigatória preservada para o destinatário e no histórico. Administrador usa o mesmo formulário; demais usuários continuam restritos à responsabilidade. Dados editáveis no cabeçalho conforme as permissões e etapas existentes. Abas seguem navegação por sublinhado de Home/Minhas tarefas. Comentários aceitam até cinco anexos privados de 20 MB; upload com repetição sem reenviar arquivos já carregados. Troca de abas mantém o formulário de dados montado.
 
 Card: encaminhamento e histórico ficam na aba Movimentações. Nova tarefa organiza título, tipo/modalidade, responsável/solicitante, início/término e comentário inicial com anexos. Minhas tarefas abre em Calendário por padrão; links explícitos para Lista/Kanban continuam válidos. Compromissos novos são Agendados; Situação é editável após salvar.
+
+Calendário mensal ajusta a altura ao espaço restante da janela e resume atividades excedentes por dia com abertura da lista completa, sem cortar o acesso aos registros.

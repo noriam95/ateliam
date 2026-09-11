@@ -121,7 +121,9 @@ export function UserTasks({
   const open = (id: string) => change({ id, offset: state.offset });
   const selected = state.id;
   return (
-    <section className="ut-root">
+    <section
+      className={`ut-root ${!overview && state.layout === "calendar" ? "ut-agenda-fit" : ""}`}
+    >
       <nav className="ut-tabs" aria-label="Área pessoal">
         <a href="/" aria-current={overview ? "page" : undefined}>
           Home

@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { TaskDialog } from "./task-dialog";
 import type { ScheduleEntry } from "./task-meetings";
 import { localDay, monthDays, taskDate } from "@/lib/user-tasks";
 import { periodRange, type TaskPeriod } from "@/lib/task-period";
@@ -14,6 +16,26 @@ export function TaskCalendar({
   open: (id: string) => void;
   selectDay: (day: string) => void;
 }) {
+  const viewport = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(420);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  useEffect(() => {
+    const measure = () => {
+      if (viewport.current)
+        setHeight(
+          Math.max(180, window.innerHeight - viewport.current.getBoundingClientRect().top - 56),
+        );
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const observer = new ResizeObserver(measure);
+    if (viewport.current?.closest(".ut-root"))
+      observer.observe(viewport.current.closest(".ut-root")!);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, [period, anchor]);
   const days = periodRange(anchor, period).days;
   const onDay = (day: string) => tasks.filter((t) => t.starts_on <= day && t.due_on >= day);
   if (period === "year")
@@ -66,8 +88,13 @@ export function TaskCalendar({
       </div>
     );
   return (
-    <div className="ut-calendar-wrap">
+    <div ref={viewport} className="ut-calendar-wrap ut-calendar-fit" style={{ height }}>
       <div
+        style={{
+          height: "100%",
+          gridTemplateRows:
+            period === "month" ? `28px repeat(${days.length / 7}, minmax(0,1fr))` : "minmax(0,1fr)",
+        }}
         className={`ut-calendar ${period === "day" ? "ut-calendar-day" : period === "week" ? "ut-calendar-week" : ""}`}
       >
         {period === "month" &&
@@ -93,26 +120,71 @@ export function TaskCalendar({
             {period !== "month" && (
               <small className="ut-muted">Tarefas do dia e reuniões com horário</small>
             )}
-            {onDay(day).map((t) => (
-              <button
-                className={t.meeting ? "ut-meeting-event" : "ut-task-event"}
-                key={t.id}
-                title={t.title}
-                onClick={() => open(t.id)}
-              >
-                <span>
-                  {t.code && `${t.code} · `}
-                  {t.title}
-                </span>
-                {period !== "month" && <small>{t.assignee_name}</small>}
-                {!t.meeting && t.due_on === day && <b>Prazo</b>}
-                {t.meeting && <b>{t.assignee_name}</b>}
+            {onDay(day)
+              .slice(
+                0,
+                Math.max(
+                  0,
+                  Math.floor(
+                    ((height - 28) / (period === "month" ? days.length / 7 : 1) - 30) / 24,
+                  ),
+                ),
+              )
+              .map((t) => (
+                <button
+                  className={t.meeting ? "ut-meeting-event" : "ut-task-event"}
+                  key={t.id}
+                  title={t.title}
+                  onClick={() => open(t.id)}
+                >
+                  <span>
+                    {t.code && `${t.code} · `}
+                    {t.title}
+                  </span>
+                  {period !== "month" && <small>{t.assignee_name}</small>}
+                  {!t.meeting && t.due_on === day && <b>Prazo</b>}
+                  {t.meeting && <b>{t.assignee_name}</b>}
+                </button>
+              ))}
+            {onDay(day).length >
+              Math.max(
+                0,
+                Math.floor(((height - 28) / (period === "month" ? days.length / 7 : 1) - 30) / 24),
+              ) && (
+              <button className="ut-day-more" onClick={() => setExpanded(day)}>
+                +
+                {onDay(day).length -
+                  Math.max(
+                    0,
+                    Math.floor(
+                      ((height - 28) / (period === "month" ? days.length / 7 : 1) - 30) / 24,
+                    ),
+                  )}{" "}
+                atividades
               </button>
-            ))}
+            )}
             {period !== "month" && !onDay(day).length && <p className="ut-muted">Sem atividades</p>}
           </section>
         ))}
       </div>
+      {expanded && (
+        <TaskDialog title={`Atividades · ${taskDate(expanded)}`} onClose={() => setExpanded(null)}>
+          <div className="ut-form">
+            {onDay(expanded).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setExpanded(null);
+                  open(t.id);
+                }}
+              >
+                {t.meeting ? "Reunião" : "Tarefa"} · {t.code} {t.title}
+                {t.meeting ? ` · ${t.assignee_name}` : ""}
+              </button>
+            ))}
+          </div>
+        </TaskDialog>
+      )}
     </div>
   );
 }

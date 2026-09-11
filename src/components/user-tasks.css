@@ -1490,3 +1490,80 @@
     flex-wrap: wrap;
   }
 }
+
+.ut-agenda-fit .ut-heading {
+  margin: 8px 0;
+}
+.ut-agenda-fit .ut-task-filters {
+  margin: 4px 0 8px;
+}
+.ut-agenda-fit .ut-calendar-toolbar {
+  padding: 8px 12px;
+  gap: 8px;
+}
+.ut-agenda-fit .ut-agenda-actions {
+  padding: 6px 12px;
+  margin-bottom: 8px;
+}
+.ut-calendar-fit {
+  overflow: hidden;
+}
+.ut-calendar-fit .ut-calendar {
+  min-width: 0;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.ut-calendar-fit .ut-calendar-day {
+  grid-template-columns: 1fr;
+}
+.ut-calendar-fit .ut-weekday {
+  padding: 5px;
+}
+.ut-calendar-fit .ut-day {
+  min-height: 0;
+  overflow: hidden;
+  padding: 3px 5px;
+}
+.ut-calendar-fit .ut-day time {
+  height: 20px;
+  width: 20px;
+  margin-bottom: 2px;
+}
+.ut-calendar-fit .ut-day button {
+  height: 22px;
+  min-height: 0;
+  padding: 2px 4px;
+  margin: 0 0 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+.ut-calendar-fit .ut-day button b {
+  white-space: nowrap;
+}
+.ut-calendar-fit .ut-day-more {
+  background: transparent;
+  border: 0;
+  color: var(--foreground);
+  font-weight: 600;
+}
+.ut-calendar-fit .ut-day-label,
+.ut-calendar-fit .ut-day > small {
+  display: none;
+}
+.ut-agenda-fit .ut-pagination {
+  margin-top: 6px;
+}
+
+.ut-calendar-fit .ut-day {
+  position: relative;
+}
+.ut-calendar-fit .ut-day .ut-day-more {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  width: auto;
+  height: 20px;
+  padding: 0 3px;
+  margin: 0;
+  font-size: 10px;
+}
