@@ -127,7 +127,7 @@ export function TaskProcessFlow({ task }: { task: UserTask }) {
     <section className="ut-process-panel">
       <p>
         A etapa atual está destacada. Execute as decisões em{" "}
-        <strong>Dados da tarefa → Encaminhamento</strong>.
+        <strong>Movimentações → Encaminhamento</strong>.
       </p>
       <div
         className="ut-flow-scroll"

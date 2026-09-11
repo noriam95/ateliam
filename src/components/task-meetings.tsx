@@ -259,7 +259,7 @@ export function TaskMeetings({
                         endsAt: new Date(String(f.endsAt)).toISOString(),
                         attendees,
                         agenda: String(f.agenda || ""),
-                        status: String(f.status) as TaskMeeting["status"],
+                        status: (current ? String(f.status) : "scheduled") as TaskMeeting["status"],
                       },
                     },
                   });
@@ -337,14 +337,16 @@ export function TaskMeetings({
                     defaultValue={current?.agenda || ""}
                   />
                 </label>
-                <label>
-                  Situação
-                  <select name="status" defaultValue={current?.status || "scheduled"}>
-                    <option value="scheduled">Agendada</option>
-                    <option value="completed">Realizada</option>
-                    <option value="cancelled">Cancelada</option>
-                  </select>
-                </label>
+                {current && (
+                  <label>
+                    Situação
+                    <select name="status" defaultValue={current?.status || "scheduled"}>
+                      <option value="scheduled">Agendada</option>
+                      <option value="completed">Realizada</option>
+                      <option value="cancelled">Cancelada</option>
+                    </select>
+                  </label>
+                )}
                 <p className="ut-muted">
                   Horários no fuso {Intl.DateTimeFormat().resolvedOptions().timeZone}. O envio de
                   convites será confirmado no Outlook.

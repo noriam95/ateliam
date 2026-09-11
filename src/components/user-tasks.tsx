@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { TaskComment, CommentAttachment } from "./task-comment";
 import { TaskMeetings, type ScheduleEntry } from "./task-meetings";
 import { TaskManagement, TaskProcessFlow } from "./task-management";
@@ -14,7 +15,7 @@ import {
 import { TaskChecklist } from "./task-checklist";
 import { TaskRoutingActions } from "./task-routing-actions";
 import { TASK_STAGE_LABELS, type TaskAction } from "@/lib/user-tasks";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -25,6 +26,7 @@ import {
   GitBranch,
   List,
   Plus,
+  Paperclip,
   Search,
   SquareKanban,
   TrendingUp,
@@ -60,9 +62,9 @@ type ViewState = TaskFilters & {
 function parseState(raw?: string): ViewState {
   try {
     const value = raw ? JSON.parse(raw) : {};
-    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    if (!value || typeof value !== "object" || Array.isArray(value)) return { layout: "calendar" };
     const strings = ["q", "status", "kind", "modality", "from", "until", "id", "documentQuery"];
-    const parsed: Record<string, unknown> = {};
+    const parsed: Record<string, unknown> = { layout: "calendar" };
     for (const key of strings) if (typeof value[key] === "string") parsed[key] = value[key];
     if (["list", "kanban", "calendar"].includes(value.layout)) parsed.layout = value.layout;
     if (validDay(value.anchor)) parsed.anchor = value.anchor;
@@ -75,7 +77,7 @@ function parseState(raw?: string): ViewState {
     parsed.team = value.team === true;
     return parsed as ViewState;
   } catch {
-    return {};
+    return { layout: "calendar" };
   }
 }
 const pending = (t: UserTask) => t.checklist.filter((i) => !i.completed);
@@ -228,16 +230,16 @@ export function UserTasks({
                     <button type="submit">Buscar</button>
                   </form>
                   <div className="ut-view-switch" aria-label="Visualização">
-                    {(["list", "kanban", "calendar"] as const).map((v, i) => {
-                      const Icon = [List, SquareKanban, CalendarDays][i];
+                    {(["calendar", "list", "kanban"] as const).map((v, i) => {
+                      const Icon = [CalendarDays, List, SquareKanban][i];
                       return (
                         <button
                           key={v}
-                          aria-pressed={(state.layout || "list") === v}
+                          aria-pressed={(state.layout || "calendar") === v}
                           onClick={() => change({ layout: v })}
                         >
                           <Icon size={16} />
-                          {["Lista", "Kanban", "Calendário"][i]}
+                          {["Calendário", "Lista", "Kanban"][i]}
                         </button>
                       );
                     })}
@@ -757,6 +759,11 @@ function CreateTask({
 }) {
   const command = useServerFn(updateUserTask);
   const [id] = useState(() => crypto.randomUUID());
+  const [files, setFiles] = useState<File[]>([]);
+  const [commentId] = useState(() => crypto.randomUUID());
+  const uploads = useRef(new Map<File, { path: string; name: string; size: number }>());
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [created, setCreated] = useState(false);
   const [comment, setComment] = useState("");
   const [dirty, setDirty] = useState(false);
   const [title, setTitle] = useState("");
@@ -794,7 +801,7 @@ function CreateTask({
                 payload: {
                   id,
                   requestedBy: f.get("requestedBy"),
-                  note: comment,
+                  note: "",
                   title,
                   kind,
                   modality: kind === "mapping" ? f.get("modality") : null,
@@ -804,6 +811,35 @@ function CreateTask({
                 },
               },
             });
+            setCreated(true);
+            if (comment.trim() || files.length) {
+              const attachments = [];
+              for (const file of files) {
+                let attachment = uploads.current.get(file);
+                if (!attachment) {
+                  const path = `${organizationId}/${id}/comments/${data.userId}/${commentId}/${crypto.randomUUID()}/${file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-160)}`;
+                  const result = await supabase.storage
+                    .from("user-task-files")
+                    .upload(path, file, { upsert: false });
+                  if (result.error) throw result.error;
+                  attachment = { path, name: file.name, size: file.size };
+                  uploads.current.set(file, attachment);
+                }
+                attachments.push(attachment);
+              }
+              await command({
+                data: {
+                  organizationId,
+                  action: "comment",
+                  payload: {
+                    id,
+                    commentId,
+                    note: comment.trim() || "Anexos da solicitação inicial.",
+                    attachments,
+                  },
+                },
+              });
+            }
             await saved(id);
             toast.success("Tarefa criada.");
           } catch (err) {
@@ -815,51 +851,65 @@ function CreateTask({
       >
         <div className="ut-form">
           <label>
-            Tipo
-            <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
-              {Object.entries(TASK_KINDS).map(([k, v]) => (
-                <option value={k} key={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
             Título
             <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
           </label>
-          {kind === "mapping" && (
+          <div className="ut-form-row">
             <label>
-              Modalidade
-              <select name="modality">
-                {TASK_MODALITIES.map((m) => (
-                  <option key={m}>{m}</option>
+              Tipo
+              <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+                {Object.entries(TASK_KINDS).map(([k, v]) => (
+                  <option value={k} key={k}>
+                    {v}
+                  </option>
                 ))}
               </select>
             </label>
-          )}
-          <label>
-            Responsável
-            <select name="assignedTo" defaultValue={data.userId}>
-              {data.people
-                .filter((p) => p.can_edit)
-                .map((p) => (
+            {kind === "mapping" && (
+              <label>
+                Modalidade
+                <select name="modality">
+                  {TASK_MODALITIES.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          <div className="ut-form-row">
+            <label>
+              Responsável
+              <select name="assignedTo" defaultValue={data.userId}>
+                {data.people
+                  .filter((p) => p.can_edit)
+                  .map((p) => (
+                    <option value={p.id} key={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              Solicitante
+              <select name="requestedBy" defaultValue={data.userId}>
+                {data.people.map((p) => (
                   <option value={p.id} key={p.id}>
                     {p.name}
                   </option>
                 ))}
-            </select>
-          </label>
-          <label>
-            Solicitante
-            <select name="requestedBy" defaultValue={data.userId}>
-              {data.people.map((p) => (
-                <option value={p.id} key={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              </select>
+            </label>
+          </div>
+          <div className="ut-form-row">
+            <label>
+              Prazo de início
+              <input type="date" name="startsOn" defaultValue={localDay()} />
+            </label>
+            <label>
+              Prazo de término
+              <input type="date" name="dueOn" />
+            </label>
+          </div>
           <label>
             Comentário inicial (opcional)
             <textarea
@@ -871,16 +921,47 @@ function CreateTask({
               placeholder="Descreva a solicitação ou as orientações para esta tarefa."
             />
           </label>
-          <div className="ut-form-row">
-            <label>
-              Início
-              <input type="date" name="startsOn" defaultValue={localDay()} />
-            </label>
-            <label>
-              Prazo
-              <input type="date" name="dueOn" />
-            </label>
-          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            hidden
+            onChange={(e) => {
+              const selected = Array.from(e.target.files || []);
+              if (
+                files.length + selected.length > 5 ||
+                selected.some((f) => !f.size || f.size > 20 * 1024 * 1024)
+              ) {
+                setError("Selecione até 5 arquivos de até 20 MB.");
+              } else {
+                setFiles([...files, ...selected]);
+                setDirty(true);
+                setError("");
+              }
+              e.target.value = "";
+            }}
+          />
+          <button type="button" disabled={busy} onClick={() => fileInput.current?.click()}>
+            <Paperclip size={16} /> Anexar arquivos
+          </button>
+          {files.map((f, i) => (
+            <div key={i}>
+              {f.name}{" "}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setFiles(files.filter((_, j) => j !== i))}
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+          {created && (
+            <p role="status">
+              Tarefa registrada. Se o comentário ou algum anexo falhar, tente novamente para
+              concluir a inclusão sem criar outra tarefa.
+            </p>
+          )}
           {error && (
             <p role="alert" className="ut-error">
               {error}
@@ -990,6 +1071,12 @@ function TaskDetails({
             <button aria-pressed={detailTab === "data"} onClick={() => setDetailTab("data")}>
               Dados da tarefa
             </button>
+            <button
+              aria-pressed={detailTab === "movements"}
+              onClick={() => setDetailTab("movements")}
+            >
+              Movimentações
+            </button>
             <button aria-pressed={detailTab === "flow"} onClick={() => setDetailTab("flow")}>
               Fluxo do processo
             </button>
@@ -1000,6 +1087,46 @@ function TaskDetails({
               Reuniões
             </button>
           </nav>
+          <section
+            hidden={detailTab !== "movements"}
+            className="ut-movements"
+            onChange={() => setFieldsDirty(true)}
+          >
+            {t.routing_description && (
+              <div className="ut-routing-description">
+                <strong>Último encaminhamento</strong>
+                <p style={{ whiteSpace: "pre-wrap" }}>{t.routing_description}</p>
+              </div>
+            )}
+            {canAct && data && (
+              <TaskRoutingActions
+                key={`${t.id}:${t.stage}:${t.status}:${t.assigned_to}`}
+                task={t}
+                data={data}
+                busy={busy}
+                write={write}
+              />
+            )}
+            {error && (
+              <p role="alert" className="ut-error">
+                {error}
+              </p>
+            )}
+            <h3>Histórico de movimentações</h3>
+            {data?.events
+              .filter((ev) => ev.action !== "Comentário" && !ev.action.startsWith("Reunião"))
+              .map((ev) => (
+                <article className="ut-activity" key={ev.id}>
+                  <div>
+                    <strong>
+                      {ev.actor_name} · {ev.action}
+                    </strong>
+                    <small>{new Date(ev.created_at).toLocaleString("pt-BR")}</small>
+                    <p style={{ whiteSpace: "pre-wrap" }}>{ev.note}</p>
+                  </div>
+                </article>
+              ))}
+          </section>
           {detailTab === "flow" && <TaskProcessFlow task={t} />}
           {detailTab === "meetings" && (
             <TaskMeetings
@@ -1095,15 +1222,7 @@ function TaskDetails({
                       setBusy={setBusy}
                     />
                   </section>
-                  {canAct && data && (
-                    <TaskRoutingActions
-                      key={`${t.id}:${t.stage}:${t.status}:${t.assigned_to}`}
-                      task={t}
-                      data={data}
-                      busy={busy}
-                      write={write}
-                    />
-                  )}
+
                   {error && (
                     <p role="alert" className="ut-error">
                       {error}
