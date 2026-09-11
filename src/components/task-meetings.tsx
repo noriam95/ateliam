@@ -21,7 +21,7 @@ const datetime = (value: string) => {
     String(d.getMinutes()).padStart(2, "0")
   );
 };
-export function outlookMeetingUrl(m: TaskMeeting) {
+export function outlookMeetingUrl(m: TaskMeeting, email = "") {
   const q = new URLSearchParams({
     path: "/calendar/action/compose",
     rru: "addevent",
@@ -29,9 +29,11 @@ export function outlookMeetingUrl(m: TaskMeeting) {
     startdt: new Date(m.starts_at).toISOString(),
     enddt: new Date(m.ends_at).toISOString(),
     body: m.agenda + "\nParticipantes: " + m.attendees.join("; "),
-    to: m.attendees.join(";"),
+    to: m.attendees.join(","),
+    login_hint: email,
+    allday: "false",
   });
-  return "https://outlook.office.com/calendar/0/deeplink/compose?" + q;
+  return "https://outlook.office.com/calendar/deeplink/compose?" + q;
 }
 export function TaskMeetings({
   organizationId,
@@ -184,9 +186,13 @@ export function TaskMeetings({
                 Reunião salva no BF Flow. Revise o compromisso e confirme os participantes no
                 Outlook.
               </p>
+              <p className="ut-muted">
+                Conta: {query.data?.userEmail || "sua conta Microsoft"}. Se a nova aba não abriu,
+                use o botão abaixo.
+              </p>
               <a
                 className="ut-primary"
-                href={outlookMeetingUrl(saved)}
+                href={outlookMeetingUrl(saved, query.data?.userEmail)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -220,6 +226,13 @@ export function TaskMeetings({
                   return;
                 }
                 setBusy(true);
+                // Reserve the tab during the click, before the asynchronous save.
+                const outlookWindow = window.open("about:blank", "_blank");
+                if (outlookWindow) {
+                  outlookWindow.opener = null;
+                  outlookWindow.document.title = "Preparando compromisso";
+                  outlookWindow.document.body.textContent = "Salvando compromisso no BF Flow…";
+                }
                 try {
                   const m = await save({
                     data: {
@@ -239,10 +252,14 @@ export function TaskMeetings({
                   });
                   setSaved(m);
                   setDirty(false);
+                  if (outlookWindow && !outlookWindow.closed) {
+                    outlookWindow.location.replace(outlookMeetingUrl(m, query.data?.userEmail));
+                  }
                   await query.refetch();
                   await cache.invalidateQueries({ queryKey: ["task-detail", organizationId] });
                   await cache.invalidateQueries({ queryKey: ["user-tasks", organizationId] });
                 } catch (err) {
+                  if (outlookWindow && !outlookWindow.closed) outlookWindow.close();
                   setError((err as Error).message);
                 } finally {
                   setBusy(false);
@@ -269,23 +286,25 @@ export function TaskMeetings({
                     )}
                   </select>
                 </label>
-                <label>
-                  Início
-                  <input
-                    name="startsAt"
-                    type="datetime-local"
-                    defaultValue={current ? datetime(current.starts_at) : anchor + "T09:00"}
-                  />
-                </label>
-                <label>
-                  Fim
-                  <input
-                    name="endsAt"
-                    type="datetime-local"
-                    defaultValue={current ? datetime(current.ends_at) : anchor + "T10:00"}
-                  />
-                </label>
-                <label>
+                <div className="ut-meeting-period">
+                  <label>
+                    Início
+                    <input
+                      name="startsAt"
+                      type="datetime-local"
+                      defaultValue={current ? datetime(current.starts_at) : anchor + "T09:00"}
+                    />
+                  </label>
+                  <label>
+                    Fim
+                    <input
+                      name="endsAt"
+                      type="datetime-local"
+                      defaultValue={current ? datetime(current.ends_at) : anchor + "T10:00"}
+                    />
+                  </label>
+                </div>
+                <label className="ut-meeting-participants">
                   Participantes (e-mails)
                   <textarea
                     className="resize-none"
@@ -318,7 +337,7 @@ export function TaskMeetings({
                   convites será confirmado no Outlook.
                 </p>
                 <button className="ut-primary" disabled={busy}>
-                  Salvar compromisso
+                  Salvar e abrir no Outlook
                 </button>
               </fieldset>
               {error && (

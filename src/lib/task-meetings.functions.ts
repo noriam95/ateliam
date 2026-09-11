@@ -44,7 +44,12 @@ export const loadTaskMeetings = createServerFn({ method: "POST" })
           ? "Aplique a atualização de reuniões no Supabase."
           : error.message,
       );
-    return { meetings: rows as TaskMeeting[], total: count || 0, userId: context.userId };
+    return {
+      meetings: rows as TaskMeeting[],
+      total: count || 0,
+      userId: context.userId,
+      userEmail: String(context.claims.email || ""),
+    };
   });
 export const saveTaskMeeting = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
