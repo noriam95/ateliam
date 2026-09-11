@@ -845,7 +845,12 @@ function CreateTask({
             await saved(id);
             toast.success("Tarefa criada.");
           } catch (err) {
-            setError((err as Error).message);
+            const message = (err as Error).message;
+            setError(
+              /row-level security/i.test(message)
+                ? "O Supabase bloqueou o anexo. Aplique a atualização de encaminhamento e anexos no banco e tente novamente nesta mesma janela; a tarefa já registrada não será duplicada."
+                : message,
+            );
           } finally {
             setBusy(false);
           }
@@ -975,7 +980,7 @@ function CreateTask({
             Cancelar
           </button>
           <button className="ut-primary" disabled={busy}>
-            {busy ? "Salvando…" : "Criar tarefa"}
+            {busy ? "Salvando…" : created ? "Concluir comentário e anexos" : "Criar tarefa"}
           </button>
         </footer>
       </form>
