@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   TASK_STAGE_LABELS,
-  TASK_STATUS_LABELS,
   TASK_STATUSES,
+  TASK_STATUS_LABELS,
+  type TaskAction,
   type TaskFeed,
   type UserTask,
-  type TaskAction,
 } from "@/lib/user-tasks";
 export function TaskRoutingActions({
   task,
@@ -18,316 +18,164 @@ export function TaskRoutingActions({
   busy: boolean;
   write: (action: TaskAction, payload: Record<string, unknown>) => Promise<boolean | undefined>;
 }) {
-  const [action, setAction] = useState<{
-    kind: TaskAction;
-    payload: Record<string, unknown>;
-    label: string;
-  } | null>(null);
+  const options: [TaskAction, string][] =
+    task.status === "paused"
+      ? [["resume", "Retomar tarefa"]]
+      : task.kind !== "mapping"
+        ? [["transition", "Alterar situação"]]
+        : (
+            {
+              intake: [
+                ["start_documentation", "Seguir para preenchimento"],
+                ["request_complement", "Solicitar complemento da demanda"],
+              ],
+              registration: [["resubmit", "Retornar para análise da demanda"]],
+              documentation: [["send_review", "Enviar para revisão técnica"]],
+              technical_review: [
+                ["approve_review", "Aprovar revisão técnica"],
+                ["request_adjustments", "Solicitar ajustes na documentação"],
+              ],
+              owner_approval: [
+                ["record_owner_approval", "Registrar aprovação da área e concluir"],
+                ["request_adjustments", "Solicitar ajustes na documentação"],
+              ],
+            } as Record<string, [TaskAction, string][]>
+          )[task.stage] || [];
+  if (
+    task.status !== "paused" &&
+    task.status !== "completed" &&
+    (data.isAdmin || (task.assigned_to === data.userId && task.documenter_id === data.userId))
+  )
+    options.push(["pause", "Marcar como parada"]);
+  const [decision, setDecision] = useState<TaskAction>(options[0]?.[0] || "transition");
+  const [note, setNote] = useState("");
   const [error, setError] = useState("");
-  const confirmation = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (action) confirmation.current?.focus();
-  }, [action]);
+  const [pending, setPending] = useState<Record<string, unknown> | null>(null);
   const missing = task.checklist.filter(
-    (i) => !i.optional && !i.completed && (task.kind !== "mapping" || i.key !== "validation"),
+    (i) => !i.optional && !i.completed && i.key !== "validation",
   );
-  async function submit(kind: TaskAction, payload: Record<string, unknown>, label: string) {
-    setError("");
-    if (
-      ["send_review", "approve_review", "record_owner_approval", "transition"].includes(kind) &&
-      missing.length
-    ) {
-      setAction({ kind, payload, label });
-      return;
+  async function apply(payload: Record<string, unknown>) {
+    if (await write(decision, payload)) {
+      setNote("");
+      setPending(null);
     }
-    await write(kind, payload);
   }
-  const fields = (form: HTMLFormElement) => Object.fromEntries(new FormData(form));
+  if (!options.length || task.status === "completed") return null;
   return (
-    <div className="ut-routing">
-      {task.kind === "mapping" ? (
-        <>
-          <h3>Encaminhamento · {TASK_STAGE_LABELS[task.stage]}</h3>
-          {task.stage === "intake" && (
-            <form
-              className="ut-form"
-              noValidate
-              onSubmit={(e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                const decision = String(f.get("decision"));
-                const note = String(f.get("note") || "");
-                if (decision === "request_complement" && note.trim().length < 3) {
-                  setError("Descreva o complemento solicitado.");
-                  return;
-                }
-                void write(decision as TaskAction, { note });
-              }}
-            >
-              <label>
-                Decisão sobre a demanda
-                <select name="decision">
-                  <option value="start_documentation">Seguir para preenchimento</option>
-                  <option value="request_complement">Solicitar complemento da demanda</option>
-                </select>
-              </label>
-              <label>
-                Orientações
-                <textarea name="note" rows={3} className="resize-none" />
-              </label>
-              <button disabled={busy} className="ut-primary">
-                Confirmar encaminhamento
-              </button>
-            </form>
-          )}
-          {task.stage === "registration" && (
-            <form
-              className="ut-form"
-              noValidate
-              onSubmit={(e) => {
-                e.preventDefault();
-                const note = String(new FormData(e.currentTarget).get("note") || "");
-                if (note.trim().length < 3) {
-                  setError("Descreva o complemento realizado.");
-                  return;
-                }
-                void write("resubmit", { note });
-              }}
-            >
-              <p>{task.adjustment_request}</p>
-              <label>
-                Complemento da demanda
-                <textarea name="note" rows={4} className="resize-none" />
-              </label>
-              <button disabled={busy} className="ut-primary">
-                Retornar para análise da demanda
-              </button>
-            </form>
-          )}
-          {task.stage === "documentation" && (
-            <form
-              noValidate
-              className="ut-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const values = fields(e.currentTarget);
-                if (!values.reviewerId) {
-                  setError("Selecione o responsável técnico.");
-                  return;
-                }
-                void submit("send_review", values, "Enviar para revisão técnica");
-              }}
-            >
-              <label>
-                Responsável técnico
-                <select name="reviewerId" defaultValue={task.reviewer_id || ""}>
-                  <option value="">Selecione um usuário</option>
-                  {data.people
-                    .filter((p) => p.can_edit)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <button className="ut-primary" disabled={busy}>
-                Enviar para revisão técnica
-              </button>
-            </form>
-          )}
-          {task.stage === "technical_review" && (
-            <form
-              noValidate
-              className="ut-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void submit("approve_review", fields(e.currentTarget), "Aprovar revisão técnica");
-              }}
-            >
-              <p>
-                Ao aprovar, a tarefa retorna para{" "}
-                {data.people.find((p) => p.id === task.documenter_id)?.name ||
-                  "o responsável pela documentação"}{" "}
-                coletar a aprovação do dono do processo.
-              </p>
-              <label>
-                Parecer técnico
-                <textarea className="resize-none" name="note" rows={3} />
-              </label>
-              <button className="ut-primary" disabled={busy}>
-                Aprovar revisão técnica
-              </button>
-            </form>
-          )}
-          {task.stage === "owner_approval" && (
-            <form
-              noValidate
-              className="ut-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const values = fields(e.currentTarget);
-                if (String(values.note || "").trim().length < 3) {
-                  setError("Registre o nome do dono do processo e a evidência da aprovação.");
-                  return;
-                }
-                void submit("record_owner_approval", values, "Registrar aprovação do dono");
-              }}
-            >
-              <p>Registre a aprovação coletada com o dono do processo.</p>
-              <label>
-                Dono do processo e evidência da aprovação
-                <textarea
-                  className="resize-none"
-                  name="note"
-                  rows={4}
-                  placeholder="Nome, data e referência do e-mail, reunião ou documento de aprovação"
-                />
-              </label>
-              <button className="ut-primary" disabled={busy}>
-                Registrar aprovação do dono e concluir
-              </button>
-            </form>
-          )}
-          {["technical_review", "owner_approval"].includes(task.stage) && (
-            <details>
-              <summary>Solicitar ajustes</summary>
-              <form
-                noValidate
-                className="ut-form"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const values = fields(e.currentTarget);
-                  if (String(values.note || "").trim().length < 3) {
-                    setError("Descreva os ajustes solicitados.");
-                    return;
-                  }
-                  setError("");
-                  await write("request_adjustments", values);
-                }}
-              >
-                <label>
-                  Ajustes solicitados
-                  <textarea className="resize-none" name="note" rows={4} />
-                </label>
-                <p>
-                  A tarefa retorna à documentação, sob responsabilidade de{" "}
-                  {data.people.find((p) => p.id === task.documenter_id)?.name ||
-                    "quem inseriu a demanda"}
-                  .
-                </p>
-                <button disabled={busy}>Enviar para ajustes na documentação</button>
-              </form>
-            </details>
-          )}
-        </>
-      ) : (
-        <form
-          noValidate
-          className="ut-actions"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void submit("transition", fields(e.currentTarget), "Alterar situação");
-          }}
-        >
+    <section className="ut-routing">
+      <h3>Encaminhamento · {TASK_STAGE_LABELS[task.stage] || TASK_STATUS_LABELS[task.status]}</h3>
+      <form
+        className="ut-form"
+        noValidate
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError("");
+          const payload = Object.fromEntries(new FormData(e.currentTarget));
+          if (note.trim().length < 3) {
+            setError("Descreva a orientação, o parecer ou o motivo do encaminhamento.");
+            return;
+          }
+          if (decision === "send_review" && !payload.reviewerId) {
+            setError("Selecione o responsável técnico.");
+            return;
+          }
+          if (
+            ["send_review", "approve_review", "record_owner_approval", "transition"].includes(
+              decision,
+            ) &&
+            missing.length
+          ) {
+            setPending(payload);
+            return;
+          }
+          await apply(payload);
+        }}
+      >
+        <label>
+          Ação
+          <select
+            value={decision}
+            onChange={(e) => {
+              setDecision(e.target.value as TaskAction);
+              setPending(null);
+            }}
+          >
+            {options.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {decision === "send_review" && (
+          <label>
+            Responsável técnico
+            <select name="reviewerId" defaultValue={task.reviewer_id || ""}>
+              <option value="">Selecione um usuário</option>
+              {data.people
+                .filter((p) => p.can_edit)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+        {decision === "transition" && (
           <label>
             Situação
             <select name="status" defaultValue={task.status}>
-              {TASK_STATUSES.map((s) => (
+              {TASK_STATUSES.filter((s) => s !== "paused").map((s) => (
                 <option key={s} value={s}>
                   {TASK_STATUS_LABELS[s]}
                 </option>
               ))}
             </select>
           </label>
-          <button className="ut-primary" disabled={busy}>
-            Alterar situação
-          </button>
-        </form>
-      )}
-      {data.isAdmin && (
-        <details>
-          <summary>Movimentação administrativa</summary>
-          <form
-            noValidate
-            className="ut-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const values = fields(e.currentTarget);
-              if (String(values.note || "").trim().length < 3) {
-                setError("Informe o motivo da movimentação.");
-                return;
-              }
-              setError("");
-              void write(task.kind === "mapping" ? "admin_move" : "assign", values);
+        )}
+        <label>
+          {decision === "record_owner_approval"
+            ? "Descrição da aprovação — dono do processo e evidência"
+            : "Descrição do encaminhamento"}
+          <textarea
+            className="resize-none"
+            name="note"
+            rows={4}
+            maxLength={10000}
+            value={note}
+            onChange={(e) => {
+              setNote(e.target.value);
+              setPending(null);
             }}
-          >
-            {task.kind === "mapping" && (
-              <label>
-                Etapa
-                <select name="stage" defaultValue={task.stage}>
-                  {Object.entries(TASK_STAGE_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label>
-              Responsável
-              <select name="assignedTo" defaultValue={task.assigned_to}>
-                {data.people
-                  .filter((p) => p.can_edit)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <label>
-              Motivo
-              <textarea className="resize-none" name="note" rows={3} />
-            </label>
-            <p>
-              O administrador pode movimentar a tarefa em qualquer etapa. A movimentação e os itens
-              pendentes permanecem no histórico.
-            </p>
-            <button disabled={busy}>Aplicar movimentação</button>
-          </form>
-        </details>
-      )}
+            placeholder="Registre o que foi realizado e o que o próximo responsável deverá fazer."
+          />
+        </label>
+        <button className="ut-primary" disabled={busy}>
+          Confirmar encaminhamento
+        </button>
+      </form>
       {error && (
         <p role="alert" className="ut-error">
           {error}
         </p>
       )}
-      {action && (
-        <div className="ut-warning" role="alert" ref={confirmation} tabIndex={-1}>
-          <strong>Deseja avançar mesmo sem concluir todo o checklist?</strong>
+      {pending && (
+        <div role="alert" className="ut-warning">
+          <strong>Avançar com itens pendentes?</strong>
           <ul>
             {missing.map((i) => (
               <li key={i.key}>{i.label}</li>
             ))}
           </ul>
-          <p>Esses itens continuarão identificados como pendentes.</p>
-          <div className="ut-inline">
-            <button disabled={busy} onClick={() => setAction(null)}>
-              Voltar ao checklist
-            </button>
-            <button
-              disabled={busy}
-              onClick={async () => {
-                if (await write(action.kind, { ...action.payload, confirmPending: true }))
-                  setAction(null);
-              }}
-            >
-              {action.label} com pendências
-            </button>
-          </div>
+          <button disabled={busy} onClick={() => setPending(null)}>
+            Voltar
+          </button>
+          <button disabled={busy} onClick={() => apply({ ...pending, confirmPending: true })}>
+            Confirmar com pendências
+          </button>
         </div>
       )}
-    </div>
+    </section>
   );
 }

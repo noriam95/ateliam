@@ -1418,3 +1418,55 @@
   min-height: 80px;
   height: 80px;
 }
+
+.ut-dialog .ut-detail-tabs {
+  gap: 20px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.ut-dialog .ut-detail-tabs button {
+  border: 0;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 14px 0;
+}
+.ut-dialog .ut-detail-tabs button[aria-pressed="true"] {
+  border-bottom-color: var(--primary);
+  background: transparent;
+  font-weight: 600;
+}
+.ut-header-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ut-header-fields > button {
+  justify-self: start;
+  align-self: end;
+}
+.ut-routing-description {
+  padding: 12px;
+  background: var(--muted);
+  border-radius: 6px;
+}
+@media (max-width: 540px) {
+  .ut-header-fields {
+    grid-template-columns: 1fr;
+  }
+  .ut-dialog .ut-detail-tabs {
+    gap: 12px;
+  }
+}
+
+.ut-dialog .ut-header-fields {
+  padding: 0;
+  margin: 12px 0 20px;
+}
+.ut-comment-files {
+  margin: 10px 0;
+}
+.ut-comment-files small {
+  display: block;
+  color: var(--muted-foreground);
+}

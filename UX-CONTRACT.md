@@ -72,3 +72,6 @@ Visibilidade por usuário: Configurações aparece apenas para o perfil admin vi
 - Formulário de mapeamento usa visão por ícone e menu de salvamento com Rascunho/Salvar. POP mantém seus controles.
 
 Limpar filtros preserva data, período e formato da agenda. Filtros de tarefas são distintos das opções de visibilidade de tarefas/reuniões.
+
+
+Card de tarefa: encaminhamento único por etapa, com descrição obrigatória preservada para o destinatário e no histórico. Administrador usa o mesmo formulário; demais usuários continuam restritos à responsabilidade. Dados editáveis no cabeçalho conforme as permissões e etapas existentes. Abas seguem navegação por sublinhado de Home/Minhas tarefas. Comentários aceitam até cinco anexos privados de 20 MB; upload com repetição sem reenviar arquivos já carregados. Troca de abas mantém o formulário de dados montado.

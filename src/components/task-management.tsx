@@ -17,10 +17,9 @@ export function TaskManagement({
     data.isAdmin || (task.assigned_to === data.userId && task.documenter_id === data.userId);
   if (!allowed || task.status === "completed") return null;
   return (
-    <details className="ut-management">
-      <summary>Dados e responsabilidade da tarefa</summary>
+    <div className="ut-header-editor">
       <form
-        className="ut-form"
+        className="ut-form ut-header-fields"
         noValidate
         key={task.revision}
         onSubmit={async (e) => {
@@ -106,34 +105,10 @@ export function TaskManagement({
           <button onClick={() => setConfirm(null)}>Cancelar</button>
         </div>
       )}
-      {task.status === "paused" ? (
-        <button disabled={busy} onClick={() => write("resume", {})}>
-          Retomar tarefa
-        </button>
-      ) : (
-        <form
-          className="ut-form"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            const note = String(new FormData(e.currentTarget).get("note") || "");
-            if (note.trim().length < 3) {
-              setError("Informe o motivo da parada.");
-              return;
-            }
-            void write("pause", { note });
-          }}
-        >
-          <label>
-            Motivo da parada
-            <textarea name="note" rows={2} className="resize-none" />
-          </label>
-          <button disabled={busy}>Marcar como parada</button>
-        </form>
-      )}
-    </details>
+    </div>
   );
 }
+
 export function TaskProcessFlow({ task }: { task: UserTask }) {
   const nodes = [
     { key: "registration", x: 90, y: 65, label: "Registro da tarefa" },

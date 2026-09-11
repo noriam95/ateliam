@@ -38,6 +38,7 @@ export const taskCode = (task: { task_code?: string; code?: string }) =>
   task.task_code || (task.code?.startsWith("TAR.") ? task.code : "Código pendente");
 export type UserTask = {
   task_code?: string;
+  routing_description?: string;
   review_started?: boolean;
   latest_activity?: { action: string; note: string; created_at: string } | null;
   id: string;
@@ -78,6 +79,7 @@ export type TaskFeed = {
     action: string;
     note: string;
     created_at: string;
+    attachments?: { path: string; name: string; size: number }[];
     actor_photo?: string | null;
     actor_name: string;
   }[];

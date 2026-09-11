@@ -1,3 +1,4 @@
+import { TaskComment, CommentAttachment } from "./task-comment";
 import { TaskMeetings, type ScheduleEntry } from "./task-meetings";
 import { TaskManagement, TaskProcessFlow } from "./task-management";
 import { TaskKanbanCard } from "./task-kanban-card";
@@ -921,7 +922,8 @@ function TaskDetails({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [detailTab, setDetailTab] = useState("data");
-  const [comment, setComment] = useState("");
+  const [commentDirty, setCommentDirty] = useState(false);
+  const [fieldsDirty, setFieldsDirty] = useState(false);
   const data = query.data;
   const t = data?.tasks[0];
   const canAct = !!t && data?.canCreate && (data?.isAdmin || data?.userId === t.assigned_to);
@@ -939,6 +941,7 @@ function TaskDetails({
       const result = await command({
         data: { organizationId, action, payload: { id, revision: t.revision, ...payload } },
       });
+      if (action !== "comment") setFieldsDirty(false);
       await query.refetch();
       await changed();
       toast.success(action === "comment" ? "Comentário registrado." : "Tarefa atualizada.");
@@ -966,7 +969,7 @@ function TaskDetails({
   return (
     <TaskDialog
       wide
-      dirty={!!comment.trim()}
+      dirty={commentDirty || fieldsDirty}
       title={t ? `${taskCode(t)} · ${t.title}` : "Detalhes da tarefa"}
       onClose={close}
       busy={busy}
@@ -997,44 +1000,57 @@ function TaskDetails({
               Reuniões
             </button>
           </nav>
-          {detailTab === "flow" ? (
-            <TaskProcessFlow task={t} />
-          ) : detailTab === "meetings" ? (
+          {detailTab === "flow" && <TaskProcessFlow task={t} />}
+          {detailTab === "meetings" && (
             <TaskMeetings
               organizationId={organizationId}
               tasks={[t]}
               taskId={t.id}
               isAdmin={data?.isAdmin}
             />
-          ) : (
+          )}
+          <div hidden={detailTab !== "data"}>
             <div className="ut-detail-grid">
               <section className="ut-detail-main">
-                <div className="ut-detail">
+                <div className="ut-detail" onChange={() => setFieldsDirty(true)}>
                   <div className="ut-inline">
                     <span className={`ut-status ut-status-${t.status}`}>
                       {TASK_STATUS_LABELS[t.status]}
                     </span>
                     {t.kind === "mapping" && <strong>{TASK_STAGE_LABELS[t.stage]}</strong>}
                   </div>
-                  <div className="ut-detail-meta">
-                    <span>
-                      <small>Responsável atual</small>
-                      {t.assignee_name}
-                    </span>
-                    <span>
-                      <small>Solicitante</small>
-                      {t.requester_name}
-                    </span>
-                    <span>
-                      <small>Tipo / modalidade</small>
-                      {TASK_KINDS[t.kind]}
-                      {t.modality ? ` · ${t.modality}` : ""}
-                    </span>
-                    <span>
-                      <small>Período / prazo</small>
-                      {taskDate(t.starts_on)} a {taskDate(t.due_on)}
-                    </span>
-                  </div>
+                  {data &&
+                  (data.isAdmin ||
+                    (t.assigned_to === data.userId && t.documenter_id === data.userId)) &&
+                  t.status !== "completed" ? (
+                    <TaskManagement task={t} data={data} busy={busy} write={write} />
+                  ) : (
+                    <div className="ut-detail-meta">
+                      <span>
+                        <small>Responsável atual</small>
+                        {t.assignee_name}
+                      </span>
+                      <span>
+                        <small>Solicitante</small>
+                        {t.requester_name}
+                      </span>
+                      <span>
+                        <small>Tipo / modalidade</small>
+                        {TASK_KINDS[t.kind]}
+                        {t.modality ? ` · ${t.modality}` : ""}
+                      </span>
+                      <span>
+                        <small>Período / prazo</small>
+                        {taskDate(t.starts_on)} a {taskDate(t.due_on)}
+                      </span>
+                    </div>
+                  )}
+                  {t.routing_description && (
+                    <div className="ut-routing-description">
+                      <strong>Último encaminhamento</strong>
+                      <p style={{ whiteSpace: "pre-wrap" }}>{t.routing_description}</p>
+                    </div>
+                  )}
                   {t.adjustment_request && t.stage === "documentation" && (
                     <div className="ut-warning">
                       <strong>Ajustes solicitados</strong>
@@ -1079,16 +1095,15 @@ function TaskDetails({
                       setBusy={setBusy}
                     />
                   </section>
-                  {canAct && data && t.status !== "paused" && (
+                  {canAct && data && (
                     <TaskRoutingActions
-                      key={`${t.id}:${t.stage}:${t.assigned_to}`}
+                      key={`${t.id}:${t.stage}:${t.status}:${t.assigned_to}`}
                       task={t}
                       data={data}
                       busy={busy}
                       write={write}
                     />
                   )}
-                  {data && <TaskManagement task={t} data={data} busy={busy} write={write} />}
                   {error && (
                     <p role="alert" className="ut-error">
                       {error}
@@ -1098,33 +1113,15 @@ function TaskDetails({
               </section>
               <aside className="ut-detail-history">
                 <h3>Comentários e atividade</h3>
-                <form
-                  noValidate
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!comment.trim()) {
-                      setError("Escreva um comentário.");
-                      return;
-                    }
-                    if (await write("comment", { note: comment, commentId: crypto.randomUUID() }))
-                      setComment("");
-                  }}
-                >
-                  <label>
-                    <span className="sr-only">Adicionar comentário</span>
-                    <textarea
-                      className="resize-none"
-                      rows={3}
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      maxLength={10000}
-                      placeholder="Escrever um comentário…"
-                    />
-                  </label>
-                  <button className="ut-primary" disabled={busy || !comment.trim()}>
-                    Registrar comentário
-                  </button>
-                </form>
+                {data && (
+                  <TaskComment
+                    task={t}
+                    userId={data.userId}
+                    busy={busy}
+                    write={write}
+                    onDirty={setCommentDirty}
+                  />
+                )}
                 {data?.events.map((ev) => (
                   <article className="ut-activity" key={ev.id}>
                     <span className="ut-avatar" aria-hidden="true">
@@ -1159,13 +1156,16 @@ function TaskDetails({
                           </>
                         )}
                       </p>
+                      {ev.attachments?.map((a) => (
+                        <CommentAttachment key={a.path} attachment={a} />
+                      ))}
                     </div>
                   </article>
                 ))}
                 <small>Últimos 100 registros.</small>
               </aside>
             </div>
-          )}
+          </div>
         </div>
       )}
       <footer>
