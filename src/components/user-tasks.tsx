@@ -212,8 +212,8 @@ export function UserTasks({
                   >
                     <Search size={16} />
                     <input
-                      aria-label="Buscar tarefas"
-                      placeholder="Código, título ou pessoa"
+                      aria-label="Buscar tarefas e reuniões"
+                      placeholder="Código, título, pessoa ou reunião"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
@@ -464,7 +464,8 @@ export function UserTasks({
                       tasks={data.tasks}
                       anchor={anchor}
                       period={period}
-                      render={(items, openMeeting) => {
+                      search={state.q || ""}
+                      render={(items, openMeeting, schedule) => {
                         const openEntry = (id: string) =>
                           items.find((item) => item.id === id)?.meeting
                             ? openMeeting(id)
@@ -481,7 +482,7 @@ export function UserTasks({
                             anchor={anchor}
                             period={period}
                             open={openEntry}
-                            selectDay={(day) => change({ anchor: day, period: "day" })}
+                            selectDay={schedule}
                           />
                         );
                       }}

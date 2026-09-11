@@ -79,3 +79,5 @@ Card de tarefa: encaminhamento único por etapa, com descrição obrigatória pr
 Card: encaminhamento e histórico ficam na aba Movimentações. Nova tarefa organiza título, tipo/modalidade, responsável/solicitante, início/término e comentário inicial com anexos. Minhas tarefas abre em Calendário por padrão; links explícitos para Lista/Kanban continuam válidos. Compromissos novos são Agendados; Situação é editável após salvar.
 
 Calendário mensal ajusta a altura ao espaço restante da janela e resume atividades excedentes por dia com abertura da lista completa, sem cortar o acesso aos registros.
+
+Pesquisa na agenda filtra também reuniões por título, pauta, nomes e e-mails de organizador/participantes, respeitando acesso. Clique no dia abre agendamento com data preenchida; clique em atividade abre detalhes. Lista e Kanban mantêm seu conjunto de tarefas.

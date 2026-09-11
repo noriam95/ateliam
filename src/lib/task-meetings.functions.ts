@@ -14,6 +14,7 @@ export type TaskMeeting = {
   agenda: string;
   status: "scheduled" | "completed" | "cancelled";
   revision: number;
+  people_search?: string;
 };
 export const loadTaskMeetings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -44,8 +45,25 @@ export const loadTaskMeetings = createServerFn({ method: "POST" })
           ? "Aplique a atualização de reuniões no Supabase."
           : error.message,
       );
+    const { data: people, error: peopleError } = await db
+      .from("profiles")
+      .select("id,display_name,username,email");
+    if (peopleError) throw new Error(peopleError.message);
+    const meetings = (rows as TaskMeeting[]).map((m) => ({
+      ...m,
+      people_search: (people || [])
+        .filter(
+          (p) =>
+            p.id === m.organizer_id ||
+            m.attendees.some(
+              (email) => email.toLowerCase() === (p.email || p.username || "").toLowerCase(),
+            ),
+        )
+        .map((p) => [p.display_name, p.username, p.email].filter(Boolean).join(" "))
+        .join(" "),
+    }));
     return {
-      meetings: rows as TaskMeeting[],
+      meetings,
       total: count || 0,
       userId: context.userId,
       userEmail: String(context.claims.email || ""),

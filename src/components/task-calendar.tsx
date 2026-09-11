@@ -108,10 +108,17 @@ export function TaskCalendar({
             key={day}
             className={`ut-day ${period === "month" && !day.startsWith(anchor.slice(0, 7)) ? "ut-other-month" : ""}`}
             aria-label={taskDate(day)}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) selectDay(day);
+            }}
           >
-            <time dateTime={day} className={day === localDay() ? "ut-today" : ""}>
-              {Number(day.slice(-2))}
-            </time>
+            <button
+              className={`ut-date-schedule ${day === localDay() ? "ut-today" : ""}`}
+              aria-label={`Agendar compromisso em ${taskDate(day)}`}
+              onClick={() => selectDay(day)}
+            >
+              <time dateTime={day}>{Number(day.slice(-2))}</time>
+            </button>
             {period !== "month" && (
               <strong className="ut-day-label">
                 {new Date(`${day}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })}

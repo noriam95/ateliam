@@ -43,6 +43,7 @@ export function TaskMeetings({
   taskId,
   isAdmin = false,
   render,
+  search = "",
 }: {
   organizationId: string;
   tasks: UserTask[];
@@ -50,7 +51,12 @@ export function TaskMeetings({
   period?: TaskPeriod;
   taskId?: string;
   isAdmin?: boolean;
-  render?: (items: ScheduleEntry[], open: (id: string) => void) => ReactNode;
+  search?: string;
+  render?: (
+    items: ScheduleEntry[],
+    open: (id: string) => void,
+    schedule: (day: string) => void,
+  ) => ReactNode;
 }) {
   const cache = useQueryClient();
   const meetingId = useRef(crypto.randomUUID());
@@ -76,7 +82,25 @@ export function TaskMeetings({
         },
       }),
   });
-  const meetings = query.data?.meetings || [];
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const meetings = (query.data?.meetings || []).filter((m) =>
+    normalize(
+      [m.title, m.agenda, m.people_search, ...m.attendees].filter(Boolean).join(" "),
+    ).includes(normalize(search.trim())),
+  );
+  const [meetingDay, setMeetingDay] = useState(anchor);
+  const schedule = (day: string) => {
+    meetingId.current = crypto.randomUUID();
+    setMeetingDay(day);
+    setEditor("new");
+    setSaved(null);
+    setDirty(false);
+    setError("");
+  };
   const rows: ScheduleEntry[] = [
     ...(showTasks && !taskId ? tasks : []),
     ...(showMeetings
@@ -129,16 +153,7 @@ export function TaskMeetings({
             </label>
           </div>
         )}
-        <button
-          className="ut-primary"
-          onClick={() => {
-            meetingId.current = crypto.randomUUID();
-            setEditor("new");
-            setSaved(null);
-            setDirty(false);
-            setError("");
-          }}
-        >
+        <button className="ut-primary" onClick={() => schedule(anchor)}>
           Agendar compromisso
         </button>
       </div>
@@ -149,7 +164,7 @@ export function TaskMeetings({
         </p>
       )}
       {render ? (
-        render(rows, openMeeting)
+        render(rows, openMeeting, schedule)
       ) : (
         <div className="ut-meeting-list">
           {meetings.map((m) => (
@@ -305,7 +320,7 @@ export function TaskMeetings({
                     <input
                       name="startsAt"
                       type="datetime-local"
-                      defaultValue={current ? datetime(current.starts_at) : anchor + "T09:00"}
+                      defaultValue={current ? datetime(current.starts_at) : meetingDay + "T09:00"}
                     />
                   </label>
                   <label>
@@ -313,7 +328,7 @@ export function TaskMeetings({
                     <input
                       name="endsAt"
                       type="datetime-local"
-                      defaultValue={current ? datetime(current.ends_at) : anchor + "T10:00"}
+                      defaultValue={current ? datetime(current.ends_at) : meetingDay + "T10:00"}
                     />
                   </label>
                 </div>
