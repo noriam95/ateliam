@@ -12911,6 +12911,7 @@ function DdpModule({
         </Modal>
       ) : null}
       <FlowCommandBar
+        compact
         code={data.meta.codigo}
         sections={sections}
         overallPct={overallPct}
@@ -12952,7 +12953,7 @@ function DdpModule({
                 </button>
               ))}
             </div>
-            <div className="grid items-end gap-2 sm:grid-cols-[minmax(280px,1fr)_auto]">
+            <div className="grid items-end gap-2 sm:grid-cols-[minmax(280px,1fr)]">
               <RegisteredProcessSelect
                 required={mappingEntryMode === "manual"}
                 label="Processo do mapeamento"
@@ -12967,15 +12968,6 @@ function DdpModule({
                 displayName={(process) => process.name}
                 onRequestCreate={(name) => setCreateProcessName(name)}
               />
-              <button
-                type="button"
-                onClick={() => setMappingAssistantOpen(true)}
-                className={`${secondaryButtonClass} h-10`}
-                title="Preencher a partir de DOCX ou texto"
-              >
-                <WandSparkles className="h-4 w-4" />
-                Assistente de preenchimento
-              </button>
             </div>
           </div>
         }
@@ -20561,7 +20553,9 @@ function FlowCommandBar({
   saveTitle = "Salvar preenchimento",
   previewTitle = "Visualizar preenchimento",
   processControl,
+  compact = false,
 }: {
+  compact?: boolean;
   code: string;
   sections: MappingSectionInfo[];
   overallPct: number;
@@ -20577,6 +20571,7 @@ function FlowCommandBar({
   previewTitle?: string;
   processControl: ReactNode;
 }) {
+  const saveMenu = useRef<HTMLDetailsElement>(null);
   const stateLabel =
     saveState === "saving"
       ? "Salvando…"
@@ -20602,30 +20597,39 @@ function FlowCommandBar({
 
         <div className="flex-1" />
 
-        <div
-          className="order-last flex w-full items-center gap-3 sm:order-none sm:w-auto"
-          title="Preenchimento por seção"
-        >
-          <div className="flex gap-[3px]">
-            {sections.map((s) => (
-              <span
-                key={s.key}
-                title={`${s.num} ${s.title} · ${s.pct}%`}
-                className={[
-                  "h-2 w-3.5 rounded-[3px] transition-colors",
-                  s.pct >= 100 ? "bg-emerald-500" : s.pct > 0 ? "bg-[var(--gold)]" : "bg-border",
-                ].join(" ")}
-              />
-            ))}
-          </div>
-          <div className="text-right leading-none">
-            <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-              Preench.
+        {!compact && (
+          <>
+            <div
+              className="order-last flex w-full items-center gap-3 sm:order-none sm:w-auto"
+              title="Preenchimento por seção"
+            >
+              <div className="flex gap-[3px]">
+                {sections.map((s) => (
+                  <span
+                    key={s.key}
+                    title={`${s.num} ${s.title} · ${s.pct}%`}
+                    className={[
+                      "h-2 w-3.5 rounded-[3px] transition-colors",
+                      s.pct >= 100
+                        ? "bg-emerald-500"
+                        : s.pct > 0
+                          ? "bg-[var(--gold)]"
+                          : "bg-border",
+                    ].join(" ")}
+                  />
+                ))}
+              </div>
+              <div className="text-right leading-none">
+                <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+                  Preench.
+                </div>
+                <div className="mt-0.5 font-data text-sm font-bold text-foreground">
+                  {overallPct}%
+                </div>
+              </div>
             </div>
-            <div className="mt-0.5 font-data text-sm font-bold text-foreground">{overallPct}%</div>
-          </div>
-        </div>
-
+          </>
+        )}
         <div className="flex items-center gap-2.5">
           <span className="sr-only sm:hidden" role="status" aria-live="polite">
             {stateLabel}
@@ -20649,40 +20653,85 @@ function FlowCommandBar({
               disabled={!canSave}
               className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45 sm:h-9 sm:px-3.5"
               title={previewTitle}
+              aria-label={previewTitle}
             >
               <Eye className="h-4 w-4" />
-              <span className="hidden sm:inline">Visualizar</span>
+              {!compact && <span className="hidden sm:inline">Visualizar</span>}
             </button>
           ) : null}
-          {onSaveDraft ? (
-            <button
-              type="button"
-              onClick={onSaveDraft}
-              disabled={!canSaveDraft || saveState === "saving"}
-              aria-busy={saveState === "saving"}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45 sm:h-9 sm:px-3.5"
-              title="Salvar rascunho"
+          {compact ? (
+            <details
+              ref={saveMenu}
+              className="relative"
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && saveMenu.current) saveMenu.current.open = false;
+              }}
             >
-              <Save className="h-4 w-4" />
-              <span className="hidden sm:inline">Rascunho</span>
-            </button>
-          ) : null}
-          {onSave ? (
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={!canSave || saveState === "saving"}
-              aria-busy={saveState === "saving"}
-              className="relative inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-45 sm:h-9 sm:px-3.5"
-              title={saveTitle}
-            >
-              {saveState === "dirty" && canSave ? (
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[var(--gold)] ring-2 ring-card" />
+              <summary
+                title="Salvar mapeamento"
+                aria-label="Opções de salvamento"
+                className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-md bg-primary text-primary-foreground"
+              >
+                <Save className="h-4 w-4" />
+              </summary>
+              <div className="absolute right-0 top-12 z-40 grid min-w-40 gap-1 rounded-md border border-border bg-card p-2 shadow-xl">
+                <button
+                  type="button"
+                  disabled={!canSaveDraft || saveState === "saving"}
+                  className="rounded px-3 py-2 text-left hover:bg-muted disabled:opacity-45"
+                  onClick={() => {
+                    if (saveMenu.current) saveMenu.current.open = false;
+                    onSaveDraft?.();
+                  }}
+                >
+                  Rascunho
+                </button>
+                <button
+                  type="button"
+                  disabled={!canSave || saveState === "saving"}
+                  className="rounded px-3 py-2 text-left hover:bg-muted disabled:opacity-45"
+                  onClick={() => {
+                    if (saveMenu.current) saveMenu.current.open = false;
+                    onSave?.();
+                  }}
+                >
+                  Salvar
+                </button>
+              </div>
+            </details>
+          ) : (
+            <>
+              {onSaveDraft ? (
+                <button
+                  type="button"
+                  onClick={onSaveDraft}
+                  disabled={!canSaveDraft || saveState === "saving"}
+                  aria-busy={saveState === "saving"}
+                  className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-45 sm:h-9 sm:px-3.5"
+                  title="Salvar rascunho"
+                >
+                  <Save className="h-4 w-4" />
+                  <span className="hidden sm:inline">Rascunho</span>
+                </button>
               ) : null}
-              <Save className="h-4 w-4" />
-              <span className="hidden sm:inline">Salvar</span>
-            </button>
-          ) : null}
+              {onSave ? (
+                <button
+                  type="button"
+                  onClick={onSave}
+                  disabled={!canSave || saveState === "saving"}
+                  aria-busy={saveState === "saving"}
+                  className="relative inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-45 sm:h-9 sm:px-3.5"
+                  title={saveTitle}
+                >
+                  {saveState === "dirty" && canSave ? (
+                    <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[var(--gold)] ring-2 ring-card" />
+                  ) : null}
+                  <Save className="h-4 w-4" />
+                  <span className="hidden sm:inline">Salvar</span>
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
       <div className="mt-3 max-w-xl">{processControl}</div>

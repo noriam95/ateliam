@@ -1,3 +1,5 @@
+import { TaskMeetings, type ScheduleEntry } from "./task-meetings";
+import { TaskManagement, TaskProcessFlow } from "./task-management";
 import { TaskKanbanCard } from "./task-kanban-card";
 import { TaskCalendar } from "./task-calendar";
 import {
@@ -428,21 +430,34 @@ export function UserTasks({
                       Distribuição pelo período da atividade. Selecione a tarefa para abrir os
                       detalhes.
                     </p>
-                    {state.calendarView === "gantt" ? (
-                      <TaskGantt
-                        tasks={data.tasks}
-                        columns={periodColumns(anchor, period)}
-                        open={open}
-                      />
-                    ) : (
-                      <TaskCalendar
-                        tasks={data.tasks}
-                        anchor={anchor}
-                        period={period}
-                        open={open}
-                        selectDay={(day) => change({ anchor: day, period: "day" })}
-                      />
-                    )}
+                    <TaskMeetings
+                      isAdmin={data.isAdmin}
+                      organizationId={organizationId}
+                      tasks={data.tasks}
+                      anchor={anchor}
+                      period={period}
+                      render={(items, openMeeting) => {
+                        const openEntry = (id: string) =>
+                          items.find((item) => item.id === id)?.meeting
+                            ? openMeeting(id)
+                            : open(id);
+                        return state.calendarView === "gantt" ? (
+                          <TaskGantt
+                            tasks={items}
+                            columns={periodColumns(anchor, period)}
+                            open={openEntry}
+                          />
+                        ) : (
+                          <TaskCalendar
+                            tasks={items}
+                            anchor={anchor}
+                            period={period}
+                            open={openEntry}
+                            selectDay={(day) => change({ anchor: day, period: "day" })}
+                          />
+                        );
+                      }}
+                    />
                   </>
                 ) : (
                   renderTable(data.tasks, open)
@@ -507,7 +522,7 @@ function TaskGantt({
   columns,
   open,
 }: {
-  tasks: UserTask[];
+  tasks: ScheduleEntry[];
   columns: ReturnType<typeof periodColumns>;
   open: (id: string) => void;
 }) {
@@ -566,7 +581,7 @@ function TaskGantt({
                     ))}
                     {start !== -1 && last >= first && (
                       <button
-                        className={`ut-gantt-bar ut-gantt-${task.status}`}
+                        className={`ut-gantt-bar ${task.meeting ? "ut-meeting-bar" : ""} ut-gantt-${task.status}`}
                         style={{ gridColumn: `${first + 1} / ${last + 2}`, gridRow: 1 }}
                         onClick={() => open(task.id)}
                         title={`${task.title}: ${taskDate(task.starts_on)} a ${taskDate(task.due_on)} · ${TASK_STATUS_LABELS[task.status]}`}
@@ -882,6 +897,7 @@ function TaskDetails({
   const [editing, setEditing] = useState<TaskItem | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [detailTab, setDetailTab] = useState("data");
   const [comment, setComment] = useState("");
   const data = query.data;
   const t = data?.tasks[0];
@@ -889,6 +905,7 @@ function TaskDetails({
   const canEdit =
     canAct &&
     t?.status !== "completed" &&
+    t?.status !== "paused" &&
     (t?.kind !== "mapping" || t?.stage === "documentation" || data?.isAdmin);
   const remainder = t ? pending(t) : [];
   async function write(action: TaskAction, payload: Record<string, unknown>) {
@@ -927,7 +944,7 @@ function TaskDetails({
     <TaskDialog
       wide
       dirty={!!comment.trim()}
-      title={t ? `${taskCode(t.id)} · ${t.title}` : "Detalhes da tarefa"}
+      title={t ? `${taskCode(t)} · ${t.title}` : "Detalhes da tarefa"}
       onClose={close}
       busy={busy}
     >
@@ -942,158 +959,190 @@ function TaskDetails({
       ) : !t ? (
         <p className="ut-empty">Tarefa não encontrada ou sem acesso.</p>
       ) : (
-        <div className="ut-detail-grid">
-          <section className="ut-detail-main">
-            <div className="ut-detail">
-              <div className="ut-inline">
-                <span className={`ut-status ut-status-${t.status}`}>
-                  {TASK_STATUS_LABELS[t.status]}
-                </span>
-                {t.kind === "mapping" && <strong>{TASK_STAGE_LABELS[t.stage]}</strong>}
-              </div>
-              <div className="ut-detail-meta">
-                <span>
-                  <small>Responsável atual</small>
-                  {t.assignee_name}
-                </span>
-                <span>
-                  <small>Solicitante</small>
-                  {t.requester_name}
-                </span>
-                <span>
-                  <small>Tipo / modalidade</small>
-                  {TASK_KINDS[t.kind]}
-                  {t.modality ? ` · ${t.modality}` : ""}
-                </span>
-                <span>
-                  <small>Período / prazo</small>
-                  {taskDate(t.starts_on)} a {taskDate(t.due_on)}
-                </span>
-              </div>
-              {t.adjustment_request && t.stage === "documentation" && (
-                <div className="ut-warning">
-                  <strong>Ajustes solicitados</strong>
-                  <p style={{ whiteSpace: "pre-wrap" }}>{t.adjustment_request}</p>
-                </div>
-              )}
-              {attention(t).length > 0 && (
-                <div className="ut-warning">
-                  <strong>A tarefa foi movimentada com pendências.</strong>
-                  <ul>
-                    {attention(t).map((i) => (
-                      <li key={i.key}>{i.label}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <section>
-                <div className="ut-heading">
-                  <h3>Checklist{t.modality ? ` · ${t.modality}` : ""}</h3>
-                  <button onClick={() => setHideDone((v) => !v)}>
-                    {hideDone ? "Mostrar todos" : "Ocultar concluídos"}
-                  </button>
-                </div>
-                <div className="ut-progress">
-                  <small>
-                    {t.checklist.length - remainder.length}/{t.checklist.length}
-                  </small>
-                  <progress
-                    aria-label="Itens concluídos"
-                    max={t.checklist.length}
-                    value={t.checklist.length - remainder.length}
-                  />
-                </div>
-                <p className="ut-muted">Rascunhos permanecem em andamento.</p>
-                <TaskChecklist
-                  task={t}
-                  canEdit={!!canEdit}
-                  busy={busy}
-                  hideDone={hideDone}
-                  edit={setEditing}
-                  write={write}
-                  setBusy={setBusy}
-                />
-              </section>
-              {canAct && data && (
-                <TaskRoutingActions
-                  key={`${t.id}:${t.stage}:${t.assigned_to}`}
-                  task={t}
-                  data={data}
-                  busy={busy}
-                  write={write}
-                />
-              )}
-              {error && (
-                <p role="alert" className="ut-error">
-                  {error}
-                </p>
-              )}
-            </div>
-          </section>
-          <aside className="ut-detail-history">
-            <h3>Comentários e atividade</h3>
-            <form
-              noValidate
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!comment.trim()) {
-                  setError("Escreva um comentário.");
-                  return;
-                }
-                if (await write("comment", { note: comment, commentId: crypto.randomUUID() }))
-                  setComment("");
-              }}
+        <div>
+          <nav className="ut-inline ut-detail-tabs" aria-label="Abas da tarefa">
+            <button aria-pressed={detailTab === "data"} onClick={() => setDetailTab("data")}>
+              Dados da tarefa
+            </button>
+            <button aria-pressed={detailTab === "flow"} onClick={() => setDetailTab("flow")}>
+              Fluxo do processo
+            </button>
+            <button
+              aria-pressed={detailTab === "meetings"}
+              onClick={() => setDetailTab("meetings")}
             >
-              <label>
-                <span className="sr-only">Adicionar comentário</span>
-                <textarea
-                  className="resize-none"
-                  rows={3}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  maxLength={10000}
-                  placeholder="Escrever um comentário…"
-                />
-              </label>
-              <button className="ut-primary" disabled={busy || !comment.trim()}>
-                Registrar comentário
-              </button>
-            </form>
-            {data?.events.map((ev) => (
-              <article className="ut-activity" key={ev.id}>
-                <span className="ut-avatar" aria-hidden="true">
-                  {ev.actor_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join("")}
-                </span>
-                <div>
-                  <strong>{ev.actor_name}</strong>
-                  <small>{new Date(ev.created_at).toLocaleString("pt-BR")}</small>
-                  <p
-                    className={ev.action === "Comentário" ? "ut-comment" : ""}
-                    style={{ whiteSpace: "pre-wrap" }}
-                  >
-                    {ev.action === "Comentário" ? (
-                      ev.note
-                    ) : (
-                      <>
-                        <b>{ev.action}</b>
-                        {ev.note && (
+              Reuniões
+            </button>
+          </nav>
+          {detailTab === "flow" ? (
+            <TaskProcessFlow task={t} />
+          ) : detailTab === "meetings" ? (
+            <TaskMeetings
+              organizationId={organizationId}
+              tasks={[t]}
+              taskId={t.id}
+              isAdmin={data?.isAdmin}
+            />
+          ) : (
+            <div className="ut-detail-grid">
+              <section className="ut-detail-main">
+                <div className="ut-detail">
+                  <div className="ut-inline">
+                    <span className={`ut-status ut-status-${t.status}`}>
+                      {TASK_STATUS_LABELS[t.status]}
+                    </span>
+                    {t.kind === "mapping" && <strong>{TASK_STAGE_LABELS[t.stage]}</strong>}
+                  </div>
+                  <div className="ut-detail-meta">
+                    <span>
+                      <small>Responsável atual</small>
+                      {t.assignee_name}
+                    </span>
+                    <span>
+                      <small>Solicitante</small>
+                      {t.requester_name}
+                    </span>
+                    <span>
+                      <small>Tipo / modalidade</small>
+                      {TASK_KINDS[t.kind]}
+                      {t.modality ? ` · ${t.modality}` : ""}
+                    </span>
+                    <span>
+                      <small>Período / prazo</small>
+                      {taskDate(t.starts_on)} a {taskDate(t.due_on)}
+                    </span>
+                  </div>
+                  {t.adjustment_request && t.stage === "documentation" && (
+                    <div className="ut-warning">
+                      <strong>Ajustes solicitados</strong>
+                      <p style={{ whiteSpace: "pre-wrap" }}>{t.adjustment_request}</p>
+                    </div>
+                  )}
+                  {attention(t).length > 0 && (
+                    <div className="ut-warning">
+                      <strong>A tarefa foi movimentada com pendências.</strong>
+                      <ul>
+                        {attention(t).map((i) => (
+                          <li key={i.key}>{i.label}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <section>
+                    <div className="ut-heading">
+                      <h3>Checklist{t.modality ? ` · ${t.modality}` : ""}</h3>
+                      <button onClick={() => setHideDone((v) => !v)}>
+                        {hideDone ? "Mostrar todos" : "Ocultar concluídos"}
+                      </button>
+                    </div>
+                    <div className="ut-progress">
+                      <small>
+                        {t.checklist.length - remainder.length}/{t.checklist.length}
+                      </small>
+                      <progress
+                        aria-label="Itens concluídos"
+                        max={t.checklist.length}
+                        value={t.checklist.length - remainder.length}
+                      />
+                    </div>
+                    <p className="ut-muted">Rascunhos permanecem em andamento.</p>
+                    <TaskChecklist
+                      task={t}
+                      canEdit={!!canEdit}
+                      busy={busy}
+                      hideDone={hideDone}
+                      edit={setEditing}
+                      write={write}
+                      setBusy={setBusy}
+                    />
+                  </section>
+                  {canAct && data && t.status !== "paused" && (
+                    <TaskRoutingActions
+                      key={`${t.id}:${t.stage}:${t.assigned_to}`}
+                      task={t}
+                      data={data}
+                      busy={busy}
+                      write={write}
+                    />
+                  )}
+                  {data && <TaskManagement task={t} data={data} busy={busy} write={write} />}
+                  {error && (
+                    <p role="alert" className="ut-error">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              </section>
+              <aside className="ut-detail-history">
+                <h3>Comentários e atividade</h3>
+                <form
+                  noValidate
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!comment.trim()) {
+                      setError("Escreva um comentário.");
+                      return;
+                    }
+                    if (await write("comment", { note: comment, commentId: crypto.randomUUID() }))
+                      setComment("");
+                  }}
+                >
+                  <label>
+                    <span className="sr-only">Adicionar comentário</span>
+                    <textarea
+                      className="resize-none"
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      maxLength={10000}
+                      placeholder="Escrever um comentário…"
+                    />
+                  </label>
+                  <button className="ut-primary" disabled={busy || !comment.trim()}>
+                    Registrar comentário
+                  </button>
+                </form>
+                {data?.events.map((ev) => (
+                  <article className="ut-activity" key={ev.id}>
+                    <span className="ut-avatar" aria-hidden="true">
+                      {ev.actor_photo ? (
+                        <img src={ev.actor_photo} alt="" className="ut-comment-photo" />
+                      ) : (
+                        ev.actor_name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join("")
+                      )}
+                    </span>
+                    <div>
+                      <strong>{ev.actor_name}</strong>
+                      <small>{new Date(ev.created_at).toLocaleString("pt-BR")}</small>
+                      <p
+                        className={ev.action === "Comentário" ? "ut-comment" : ""}
+                        style={{ whiteSpace: "pre-wrap" }}
+                      >
+                        {ev.action === "Comentário" ? (
+                          ev.note
+                        ) : (
                           <>
-                            <br />
-                            {ev.note}
+                            <b>{ev.action}</b>
+                            {ev.note && (
+                              <>
+                                <br />
+                                {ev.note}
+                              </>
+                            )}
                           </>
                         )}
-                      </>
-                    )}
-                  </p>
-                </div>
-              </article>
-            ))}
-            <small>Últimos 100 registros.</small>
-          </aside>
+                      </p>
+                    </div>
+                  </article>
+                ))}
+                <small>Últimos 100 registros.</small>
+              </aside>
+            </div>
+          )}
         </div>
       )}
       <footer>

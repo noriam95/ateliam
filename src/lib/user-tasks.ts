@@ -1,9 +1,10 @@
 export const TASK_MODALITIES = ["Sistemas", "Operacional", "Automação & IA", "Dados / BI"] as const;
-export const TASK_STATUSES = ["pending", "in_progress", "review", "completed"] as const;
+export const TASK_STATUSES = ["pending", "in_progress", "review", "paused", "completed"] as const;
 export const TASK_STATUS_LABELS = {
   pending: "A fazer",
   in_progress: "Em andamento",
   review: "Em revisão",
+  paused: "Parada",
   completed: "Concluída",
 };
 export const TASK_KINDS = {
@@ -33,8 +34,11 @@ export type TaskDocument = {
   code: string;
   current_version: number;
 };
-export const taskCode = (id: string) => `TAR-${(id.slice(0, 4) + id.slice(-8)).toUpperCase()}`;
+export const taskCode = (task: { task_code?: string; code?: string }) =>
+  task.task_code || (task.code?.startsWith("TAR.") ? task.code : "Código pendente");
 export type UserTask = {
+  task_code?: string;
+  review_started?: boolean;
   latest_activity?: { action: string; note: string; created_at: string } | null;
   id: string;
   organization_id: string;
@@ -69,7 +73,14 @@ export type TaskFeed = {
   summary: { mapping: number; improvement: number; document: number; overdue: number };
   people: { id: string; name: string; can_edit: boolean }[];
   documents: TaskDocument[];
-  events: { id: string; action: string; note: string; created_at: string; actor_name: string }[];
+  events: {
+    id: string;
+    action: string;
+    note: string;
+    created_at: string;
+    actor_photo?: string | null;
+    actor_name: string;
+  }[];
 };
 export type TaskFilters = {
   q?: string;
@@ -102,6 +113,8 @@ export function documentTaskUrl(task: UserTask, item: TaskItem, document: TaskDo
 }
 
 export const TASK_STAGE_LABELS = {
+  registration: "Complementar registro",
+  intake: "Análise da demanda",
   documentation: "Documentação",
   technical_review: "Revisão técnica",
   owner_approval: "Aprovação do dono do processo",
@@ -109,6 +122,12 @@ export const TASK_STAGE_LABELS = {
 };
 
 export type TaskAction =
+  | "pause"
+  | "resume"
+  | "edit_details"
+  | "start_documentation"
+  | "request_complement"
+  | "resubmit"
   | "add_item"
   | "add_entry"
   | "begin_document"

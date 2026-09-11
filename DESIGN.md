@@ -49,3 +49,14 @@ Checklist agrupa entregas por item, com contagem concluída/total e ações expl
 ## Navegação global — revisão de 10/09/2026
 
 Referência aprovada: seletor de aplicativos do vídeo fornecido pelo usuário. WorkspaceLauncher substitui a barra lateral fixa por um botão de grade no canto superior esquerdo e um popover com ícones, nomes e descrições dos módulos. As opções internas reutilizam WorkspaceModulesTree e os mesmos destinos existentes. O conteúdo ocupa a largura disponível. Paleta, tipografia e formulários permanecem sob os tokens existentes.
+
+
+## Tarefas e reuniões — setembro de 2026
+
+- Código imutável por organização e ano de criação: TAR.0001.2026, gerado no banco com contador atômico.
+- Abas de dados, fluxo por raias e reuniões vinculadas. As decisões permanecem nos formulários de encaminhamento.
+- Complementos voltam ao registro; ajustes da área passam novamente pela revisão técnica. Parada preserva a etapa para retomada.
+- Alteração da modalidade no primeiro preenchimento exige confirmação e preserva entregas existentes.
+- Calendário distingue tarefas em dourado e reuniões em azul, com filtros independentes. Horários no fuso do navegador.
+- Após salvar reunião, abrir composição no Outlook para revisão e confirmação manual. Não indica envio automático.
+- Formulário de mapeamento usa visão por ícone e menu de salvamento com Rascunho/Salvar. POP mantém seus controles.

@@ -1124,3 +1124,21 @@
 .ut-rich-card progress::-webkit-progress-bar { background: var(--border); }
 .ut-rich-card progress::-webkit-progress-value { background: var(--gold); }
 .ut-rich-card progress::-moz-progress-bar { background: var(--gold); }
+
+.ut-comment-photo{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.ut-status-paused{background:#fce6dc;color:#8c3317}
+.ut-management{margin-top:20px;border-top:1px solid var(--border);padding-top:15px}.ut-management summary{cursor:pointer;font-weight:600;margin-bottom:12px}
+.ut-detail-tabs{padding-bottom:15px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.ut-process-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;padding:20px;list-style:none}
+.ut-process-flow li{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:8px;padding:18px;position:relative}
+.ut-process-flow li:not(:last-child)::after{content:"→";position:absolute;right:-20px;top:40%}.ut-process-flow [aria-current=step]{border:2px solid var(--gold);background:var(--accent)}
+.ut-process-flow small{color:var(--muted-foreground)}.ut-flow-loops{padding:16px;background:var(--muted);border-radius:8px}
+@media(max-width:640px){.ut-process-flow{grid-template-columns:1fr}.ut-process-flow li:not(:last-child)::after{content:"↓";right:50%;top:auto;bottom:-24px}}
+
+.ut-meetings>.ut-inline{margin-bottom:15px}.ut-meetings>.ut-inline label{display:flex;align-items:center;gap:7px}
+.ut-meeting-legend{font-size:12px;color:var(--muted-foreground)}
+.ut-day button.ut-meeting-event,.ut-gantt button.ut-meeting-bar{background:#e5effc;color:#184b82;border-left:3px solid #367bcb}
+.ut-day button.ut-task-event{border-left:3px solid var(--gold)}.ut-mini-grid .ut-has-meetings{box-shadow:inset 0 -3px #367bcb}
+.ut-meeting-list{display:grid;gap:10px;margin-top:15px}.ut-meeting-list button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:14px;border-left:3px solid #367bcb}
+
+.ut-process-panel{padding:20px}.ut-flow-scroll{overflow:auto;margin-top:20px}.ut-flow-scroll svg{display:block;min-width:850px;width:100%;color:var(--muted-foreground)}.ut-gantt-paused{background:#fce6dc;color:#8c3317}

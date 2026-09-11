@@ -34,10 +34,10 @@ export function TaskKanbanCard({ task, open }: { task: UserTask; open: () => voi
     <button
       className="ut-card ut-rich-card"
       onClick={open}
-      aria-label={`Abrir tarefa ${taskCode(task.id)}: ${task.title}`}
+      aria-label={`Abrir tarefa ${taskCode(task)}: ${task.title}`}
     >
       <span className="ut-card-top">
-        <small title={task.id}>{taskCode(task.id)}</small>
+        <small title={task.id}>{taskCode(task)}</small>
         <span className={`ut-modality ut-modality-${modality}`}>
           {task.modality || TASK_KINDS[task.kind]}
         </span>

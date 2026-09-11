@@ -48,6 +48,62 @@ export function TaskRoutingActions({
       {task.kind === "mapping" ? (
         <>
           <h3>Encaminhamento · {TASK_STAGE_LABELS[task.stage]}</h3>
+          {task.stage === "intake" && (
+            <form
+              className="ut-form"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const decision = String(f.get("decision"));
+                const note = String(f.get("note") || "");
+                if (decision === "request_complement" && note.trim().length < 3) {
+                  setError("Descreva o complemento solicitado.");
+                  return;
+                }
+                void write(decision as TaskAction, { note });
+              }}
+            >
+              <label>
+                Decisão sobre a demanda
+                <select name="decision">
+                  <option value="start_documentation">Seguir para preenchimento</option>
+                  <option value="request_complement">Solicitar complemento da demanda</option>
+                </select>
+              </label>
+              <label>
+                Orientações
+                <textarea name="note" rows={3} className="resize-none" />
+              </label>
+              <button disabled={busy} className="ut-primary">
+                Confirmar encaminhamento
+              </button>
+            </form>
+          )}
+          {task.stage === "registration" && (
+            <form
+              className="ut-form"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                const note = String(new FormData(e.currentTarget).get("note") || "");
+                if (note.trim().length < 3) {
+                  setError("Descreva o complemento realizado.");
+                  return;
+                }
+                void write("resubmit", { note });
+              }}
+            >
+              <p>{task.adjustment_request}</p>
+              <label>
+                Complemento da demanda
+                <textarea name="note" rows={4} className="resize-none" />
+              </label>
+              <button disabled={busy} className="ut-primary">
+                Retornar para análise da demanda
+              </button>
+            </form>
+          )}
           {task.stage === "documentation" && (
             <form
               noValidate
@@ -55,43 +111,28 @@ export function TaskRoutingActions({
               onSubmit={(e) => {
                 e.preventDefault();
                 const values = fields(e.currentTarget);
-                if (task.return_stage !== "owner_approval" && !values.reviewerId) {
+                if (!values.reviewerId) {
                   setError("Selecione o responsável técnico.");
                   return;
                 }
-                void submit(
-                  "send_review",
-                  values,
-                  task.return_stage === "owner_approval"
-                    ? "Encaminhar para aprovação do dono"
-                    : "Enviar para revisão técnica",
-                );
+                void submit("send_review", values, "Enviar para revisão técnica");
               }}
             >
-              {task.return_stage === "owner_approval" ? (
-                <p>
-                  Após os ajustes, a tarefa retornará ao responsável pela documentação para coletar
-                  novamente a aprovação do dono do processo.
-                </p>
-              ) : (
-                <label>
-                  Responsável técnico
-                  <select name="reviewerId" defaultValue={task.reviewer_id || ""}>
-                    <option value="">Selecione um usuário</option>
-                    {data.people
-                      .filter((p) => p.can_edit)
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              )}
+              <label>
+                Responsável técnico
+                <select name="reviewerId" defaultValue={task.reviewer_id || ""}>
+                  <option value="">Selecione um usuário</option>
+                  {data.people
+                    .filter((p) => p.can_edit)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
               <button className="ut-primary" disabled={busy}>
-                {task.return_stage === "owner_approval"
-                  ? "Enviar para aprovação do dono"
-                  : "Enviar para revisão técnica"}
+                Enviar para revisão técnica
               </button>
             </form>
           )}

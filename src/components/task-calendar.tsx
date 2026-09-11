@@ -1,4 +1,5 @@
-import { localDay, monthDays, taskDate, type UserTask } from "@/lib/user-tasks";
+import type { ScheduleEntry } from "./task-meetings";
+import { localDay, monthDays, taskDate } from "@/lib/user-tasks";
 import { periodRange, type TaskPeriod } from "@/lib/task-period";
 export function TaskCalendar({
   tasks,
@@ -7,7 +8,7 @@ export function TaskCalendar({
   open,
   selectDay,
 }: {
-  tasks: UserTask[];
+  tasks: ScheduleEntry[];
   anchor: string;
   period: TaskPeriod;
   open: (id: string) => void;
@@ -33,16 +34,22 @@ export function TaskCalendar({
                 ))}
                 {monthDays(month).map((day) => {
                   const count = onDay(day).length;
+                  const meetings = onDay(day).filter((t) => t.meeting).length;
                   return day.startsWith(month) ? (
                     <button
                       key={day}
-                      className={`${count ? "ut-has-tasks" : ""} ${day === localDay() ? "ut-current-day" : ""}`}
+                      className={`${count ? "ut-has-tasks" : ""} ${meetings ? "ut-has-meetings" : ""} ${day === localDay() ? "ut-current-day" : ""}`}
                       onClick={() => selectDay(day)}
-                      aria-label={`${taskDate(day)}, ${count} tarefa(s)`}
-                      title={`${count} tarefa(s)`}
+                      aria-label={`${taskDate(day)}, ${count} atividade(s)`}
+                      title={`${count} atividade(s)`}
                     >
                       {Number(day.slice(-2))}
-                      {count > 0 && <small>{count}</small>}
+                      {count > 0 && (
+                        <small>
+                          {count - meetings > 0 ? `T:${count - meetings} ` : ""}
+                          {meetings > 0 ? `R:${meetings}` : ""}
+                        </small>
+                      )}
                     </button>
                   ) : (
                     <span key={day} />
@@ -84,19 +91,25 @@ export function TaskCalendar({
               </strong>
             )}
             {period !== "month" && (
-              <small className="ut-muted">Atividades do dia · sem horário definido</small>
+              <small className="ut-muted">Tarefas do dia e reuniões com horário</small>
             )}
             {onDay(day).map((t) => (
-              <button key={t.id} title={t.title} onClick={() => open(t.id)}>
+              <button
+                className={t.meeting ? "ut-meeting-event" : "ut-task-event"}
+                key={t.id}
+                title={t.title}
+                onClick={() => open(t.id)}
+              >
                 <span>
                   {t.code && `${t.code} · `}
                   {t.title}
                 </span>
                 {period !== "month" && <small>{t.assignee_name}</small>}
-                {t.due_on === day && <b>Prazo</b>}
+                {!t.meeting && t.due_on === day && <b>Prazo</b>}
+                {t.meeting && <b>{t.assignee_name}</b>}
               </button>
             ))}
-            {period !== "month" && !onDay(day).length && <p className="ut-muted">Sem tarefas</p>}
+            {period !== "month" && !onDay(day).length && <p className="ut-muted">Sem atividades</p>}
           </section>
         ))}
       </div>

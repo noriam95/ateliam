@@ -67,6 +67,12 @@ export const updateUserTask = createServerFn({ method: "POST" })
     scope
       .extend({
         action: z.enum([
+          "pause",
+          "resume",
+          "edit_details",
+          "start_documentation",
+          "request_complement",
+          "resubmit",
           "create",
           "add_item",
           "add_entry",
