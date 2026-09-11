@@ -60,3 +60,5 @@ Referência aprovada: seletor de aplicativos do vídeo fornecido pelo usuário. 
 - Calendário distingue tarefas em dourado e reuniões em azul, com filtros independentes. Horários no fuso do navegador.
 - Após salvar reunião, abrir composição no Outlook para revisão e confirmação manual. Não indica envio automático.
 - Formulário de mapeamento usa visão por ícone e menu de salvamento com Rascunho/Salvar. POP mantém seus controles.
+
+Agenda: filtros de tarefas recolhíveis no calendário; barra com navegação de datas e formato; segunda linha para visibilidade de atividades e agendamento. Usa tokens existentes e controles nativos.

@@ -105,10 +105,11 @@ export function TaskMeetings({
   const canEdit = !current || current.organizer_id === query.data?.userId || isAdmin;
   return (
     <div className="ut-meetings">
-      <div className="ut-inline">
+      <div className="ut-agenda-actions">
         {!taskId && (
-          <>
-            <label>
+          <div className="ut-agenda-visibility" role="group" aria-label="Atividades exibidas">
+            <span className="ut-muted">Exibir na agenda</span>
+            <label className="ut-agenda-toggle ut-agenda-task">
               <input
                 type="checkbox"
                 checked={showTasks}
@@ -116,7 +117,7 @@ export function TaskMeetings({
               />{" "}
               Tarefas
             </label>
-            <label>
+            <label className="ut-agenda-toggle ut-agenda-meeting">
               <input
                 type="checkbox"
                 checked={showMeetings}
@@ -124,8 +125,7 @@ export function TaskMeetings({
               />{" "}
               Reuniões
             </label>
-            <span className="ut-meeting-legend">Azul: reuniões · Dourado: tarefas</span>
-          </>
+          </div>
         )}
         <button
           className="ut-primary"

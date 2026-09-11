@@ -70,3 +70,5 @@ Visibilidade por usuário: Configurações aparece apenas para o perfil admin vi
 - Calendário distingue tarefas em dourado e reuniões em azul, com filtros independentes. Horários no fuso do navegador.
 - Após salvar reunião, abrir composição no Outlook para revisão e confirmação manual. Não indica envio automático.
 - Formulário de mapeamento usa visão por ícone e menu de salvamento com Rascunho/Salvar. POP mantém seus controles.
+
+Limpar filtros preserva data, período e formato da agenda. Filtros de tarefas são distintos das opções de visibilidade de tarefas/reuniões.

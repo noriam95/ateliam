@@ -242,86 +242,111 @@ export function UserTasks({
                     })}
                   </div>
                 </div>
-                <div className="ut-filters">
-                  <label>
-                    Tipo
-                    <select
-                      value={state.kind || ""}
-                      onChange={(e) => change({ kind: e.target.value })}
-                    >
-                      <option value="">Todos</option>
-                      {Object.entries(TASK_KINDS).map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Situação
-                    <select
-                      value={state.status || ""}
-                      onChange={(e) => change({ status: e.target.value })}
-                    >
-                      <option value="">Todas</option>
-                      {TASK_STATUSES.map((s) => (
-                        <option value={s} key={s}>
-                          {TASK_STATUS_LABELS[s]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Modalidade
-                    <select
-                      value={state.modality || ""}
-                      onChange={(e) => change({ modality: e.target.value })}
-                    >
-                      <option value="">Todas</option>
-                      {TASK_MODALITIES.map((m) => (
-                        <option key={m}>{m}</option>
-                      ))}
-                    </select>
-                  </label>
-                  {state.layout !== "calendar" && (
-                    <>
-                      <label>
-                        Período de
-                        <input
-                          type="date"
-                          value={state.from || ""}
-                          onChange={(e) => change({ from: e.target.value })}
-                        />
-                      </label>
-                      <label>
-                        Até
-                        <input
-                          type="date"
-                          value={state.until || ""}
-                          onChange={(e) => change({ until: e.target.value })}
-                        />
-                      </label>
-                    </>
-                  )}
-                  {data.isAdmin && (
-                    <label className="ut-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={!!state.team}
-                        onChange={(e) => change({ team: e.target.checked })}
-                      />
-                      Ver tarefas da equipe
+                <details
+                  className="ut-task-filters"
+                  open={state.layout !== "calendar" ? true : undefined}
+                >
+                  <summary>
+                    Filtros de tarefas{" "}
+                    <span>
+                      {[state.kind, state.status, state.modality, state.team, state.q].filter(
+                        Boolean,
+                      ).length || "Todos"}
+                    </span>
+                  </summary>
+                  <div className="ut-filters">
+                    <label>
+                      Tipo
+                      <select
+                        value={state.kind || ""}
+                        onChange={(e) => change({ kind: e.target.value })}
+                      >
+                        <option value="">Todos</option>
+                        {Object.entries(TASK_KINDS).map(([k, v]) => (
+                          <option key={k} value={k}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
                     </label>
-                  )}
-                  <button
-                    onClick={() => {
-                      setSearch("");
-                      onState(JSON.stringify({ layout: state.layout }));
-                    }}
-                  >
-                    Limpar filtros
-                  </button>
-                </div>
+                    <label>
+                      Situação
+                      <select
+                        value={state.status || ""}
+                        onChange={(e) => change({ status: e.target.value })}
+                      >
+                        <option value="">Todas</option>
+                        {TASK_STATUSES.map((s) => (
+                          <option value={s} key={s}>
+                            {TASK_STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Modalidade
+                      <select
+                        value={state.modality || ""}
+                        onChange={(e) => change({ modality: e.target.value })}
+                      >
+                        <option value="">Todas</option>
+                        {TASK_MODALITIES.map((m) => (
+                          <option key={m}>{m}</option>
+                        ))}
+                      </select>
+                    </label>
+                    {state.layout !== "calendar" && (
+                      <>
+                        <label>
+                          Período de
+                          <input
+                            type="date"
+                            value={state.from || ""}
+                            onChange={(e) => change({ from: e.target.value })}
+                          />
+                        </label>
+                        <label>
+                          Até
+                          <input
+                            type="date"
+                            value={state.until || ""}
+                            onChange={(e) => change({ until: e.target.value })}
+                          />
+                        </label>
+                      </>
+                    )}
+                    {data.isAdmin && (
+                      <label className="ut-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={!!state.team}
+                          onChange={(e) => change({ team: e.target.checked })}
+                        />
+                        Ver tarefas da equipe
+                      </label>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSearch("");
+                        onState(
+                          JSON.stringify({
+                            ...state,
+                            kind: undefined,
+                            status: undefined,
+                            modality: undefined,
+                            team: undefined,
+                            q: undefined,
+                            from: undefined,
+                            until: undefined,
+                            page: undefined,
+                          }),
+                        );
+                      }}
+                    >
+                      Limpar filtros
+                    </button>
+                  </div>
+                </details>
                 {state.layout === "kanban" ? (
                   <>
                     <div className="ut-heading">
@@ -371,8 +396,8 @@ export function UserTasks({
                   </>
                 ) : state.layout === "calendar" ? (
                   <>
-                    <div className="ut-heading">
-                      <div className="ut-inline">
+                    <div className="ut-calendar-toolbar">
+                      <div className="ut-calendar-navigation">
                         <button
                           aria-label="Período anterior"
                           onClick={() => change({ anchor: shiftPeriod(anchor, period, -1) })}
@@ -388,48 +413,46 @@ export function UserTasks({
                         </button>
                         <button onClick={() => change({ anchor: localDay() })}>Hoje</button>
                       </div>
-                      <label className="ut-inline">
-                        Período
-                        <select
-                          value={period}
-                          onChange={(e) => change({ period: e.target.value as TaskPeriod })}
-                        >
-                          {Object.entries(TASK_PERIOD_LABELS).map(([key, label]) => (
-                            <option key={key} value={key}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="ut-inline">
-                        Ir para
-                        <input
-                          type="date"
-                          value={anchor}
-                          onChange={(e) => {
-                            if (validDay(e.target.value)) change({ anchor: e.target.value });
-                          }}
-                        />
-                      </label>
-                      <div className="ut-view-switch" aria-label="Formato do calendário">
-                        <button
-                          aria-pressed={state.calendarView !== "gantt"}
-                          onClick={() => change({ calendarView: "month" })}
-                        >
-                          Calendário
-                        </button>
-                        <button
-                          aria-pressed={state.calendarView === "gantt"}
-                          onClick={() => change({ calendarView: "gantt" })}
-                        >
-                          Gantt
-                        </button>
+                      <div className="ut-calendar-display">
+                        <label className="ut-inline">
+                          Visualizar
+                          <select
+                            value={period}
+                            onChange={(e) => change({ period: e.target.value as TaskPeriod })}
+                          >
+                            {Object.entries(TASK_PERIOD_LABELS).map(([key, label]) => (
+                              <option key={key} value={key}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="ut-inline">
+                          Ir para
+                          <input
+                            type="date"
+                            value={anchor}
+                            onChange={(e) => {
+                              if (validDay(e.target.value)) change({ anchor: e.target.value });
+                            }}
+                          />
+                        </label>
+                        <div className="ut-view-switch" aria-label="Formato do calendário">
+                          <button
+                            aria-pressed={state.calendarView !== "gantt"}
+                            onClick={() => change({ calendarView: "month" })}
+                          >
+                            Calendário
+                          </button>
+                          <button
+                            aria-pressed={state.calendarView === "gantt"}
+                            onClick={() => change({ calendarView: "gantt" })}
+                          >
+                            Gantt
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <p className="ut-muted">
-                      Distribuição pelo período da atividade. Selecione a tarefa para abrir os
-                      detalhes.
-                    </p>
                     <TaskMeetings
                       isAdmin={data.isAdmin}
                       organizationId={organizationId}
