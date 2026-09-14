@@ -1,4 +1,10 @@
-export const TASK_MODALITIES = ["Sistemas", "Operacional", "Automação & IA", "Dados / BI"] as const;
+export const TASK_MODALITIES = [
+  "Sistemas",
+  "Operacional",
+  "Automação & IA",
+  "Dados / BI",
+  "Outros",
+] as const;
 export const TASK_STATUSES = ["pending", "in_progress", "review", "paused", "completed"] as const;
 export const TASK_STATUS_LABELS = {
   pending: "A fazer",
@@ -140,6 +146,7 @@ export type TaskAction =
   | "add_item"
   | "add_entry"
   | "remove_entry"
+  | "remove_section"
   | "begin_document"
   | "attach_file"
   | "item"
@@ -151,3 +158,11 @@ export type TaskAction =
   | "record_owner_approval"
   | "admin_move"
   | "comment";
+
+export const DEFAULT_MAPPING_SECTIONS = [
+  "mapping",
+  "flowchart",
+  "pop",
+  "communication",
+  "premises",
+];

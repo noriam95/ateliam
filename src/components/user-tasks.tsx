@@ -1015,6 +1015,7 @@ function TaskDetails({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [detailTab, setDetailTab] = useState("data");
+  const [activityTab, setActivityTab] = useState("comments");
   const [commentDirty, setCommentDirty] = useState(false);
   const [fieldsDirty, setFieldsDirty] = useState(false);
   const data = query.data;
@@ -1092,12 +1093,6 @@ function TaskDetails({
             <button aria-pressed={detailTab === "flow"} onClick={() => setDetailTab("flow")}>
               Fluxo do processo
             </button>
-            <button
-              aria-pressed={detailTab === "meetings"}
-              onClick={() => setDetailTab("meetings")}
-            >
-              Reuniões
-            </button>
           </nav>
           <section
             hidden={detailTab !== "movements"}
@@ -1124,7 +1119,19 @@ function TaskDetails({
                 .sort((a, b) => b.created_at.localeCompare(a.created_at))
                 .map((ev) => (
                   <article key={ev.id} className="ut-routing-description">
-                    <strong>{ev.movement_action}</strong>
+                    <div className="ut-movement-heading">
+                      <strong>{ev.movement_action}</strong>
+                      <time dateTime={ev.created_at}>
+                        {new Date(ev.created_at).toLocaleString("pt-BR", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </time>
+                    </div>
+                    <div className="ut-movement-author">
+                      {ev.actor_photo && <img src={ev.actor_photo} alt="" />}
+                      <span>{ev.actor_name}</span>
+                    </div>
                     <p style={{ whiteSpace: "pre-wrap" }}>
                       {ev.movement_note || "Sem descrição registrada."}
                     </p>
@@ -1133,14 +1140,6 @@ function TaskDetails({
             </div>
           </section>
           {detailTab === "flow" && <TaskProcessFlow task={t} />}
-          {detailTab === "meetings" && (
-            <TaskMeetings
-              organizationId={organizationId}
-              tasks={[t]}
-              taskId={t.id}
-              isAdmin={data?.isAdmin}
-            />
-          )}
           <div hidden={detailTab !== "data"}>
             <div className="ut-detail-grid">
               <section className="ut-detail-main">
@@ -1206,7 +1205,7 @@ function TaskDetails({
                       </small>
                       <progress
                         aria-label="Itens concluídos"
-                        max={t.checklist.length}
+                        max={t.checklist.length || 1}
                         value={t.checklist.length - remainder.length}
                       />
                     </div>
@@ -1230,57 +1229,83 @@ function TaskDetails({
                 </div>
               </section>
               <aside className="ut-detail-history">
-                <h3>Comentários e atividade</h3>
-                {data && (
-                  <TaskComment
-                    task={t}
-                    userId={data.userId}
-                    busy={busy}
-                    write={write}
-                    onDirty={setCommentDirty}
+                <nav
+                  className="ut-inline ut-detail-tabs ut-activity-tabs"
+                  aria-label="Acompanhamento da tarefa"
+                >
+                  <button
+                    aria-pressed={activityTab === "comments"}
+                    onClick={() => setActivityTab("comments")}
+                  >
+                    Comentários e atividade
+                  </button>
+                  <button
+                    aria-pressed={activityTab === "meetings"}
+                    onClick={() => setActivityTab("meetings")}
+                  >
+                    Reuniões
+                  </button>
+                </nav>
+                <div hidden={activityTab !== "comments"}>
+                  {data && (
+                    <TaskComment
+                      task={t}
+                      userId={data.userId}
+                      busy={busy}
+                      write={write}
+                      onDirty={setCommentDirty}
+                    />
+                  )}
+                  {data?.events.map((ev) => (
+                    <article className="ut-activity" key={ev.id}>
+                      <span className="ut-avatar" aria-hidden="true">
+                        {ev.actor_photo ? (
+                          <img src={ev.actor_photo} alt="" className="ut-comment-photo" />
+                        ) : (
+                          ev.actor_name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")
+                        )}
+                      </span>
+                      <div>
+                        <strong>{ev.actor_name}</strong>
+                        <small>{new Date(ev.created_at).toLocaleString("pt-BR")}</small>
+                        <p
+                          className={ev.action === "Comentário" ? "ut-comment" : ""}
+                          style={{ whiteSpace: "pre-wrap" }}
+                        >
+                          {ev.action === "Comentário" ? (
+                            ev.note
+                          ) : (
+                            <>
+                              <b>{ev.action}</b>
+                              {ev.note && (
+                                <>
+                                  <br />
+                                  {ev.note}
+                                </>
+                              )}
+                            </>
+                          )}
+                        </p>
+                        {ev.attachments?.map((a) => (
+                          <CommentAttachment key={a.path} attachment={a} />
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                  <small>Últimos 100 registros.</small>
+                </div>
+                {activityTab === "meetings" && (
+                  <TaskMeetings
+                    organizationId={organizationId}
+                    tasks={[t]}
+                    taskId={t.id}
+                    isAdmin={data?.isAdmin}
                   />
                 )}
-                {data?.events.map((ev) => (
-                  <article className="ut-activity" key={ev.id}>
-                    <span className="ut-avatar" aria-hidden="true">
-                      {ev.actor_photo ? (
-                        <img src={ev.actor_photo} alt="" className="ut-comment-photo" />
-                      ) : (
-                        ev.actor_name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join("")
-                      )}
-                    </span>
-                    <div>
-                      <strong>{ev.actor_name}</strong>
-                      <small>{new Date(ev.created_at).toLocaleString("pt-BR")}</small>
-                      <p
-                        className={ev.action === "Comentário" ? "ut-comment" : ""}
-                        style={{ whiteSpace: "pre-wrap" }}
-                      >
-                        {ev.action === "Comentário" ? (
-                          ev.note
-                        ) : (
-                          <>
-                            <b>{ev.action}</b>
-                            {ev.note && (
-                              <>
-                                <br />
-                                {ev.note}
-                              </>
-                            )}
-                          </>
-                        )}
-                      </p>
-                      {ev.attachments?.map((a) => (
-                        <CommentAttachment key={a.path} attachment={a} />
-                      ))}
-                    </div>
-                  </article>
-                ))}
-                <small>Últimos 100 registros.</small>
               </aside>
             </div>
           </div>

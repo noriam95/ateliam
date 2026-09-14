@@ -29,7 +29,9 @@ export function TaskKanbanCard({ task, open }: { task: UserTask; open: () => voi
         ? "operational"
         : task.modality === "Dados / BI"
           ? "bi"
-          : "automation";
+          : task.modality === "Outros"
+            ? "other"
+            : "automation";
   return (
     <button
       className="ut-card ut-rich-card"

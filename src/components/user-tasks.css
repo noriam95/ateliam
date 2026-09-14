@@ -1636,3 +1636,47 @@
 .ut-movement-history .ut-routing-description {
   margin: 0;
 }
+
+.ut-delivery-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.ut-delivery-toolbar > button {
+  border-color: transparent;
+  background: transparent;
+}
+.ut-movement-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ut-movement-heading time,
+.ut-movement-author {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.ut-movement-author {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+.ut-movement-author img {
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.ut-activity-tabs {
+  margin-bottom: 16px;
+}
+.ut-modality-other {
+  background: var(--muted);
+  color: var(--foreground);
+}

@@ -77,6 +77,7 @@ export const updateUserTask = createServerFn({ method: "POST" })
           "add_item",
           "add_entry",
           "remove_entry",
+          "remove_section",
           "begin_document",
           "attach_file",
           "item",

@@ -1,7 +1,8 @@
-import { Pencil, Trash2, Eye } from "lucide-react";
+import { Pencil, Trash2, Eye, Paperclip, Plus, Download } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { documentTaskUrl, type TaskAction, type TaskItem, type UserTask } from "@/lib/user-tasks";
+import { DEFAULT_MAPPING_SECTIONS } from "@/lib/user-tasks";
 import { TaskDialog } from "./task-dialog";
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
   setBusy: (busy: boolean) => void;
 };
 export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setBusy }: Props) {
+  const [removingSection, setRemovingSection] = useState<TaskItem | null>(null);
   const [removing, setRemoving] = useState<TaskItem | null>(null);
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
@@ -48,7 +50,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
       if (uploadError) throw uploadError;
       const attachment = { path, name: file.name, size: file.size };
       setRetry({ key: uploadKey, attachment });
-      if (await write("attach_file", { key: uploadKey, attachment })) setRetry(null);
+      if (await write("attach_file", { key: uploadKey, attachment, replace: true })) setRetry(null);
       else setError("Arquivo enviado. Tente registrar o anexo novamente.");
     } catch (err) {
       setError((err as Error).message);
@@ -132,26 +134,56 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                       </div>
                       {item.entry_type === "file" ? (
                         item.attachment ? (
-                          <button
-                            disabled={busy}
-                            onClick={async () => {
-                              setError("");
-                              setDownload(null);
-                              try {
-                                const { data, error: err } = await supabase.storage
-                                  .from("user-task-files")
-                                  .createSignedUrl(item.attachment!.path, 60, {
-                                    download: item.attachment!.name,
-                                  });
-                                if (err) throw err;
-                                setDownload({ url: data.signedUrl, name: item.attachment!.name });
-                              } catch (err) {
-                                setError((err as Error).message);
-                              }
-                            }}
-                          >
-                            Baixar anexo
-                          </button>
+                          <div className="ut-entry-actions">
+                            <button
+                              className="ut-icon-button"
+                              aria-label="Baixar anexo"
+                              title="Baixar anexo"
+                              disabled={busy}
+                              onClick={async () => {
+                                setError("");
+                                setDownload(null);
+                                try {
+                                  const { data, error: err } = await supabase.storage
+                                    .from("user-task-files")
+                                    .createSignedUrl(item.attachment!.path, 60, {
+                                      download: item.attachment!.name,
+                                    });
+                                  if (err) throw err;
+                                  setDownload({ url: data.signedUrl, name: item.attachment!.name });
+                                } catch (err) {
+                                  setError((err as Error).message);
+                                }
+                              }}
+                            >
+                              <Download size={16} />
+                            </button>
+                            {canEdit && (
+                              <>
+                                <button
+                                  className="ut-icon-button"
+                                  title="Substituir arquivo"
+                                  aria-label="Substituir arquivo"
+                                  disabled={busy || !!retry}
+                                  onClick={() => {
+                                    setUploadKey(item.key);
+                                    fileInput.current?.click();
+                                  }}
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  className="ut-icon-button"
+                                  title="Excluir arquivo do item"
+                                  aria-label="Excluir arquivo do item"
+                                  disabled={busy}
+                                  onClick={() => setRemoving(item)}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         ) : (
                           canEdit && (
                             <button
@@ -161,7 +193,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                                 fileInput.current?.click();
                               }}
                             >
-                              Enviar arquivo
+                              <Paperclip size={16} /> Anexar arquivo
                             </button>
                           )
                         )
@@ -200,7 +232,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                             disabled={busy}
                             onClick={() => void write("begin_document", { key: item.key })}
                           >
-                            Preencher {item.entry_type === "pop" ? "POP" : "mapeamento"}
+                            <Pencil size={16} /> Preencher
                           </button>
                         )
                       ) : (
@@ -212,17 +244,30 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                   );
                 })}
               {canEdit && (
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    void write("add_entry", { key: first.key, entryId: crypto.randomUUID() })
-                  }
-                >
-                  +{" "}
-                  {first.entry_type === "file"
-                    ? "Adicionar outro anexo"
-                    : "Adicionar outro preenchimento"}
-                </button>
+                <div className="ut-delivery-toolbar">
+                  <button
+                    disabled={busy}
+                    onClick={() =>
+                      void write("add_entry", { key: first.key, entryId: crypto.randomUUID() })
+                    }
+                  >
+                    <Plus size={16} />{" "}
+                    {first.entry_type === "file"
+                      ? "Adicionar outro anexo"
+                      : "Adicionar outro preenchimento"}
+                  </button>
+                  {(task.modality === "Outros" || !DEFAULT_MAPPING_SECTIONS.includes(key)) && (
+                    <button
+                      className="ut-icon-button"
+                      disabled={busy}
+                      title="Excluir seção adicional"
+                      aria-label={`Excluir seção ${first.label}`}
+                      onClick={() => setRemovingSection(first)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </details>
@@ -245,7 +290,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
         <button
           disabled={busy}
           onClick={async () => {
-            if (await write("attach_file", retry)) {
+            if (await write("attach_file", { ...retry, replace: true })) {
               setRetry(null);
               setError("");
             }
@@ -262,19 +307,50 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
             setAdding(true);
           }}
         >
-          + Adicionar item ao checklist
+          <Plus size={16} /> Adicionar item ao checklist
         </button>
       )}
-      {removing && (
+      {removingSection && (
         <TaskDialog
-          title="Excluir documento do checklist"
+          title="Excluir seção do checklist"
           busy={busy}
-          onClose={() => setRemoving(null)}
+          onClose={() => setRemovingSection(null)}
         >
           <div className="ut-form">
             <p>
-              Remover “{removing.document_name || removing.label}” desta tarefa? O documento
-              continuará disponível no módulo de origem.
+              Excluir “{removingSection.label}” e suas entregas desta tarefa? Os documentos dos
+              módulos de origem serão preservados.
+            </p>
+          </div>
+          <footer>
+            <button disabled={busy} onClick={() => setRemovingSection(null)}>
+              Cancelar
+            </button>
+            <button
+              className="ut-primary"
+              disabled={busy}
+              onClick={async () => {
+                if (await write("remove_section", { key: removingSection.key }))
+                  setRemovingSection(null);
+              }}
+            >
+              Excluir seção
+            </button>
+          </footer>
+        </TaskDialog>
+      )}
+      {task.modality === "Outros" && !groups.size && (
+        <p className="ut-muted">
+          Monte o checklist adicionando formulários, anexos ou registros em texto.
+        </p>
+      )}
+      {removing && (
+        <TaskDialog title="Excluir entrega do item" busy={busy} onClose={() => setRemoving(null)}>
+          <div className="ut-form">
+            <p>
+              Remover “{removing.attachment?.name || removing.document_name || removing.label}”
+              deste item? A seção do checklist será mantida. Documentos de mapeamento e POP
+              continuam disponíveis no módulo de origem.
             </p>
           </div>
           <footer>
