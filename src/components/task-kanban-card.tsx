@@ -7,7 +7,15 @@ import {
   type UserTask,
   type TaskItem,
 } from "@/lib/user-tasks";
-export function TaskKanbanCard({ task, open }: { task: UserTask; open: () => void }) {
+export function TaskKanbanCard({
+  task,
+  open,
+  compact = false,
+}: {
+  task: UserTask;
+  open: () => void;
+  compact?: boolean;
+}) {
   const groups = new Map<string, TaskItem[]>();
   for (const item of task.checklist) {
     const key = item.group_key || item.key;
@@ -32,6 +40,40 @@ export function TaskKanbanCard({ task, open }: { task: UserTask; open: () => voi
           : task.modality === "Outros"
             ? "other"
             : "automation";
+  if (compact)
+    return (
+      <button
+        className="ut-card ut-rich-card ut-compact-card"
+        onClick={open}
+        aria-label={`Abrir tarefa ${taskCode(task)}: ${task.title}. Responsável: ${task.assignee_name}. Vencimento: ${taskDate(task.due_on)}${late ? ". Atrasada" : ""}`}
+      >
+        <span className="ut-card-top">
+          <small>{taskCode(task)}</small>
+          <span className="ut-modality ut-task-kind">
+            {{ mapping: "Mapeamento", document: "Documento", improvement: "Melhoria" }[task.kind]}
+          </span>
+        </span>
+        <strong className="ut-card-title" title={task.title}>
+          {task.title}
+        </strong>
+        <span className="ut-card-owner">
+          <span
+            className="ut-avatar"
+            title={task.assignee_name}
+            aria-label={`Responsável: ${task.assignee_name}`}
+          >
+            {task.assignee_photo ? <img src={task.assignee_photo} alt="" /> : initials}
+          </span>
+          <time
+            dateTime={task.due_on}
+            className={late ? "ut-late" : ""}
+            title={`${late ? "Atrasada · " : ""}Vencimento: ${taskDate(task.due_on)}`}
+          >
+            {taskDate(task.due_on)}
+          </time>
+        </span>
+      </button>
+    );
   return (
     <button
       className="ut-card ut-rich-card"

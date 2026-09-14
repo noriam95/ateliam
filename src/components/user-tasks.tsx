@@ -55,6 +55,7 @@ import "./user-tasks.css";
 type ViewState = TaskFilters & {
   layout?: "list" | "kanban" | "calendar";
   group?: "status" | "modality";
+  cardDensity?: "detailed" | "compact";
   month?: string;
   anchor?: string;
   period?: TaskPeriod;
@@ -68,6 +69,7 @@ function parseState(raw?: string): ViewState {
     const parsed: Record<string, unknown> = { layout: "calendar" };
     for (const key of strings) if (typeof value[key] === "string") parsed[key] = value[key];
     if (["list", "kanban", "calendar"].includes(value.layout)) parsed.layout = value.layout;
+    if (["detailed", "compact"].includes(value.cardDensity)) parsed.cardDensity = value.cardDensity;
     if (validDay(value.anchor)) parsed.anchor = value.anchor;
     if (["day", "week", "month", "year"].includes(value.period)) parsed.period = value.period;
     if (["month", "gantt"].includes(value.calendarView)) parsed.calendarView = value.calendarView;
@@ -357,18 +359,38 @@ export function UserTasks({
                   <>
                     <div className="ut-heading">
                       <p>{data.total} tarefa(s)</p>
-                      <label className="ut-inline">
-                        Agrupar por
-                        <select
-                          value={state.group || "status"}
-                          onChange={(e) =>
-                            change({ group: e.target.value as "status" | "modality" })
-                          }
+                      <div className="ut-kanban-controls">
+                        <div
+                          className="ut-density-switch"
+                          role="group"
+                          aria-label="Informações dos cards"
                         >
-                          <option value="status">Situação da tarefa</option>
-                          <option value="modality">Modalidade de mapeamento</option>
-                        </select>
-                      </label>
+                          <button
+                            aria-pressed={state.cardDensity !== "compact"}
+                            onClick={() => change({ cardDensity: "detailed" })}
+                          >
+                            Detalhado
+                          </button>
+                          <button
+                            aria-pressed={state.cardDensity === "compact"}
+                            onClick={() => change({ cardDensity: "compact" })}
+                          >
+                            Compacto
+                          </button>
+                        </div>
+                        <label className="ut-inline">
+                          Agrupar por
+                          <select
+                            value={state.group || "status"}
+                            onChange={(e) =>
+                              change({ group: e.target.value as "status" | "modality" })
+                            }
+                          >
+                            <option value="status">Situação da tarefa</option>
+                            <option value="modality">Modalidade de mapeamento</option>
+                          </select>
+                        </label>
+                      </div>
                     </div>
                     <div className="ut-kanban">
                       {(state.group === "modality"
@@ -390,7 +412,12 @@ export function UserTasks({
                             </h3>
                             {tasks.length ? (
                               tasks.map((t) => (
-                                <TaskKanbanCard key={t.id} task={t} open={() => open(t.id)} />
+                                <TaskKanbanCard
+                                  key={t.id}
+                                  task={t}
+                                  compact={state.cardDensity === "compact"}
+                                  open={() => open(t.id)}
+                                />
                               ))
                             ) : (
                               <p className="ut-muted">Nenhuma tarefa nesta coluna.</p>
