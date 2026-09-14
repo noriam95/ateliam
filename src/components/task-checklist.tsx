@@ -116,7 +116,9 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                         <strong>
                           {item.entry_type === "file"
                             ? item.attachment?.name || `Anexo ${index + 1}`
-                            : `Preenchimento ${index + 1}`}
+                            : item.document_id
+                              ? `${item.document_code || "Código pendente"} · ${item.document_name || item.label}`
+                              : `Preenchimento ${index + 1}`}
                         </strong>
                         <small>
                           {item.completed

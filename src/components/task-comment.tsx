@@ -1,3 +1,4 @@
+import { Paperclip } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { UserTask, TaskAction } from "@/lib/user-tasks";
@@ -79,10 +80,13 @@ export function TaskComment({
           placeholder="Escrever um comentário…"
         />
       </label>
-      <label className="ut-comment-files">
-        Anexar documentos <small>Até 5 arquivos, 20 MB por arquivo</small>
+      <div className="ut-comment-files">
+        <button type="button" disabled={uploading || busy} onClick={() => input.current?.click()}>
+          <Paperclip size={16} /> Anexar arquivos
+        </button>
         <input
           ref={input}
+          hidden
           type="file"
           multiple
           disabled={uploading || busy}
@@ -102,7 +106,7 @@ export function TaskComment({
             e.target.value = "";
           }}
         />
-      </label>
+      </div>
       <ul>
         {files.map((file, index) => (
           <li key={index}>

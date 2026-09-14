@@ -63,9 +63,7 @@ export function TaskKanbanCard({ task, open }: { task: UserTask; open: () => voi
               <span
                 aria-hidden="true"
                 className={`ut-card-checkmark ${done === items.length ? "ut-card-checkmark-done" : ""}`}
-              >
-                {done === items.length ? "✓" : ""}
-              </span>
+              ></span>
               <span>
                 {items[0].label}
                 {items[0].optional ? " · Opcional" : ""}

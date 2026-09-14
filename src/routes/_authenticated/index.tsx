@@ -1,3 +1,4 @@
+import { loadTaskNotifications } from "@/lib/user-tasks.functions";
 import { visibleModulesFor } from "@/lib/module-visibility";
 import type { SearchSchemaInput } from "@tanstack/react-router";
 import { UserTasks } from "@/components/user-tasks";
@@ -1081,7 +1082,11 @@ function WorkspaceHome() {
           </select>
         </div>
 
-        <SystemNotificationsMenu items={activityFeed} />
+        <SystemNotificationsMenu
+          items={systemNotifications}
+          organizationId={selectedOrganizationId || ""}
+          userId={meQ.data?.profile?.id || ""}
+        />
 
         <UserProfileMenu
           canConfigure={isCurrentUserAdmin}
@@ -2229,14 +2234,34 @@ declare const __BF_FLOW_RELEASE_NOTES__: SystemReleaseNote[];
 const AUTOMATED_RELEASE_NOTES =
   typeof __BF_FLOW_RELEASE_NOTES__ === "undefined" ? [] : __BF_FLOW_RELEASE_NOTES__;
 
-function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
+function SystemNotificationsMenu({
+  items: systemItems,
+  organizationId,
+  userId,
+}: {
+  items: SystemNotification[];
+  organizationId: string;
+  userId: string;
+}) {
+  const [tab, setTab] = useState("user");
+  const load = useServerFn(loadTaskNotifications);
+  const userQ = useQuery({
+    queryKey: ["task-notifications", organizationId, userId],
+    queryFn: () => load({ data: { organizationId } }),
+    enabled: !!organizationId && !!userId,
+    refetchInterval: 60000,
+  });
+  const items: (SystemNotification & { taskId?: string })[] =
+    tab === "user" ? userQ.data || [] : systemItems;
+
   const [open, setOpen] = useState(false);
   const [readIds, setReadIds] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const readStorageKey = "bf-flow.notification-read.v1";
+  const readStorageKey = `bf-flow.notification-read.v2:${userId}:${organizationId}`;
   const readSet = useMemo(() => new Set(readIds), [readIds]);
   const notificationReadKey = (item: SystemNotification) => `${item.id}:${item.updatedAt}`;
-  const unreadCount = items.filter((item) => !readSet.has(notificationReadKey(item))).length;
+  const allItems = [...(userQ.data || []), ...systemItems];
+  const unreadCount = allItems.filter((item) => !readSet.has(notificationReadKey(item))).length;
 
   useEffect(() => {
     try {
@@ -2245,7 +2270,7 @@ function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
     } catch {
       setReadIds([]);
     }
-  }, []);
+  }, [readStorageKey]);
 
   function saveReadIds(next: string[]) {
     const unique = Array.from(new Set(next));
@@ -2264,7 +2289,7 @@ function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
   }
 
   function markAllAsRead() {
-    saveReadIds([...readIds, ...items.map(notificationReadKey)]);
+    saveReadIds([...readIds, ...allItems.map(notificationReadKey)]);
   }
 
   useEffect(() => {
@@ -2315,6 +2340,30 @@ function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
               <CheckCheck className="h-4 w-4 text-emerald-600" />
             )}
           </div>
+          <div className="flex gap-4 border-b border-border px-4">
+            <button
+              type="button"
+              className={`py-3 text-xs ${tab === "user" ? "border-b-2 border-primary font-semibold" : ""}`}
+              onClick={() => setTab("user")}
+            >
+              Usuário
+            </button>
+            <button
+              type="button"
+              className={`py-3 text-xs ${tab === "system" ? "border-b-2 border-primary font-semibold" : ""}`}
+              onClick={() => setTab("system")}
+            >
+              Atualizações do sistema
+            </button>
+          </div>
+          {tab === "user" && userQ.isLoading && (
+            <p className="p-4 text-sm">Carregando notificações…</p>
+          )}
+          {tab === "user" && userQ.error && (
+            <p role="alert" className="p-4 text-sm">
+              {userQ.error.message}
+            </p>
+          )}
           {items.length ? (
             <div className="max-h-[360px] overflow-y-auto p-2">
               {items.map((item) => {
@@ -2336,7 +2385,16 @@ function SystemNotificationsMenu({ items }: { items: SystemNotification[] }) {
                         </div>
                         <div className="mt-0.5 text-[11px] text-muted-foreground">
                           {item.description}
-                        </div>
+                        </div>{" "}
+                        {item.taskId && (
+                          <a
+                            href={`/?view=tasks&taskState=${encodeURIComponent(JSON.stringify({ id: item.taskId }))}`}
+                            onClick={() => markAsRead(item)}
+                            className="mt-2 inline-block text-xs font-semibold text-primary"
+                          >
+                            Abrir tarefa
+                          </a>
+                        )}
                       </div>
                       <div className="grid shrink-0 justify-items-end gap-1">
                         <time className="text-[10px] text-muted-foreground">

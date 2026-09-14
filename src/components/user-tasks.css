@@ -1586,3 +1586,11 @@
 .ut-calendar-fit .ut-day {
   cursor: pointer;
 }
+
+.ut-rich-card .ut-card-checkmark {
+  border-radius: 50%;
+  width: 9px;
+  height: 9px;
+}
+
+@media (min-width: 640px) { .ut-form-row.ut-task-people-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

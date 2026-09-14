@@ -9425,6 +9425,7 @@ function ModuleDocumentGrid({
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem(`${tablePreferenceKey}-query`) ?? "";
   });
+  const [areaFilter, setAreaFilter] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [sortField, setSortField] = useState<ModuleGridColumn>(() => {
     if (typeof window === "undefined") return "updatedAt";
@@ -9470,10 +9471,12 @@ function ModuleDocumentGrid({
   }, [compact, query, sortDir, sortField, tablePreferenceKey]);
   const filtered = useMemo(() => {
     const normalized = normalizeLabel(query);
-    return rows.filter((row) =>
-      !normalized ? true : normalizeLabel(Object.values(row).join(" ")).includes(normalized),
+    return rows.filter(
+      (row) =>
+        (!areaFilter || row.area === areaFilter) &&
+        (!normalized || normalizeLabel(Object.values(row).join(" ")).includes(normalized)),
     );
-  }, [query, rows]);
+  }, [query, rows, areaFilter]);
   const columns =
     moduleId === "ddp"
       ? [
@@ -9614,6 +9617,24 @@ function ModuleDocumentGrid({
             <Rows3 className="h-4 w-4" />
           </button>
         </div>
+        {moduleId === "ddp" && (
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            Área
+            <select
+              className="rounded-md border border-input bg-background p-2"
+              value={areaFilter}
+              onChange={(e) => setAreaFilter(e.target.value)}
+            >
+              <option value="">Todas as áreas</option>
+              {Array.from(new Set(rows.map((r) => r.area)))
+                .filter((a) => a && a !== "-")
+                .sort()
+                .map((a) => (
+                  <option key={a}>{a}</option>
+                ))}
+            </select>
+          </label>
+        )}
         {moduleId === "ddp" ? (
           <div className="mt-4">
             <ModuleStatusSummary rows={rows} />

@@ -81,3 +81,5 @@ Card: encaminhamento e histórico ficam na aba Movimentações. Nova tarefa orga
 Calendário mensal ajusta a altura ao espaço restante da janela e resume atividades excedentes por dia com abertura da lista completa, sem cortar o acesso aos registros.
 
 Pesquisa na agenda filtra também reuniões por título, pauta, nomes e e-mails de organizador/participantes, respeitando acesso. Clique no dia abre agendamento com data preenchida; clique em atividade abre detalhes. Lista e Kanban mantêm seu conjunto de tarefas.
+
+Próximas melhorias: Área na criação de tarefas reutiliza cadastro organizacional e exige seleção, com cadastro rápido por nome e sigla. Consulta de mapeamentos mantém coluna Área e inclui filtro. Notificações têm abas Usuário e Atualizações do sistema, com leitura por usuário/organização. Entregas mostram código e título; os códigos de rascunhos e documentos salvos são lidos diretamente dos módulos de origem, sem gerar códigos no card. Movimentações apresenta orientação e tarefa, sem duplicar histórico dos comentários. Anexos usam botão com clipe e indicadores do Kanban são circulares.

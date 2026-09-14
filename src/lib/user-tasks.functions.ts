@@ -104,3 +104,52 @@ export const updateUserTask = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return result as { id: string; documentId?: string };
   });
+
+export const loadTaskAreas = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((v: unknown) => scope.parse(v))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("organization_departments")
+      .select("id,name")
+      .eq("organization_id", data.organizationId)
+      .order("name");
+    if (error) throw new Error(error.message);
+    return rows;
+  });
+export const loadTaskNotifications = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((v: unknown) => scope.parse(v))
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as unknown as SupabaseClient;
+    const { data: tasks, error } = await db
+      .from("user_tasks")
+      .select("id,title,task_code")
+      .eq("organization_id", data.organizationId)
+      .or(
+        ["assigned_to", "requested_by", "created_by", "documenter_id", "reviewer_id"]
+          .map((k) => `${k}.eq.${context.userId}`)
+          .join(","),
+      );
+    if (error) throw new Error(error.message);
+    if (!tasks?.length) return [];
+    const { data: events, error: eventError } = await db
+      .from("user_task_events")
+      .select("id,task_id,action,note,created_at")
+      .in(
+        "task_id",
+        tasks.map((t) => t.id),
+      )
+      .eq("organization_id", data.organizationId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (eventError) throw new Error(eventError.message);
+    return (events || []).map((e) => ({
+      id: e.id,
+      title: `${tasks.find((t) => t.id === e.task_id)?.task_code || ""} · ${tasks.find((t) => t.id === e.task_id)?.title || "Tarefa"}`,
+      description: e.note || e.action,
+      tag: e.action,
+      updatedAt: e.created_at,
+      taskId: e.task_id,
+    }));
+  });

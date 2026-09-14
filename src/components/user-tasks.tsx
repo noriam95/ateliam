@@ -1,3 +1,4 @@
+import { TaskAreaField } from "./task-area-field";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskComment, CommentAttachment } from "./task-comment";
 import { TaskMeetings, type ScheduleEntry } from "./task-meetings";
@@ -783,6 +784,7 @@ function CreateTask({
           const f = new FormData(e.currentTarget);
           if (
             title.trim().length < 2 ||
+            !f.get("areaId") ||
             !f.get("dueOn") ||
             !f.get("assignedTo") ||
             !f.get("requestedBy") ||
@@ -790,7 +792,7 @@ function CreateTask({
             String(f.get("dueOn")) < String(f.get("startsOn"))
           ) {
             setError(
-              "Preencha título, responsável, solicitante e período. O prazo deve ser igual ou posterior ao início.",
+              "Preencha título, responsável, solicitante, área e período. O prazo deve ser igual ou posterior ao início.",
             );
             return;
           }
@@ -803,6 +805,7 @@ function CreateTask({
                 action: "create",
                 payload: {
                   id,
+                  areaId: f.get("areaId"),
                   requestedBy: f.get("requestedBy"),
                   note: "",
                   title,
@@ -884,7 +887,7 @@ function CreateTask({
               </label>
             )}
           </div>
-          <div className="ut-form-row">
+          <div className="ut-form-row ut-task-people-row">
             <label>
               Responsável
               <select name="assignedTo" defaultValue={data.userId}>
@@ -907,6 +910,7 @@ function CreateTask({
                 ))}
               </select>
             </label>
+            <TaskAreaField organizationId={organizationId} />
           </div>
           <div className="ut-form-row">
             <label>
@@ -1102,7 +1106,7 @@ function TaskDetails({
           >
             {t.routing_description && (
               <div className="ut-routing-description">
-                <strong>Último encaminhamento</strong>
+                <strong>Movimentações · {t.title}</strong>
                 <p style={{ whiteSpace: "pre-wrap" }}>{t.routing_description}</p>
               </div>
             )}
@@ -1120,20 +1124,6 @@ function TaskDetails({
                 {error}
               </p>
             )}
-            <h3>Histórico de movimentações</h3>
-            {data?.events
-              .filter((ev) => ev.action !== "Comentário" && !ev.action.startsWith("Reunião"))
-              .map((ev) => (
-                <article className="ut-activity" key={ev.id}>
-                  <div>
-                    <strong>
-                      {ev.actor_name} · {ev.action}
-                    </strong>
-                    <small>{new Date(ev.created_at).toLocaleString("pt-BR")}</small>
-                    <p style={{ whiteSpace: "pre-wrap" }}>{ev.note}</p>
-                  </div>
-                </article>
-              ))}
           </section>
           {detailTab === "flow" && <TaskProcessFlow task={t} />}
           {detailTab === "meetings" && (
@@ -1178,12 +1168,6 @@ function TaskDetails({
                         <small>Período / prazo</small>
                         {taskDate(t.starts_on)} a {taskDate(t.due_on)}
                       </span>
-                    </div>
-                  )}
-                  {t.routing_description && (
-                    <div className="ut-routing-description">
-                      <strong>Último encaminhamento</strong>
-                      <p style={{ whiteSpace: "pre-wrap" }}>{t.routing_description}</p>
                     </div>
                   )}
                   {t.adjustment_request && t.stage === "documentation" && (
