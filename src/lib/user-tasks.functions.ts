@@ -155,3 +155,30 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
       taskId: e.task_id,
     }));
   });
+
+export const loadTaskExportDocuments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((v: unknown) => scope.extend({ taskId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as unknown as SupabaseClient;
+    const result = await db.rpc("user_task_export_documents", {
+      p_org: data.organizationId,
+      p_task: data.taskId,
+    });
+    if (result.error)
+      throw new Error(
+        result.error.code === "PGRST202"
+          ? "Aplique a atualização do Supabase para consultar e baixar as entregas."
+          : result.error.message,
+      );
+    return result.data as {
+      documents: {
+        id: string;
+        name: string;
+        module: string;
+        code: string;
+        content_inline: string;
+      }[];
+      brand?: { name?: string; logo_data_url?: string; word_header_color?: string };
+    };
+  });

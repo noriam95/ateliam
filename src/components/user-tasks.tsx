@@ -1,3 +1,4 @@
+import { TaskChecklistDownload } from "./task-delivery-export";
 import { movementActivityTitle } from "@/lib/user-tasks";
 import { TaskAreaField } from "./task-area-field";
 import { supabase } from "@/integrations/supabase/client";
@@ -251,10 +252,7 @@ export function UserTasks({
                     })}
                   </div>
                 </div>
-                <details
-                  className="ut-task-filters"
-                  open={state.layout !== "calendar" ? true : undefined}
-                >
+                <details className="ut-task-filters" key={state.layout}>
                   <summary>
                     Filtros de tarefas{" "}
                     <span>
@@ -1204,22 +1202,6 @@ function TaskDetails({
                       </span>
                     </div>
                   )}
-                  {t.adjustment_request && t.stage === "documentation" && (
-                    <div className="ut-warning">
-                      <strong>Ajustes solicitados</strong>
-                      <p style={{ whiteSpace: "pre-wrap" }}>{t.adjustment_request}</p>
-                    </div>
-                  )}
-                  {attention(t).length > 0 && (
-                    <div className="ut-warning">
-                      <strong>A tarefa foi movimentada com pendências.</strong>
-                      <ul>
-                        {attention(t).map((i) => (
-                          <li key={i.key}>{i.label}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                   <section>
                     <div className="ut-heading">
                       <h3>Checklist{t.modality ? ` · ${t.modality}` : ""}</h3>
@@ -1238,6 +1220,7 @@ function TaskDetails({
                       />
                     </div>
                     <p className="ut-muted">Rascunhos permanecem em andamento.</p>
+                    {t.status === "completed" && <TaskChecklistDownload task={t} />}
                     <TaskChecklist
                       task={t}
                       canEdit={!!canEdit}

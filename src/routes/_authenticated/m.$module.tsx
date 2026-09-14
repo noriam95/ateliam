@@ -21994,3 +21994,14 @@ function escapeXml(value: string) {
     return map[char] ?? char;
   });
 }
+
+// Reuse the module's Word and read-only renderers for task deliveries.
+export function renderTaskDelivery(content: string, module: string, brand?: OrganizationBrand) {
+  const parsed = JSON.parse(content);
+  const source = parsed.modules || parsed;
+  if (!source[module] || !["ddp", "pop"].includes(module)) throw new Error("Conteúdo do documento indisponível.");
+  const workspace = parseWorkspace(content);
+  return module === "ddp"
+    ? { word: buildDdpDocx(workspace.ddp, brand), html: buildDdpPresentationHtml(workspace.ddp, brand) }
+    : { word: buildPopDocxModern(workspace.pop, brand), html: buildPopPresentationHtml(workspace.pop, brand) };
+}

@@ -1,3 +1,4 @@
+import { TaskDocumentPreview } from "./task-delivery-export";
 import { Pencil, Trash2, Eye, Paperclip, Plus, Download } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -199,20 +200,24 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                         )
                       ) : item.document_id ? (
                         <div className="ut-entry-actions">
-                          <a
-                            className="ut-button ut-icon-button"
-                            aria-label={canEdit ? "Editar documento" : "Visualizar documento"}
-                            title={canEdit ? "Editar documento" : "Visualizar documento"}
-                            href={documentTaskUrl(task, item, {
-                              id: item.document_id,
-                              module,
-                              name: item.label,
-                              code: "",
-                              current_version: 0,
-                            })}
-                          >
-                            {canEdit ? <Pencil size={16} /> : <Eye size={16} />}
-                          </a>
+                          {!canEdit ? (
+                            <TaskDocumentPreview task={task} documentId={item.document_id} />
+                          ) : (
+                            <a
+                              className="ut-button ut-icon-button"
+                              aria-label={canEdit ? "Editar documento" : "Visualizar documento"}
+                              title={canEdit ? "Editar documento" : "Visualizar documento"}
+                              href={documentTaskUrl(task, item, {
+                                id: item.document_id,
+                                module,
+                                name: item.label,
+                                code: "",
+                                current_version: 0,
+                              })}
+                            >
+                              <Pencil size={16} />
+                            </a>
+                          )}
                           {canEdit && (
                             <button
                               type="button"
