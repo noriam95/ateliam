@@ -22,8 +22,13 @@ export function ThemeControl({ compact = false }: { compact?: boolean }) {
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredThemePreference());
 
   useEffect(() => {
-    applyThemePreference(preference);
-    return listenForThemeChanges(() => setPreference(getStoredThemePreference()));
+    const sync = () => {
+      const stored = getStoredThemePreference();
+      applyThemePreference(stored);
+      setPreference(stored);
+    };
+    sync();
+    return listenForThemeChanges(sync);
   }, [preference]);
 
   function choose(value: ThemePreference) {

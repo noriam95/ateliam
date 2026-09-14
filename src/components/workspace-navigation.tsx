@@ -41,6 +41,7 @@ export function WorkspaceLauncher({
   const id = useId();
   const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [modulesOpen, setModulesOpen] = useState(activeArea === "modules");
   const close = () => panel.current?.hidePopover();
   const entries = [
     {
@@ -107,6 +108,7 @@ export function WorkspaceLauncher({
                   className="workspace-launcher-entry"
                   aria-current={activeArea === area && !activeTask ? "page" : undefined}
                   onClick={() => {
+                    if (area === "modules") setModulesOpen((value) => !value);
                     onSelect(area);
                     if (area === "home" || area === "value-chain") close();
                   }}
@@ -118,7 +120,8 @@ export function WorkspaceLauncher({
                     <strong>{label}</strong>
                     <small>{description}</small>
                   </span>
-                  {area === "modules" && <ChevronRight size={16} aria-hidden="true" />}
+                  {area === "modules" &&
+                    (modulesOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
                 </button>
                 {area === "home" && visibleModules.includes("tasks") && (
                   <Link
@@ -137,9 +140,10 @@ export function WorkspaceLauncher({
                     </span>
                   </Link>
                 )}
-                {activeArea === area && area !== "home" && children && (
-                  <div className="workspace-launcher-context">{children}</div>
-                )}
+                {activeArea === area &&
+                  area !== "home" &&
+                  (area !== "modules" || modulesOpen) &&
+                  children && <div className="workspace-launcher-context">{children}</div>}
               </div>
             ))}
         </nav>
@@ -366,7 +370,8 @@ export function WorkspaceModulesTree({
               icon={branch.icon}
               active={branchIsActive(branch.moduleId)}
               open={!!expanded[branch.moduleId]}
-              onSelect={() => onNavigate({ kind: "module-root", moduleId: branch.moduleId })}
+              destination={false}
+              onSelect={() => onToggle(branch.moduleId)}
               onToggle={() => onToggle(branch.moduleId)}
             >
               <TreeButton

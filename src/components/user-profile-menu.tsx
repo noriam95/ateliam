@@ -1,3 +1,8 @@
+import {
+  getStoredThemePreference,
+  setStoredThemePreference,
+  listenForThemeChanges,
+} from "@/lib/theme";
 import { Link } from "@tanstack/react-router";
 import { Camera, KeyRound, LogOut, Monitor, Moon, Palette, Settings, Sun, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -65,12 +70,8 @@ export function UserProfileMenu({
   const [open, setOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
-  const [activeTheme, setActiveTheme] = useState<"light" | "dark" | "system">(() => {
-    if (typeof window === "undefined") return "system";
-    return (
-      (window.localStorage.getItem("ateliam-theme") as "light" | "dark" | "system") ?? "system"
-    );
-  });
+  const [activeTheme, setActiveTheme] = useState(getStoredThemePreference);
+  useEffect(() => listenForThemeChanges(() => setActiveTheme(getStoredThemePreference())), []);
   const [photo, setPhoto] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -147,11 +148,7 @@ export function UserProfileMenu({
 
   function applyTheme(theme: "light" | "dark" | "system") {
     setActiveTheme(theme);
-    window.localStorage.setItem("ateliam-theme", theme);
-    const isDark =
-      theme === "dark" ||
-      (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    setStoredThemePreference(theme);
     setThemeOpen(false);
     setOpen(false);
   }

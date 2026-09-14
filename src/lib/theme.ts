@@ -39,10 +39,12 @@ export function setStoredThemePreference(preference: ThemePreference) {
 
 export function listenForThemeChanges(callback: () => void) {
   window.addEventListener(THEME_EVENT, callback);
+  window.addEventListener("storage", callback);
   const media = window.matchMedia?.("(prefers-color-scheme: dark)");
   media?.addEventListener?.("change", callback);
   return () => {
     window.removeEventListener(THEME_EVENT, callback);
+    window.removeEventListener("storage", callback);
     media?.removeEventListener?.("change", callback);
   };
 }

@@ -20574,7 +20574,7 @@ function FlowCommandBar({
   saveTitle = "Salvar preenchimento",
   previewTitle = "Visualizar preenchimento",
   processControl,
-  compact = false,
+  compact = true,
 }: {
   compact?: boolean;
   code: string;
@@ -20689,7 +20689,7 @@ function FlowCommandBar({
               }}
             >
               <summary
-                title="Salvar mapeamento"
+                title="Salvar"
                 aria-label="Opções de salvamento"
                 className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-md bg-primary text-primary-foreground"
               >
@@ -21999,9 +21999,16 @@ function escapeXml(value: string) {
 export function renderTaskDelivery(content: string, module: string, brand?: OrganizationBrand) {
   const parsed = JSON.parse(content);
   const source = parsed.modules || parsed;
-  if (!source[module] || !["ddp", "pop"].includes(module)) throw new Error("Conteúdo do documento indisponível.");
+  if (!source[module] || !["ddp", "pop"].includes(module))
+    throw new Error("Conteúdo do documento indisponível.");
   const workspace = parseWorkspace(content);
   return module === "ddp"
-    ? { word: buildDdpDocx(workspace.ddp, brand), html: buildDdpPresentationHtml(workspace.ddp, brand) }
-    : { word: buildPopDocxModern(workspace.pop, brand), html: buildPopPresentationHtml(workspace.pop, brand) };
+    ? {
+        word: buildDdpDocx(workspace.ddp, brand),
+        html: buildDdpPresentationHtml(workspace.ddp, brand),
+      }
+    : {
+        word: buildPopDocxModern(workspace.pop, brand),
+        html: buildPopPresentationHtml(workspace.pop, brand),
+      };
 }

@@ -628,31 +628,13 @@ function PorterDiagram({
         <div
           className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#004c3e] p-5 text-white`}
         >
-          <div
-            className={`grid h-full items-center gap-3 ${
-              large
-                ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)]"
-                : "grid-cols-[minmax(0,1fr)_82px_minmax(240px,360px)]"
-            }`}
-          >
-            <div
-              className={
-                large
-                  ? "grid min-w-0 grid-cols-[repeat(auto-fit,minmax(190px,1fr))] items-stretch gap-2"
-                  : "flex min-w-[720px] items-stretch"
-              }
-            >
+          <div className="grid h-full min-w-0 items-center gap-3">
+            <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,190px),1fr))] items-stretch gap-2">
               {primary.length ? (
-                primary.map((item, index) =>
+                primary.map((item) =>
                   chainButton(
                     item,
-                    `relative grid min-h-16 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] ${
-                      large
-                        ? "rounded-md border border-[#ded6ca]"
-                        : index === 0
-                          ? "[clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
-                          : "ml-[-18px] [clip-path:polygon(0_0,calc(100%-24px)_0,100%_50%,calc(100%-24px)_100%,0_100%,24px_50%)]"
-                    }`,
+                    `relative grid min-h-16 place-items-center bg-[#f6f0e7] px-7 py-3 text-center text-sm font-semibold leading-tight text-black transition hover:bg-[#fff8ee] ${"rounded-md border border-[#ded6ca] break-words min-w-0"}`,
                     "bg-[#e7f5ef] text-black ring-2 ring-white/40",
                   ),
                 )
