@@ -1,3 +1,4 @@
+import { movementActivityTitle } from "@/lib/user-tasks";
 import { TaskAreaField } from "./task-area-field";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskComment, CommentAttachment } from "./task-comment";
@@ -1147,7 +1148,7 @@ function TaskDetails({
                 .map((ev) => (
                   <article key={ev.id} className="ut-routing-description">
                     <div className="ut-movement-heading">
-                      <strong>{ev.movement_action}</strong>
+                      <strong>{movementActivityTitle(ev.movement_action!, t.kind)}</strong>
                       <time dateTime={ev.created_at}>
                         {new Date(ev.created_at).toLocaleString("pt-BR", {
                           dateStyle: "short",

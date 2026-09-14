@@ -128,10 +128,10 @@ export function documentTaskUrl(task: UserTask, item: TaskItem, document: TaskDo
 }
 
 export const TASK_STAGE_LABELS = {
-  registration: "Complementar registro",
-  intake: "Análise da demanda",
-  documentation: "Documentação",
-  technical_review: "Revisão técnica",
+  registration: "Preencher solicitação",
+  intake: "Analisar demanda",
+  documentation: "Atender solicitação",
+  technical_review: "Analisar informações",
   owner_approval: "Aprovação do dono do processo",
   completed: "Concluído",
 };
@@ -166,3 +166,18 @@ export const DEFAULT_MAPPING_SECTIONS = [
   "communication",
   "premises",
 ];
+
+export function movementActivityTitle(action: string, kind: UserTask["kind"]) {
+  if (kind !== "mapping") return action;
+  const activities: Record<string, string> = {
+    "Seguir para preenchimento": "Analisar demanda",
+    "Solicitar complemento da demanda": "Analisar demanda",
+    "Reenviar demanda para análise": "Preencher solicitação",
+    "Enviar para revisão técnica": "Atender solicitação",
+    "Aprovar revisão técnica": "Analisar informações",
+    "Revisão técnica aprovada": "Analisar informações",
+    "Registrar aprovação da área": "Coletar aprovação da área",
+    "Aprovação do dono registrada": "Coletar aprovação da área",
+  };
+  return activities[action] || action;
+}

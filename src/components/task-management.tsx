@@ -111,15 +111,15 @@ export function TaskManagement({
 
 export function TaskProcessFlow({ task }: { task: UserTask }) {
   const nodes = [
-    { key: "registration", x: 150, y: 65, label: "Registro da tarefa" },
+    { key: "registration", x: 150, y: 65, label: "Preencher solicitação" },
     { key: "intake", x: 150, y: 250, label: "Analisar demanda" },
     {
       key: "documentation",
       x: 450,
       y: 250,
-      label: task.adjustment_request ? "Editar checklist" : "Preencher checklist",
+      label: "Atender solicitação",
     },
-    { key: "technical_review", x: 450, y: 450, label: "Analisar preenchimento" },
+    { key: "technical_review", x: 450, y: 450, label: "Analisar informações" },
     { key: "owner_approval", x: 770, y: 250, label: "Coletar aprovação da área" },
   ];
   return (
