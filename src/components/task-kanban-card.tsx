@@ -78,7 +78,7 @@ export function TaskKanbanCard({ task, open }: { task: UserTask; open: () => voi
       <span className="ut-card-owner">
         <span className="ut-card-person">
           <span className="ut-avatar" aria-hidden="true">
-            {initials}
+            {task.assignee_photo ? <img src={task.assignee_photo} alt="" /> : initials}
           </span>
           <span>{task.assignee_name}</span>
         </span>

@@ -111,17 +111,16 @@ export function TaskManagement({
 
 export function TaskProcessFlow({ task }: { task: UserTask }) {
   const nodes = [
-    { key: "registration", x: 90, y: 65, label: "Registro da tarefa" },
-    { key: "intake", x: 90, y: 250, label: "Analisar demanda" },
+    { key: "registration", x: 150, y: 65, label: "Registro da tarefa" },
+    { key: "intake", x: 150, y: 250, label: "Analisar demanda" },
     {
       key: "documentation",
-      x: 350,
+      x: 450,
       y: 250,
       label: task.adjustment_request ? "Editar checklist" : "Preencher checklist",
     },
-    { key: "technical_review", x: 350, y: 450, label: "Analisar preenchimento" },
-    { key: "owner_approval", x: 660, y: 250, label: "Coletar aprovação da área" },
-    { key: "completed", x: 860, y: 250, label: "Concluído" },
+    { key: "technical_review", x: 450, y: 450, label: "Analisar preenchimento" },
+    { key: "owner_approval", x: 770, y: 250, label: "Coletar aprovação da área" },
   ];
   return (
     <section className="ut-process-panel">
@@ -136,9 +135,9 @@ export function TaskProcessFlow({ task }: { task: UserTask }) {
         tabIndex={0}
       >
         <svg
-          viewBox="0 0 1080 600"
+          viewBox="0 0 1180 590"
           role="img"
-          aria-label={`Fluxo de mapeamento. Etapa atual: ${task.stage}.`}
+          aria-label={`Fluxo de mapeamento com início, decisões e fim. Etapa atual: ${task.stage}.`}
         >
           <defs>
             <marker
@@ -158,7 +157,7 @@ export function TaskProcessFlow({ task }: { task: UserTask }) {
             { y: 400, h: 180, name: "Revisor" },
           ].map((l) => (
             <g key={l.name}>
-              <rect x="10" y={l.y} width="1060" height={l.h} fill="none" stroke="var(--border)" />
+              <rect x="10" y={l.y} width="1160" height={l.h} fill="none" stroke="var(--border)" />
               <text
                 x="32"
                 y={l.y + l.h / 2}
@@ -172,33 +171,82 @@ export function TaskProcessFlow({ task }: { task: UserTask }) {
             </g>
           ))}
           <g fill="none" stroke="currentColor" strokeWidth="1.5" markerEnd="url(#task-flow-arrow)">
-            <path d="M170 125V250" />
-            <path d="M250 280H350" />
-            <path d="M430 310V450" />
-            <path d="M510 480H740V310" />
-            <path d="M820 280H860" />
-            <path d="M170 250V210H285V95H250" />
-            <path d="M390 450V310" />
-            <path d="M740 250V205H470V250" />
+            <path d="M108 95H150" />
+            <path d="M230 125V250" />
+            <path d="M310 280H337" />
+            <path d="M373 280H450" />
+            <path d="M355 262V95H310" />
+            <path d="M530 310V450" />
+            <path d="M610 480H667" />
+            <path d="M685 462V350H580V310" />
+            <path d="M703 480H850V310" />
+            <path d="M930 280H982" />
+            <path d="M1018 280H1092" />
+            <path d="M1000 262V205H530V250" />
           </g>
+          <circle
+            cx="90"
+            cy="95"
+            r="18"
+            fill="var(--card)"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <text x="90" y="130" textAnchor="middle" fontSize="12" fill="var(--foreground)">
+            Início
+          </text>
+          {[
+            { x: 355, y: 280 },
+            { x: 685, y: 480 },
+            { x: 1000, y: 280 },
+          ].map((g) => (
+            <g key={g.x}>
+              <path
+                d={`M${g.x} ${g.y - 18}l18 18-18 18-18-18Z`}
+                fill="var(--card)"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path
+                d={`M${g.x - 6} ${g.y - 6}l12 12m0-12-12 12`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+            </g>
+          ))}
+          <circle
+            cx="1110"
+            cy="280"
+            r="18"
+            fill={task.stage === "completed" ? "var(--accent)" : "var(--card)"}
+            stroke={task.stage === "completed" ? "var(--gold)" : "currentColor"}
+            strokeWidth="4"
+          />
+          <text x="1110" y="318" textAnchor="middle" fontSize="12" fill="var(--foreground)">
+            Concluído
+          </text>
           <g fill="var(--muted-foreground)" fontSize="12">
-            <text x="265" y="269">
+            <text x="388" y="269">
               Seguir
             </text>
-            <text x="295" y="158">
+            <text x="367" y="153">
               Solicitar complemento
             </text>
-            <text x="439" y="372">
+            <text x="540" y="430">
               Enviar para revisão
             </text>
-            <text x="308" y="383">
+            <text x="618" y="340">
               Ajustar
             </text>
-            <text x="579" y="468">
+            <text x="743" y="468">
               Aprovado
             </text>
-            <text x="525" y="195">
-              Área solicitou ajustes → revisar novamente
+            <text x="682" y="194">
+              Área solicitou ajustes
+            </text>
+            <text x="1026" y="269">
+              Aprovado
             </text>
           </g>
           {nodes.map((n) => (

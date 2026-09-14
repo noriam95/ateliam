@@ -1104,12 +1104,6 @@ function TaskDetails({
             className="ut-movements"
             onChange={() => setFieldsDirty(true)}
           >
-            {t.routing_description && (
-              <div className="ut-routing-description">
-                <strong>Movimentações · {t.title}</strong>
-                <p style={{ whiteSpace: "pre-wrap" }}>{t.routing_description}</p>
-              </div>
-            )}
             {canAct && data && (
               <TaskRoutingActions
                 key={`${t.id}:${t.stage}:${t.status}:${t.assigned_to}`}
@@ -1124,6 +1118,19 @@ function TaskDetails({
                 {error}
               </p>
             )}
+            <div className="ut-movement-history" aria-label="Histórico de movimentações">
+              {(data?.events || [])
+                .filter((ev) => ev.movement_action)
+                .sort((a, b) => b.created_at.localeCompare(a.created_at))
+                .map((ev) => (
+                  <article key={ev.id} className="ut-routing-description">
+                    <strong>{ev.movement_action}</strong>
+                    <p style={{ whiteSpace: "pre-wrap" }}>
+                      {ev.movement_note || "Sem descrição registrada."}
+                    </p>
+                  </article>
+                ))}
+            </div>
           </section>
           {detailTab === "flow" && <TaskProcessFlow task={t} />}
           {detailTab === "meetings" && (

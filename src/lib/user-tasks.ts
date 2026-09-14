@@ -66,6 +66,7 @@ export type UserTask = {
   code: string;
   document_module: string;
   assignee_name: string;
+  assignee_photo?: string | null;
   requester_name: string;
   pending_at_transition: string[];
 };
@@ -84,6 +85,8 @@ export type TaskFeed = {
     note: string;
     created_at: string;
     attachments?: { path: string; name: string; size: number }[];
+    movement_action?: string | null;
+    movement_note?: string | null;
     actor_photo?: string | null;
     actor_name: string;
   }[];
@@ -136,6 +139,7 @@ export type TaskAction =
   | "resubmit"
   | "add_item"
   | "add_entry"
+  | "remove_entry"
   | "begin_document"
   | "attach_file"
   | "item"

@@ -1,4 +1,4 @@
-import { Paperclip } from "lucide-react";
+import { Paperclip, Send } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { UserTask, TaskAction } from "@/lib/user-tasks";
@@ -25,6 +25,7 @@ export function TaskComment({
   const input = useRef<HTMLInputElement>(null);
   return (
     <form
+      className="ut-comment-composer"
       noValidate
       onSubmit={async (e) => {
         e.preventDefault();
@@ -80,9 +81,20 @@ export function TaskComment({
           placeholder="Escrever um comentário…"
         />
       </label>
-      <div className="ut-comment-files">
-        <button type="button" disabled={uploading || busy} onClick={() => input.current?.click()}>
-          <Paperclip size={16} /> Anexar arquivos
+      <div className="ut-comment-toolbar">
+        <button
+          type="button"
+          className="ut-icon-button"
+          aria-label="Anexar arquivos ao comentário"
+          title="Anexar arquivos"
+          disabled={uploading || busy}
+          onClick={() => input.current?.click()}
+        >
+          <Paperclip size={18} />
+        </button>
+        <button className="ut-primary" disabled={busy || uploading || !note.trim()}>
+          <Send size={15} />
+          {uploading ? "Enviando…" : "Enviar"}
         </button>
         <input
           ref={input}
@@ -131,9 +143,6 @@ export function TaskComment({
           {error}
         </p>
       )}
-      <button className="ut-primary" disabled={busy || uploading || !note.trim()}>
-        {uploading ? "Enviando comentário…" : "Registrar comentário"}
-      </button>
     </form>
   );
 }

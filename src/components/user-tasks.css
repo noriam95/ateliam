@@ -1593,4 +1593,46 @@
   height: 9px;
 }
 
-@media (min-width: 640px) { .ut-form-row.ut-task-people-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 640px) {
+  .ut-form-row.ut-task-people-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ut-entry-actions,
+.ut-comment-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ut-comment-toolbar {
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.ut-comment-composer .ut-comment-toolbar .ut-icon-button {
+  border-color: transparent;
+  background: transparent;
+}
+.ut-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  flex-shrink: 0;
+}
+.ut-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ut-movement-history {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+.ut-movement-history .ut-routing-description {
+  margin: 0;
+}

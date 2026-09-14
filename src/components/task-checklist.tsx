@@ -1,3 +1,4 @@
+import { Pencil, Trash2, Eye } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { documentTaskUrl, type TaskAction, type TaskItem, type UserTask } from "@/lib/user-tasks";
@@ -13,6 +14,7 @@ type Props = {
   setBusy: (busy: boolean) => void;
 };
 export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setBusy }: Props) {
+  const [removing, setRemoving] = useState<TaskItem | null>(null);
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
   const [type, setType] = useState("file");
@@ -164,18 +166,34 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                           )
                         )
                       ) : item.document_id ? (
-                        <a
-                          className="ut-button"
-                          href={documentTaskUrl(task, item, {
-                            id: item.document_id,
-                            module,
-                            name: item.label,
-                            code: "",
-                            current_version: 0,
-                          })}
-                        >
-                          {canEdit ? (item.completed ? "Editar" : "Preencher") : "Abrir"}
-                        </a>
+                        <div className="ut-entry-actions">
+                          <a
+                            className="ut-button ut-icon-button"
+                            aria-label={canEdit ? "Editar documento" : "Visualizar documento"}
+                            title={canEdit ? "Editar documento" : "Visualizar documento"}
+                            href={documentTaskUrl(task, item, {
+                              id: item.document_id,
+                              module,
+                              name: item.label,
+                              code: "",
+                              current_version: 0,
+                            })}
+                          >
+                            {canEdit ? <Pencil size={16} /> : <Eye size={16} />}
+                          </a>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              className="ut-icon-button"
+                              disabled={busy}
+                              aria-label="Excluir vínculo do documento"
+                              title="Excluir vínculo do documento"
+                              onClick={() => setRemoving(item)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       ) : item.entry_type === "mapping" || item.entry_type === "pop" ? (
                         canEdit && (
                           <button
@@ -246,6 +264,34 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
         >
           + Adicionar item ao checklist
         </button>
+      )}
+      {removing && (
+        <TaskDialog
+          title="Excluir documento do checklist"
+          busy={busy}
+          onClose={() => setRemoving(null)}
+        >
+          <div className="ut-form">
+            <p>
+              Remover “{removing.document_name || removing.label}” desta tarefa? O documento
+              continuará disponível no módulo de origem.
+            </p>
+          </div>
+          <footer>
+            <button disabled={busy} onClick={() => setRemoving(null)}>
+              Cancelar
+            </button>
+            <button
+              className="ut-primary"
+              disabled={busy}
+              onClick={async () => {
+                if (await write("remove_entry", { key: removing.key })) setRemoving(null);
+              }}
+            >
+              Excluir vínculo
+            </button>
+          </footer>
+        </TaskDialog>
       )}
       {adding && (
         <TaskDialog
