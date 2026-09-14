@@ -98,6 +98,10 @@ export type TaskFeed = {
   }[];
 };
 export type TaskFilters = {
+  stage?: string;
+  dueBefore?: string;
+  dueFrom?: string;
+  dueThrough?: string;
   q?: string;
   status?: string;
   kind?: string;

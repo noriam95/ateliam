@@ -44,6 +44,7 @@ export function TaskMeetings({
   isAdmin = false,
   render,
   search = "",
+  home = false,
 }: {
   organizationId: string;
   tasks: UserTask[];
@@ -52,6 +53,7 @@ export function TaskMeetings({
   taskId?: string;
   isAdmin?: boolean;
   search?: string;
+  home?: boolean;
   render?: (
     items: ScheduleEntry[],
     open: (id: string) => void,
@@ -87,10 +89,14 @@ export function TaskMeetings({
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
-  const meetings = (query.data?.meetings || []).filter((m) =>
-    normalize(
-      [m.title, m.agenda, m.people_search, ...m.attendees].filter(Boolean).join(" "),
-    ).includes(normalize(search.trim())),
+  const meetings = (query.data?.meetings || []).filter(
+    (m) =>
+      (!home ||
+        m.organizer_id === query.data?.userId ||
+        m.attendees.some((email) => email.toLowerCase() === query.data?.userEmail.toLowerCase())) &&
+      normalize(
+        [m.title, m.agenda, m.people_search, ...m.attendees].filter(Boolean).join(" "),
+      ).includes(normalize(search.trim())),
   );
   const [meetingDay, setMeetingDay] = useState(anchor);
   const schedule = (day: string) => {
@@ -131,7 +137,7 @@ export function TaskMeetings({
   const canEdit = !current || current.organizer_id === query.data?.userId || isAdmin;
   return (
     <div className="ut-meetings">
-      <div className="ut-agenda-actions">
+      <div className="ut-agenda-actions" hidden={home}>
         {!taskId && (
           <div className="ut-agenda-visibility" role="group" aria-label="Atividades exibidas">
             <span className="ut-muted">Exibir na agenda</span>

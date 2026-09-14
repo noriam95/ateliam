@@ -1,3 +1,4 @@
+import { UserHomeDashboard } from "./user-home-dashboard";
 import { TaskChecklistDownload } from "./task-delivery-export";
 import { movementActivityTitle } from "@/lib/user-tasks";
 import { TaskAreaField } from "./task-area-field";
@@ -67,7 +68,20 @@ function parseState(raw?: string): ViewState {
   try {
     const value = raw ? JSON.parse(raw) : {};
     if (!value || typeof value !== "object" || Array.isArray(value)) return { layout: "calendar" };
-    const strings = ["q", "status", "kind", "modality", "from", "until", "id", "documentQuery"];
+    const strings = [
+      "stage",
+      "dueBefore",
+      "dueFrom",
+      "dueThrough",
+      "q",
+      "status",
+      "kind",
+      "modality",
+      "from",
+      "until",
+      "id",
+      "documentQuery",
+    ];
     const parsed: Record<string, unknown> = { layout: "calendar" };
     for (const key of strings) if (typeof value[key] === "string") parsed[key] = value[key];
     if (["list", "kanban", "calendar"].includes(value.layout)) parsed.layout = value.layout;
@@ -127,7 +141,7 @@ export function UserTasks({
   const selected = state.id;
   return (
     <section
-      className={`ut-root ${!overview && state.layout === "calendar" ? "ut-agenda-fit" : ""}`}
+      className={`ut-root ${overview ? "ut-home" : ""} ${!overview && state.layout === "calendar" ? "ut-agenda-fit" : ""}`}
     >
       <nav className="ut-tabs" aria-label="Área pessoal">
         <a href="/" aria-current={overview ? "page" : undefined}>
@@ -185,24 +199,11 @@ export function UserTasks({
                     );
                   })}
                 </div>
-                <div className="ut-heading">
-                  <div>
-                    <h2>Próximas entregas</h2>
-                    <p>
-                      {data.summary.overdue
-                        ? `${data.summary.overdue} tarefa(s) com prazo vencido.`
-                        : "Acompanhe os prazos e continue de onde parou."}
-                    </p>
-                  </div>
-                  <a className="ut-button" href="/?view=tasks">
-                    Ver todas as tarefas
-                  </a>
-                </div>
-                {renderTable(data.tasks.filter((t) => t.status !== "completed").slice(0, 8), (id) =>
-                  window.location.assign(
-                    `/?view=tasks&taskState=${encodeURIComponent(JSON.stringify({ id }))}`,
-                  ),
-                )}
+                <UserHomeDashboard
+                  organizationId={organizationId}
+                  openTask={open}
+                  isAdmin={data.isAdmin}
+                />
               </>
             ) : (
               <>
@@ -256,11 +257,30 @@ export function UserTasks({
                   <summary>
                     Filtros de tarefas{" "}
                     <span>
-                      {[state.kind, state.status, state.modality, state.team, state.q].filter(
-                        Boolean,
-                      ).length || "Todos"}
+                      {[
+                        state.kind,
+                        state.status,
+                        state.modality,
+                        state.team,
+                        state.q,
+                        state.stage,
+                        state.dueBefore,
+                        state.dueFrom,
+                        state.dueThrough,
+                      ].filter(Boolean).length || "Todos"}
                     </span>
                   </summary>
+                  {(state.stage || state.dueBefore || state.dueFrom || state.dueThrough) && (
+                    <p className="ut-muted">
+                      Filtro da Home:{" "}
+                      {state.stage
+                        ? TASK_STAGE_LABELS[state.stage as keyof typeof TASK_STAGE_LABELS]
+                        : ""}
+                      {state.dueBefore ? ` vencimento antes de ${taskDate(state.dueBefore)}` : ""}
+                      {state.dueFrom ? ` vencimento de ${taskDate(state.dueFrom)}` : ""}
+                      {state.dueThrough ? ` até ${taskDate(state.dueThrough)}` : ""}
+                    </p>
+                  )}
                   <div className="ut-filters">
                     <label>
                       Tipo
@@ -338,6 +358,10 @@ export function UserTasks({
                         onState(
                           JSON.stringify({
                             ...state,
+                            stage: undefined,
+                            dueBefore: undefined,
+                            dueFrom: undefined,
+                            dueThrough: undefined,
                             kind: undefined,
                             status: undefined,
                             modality: undefined,

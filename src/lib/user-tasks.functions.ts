@@ -11,6 +11,10 @@ export const loadUserTasks = createServerFn({ method: "POST" })
       .extend({
         filters: z
           .object({
+            stage: z.string().optional(),
+            dueBefore: z.string().date().optional(),
+            dueFrom: z.string().date().optional(),
+            dueThrough: z.string().date().optional(),
             q: z.string().max(160).optional(),
             status: z.string().optional(),
             kind: z.string().optional(),
@@ -180,5 +184,40 @@ export const loadTaskExportDocuments = createServerFn({ method: "POST" })
         content_inline: string;
       }[];
       brand?: { name?: string; logo_data_url?: string; word_header_color?: string };
+    };
+  });
+
+export const loadHomeDashboard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((v: unknown) =>
+    scope
+      .extend({
+        from: z.string().date(),
+        until: z.string().date(),
+        chartFrom: z.string().date(),
+        chartUntil: z.string().date(),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as unknown as SupabaseClient;
+    const result = await db.rpc("user_home_dashboard", {
+      p_org: data.organizationId,
+      p_from: data.from,
+      p_until: data.until,
+      p_chart_from: data.chartFrom,
+      p_chart_until: data.chartUntil,
+    });
+    if (result.error)
+      throw new Error(
+        result.error.code === "PGRST202"
+          ? "Aplique a atualização da Home no Supabase para carregar sua agenda e o gráfico."
+          : result.error.message,
+      );
+    return result.data as {
+      tasks: import("./user-tasks").UserTask[];
+      attention: { overdue: number; dueSoon: number; review: number };
+      completions: { day: string; count: number }[];
+      unknownCompletions: number;
     };
   });
