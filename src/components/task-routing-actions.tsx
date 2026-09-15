@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  taskQuickActions,
   TASK_STAGE_LABELS,
   TASK_STATUSES,
   TASK_STATUS_LABELS,
@@ -41,12 +42,8 @@ export function TaskRoutingActions({
               ],
             } as Record<string, [TaskAction, string][]>
           )[task.stage] || [];
-  if (
-    task.status !== "paused" &&
-    task.status !== "completed" &&
-    (data.isAdmin || (task.assigned_to === data.userId && task.documenter_id === data.userId))
-  )
-    options.push(["pause", "Marcar como parada"]);
+  for (const action of taskQuickActions(task, data))
+    options.push([action, action === "pause" ? "Marcar como parada" : "Cancelar tarefa"]);
   const [decision, setDecision] = useState<TaskAction>(options[0]?.[0] || "transition");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -60,7 +57,7 @@ export function TaskRoutingActions({
       setPending(null);
     }
   }
-  if (!options.length || task.status === "completed") return null;
+  if (!options.length || ["completed", "cancelled"].includes(task.status)) return null;
   return (
     <section className="ut-routing">
       <h3>Encaminhamento · {TASK_STAGE_LABELS[task.stage] || TASK_STATUS_LABELS[task.status]}</h3>
@@ -126,7 +123,7 @@ export function TaskRoutingActions({
           <label>
             Situação
             <select name="status" defaultValue={task.status}>
-              {TASK_STATUSES.filter((s) => s !== "paused").map((s) => (
+              {TASK_STATUSES.filter((s) => s !== "paused" && s !== "cancelled").map((s) => (
                 <option key={s} value={s}>
                   {TASK_STATUS_LABELS[s]}
                 </option>

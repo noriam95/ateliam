@@ -95,3 +95,5 @@ Etapas do mapeamento: Preencher solicitação, Analisar demanda, Atender solicit
 Entregas: tarefa concluída oferece ZIP único com anexos originais e POP/Mapeamento em DOCX pelo renderizador existente do módulo. Falha de qualquer arquivo bloqueia ZIP parcial. Revisores consultam documentos via visualização somente leitura autorizada por vínculo à tarefa. Filtros iniciam recolhidos em cada visualização. Avisos de ajustes e pendências ficam no histórico, sem duplicação em Dados.
 
 Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, indicadores com filtros exatos e gráfico de conclusões por semana/mês/ano. Próximas entregas removida. Datas de conclusão são persistidas na transição final; reabertura limpa a data; registros históricos sem data comprovável são informados e não entram no gráfico. Tendência usa regressão linear até hoje.
+
+Tarefas: botão direito (ou Shift+F10) abre ações permitidas com motivo obrigatório. Cancelamento preserva entregas e histórico, encerra alterações e não conta como tarefa aberta. Revisão técnica não permite pausa/cancelamento. Checklist reutiliza DocumentPicker filtrado pelo módulo e mantém códigos de origem.

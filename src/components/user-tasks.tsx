@@ -1,3 +1,5 @@
+import { TaskQuickActionDialog } from "./task-quick-action-dialog";
+import { taskQuickActions } from "@/lib/user-tasks";
 import { UserHomeDashboard } from "./user-home-dashboard";
 import { TaskChecklistDownload } from "./task-delivery-export";
 import { movementActivityTitle } from "@/lib/user-tasks";
@@ -113,6 +115,7 @@ export function UserTasks({
   state?: string;
   onState: (value: string) => void;
 }) {
+  const [contextTask, setContextTask] = useState<UserTask | null>(null);
   const state = parseState(raw);
   const [search, setSearch] = useState(state.q || "");
   const [modal, setModal] = useState<"create" | null>(null);
@@ -139,8 +142,22 @@ export function UserTasks({
   };
   const open = (id: string) => change({ id, offset: state.offset });
   const selected = state.id;
+  const showTaskActions = (event: React.MouseEvent | React.KeyboardEvent) => {
+    const id = (event.target as HTMLElement).closest<HTMLElement>("[data-task-id]")?.dataset.taskId;
+    const task = data?.tasks.find((task) => task.id === id);
+    if (task && data && taskQuickActions(task, data).length) {
+      event.preventDefault();
+      event.stopPropagation();
+      setContextTask(task);
+    }
+  };
   return (
     <section
+      onContextMenu={showTaskActions}
+      onKeyDown={(event) => {
+        if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))
+          showTaskActions(event);
+      }}
       className={`ut-root ${overview ? "ut-home" : ""} ${!overview && state.layout === "calendar" ? "ut-agenda-fit" : ""}`}
     >
       <nav className="ut-tabs" aria-label="Área pessoal">
@@ -574,6 +591,14 @@ export function UserTasks({
           </>
         )
       )}
+      {contextTask && data && (
+        <TaskQuickActionDialog
+          task={contextTask}
+          actions={taskQuickActions(contextTask, data)}
+          close={() => setContextTask(null)}
+          refresh={refresh}
+        />
+      )}
       {modal === "create" && data && (
         <CreateTask
           organizationId={organizationId}
@@ -697,7 +722,7 @@ function renderTable(tasks: UserTask[], open: (id: string) => void) {
         </thead>
         <tbody>
           {tasks.map((t) => (
-            <tr key={t.id}>
+            <tr key={t.id} data-task-id={t.id}>
               <td>
                 <small>
                   {t.code && `${t.code} · `}
@@ -710,7 +735,13 @@ function renderTable(tasks: UserTask[], open: (id: string) => void) {
               </td>
               <td>{t.assignee_name}</td>
               <td>{t.requester_name}</td>
-              <td className={t.due_on < localDay() && t.status !== "completed" ? "ut-late" : ""}>
+              <td
+                className={
+                  t.due_on < localDay() && !["completed", "cancelled"].includes(t.status)
+                    ? "ut-late"
+                    : ""
+                }
+              >
                 {taskDate(t.due_on)}
               </td>
               <td>
@@ -734,7 +765,9 @@ function DocumentPicker({
   organizationId,
   value,
   onChange,
+  module,
 }: {
+  module?: "ddp" | "pop";
   organizationId: string;
   value: string;
   onChange: (doc: TaskDocument) => void;
@@ -743,8 +776,11 @@ function DocumentPicker({
   const [q, setQ] = useState("");
   const [committed, setCommitted] = useState("");
   const query = useQuery({
-    queryKey: ["task-documents", organizationId, committed],
-    queryFn: () => load({ data: { organizationId, filters: { documentQuery: committed } } }),
+    queryKey: ["task-documents", organizationId, committed, module],
+    queryFn: () =>
+      load({
+        data: { organizationId, filters: { documentQuery: committed, documentModule: module } },
+      }),
   });
   return (
     <div className="ut-document-picker">
@@ -1074,6 +1110,7 @@ function TaskDetails({
   const canEdit =
     canAct &&
     t?.status !== "completed" &&
+    t?.status !== "cancelled" &&
     t?.status !== "paused" &&
     (t?.kind !== "mapping" || t?.stage === "documentation" || data?.isAdmin);
   const remainder = t ? pending(t) : [];
@@ -1203,7 +1240,7 @@ function TaskDetails({
                   {data &&
                   (data.isAdmin ||
                     (t.assigned_to === data.userId && t.documenter_id === data.userId)) &&
-                  t.status !== "completed" ? (
+                  !["completed", "cancelled"].includes(t.status) ? (
                     <TaskManagement task={t} data={data} busy={busy} write={write} />
                   ) : (
                     <div className="ut-detail-meta">
@@ -1386,7 +1423,12 @@ function ItemEditor({
   const [baseline, setBaseline] = useState({ content: item.content, documentId: item.document_id });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const systemRecord = item.entry_type === "mapping" || item.entry_type === "pop";
   const persist = async (completed: boolean, finish = true) => {
+    if (systemRecord && !doc?.id && !item.document_id) {
+      setError("Selecione um registro para vincular ao checklist.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -1414,20 +1456,30 @@ function ItemEditor({
       dirty={content !== baseline.content || (doc?.id || item.document_id) !== baseline.documentId}
     >
       <div className="ut-form">
-        <label>
-          Conteúdo / registro da entrega
-          <textarea
-            className="resize-none"
-            rows={7}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            readOnly={readOnly}
-          />
-        </label>
+        {!systemRecord && (
+          <label>
+            Conteúdo / registro da entrega
+            <textarea
+              className="resize-none"
+              rows={7}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              readOnly={readOnly}
+            />
+          </label>
+        )}
+        {systemRecord && (
+          <p className="ut-muted">
+            Selecione um registro do módulo de origem. O vínculo preserva seu conteúdo e código.
+          </p>
+        )}
         {!readOnly && (
           <DocumentPicker
             organizationId={organizationId}
             value={doc?.id || item.document_id || ""}
+            module={
+              item.entry_type === "mapping" ? "ddp" : item.entry_type === "pop" ? "pop" : undefined
+            }
             onChange={setDoc}
           />
         )}
@@ -1467,7 +1519,7 @@ function ItemEditor({
               disabled={busy}
               onClick={() => void persist(false, false)}
             >
-              Salvar
+              {systemRecord ? "Vincular registro" : "Salvar"}
             </button>
           ))}
       </footer>

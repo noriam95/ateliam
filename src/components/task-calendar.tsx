@@ -141,6 +141,7 @@ export function TaskCalendar({
                 <button
                   className={t.meeting ? "ut-meeting-event" : "ut-task-event"}
                   key={t.id}
+                  data-task-id={t.id}
                   title={t.title}
                   onClick={() => open(t.id)}
                 >
@@ -180,6 +181,7 @@ export function TaskCalendar({
             {onDay(expanded).map((t) => (
               <button
                 key={t.id}
+                data-task-id={t.id}
                 onClick={() => {
                   setExpanded(null);
                   open(t.id);

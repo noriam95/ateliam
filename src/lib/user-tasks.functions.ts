@@ -24,6 +24,7 @@ export const loadUserTasks = createServerFn({ method: "POST" })
             team: z.boolean().optional(),
             offset: z.number().int().min(0).optional(),
             id: z.string().uuid().optional(),
+            documentModule: z.enum(["ddp", "pop"]).optional(),
             documentQuery: z.string().max(160).optional(),
           })
           .default({}),
@@ -71,6 +72,7 @@ export const updateUserTask = createServerFn({ method: "POST" })
     scope
       .extend({
         action: z.enum([
+          "cancel",
           "pause",
           "resume",
           "edit_details",

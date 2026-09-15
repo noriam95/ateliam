@@ -233,12 +233,17 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                         </div>
                       ) : item.entry_type === "mapping" || item.entry_type === "pop" ? (
                         canEdit && (
-                          <button
-                            disabled={busy}
-                            onClick={() => void write("begin_document", { key: item.key })}
-                          >
-                            <Pencil size={16} /> Preencher
-                          </button>
+                          <div className="ut-inline">
+                            <button
+                              disabled={busy}
+                              onClick={() => void write("begin_document", { key: item.key })}
+                            >
+                              <Pencil size={16} /> Preencher novo
+                            </button>
+                            <button disabled={busy} onClick={() => edit(item)}>
+                              Selecionar existente
+                            </button>
+                          </div>
                         )
                       ) : (
                         <button disabled={busy} onClick={() => edit(item)}>

@@ -15,7 +15,7 @@ export function TaskManagement({
   const [error, setError] = useState("");
   const allowed =
     data.isAdmin || (task.assigned_to === data.userId && task.documenter_id === data.userId);
-  if (!allowed || task.status === "completed") return null;
+  if (!allowed || ["completed", "cancelled"].includes(task.status)) return null;
   return (
     <div className="ut-header-editor">
       <form

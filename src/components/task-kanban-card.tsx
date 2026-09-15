@@ -29,7 +29,7 @@ export function TaskKanbanCard({
     .map((n) => n[0])
     .join("");
   const latest = task.latest_activity;
-  const late = task.status !== "completed" && task.due_on < localDay();
+  const late = !["completed", "cancelled"].includes(task.status) && task.due_on < localDay();
   const modality =
     task.modality === "Sistemas"
       ? "systems"
@@ -43,6 +43,7 @@ export function TaskKanbanCard({
   if (compact)
     return (
       <button
+        data-task-id={task.id}
         className="ut-card ut-rich-card ut-compact-card"
         onClick={open}
         aria-label={`Abrir tarefa ${taskCode(task)}: ${task.title}. Responsável: ${task.assignee_name}. Vencimento: ${taskDate(task.due_on)}${late ? ". Atrasada" : ""}`}
@@ -76,6 +77,7 @@ export function TaskKanbanCard({
     );
   return (
     <button
+      data-task-id={task.id}
       className="ut-card ut-rich-card"
       onClick={open}
       aria-label={`Abrir tarefa ${taskCode(task)}: ${task.title}`}

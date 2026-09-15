@@ -5,13 +5,21 @@ export const TASK_MODALITIES = [
   "Dados / BI",
   "Outros",
 ] as const;
-export const TASK_STATUSES = ["pending", "in_progress", "review", "paused", "completed"] as const;
+export const TASK_STATUSES = [
+  "pending",
+  "in_progress",
+  "review",
+  "paused",
+  "completed",
+  "cancelled",
+] as const;
 export const TASK_STATUS_LABELS = {
   pending: "A fazer",
   in_progress: "Em andamento",
   review: "Em revisão",
   paused: "Parada",
   completed: "Concluída",
+  cancelled: "Cancelada",
 };
 export const TASK_KINDS = {
   mapping: "Mapeamentos",
@@ -112,6 +120,7 @@ export type TaskFilters = {
   offset?: number;
   id?: string;
   documentQuery?: string;
+  documentModule?: "ddp" | "pop";
 };
 export function taskDate(value: string) {
   return value ? value.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -141,6 +150,7 @@ export const TASK_STAGE_LABELS = {
 };
 
 export type TaskAction =
+  | "cancel"
   | "pause"
   | "resume"
   | "edit_details"
@@ -184,4 +194,23 @@ export function movementActivityTitle(action: string, kind: UserTask["kind"]) {
     "Aprovação do dono registrada": "Coletar aprovação da área",
   };
   return activities[action] || action;
+}
+
+/** Only the current participant (or administrator) may act in these workflow stages. */
+export function taskQuickActions(
+  task: UserTask,
+  data: Pick<TaskFeed, "userId" | "isAdmin" | "canCreate">,
+): ("pause" | "cancel")[] {
+  if (
+    !data.canCreate ||
+    ["completed", "cancelled"].includes(task.status) ||
+    (!data.isAdmin && task.assigned_to !== data.userId)
+  )
+    return [];
+  const responsibleStage = ["intake", "documentation", "owner_approval"].includes(task.stage);
+  const responsible = data.isAdmin || task.documenter_id === data.userId;
+  const actions: ("pause" | "cancel")[] = [];
+  if (responsibleStage && responsible && task.status !== "paused") actions.push("pause");
+  if (task.stage === "registration" || (responsibleStage && responsible)) actions.push("cancel");
+  return actions;
 }

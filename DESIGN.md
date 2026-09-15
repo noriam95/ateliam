@@ -92,3 +92,5 @@ Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, 
 - Fonte: getOrganizationDashboard; coleções paginadas integralmente, rascunhos fora da cobertura e registros sem área preservados.
 
 - Revisão visual operacional: tipografia de sistema Apple/Segoe, cores suaves azul/teal, resumos sem rolagem. Cobertura mostra até quatro áreas com menor percentual; distribuição mostra as três maiores; demais categorias excedentes agrupadas em Outros, com detalhamento integral. Saídas da cadeia sempre à direita e centralizadas verticalmente.
+
+Tarefas: botão direito (ou Shift+F10) abre ações permitidas com motivo obrigatório. Cancelamento preserva entregas e histórico, encerra alterações e não conta como tarefa aberta. Revisão técnica não permite pausa/cancelamento. Checklist reutiliza DocumentPicker filtrado pelo módulo e mantém códigos de origem.
