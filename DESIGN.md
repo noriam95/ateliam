@@ -85,3 +85,8 @@ Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, 
 - Cabeçalhos de módulos expandem/recolhem; Novo e Consultar navegam.
 - Cadeia de valor reorganiza blocos em linhas, mantendo largura legível.
 - Mapeamento e documentos usam visualização por ícone e menu único de salvamento.
+
+## Visão operacional
+- Painel organizacional de cadastros: cobertura, registros por área, situação de mapeamentos, tipos de documentos e melhorias por situação/prioridade/origem. Sem indicadores de tarefas.
+- Gráficos com detalhamento paginado, filtros recolhidos e cores dos tokens existentes. Áreas extensas têm rolagem interna; no celular os painéis empilham.
+- Fonte: getOrganizationDashboard; coleções paginadas integralmente, rascunhos fora da cobertura e registros sem área preservados.

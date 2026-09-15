@@ -1,3 +1,4 @@
+import { dashboardRows } from "./dashboard-pagination";
 import { MODULE_IDS } from "@/lib/module-visibility";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -1618,6 +1619,7 @@ type DashboardMappingRow = {
   updatedAt: string;
 };
 type DashboardCauseRow = {
+  area?: string;
   id: string;
   cause: string;
   source: "Mapeamento" | "Avulsa";
@@ -1805,6 +1807,7 @@ function dashboardCauseRowsFromDocument(document: {
         {
           id: `mapping:${document.id}:${id}`,
           cause: readString(gap.causa, "Oportunidade sem título"),
+          area: readString(legacy.processArea, readString(meta.area)),
           source: "Mapeamento" as const,
           mapping: readString(meta.codigo, readString(meta.titulo, document.name)),
           process: readString(macroprocess.titulo, readString(legacy.processName)),
@@ -1860,7 +1863,7 @@ function dashboardDocumentCatalogRowFromDocument(document: {
     if (document.module === "bpmn") {
       return {
         id: document.id,
-        code: "FLX",
+        code: readString(bpmn.codigo, ""),
         title: readString(bpmn.poolName, document.name || "Fluxograma sem título"),
         documentType: "Fluxograma",
         area: "-",
@@ -1937,36 +1940,56 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       { data: standaloneCauses, error: standaloneCausesError },
     ] = await Promise.all([
       context.supabase.from("organizations").select("*").eq("id", organizationId).maybeSingle(),
-      context.supabase
-        .from("organization_processes")
-        .select(
-          "id, name, type, department, owner, status, current_version, created_at, updated_at",
-        )
-        .eq("organization_id", organizationId)
-        .order("updated_at", { ascending: false }),
-      context.supabase
-        .from("documents")
-        .select("id, name, module, current_version, primary_process_id, updated_at, content_inline")
-        .eq("organization_id", organizationId)
-        .in("module", ["ddp", "pop", "bpmn"])
-        .order("updated_at", { ascending: false }),
-      context.supabase
-        .from("organization_departments")
-        .select("id, name")
-        .eq("organization_id", organizationId),
-      context.supabase
-        .from("organization_process_owners")
-        .select("id, name")
-        .eq("organization_id", organizationId),
-      context.supabase
-        .from("organization_value_chains")
-        .select("id, name")
-        .eq("organization_id", organizationId),
-      context.supabase
-        .from("organization_causes")
-        .select("id, title, priority, status, responsible, process_id, due_date, updated_at")
-        .eq("organization_id", organizationId)
-        .order("updated_at", { ascending: false }),
+      dashboardRows(
+        context.supabase
+          .from("organization_processes")
+          .select(
+            "id, name, type, department, owner, status, current_version, created_at, updated_at",
+          )
+          .eq("organization_id", organizationId)
+          .order("updated_at", { ascending: false })
+          .order("id"),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("documents")
+          .select(
+            "id, name, module, current_version, primary_process_id, updated_at, content_inline",
+          )
+          .eq("organization_id", organizationId)
+          .in("module", ["ddp", "pop", "bpmn"])
+          .order("updated_at", { ascending: false })
+          .order("id"),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("organization_departments")
+          .select("id, name")
+          .eq("organization_id", organizationId)
+          .order("id"),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("organization_process_owners")
+          .select("id, name")
+          .eq("organization_id", organizationId)
+          .order("id"),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("organization_value_chains")
+          .select("id, name")
+          .eq("organization_id", organizationId)
+          .order("id"),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("organization_causes")
+          .select("id, title, priority, status, responsible, process_id, due_date, updated_at")
+          .eq("organization_id", organizationId)
+          .order("updated_at", { ascending: false })
+          .order("id"),
+      ),
     ]);
 
     if (organizationError) throw new Error(organizationError.message);
@@ -1993,10 +2016,20 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
 
     const ddps = (documents ?? []).filter((document) => document.module === "ddp");
     const pops = (documents ?? []).filter((document) => document.module === "pop");
-    const documentCatalogRows = (documents ?? []).map(dashboardDocumentCatalogRowFromDocument);
+    const documentCatalogRows = (documents ?? []).map((doc) => {
+      const row = dashboardDocumentCatalogRowFromDocument(doc);
+      if (!row.area || row.area === "-")
+        row.area = (processes ?? []).find((p) => p.id === doc.primary_process_id)?.department || "";
+      return row;
+    });
     const activeProcesses = (processes ?? []).filter((process) => process.status === "Ativo");
     const staleProcesses = (processes ?? []).filter((process) => process.status !== "Ativo");
-    const dashboardMappingRows = ddps.map(dashboardMappingRowFromDocument);
+    const dashboardMappingRows = ddps.map((doc) => {
+      const row = dashboardMappingRowFromDocument(doc);
+      if (!row.area || row.area === "-")
+        row.area = (processes ?? []).find((p) => p.id === doc.primary_process_id)?.department || "";
+      return row;
+    });
     const mappingStatusCounts = {
       emAndamento: dashboardMappingRows.filter((row) => row.status === "Em andamento").length,
       emRevisao: dashboardMappingRows.filter((row) => row.status === "Em revisão").length,
@@ -2007,13 +2040,22 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     const processNamesById = new Map(
       (processes ?? []).map((process) => [process.id, process.name]),
     );
-    const mappingCauseRows = ddps.flatMap(dashboardCauseRowsFromDocument);
+    const mappingCauseRows = ddps.flatMap((doc) =>
+      dashboardCauseRowsFromDocument(doc).map((row) => ({
+        ...row,
+        area:
+          row.area && row.area !== "-"
+            ? row.area
+            : dashboardMappingRows.find((m) => m.id === doc.id)?.area || "",
+      })),
+    );
     const sharedCauseIds = new Set(
       mappingCauseRows.map((row) => row.sharedCauseId).filter((value) => value && value !== "-"),
     );
     const standaloneCauseRows: DashboardCauseRow[] = (standaloneCauses ?? [])
       .filter((cause) => !sharedCauseIds.has(cause.id))
       .map((cause) => ({
+        area: (processes ?? []).find((p) => p.id === cause.process_id)?.department || "",
         id: `standalone:${cause.id}`,
         cause: cause.title,
         source: "Avulsa",
@@ -2061,6 +2103,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
       Array<{ name: string; version: number; updatedAt: string }>
     >();
     for (const doc of ddps) {
+      if (dashboardMappingRowFromDocument(doc).status.toLowerCase().includes("rascunho")) continue;
       const processIds = new Set<string>();
       if (doc.primary_process_id) processIds.add(doc.primary_process_id);
 
@@ -2108,6 +2151,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
           process.owner ? cleanOwnerLabel(process.owner, "") : null,
         ),
       ),
+      departments: departments ?? [],
       mappingRows: dashboardMappingRows,
       mappingStatusCounts,
       causeRows,

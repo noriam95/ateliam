@@ -1,3 +1,4 @@
+import { OperationalDashboard } from "@/components/operational-dashboard";
 import { loadTaskNotifications } from "@/lib/user-tasks.functions";
 import { visibleModulesFor } from "@/lib/module-visibility";
 import type { SearchSchemaInput } from "@tanstack/react-router";
@@ -264,6 +265,7 @@ type DashboardMappingStatusCounts = {
   concluido: number;
 };
 type DashboardCauseRow = {
+  area?: string;
   id: string;
   cause: string;
   source: "Mapeamento" | "Avulsa";
@@ -1139,6 +1141,19 @@ function WorkspaceHome() {
                 }
                 documentCatalogRows={
                   (dashboard?.documentCatalogRows ?? []) as DashboardDocumentCatalogRow[]
+                }
+                dashboardError={
+                  dashboardQ.error
+                    ? "Não foi possível carregar os indicadores. Tente novamente."
+                    : undefined
+                }
+                onRetry={() => {
+                  void dashboardQ.refetch();
+                }}
+                departments={
+                  dashboard && "departments" in dashboard
+                    ? (dashboard.departments as { id: string; name: string }[])
+                    : []
                 }
                 topDepartments={dashboard?.topDepartments ?? []}
                 topOwners={dashboard?.topOwners ?? []}
@@ -2462,6 +2477,9 @@ function WorkspaceContent({
   causeRows,
   causeStatusCounts,
   documentCatalogRows,
+  dashboardError,
+  onRetry,
+  departments,
   topDepartments,
   topOwners,
   recentDocuments,
@@ -2483,6 +2501,9 @@ function WorkspaceContent({
   causeRows: DashboardCauseRow[];
   causeStatusCounts: DashboardCauseStatusCounts;
   documentCatalogRows: DashboardDocumentCatalogRow[];
+  dashboardError?: string;
+  onRetry: () => void;
+  departments: { id: string; name: string }[];
   topDepartments: { label: string; value: number }[];
   topOwners: { label: string; value: number }[];
   recentDocuments: Array<{
@@ -2787,323 +2808,19 @@ function WorkspaceContent({
     );
   }
 
-  const openCauseRows = causeRows.filter((row) => {
-    const status = row.status
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase();
-    return !status.includes("encerr") && !status.includes("cancel");
-  });
-  const priorityRank = (priority: string) => {
-    const value = priority
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase();
-    if (value.includes("alta") || value.includes("crit")) return 3;
-    if (value.includes("media")) return 2;
-    return 1;
-  };
-  const attentionCauses = [...openCauseRows]
-    .sort(
-      (a, b) =>
-        priorityRank(b.priority) - priorityRank(a.priority) ||
-        b.updatedAt.localeCompare(a.updatedAt),
-    )
-    .slice(0, 3);
-  const latestOperationalUpdate = [
-    ...mappingRows.map((row) => row.updatedAt),
-    ...causeRows.map((row) => row.updatedAt),
-    ...documentCatalogRows.map((row) => row.updatedAt),
-    ...activityItems.map((item) => item.updatedAt),
-  ]
-    .filter(Boolean)
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
-
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] gap-5">
-      <section className="px-1 pb-1 pt-2">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">Visão operacional</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Acompanhe o status dos processos, oportunidades de melhoria e documentos.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CalendarDays className="h-4 w-4" />
-            <span>
-              Atualizado em{" "}
-              {latestOperationalUpdate ? formatDateTimeBr(latestOperationalUpdate) : "-"}
-            </span>
-            {isLoading ? (
-              <span className="inline-flex rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                Atualizando...
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <ExpandableCard
-          title="Cobertura de mapeamentos"
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[220px] flex-col gap-4 p-5 xl:col-span-2`}
-          expanded={<MappingCoverageExpanded coverage={mappingCoverage} />}
-          onNavigate={() =>
-            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })
-          }
-        >
-          <div className="grid flex-1 grid-cols-[150px_minmax(0,1fr)] items-center gap-8">
-            <CoverageDonut
-              covered={mappingCoverage.covered}
-              total={mappingCoverage.total}
-              size={142}
-              stroke={15}
-              color="#009f7f"
-            />
-            <div className="min-w-0">
-              <div className="flex items-baseline gap-3">
-                <strong className="font-data text-5xl font-bold text-[#007f68]">
-                  {mappingCoverage.covered}
-                </strong>
-                <strong className="font-data text-2xl font-bold text-foreground">
-                  de {mappingCoverage.total}
-                </strong>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">processos mapeados</p>
-            </div>
-          </div>
-        </ExpandableCard>
-
-        <OperationalMetricCard
-          label="Mapeamentos"
-          value={mappingRows.length}
-          detail="Total de registros no catálogo"
-          icon={<FileText className="h-5 w-5" />}
-          color="#007f68"
-          onClick={() =>
-            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })
-          }
-        />
-        <OperationalMetricCard
-          label="Oportunidades abertas"
-          value={openCauseRows.length}
-          detail="Oportunidades aguardando tratamento"
-          icon={<CircleAlert className="h-5 w-5" />}
-          color="#c58916"
-          onClick={() =>
-            navigate({
-              to: "/m/$module",
-              params: { module: "ddp" },
-              search: { view: "cause-consult" },
-            })
-          }
-        />
-        <OperationalMetricCard
-          label="Documentos"
-          value={documentCatalogRows.length}
-          detail="Documentos cadastrados no catálogo"
-          icon={<FileCheck2 className="h-5 w-5" />}
-          color="#2774b8"
-          onClick={() =>
-            navigate({ to: "/m/$module", params: { module: "pop" }, search: { view: "consult" } })
-          }
-        />
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)]">
-        <ExpandableCard
-          title="Acompanhamento de mapeamentos"
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
-          expanded={<MappingRecordsTable rows={mappingRows} />}
-          onNavigate={() =>
-            navigate({ to: "/m/$module", params: { module: "ddp" }, search: { view: "consult" } })
-          }
-        >
-          <div className="grid flex-1 grid-cols-2 items-center md:grid-cols-4">
-            {MAPPING_STATUS_TILES.map((tile, index) => {
-              const value = mappingStatusCounts[tile.key];
-              return (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate({
-                      to: "/m/$module",
-                      params: { module: "ddp" },
-                      search: { view: "consult", filter: tile.label },
-                    })
-                  }
-                  key={tile.key}
-                  className={`flex min-h-[142px] flex-col items-center justify-center px-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
-                    index > 0 ? "border-l border-border" : ""
-                  }`}
-                >
-                  <span className="text-xs font-medium" style={{ color: tile.color }}>
-                    {tile.label}
-                  </span>
-                  <strong
-                    className="mt-4 font-data text-4xl font-bold"
-                    style={{ color: tile.color }}
-                  >
-                    {value}
-                  </strong>
-                  <span className="mt-2 text-xs text-muted-foreground">
-                    {value === 1 ? "registro" : "registros"}
-                  </span>
-                  <span
-                    className="mt-5 h-0.5 w-full max-w-[120px]"
-                    style={{ backgroundColor: tile.color }}
-                  />
-                </button>
-              );
-            })}
-          </div>
-        </ExpandableCard>
-
-        <ExpandableCard
-          title="Oportunidades que exigem atenção"
-          className={`${DASHBOARD_CARD_CLASS} flex min-h-[270px] flex-col gap-4`}
-          expanded={<CauseRecordsTable rows={causeRows} />}
-          onNavigate={() =>
-            navigate({
-              to: "/m/$module",
-              params: { module: "ddp" },
-              search: { view: "cause-consult" },
-            })
-          }
-        >
-          <div className="divide-y divide-border">
-            {attentionCauses.map((cause) => (
-              <div
-                key={cause.id}
-                className="grid grid-cols-[92px_minmax(0,1fr)_72px_82px] items-center gap-3 py-3"
-              >
-                <span className="truncate font-data text-xs font-semibold text-[#007f68]">
-                  {cause.source === "Mapeamento" ? cause.mapping : "Avulsa"}
-                </span>
-                <span className="truncate text-xs text-foreground" title={cause.cause}>
-                  {cause.cause}
-                </span>
-                <div className="flex justify-center">
-                  <span
-                    className="rounded border px-2 py-0.5 text-[10px] font-semibold"
-                    style={{
-                      color: priorityRank(cause.priority) === 3 ? "#b77900" : "#007f68",
-                      borderColor: priorityRank(cause.priority) === 3 ? "#d09522" : "#009f7f",
-                    }}
-                  >
-                    {cause.priority || "Sem prioridade"}
-                  </span>
-                </div>
-                <time className="text-right font-data text-[10px] text-muted-foreground">
-                  {formatDateBr(cause.dueDate) || formatDateBr(cause.updatedAt)}
-                </time>
-              </div>
-            ))}
-            {attentionCauses.length === 0 ? (
-              <div className="py-10 text-center text-xs text-muted-foreground">
-                Nenhuma oportunidade aberta exige atenção.
-              </div>
-            ) : null}
-          </div>
-        </ExpandableCard>
-      </section>
-
-      {/* Bottom: Catálogo e Conformidade + Painel de Atividade Recente */}
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        {/* Catálogo e Conformidade */}
-        <ExpandableCard
-          title="Catálogo e conformidade"
-          titleClassName="text-sm font-semibold text-foreground"
-          className={DASHBOARD_CARD_CLASS}
-          expanded={<DocumentCatalogExpanded rows={documentCatalogRows} />}
-          onNavigate={() =>
-            navigate({ to: "/m/$module", params: { module: "pop" }, search: { view: "consult" } })
-          }
-        >
-          <div className="mt-4 min-w-0">
-            <div className="grid grid-cols-[minmax(0,1fr)_80px] border-b border-border px-1 pb-2 text-[10px] font-semibold text-muted-foreground">
-              <span>Tipo de documento</span>
-              <span className="text-right">Total</span>
-            </div>
-            <div className="divide-y divide-border">
-              {DOCUMENT_CATALOG_TYPES.map((type) => {
-                const count = documentTypeCount(documentCatalogRows, type);
-                return (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate({
-                        to: "/m/$module",
-                        params: {
-                          module:
-                            type === "Mapeamento" ? "ddp" : type === "Fluxograma" ? "bpmn" : "pop",
-                        },
-                        search: { view: "consult", filter: type === "Instrução" ? "IT" : type },
-                      })
-                    }
-                    key={type}
-                    className="grid w-full grid-cols-[minmax(0,1fr)_80px] items-center gap-3 px-1 py-2 text-left transition-colors hover:bg-muted/40"
-                  >
-                    <span className="truncate text-xs text-foreground">{type}</span>
-                    <span className="text-right font-data text-xs font-semibold text-foreground">
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </ExpandableCard>
-
-        {/* Painel de Atividade Recente */}
-        <ExpandableCard
-          title="Atividade recente"
-          titleClassName="text-sm font-semibold text-foreground"
-          className={DASHBOARD_CARD_CLASS}
-          onNavigate={() => navigate({ to: "/", search: { area: "modules" } })}
-          navigateLabel="Abrir módulos"
-        >
-          <div className="mt-3">
-            {activityItems.length === 0 ? (
-              <div className="py-4 text-center text-xs text-muted-foreground">
-                Sem atividade recente.
-              </div>
-            ) : (
-              <div className="divide-y divide-border border-l border-border pl-4">
-                {activityItems.map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    onClick={() => openActivityItem(item)}
-                    className="relative grid w-full grid-cols-[76px_84px_minmax(0,1fr)] items-center gap-3 py-2.5 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]/25"
-                  >
-                    <span className="absolute -left-[20.5px] h-2.5 w-2.5 rounded-full border-2 border-card bg-[#009f7f]" />
-                    <time className="font-data text-[10px] leading-tight text-muted-foreground">
-                      {formatDateBr(item.updatedAt)}
-                      <br />
-                      {new Date(item.updatedAt).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                    <span className="inline-flex justify-center rounded border border-[#009f7f] px-2 py-0.5 text-[9px] font-semibold uppercase text-[#007f68]">
-                      {item.tag}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate text-xs text-foreground">{item.title}</div>
-                      <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                        {item.description}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </ExpandableCard>
-      </section>
-    </div>
+    <OperationalDashboard
+      key={organizationId}
+      organizationName={organizationName}
+      error={dashboardError}
+      onRetry={onRetry}
+      departments={departments}
+      processes={mappingCoverage.rows}
+      mappings={mappingRows}
+      documents={documentCatalogRows}
+      improvements={causeRows}
+      loading={isLoading}
+    />
   );
 }
 
