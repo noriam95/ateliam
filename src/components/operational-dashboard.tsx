@@ -64,6 +64,14 @@ function statusName(value: string) {
   if (s.includes("cancel")) return "Cancelada";
   return value && value !== "-" ? value : "Não informada";
 }
+function summarize(entries: [string, Entry[]][], limit = 4): [string, Entry[]][] {
+  return entries.length <= limit
+    ? entries
+    : [
+        ...entries.slice(0, limit - 1),
+        ["Outros", entries.slice(limit - 1).flatMap(([, rows]) => rows)],
+      ];
+}
 function groups(rows: Entry[], key: "status" | "type" | "priority" | "source") {
   const result = new Map<string, Entry[]>();
   rows.forEach((row) => {
@@ -170,9 +178,26 @@ export function OperationalDashboard({
   };
   const covered = ps.filter((p) => p.status === "Mapeado").length;
   const displayedAreas = area ? [area] : areas;
-  const stats = groups(maps, "status"),
-    docTypes = groups(docs, "type"),
-    impGroups = groups(imps, group);
+  const coverageAreas = displayedAreas
+    .filter((a) => ps.some((p) => p.area === a))
+    .sort((a, b) => {
+      const ratio = (name: string) => {
+        const rows = ps.filter((p) => p.area === name);
+        return rows.filter((p) => p.status === "Mapeado").length / rows.length;
+      };
+      return ratio(a) - ratio(b) || a.localeCompare(b, "pt-BR");
+    })
+    .slice(0, 4);
+  const compareAreas = [...displayedAreas]
+    .sort(
+      (a, b) =>
+        all.filter((r) => r.area === b).length - all.filter((r) => r.area === a).length ||
+        a.localeCompare(b, "pt-BR"),
+    )
+    .slice(0, 3);
+  const stats = summarize(groups(maps, "status"), 5),
+    docTypes = summarize(groups(docs, "type")),
+    impGroups = summarize(groups(imps, group));
   const registeredAreas = departments.filter((d) => !area || d.name === area);
   const areaRecords: Entry[] = registeredAreas.map((d) => ({
     id: d.id,
@@ -302,7 +327,7 @@ export function OperationalDashboard({
           <div className="op-upper">
             {panel(
               "Cobertura de mapeamentos",
-              "Processos com pelo menos um mapeamento salvo.",
+              "Até 4 áreas com menor cobertura de mapeamentos.",
               <div className="op-coverage">
                 <div>
                   <strong>
@@ -319,8 +344,8 @@ export function OperationalDashboard({
                   </p>
                 </div>
                 <div className="op-area-scroll">
-                  {displayedAreas.length
-                    ? displayedAreas.map((a) => {
+                  {coverageAreas.length
+                    ? coverageAreas.map((a) => {
                         const subset = ps.filter((p) => p.area === a),
                           count = subset.filter((p) => p.status === "Mapeado").length;
                         return (
@@ -348,7 +373,7 @@ export function OperationalDashboard({
                 </div>
               </div>,
               <>
-                <span className="op-caption">Processos distintos · rascunhos excluídos</span>
+                <span className="op-caption">Cobertura geral · rascunhos excluídos</span>
                 {link("Ver lacunas", () =>
                   show(
                     "Processos sem mapeamento",
@@ -359,10 +384,10 @@ export function OperationalDashboard({
             )}
             {panel(
               "Registros por área",
-              "Distribuição dos registros nos três módulos.",
+              "As 3 áreas com mais registros nos módulos.",
               <div className="op-compare">
-                {displayedAreas.length
-                  ? displayedAreas.map((a) => (
+                {compareAreas.length
+                  ? compareAreas.map((a) => (
                       <div className="op-compare-row" key={a}>
                         <span title={a}>{a}</span>
                         <div>
@@ -414,7 +439,7 @@ export function OperationalDashboard({
                     </span>
                   ))}
                 </div>
-                {link("Detalhar", () => show("Registros por área", filter(all)))}
+                {link("Ver todas as áreas", () => show("Registros por área", filter(all)))}
               </>,
             )}
           </div>

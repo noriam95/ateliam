@@ -628,7 +628,7 @@ function PorterDiagram({
         <div
           className={`${large ? "min-h-32" : "min-h-28"} rounded-md bg-[#004c3e] p-5 text-white`}
         >
-          <div className="grid h-full min-w-0 items-center gap-3">
+          <div className="grid h-full min-w-0 grid-cols-[minmax(0,2fr)_minmax(110px,1fr)] items-center gap-4">
             <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,190px),1fr))] items-stretch gap-2">
               {primary.length ? (
                 primary.map((item) =>
@@ -644,27 +644,27 @@ function PorterDiagram({
                 </div>
               )}
             </div>
-            <div className="text-center text-sm font-black">Saídas</div>
-            <div
-              className={`grid min-w-0 gap-1 text-[11px] font-semibold leading-snug text-white/90 ${
-                large ? "sm:grid-cols-2 lg:grid-cols-1" : "grid-cols-1"
-              }`}
-            >
-              {outputItems.length ? (
-                outputItems.map((item) =>
-                  chainButton(
-                    item,
-                    "flex w-full items-start gap-2 rounded px-1 py-0.5 text-left transition hover:bg-white/10",
-                    "bg-white/15 ring-1 ring-white/40",
-                    <>
-                      <span className="shrink-0 text-[#8debc6]">›</span>
-                      <span className="min-w-0 break-words">{item.name}</span>
-                    </>,
-                  ),
-                )
-              ) : (
-                <div className="text-white/65">Nenhuma saída cadastrada.</div>
-              )}
+            <div className="grid min-w-0 content-center gap-3 self-center">
+              <div className="text-center text-sm font-black">Saídas</div>
+              <div
+                className={`grid min-w-0 gap-1 text-[11px] font-semibold leading-snug text-white/90 ${"grid-cols-1"}`}
+              >
+                {outputItems.length ? (
+                  outputItems.map((item) =>
+                    chainButton(
+                      item,
+                      "flex w-full items-start gap-2 rounded px-1 py-0.5 text-left transition hover:bg-white/10",
+                      "bg-white/15 ring-1 ring-white/40",
+                      <>
+                        <span className="shrink-0 text-[#8debc6]">›</span>
+                        <span className="min-w-0 break-words">{item.name}</span>
+                      </>,
+                    ),
+                  )
+                ) : (
+                  <div className="text-white/65">Nenhuma saída cadastrada.</div>
+                )}
+              </div>
             </div>
           </div>
         </div>
