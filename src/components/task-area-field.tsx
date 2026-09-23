@@ -16,44 +16,43 @@ export function TaskAreaField({ organizationId }: { organizationId: string }) {
   const [sigla, setSigla] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const matches = (q.data || []).filter((a) =>
-    a.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-  );
   return (
     <div>
       <label>
         Área
-        <input
-          value={search}
-          placeholder="Pesquisar área"
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setSelected("");
-          }}
-        />
         <select
           name="areaId"
           value={selected}
           onChange={(e) => {
             setSelected(e.target.value);
-            setSearch(q.data?.find((a) => a.id === e.target.value)?.name || "");
           }}
         >
           <option value="">Selecione uma área</option>
-          {matches.map((a) => (
+          {(q.data || []).map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
             </option>
           ))}
         </select>
       </label>
-      {!matches.length && !q.isLoading && (
-        <button type="button" onClick={() => setAdding(true)}>
-          Cadastrar área “{search}”
+      {!adding && !q.isLoading && (
+        <button
+          type="button"
+          onClick={() => {
+            setSearch("");
+            setSigla("");
+            setAdding(true);
+          }}
+        >
+          Cadastrar nova área
         </button>
       )}
       {adding && (
         <div>
+          <label>
+            Nome da nova área
+            <input value={search} onChange={(e) => setSearch(e.target.value)} />
+          </label>
           <label>
             Sigla (3 letras)
             <input
@@ -64,7 +63,7 @@ export function TaskAreaField({ organizationId }: { organizationId: string }) {
           </label>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !search.trim() || sigla.trim().length !== 3}
             onClick={async () => {
               setError("");
               setBusy(true);
