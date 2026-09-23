@@ -1,3 +1,4 @@
+import { dashboardRows } from "./dashboard-pagination";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -44,6 +45,28 @@ export const loadUserTasks = createServerFn({ method: "POST" })
           : error.message,
       );
     const feed = result as TaskFeed;
+    if (data.filters.id && feed.tasks.some((task) => task.id === data.filters.id)) {
+      const history = await dashboardRows(
+        db
+          .from("user_task_events")
+          .select(
+            "id,action,note,created_at,attachments,movement_action,movement_note,actor:profiles!actor_id(display_name,username,avatar_data_url)",
+          )
+          .eq("organization_id", data.organizationId)
+          .eq("task_id", data.filters.id)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false }),
+      );
+      if (history.error) throw new Error(history.error.message);
+      feed.events = history.data.map((event) => {
+        const actor = Array.isArray(event.actor) ? event.actor[0] : event.actor;
+        return {
+          ...event,
+          actor_name: actor?.display_name || actor?.username || "Usuário",
+          actor_photo: actor?.avatar_data_url,
+        };
+      });
+    }
     if (feed.tasks.length) {
       const { data: rows, error: activityError } = await db
         .from("user_tasks")

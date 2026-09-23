@@ -1726,3 +1726,40 @@
   background: var(--accent);
   color: var(--foreground);
 }
+
+.ut-request-context {
+  margin: 0 20px 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+.ut-request-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  justify-content: space-between;
+}
+.ut-request-context p {
+  margin: 8px 0;
+}
+.ut-request-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ut-request-context summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+.ut-request-context summary strong {
+  margin-left: 8px;
+}
+.ut-request-files {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.ut-request-files li {
+  overflow-wrap: anywhere;
+}

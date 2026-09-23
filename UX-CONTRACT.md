@@ -97,3 +97,5 @@ Entregas: tarefa concluída oferece ZIP único com anexos originais e POP/Mapeam
 Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, indicadores com filtros exatos e gráfico de conclusões por semana/mês/ano. Próximas entregas removida. Datas de conclusão são persistidas na transição final; reabertura limpa a data; registros históricos sem data comprovável são informados e não entram no gráfico. Tendência usa regressão linear até hoje.
 
 Tarefas: botão direito (ou Shift+F10) abre ações permitidas com motivo obrigatório. Cancelamento preserva entregas e histórico, encerra alterações e não conta como tarefa aberta. Revisão técnica não permite pausa/cancelamento. Checklist reutiliza DocumentPicker filtrado pelo módulo e mantém códigos de origem.
+
+Contexto contínuo da tarefa: descrição inicial é persistida na criação antes dos uploads; anexos são comentários adicionais. Primeiro comentário permanece destacado em todas as abas. Histórico de detalhes carrega todas as páginas, sem corte em 100 eventos; arquivos mantêm autor e data de origem.

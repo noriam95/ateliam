@@ -1,3 +1,4 @@
+import { TaskRequestContext } from "./task-request-context";
 import { TaskQuickActionDialog } from "./task-quick-action-dialog";
 import { taskQuickActions } from "@/lib/user-tasks";
 import { UserHomeDashboard } from "./user-home-dashboard";
@@ -893,7 +894,7 @@ function CreateTask({
                   id,
                   areaId: f.get("areaId"),
                   requestedBy: f.get("requestedBy"),
-                  note: "",
+                  note: comment.trim(),
                   title,
                   kind,
                   modality: kind === "mapping" ? f.get("modality") : null,
@@ -904,7 +905,7 @@ function CreateTask({
               },
             });
             setCreated(true);
-            if (comment.trim() || files.length) {
+            if (files.length) {
               const attachments = [];
               for (const file of files) {
                 let attachment = uploads.current.get(file);
@@ -926,7 +927,7 @@ function CreateTask({
                   payload: {
                     id,
                     commentId,
-                    note: comment.trim() || "Anexos da solicitação inicial.",
+                    note: "Anexos da solicitação inicial.",
                     attachments,
                   },
                 },
@@ -1181,6 +1182,7 @@ function TaskDetails({
               Fluxo do processo
             </button>
           </nav>
+          <TaskRequestContext events={data?.events || []} />
           <section
             hidden={detailTab !== "movements"}
             className="ut-movements"
@@ -1368,7 +1370,7 @@ function TaskDetails({
                       </div>
                     </article>
                   ))}
-                  <small>Últimos 100 registros.</small>
+                  <small>Histórico completo · {data?.events.length || 0} registros.</small>
                 </div>
                 {activityTab === "meetings" && (
                   <TaskMeetings

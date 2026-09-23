@@ -24,6 +24,7 @@ test("cancelamento respeita etapa, ator, revisão e preserva registros; seleçã
       await command("create", {
         id,
         title: "Teste cancelamento",
+        note: "Descrição original para atendimento.",
         kind: "mapping",
         modality: "Sistemas",
         assignedTo: ids.analyst,
@@ -35,6 +36,25 @@ test("cancelamento respeita etapa, ator, revisão e preserva registros; seleçã
     };
     let id = await create();
     let t = await read(id);
+    await assert.rejects(
+      command("comment", {
+        id,
+        commentId: crypto.randomUUID(),
+        note: "Anexos da solicitação inicial.",
+        attachments: [{ path: "arquivo-inexistente", name: "escopo.pdf", size: 100 }],
+      }),
+      /Anexo/,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "select note from user_task_events where task_id=$1 and action='Comentário' order by created_at limit 1",
+          [id],
+        )
+      ).rows[0].note,
+      "Descrição original para atendimento.",
+    );
+
     await user("coordinator");
     await assert.rejects(
       command("cancel", { id, revision: t.revision, note: "Cancelar demanda" }),
