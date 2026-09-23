@@ -1,4 +1,4 @@
-import { Paperclip, Send } from "lucide-react";
+import { Paperclip, Send, FileText, Download, LoaderCircle } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { UserTask, TaskAction } from "@/lib/user-tasks";
@@ -147,38 +147,65 @@ export function TaskComment({
   );
 }
 export function CommentAttachment({ attachment }: { attachment: Attachment }) {
-  const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
-    <div>
-      {url ? (
-        <a href={url} target="_blank" rel="noopener noreferrer" download={attachment.name}>
-          Baixar {attachment.name}
-        </a>
-      ) : (
+    <div className="ut-attachment-download">
+      <div className="ut-attachment-file">
+        <FileText size={16} />
+        <span>
+          {attachment.name}
+          <small>
+            {attachment.size < 1048576
+              ? `${Math.ceil(attachment.size / 1024)} KB`
+              : `${(attachment.size / 1048576).toFixed(1)} MB`}
+          </small>
+        </span>
         <button
+          className="ut-icon-action"
           disabled={busy}
+          aria-label={`Baixar ${attachment.name}`}
+          title={`Baixar ${attachment.name}`}
           onClick={async () => {
             setBusy(true);
             setError("");
             try {
               const result = await supabase.storage
                 .from("user-task-files")
-                .createSignedUrl(attachment.path, 300, { download: attachment.name });
+                .download(attachment.path);
               if (result.error) throw result.error;
-              setUrl(result.data.signedUrl);
-            } catch (err) {
-              setError((err as Error).message);
+              const url = URL.createObjectURL(result.data);
+              const anchor = document.createElement("a");
+              anchor.href = url;
+              anchor.download = attachment.name;
+              document.body.append(anchor);
+              anchor.click();
+              anchor.remove();
+              window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } catch (cause) {
+              setError(
+                cause instanceof Error
+                  ? cause.message
+                  : "Não foi possível baixar o arquivo. Tente novamente.",
+              );
             } finally {
               setBusy(false);
             }
           }}
         >
-          {busy ? "Preparando arquivo…" : attachment.name}
+          {busy ? <LoaderCircle size={16} /> : <Download size={16} />}
         </button>
+      </div>
+      {busy && (
+        <span className="ut-sr-only" role="status">
+          Preparando arquivo…
+        </span>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p className="ut-error" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

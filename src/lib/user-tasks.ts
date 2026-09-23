@@ -53,6 +53,8 @@ export type TaskDocument = {
 export const taskCode = (task: { task_code?: string; code?: string }) =>
   task.task_code || (task.code?.startsWith("TAR.") ? task.code : "Código pendente");
 export type UserTask = {
+  deleted_at?: string | null;
+  deleted_by?: string | null;
   task_code?: string;
   area_id?: string;
   area_name?: string;
@@ -150,6 +152,8 @@ export const TASK_STAGE_LABELS = {
 };
 
 export type TaskAction =
+  | "delete"
+  | "restore"
   | "cancel"
   | "pause"
   | "resume"
@@ -202,6 +206,7 @@ export function taskQuickActions(
   data: Pick<TaskFeed, "userId" | "isAdmin" | "canCreate">,
 ): ("pause" | "cancel")[] {
   if (
+    task.deleted_at ||
     !data.canCreate ||
     ["completed", "cancelled"].includes(task.status) ||
     (!data.isAdmin && task.assigned_to !== data.userId)

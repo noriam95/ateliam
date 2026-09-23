@@ -11,19 +11,18 @@ export function TaskRequestContext({ events }: { events: TaskFeed["events"] }) {
         event.note?.trim() &&
         event.note !== "Anexos da solicitação inicial.",
     );
-  const files = events.flatMap((event) =>
-    (event.attachments || []).map((attachment) => ({ attachment, event })),
-  );
+  const files = [...events]
+    .reverse()
+    .flatMap((event) => (event.attachments || []).map((attachment) => ({ attachment, event })));
   return (
     <section className="ut-request-context" aria-label="Contexto da solicitação">
       <div className="ut-request-heading">
-        <strong>Contexto da solicitação</strong>
-        <span className="ut-muted">Preservado durante todo o fluxo</span>
+        <strong>Solicitação</strong>
       </div>
       {first ? (
         <>
-          <p className="ut-muted">
-            Primeiro comentário registrado · {first.actor_name} ·{" "}
+          <p className="ut-muted ut-request-byline">
+            {first.actor_name} ·{" "}
             <time dateTime={first.created_at}>
               {new Date(first.created_at).toLocaleString("pt-BR", {
                 dateStyle: "short",
@@ -36,13 +35,23 @@ export function TaskRequestContext({ events }: { events: TaskFeed["events"] }) {
       ) : (
         <p className="ut-muted">Nenhuma descrição registrada nos comentários da solicitação.</p>
       )}
-      <details>
-        <summary>
-          Arquivos dos comentários e da solicitação <strong>{files.length}</strong>
-        </summary>
-        {files.length ? (
+      {files.length > 0 && (
+        <ul className="ut-request-files">
+          {files.slice(0, 2).map(({ attachment, event }) => (
+            <li key={`${event.id}:${attachment.path}`}>
+              <CommentAttachment attachment={attachment} />
+              <small className="ut-muted">
+                {event.actor_name} · {new Date(event.created_at).toLocaleDateString("pt-BR")}
+              </small>
+            </li>
+          ))}
+        </ul>
+      )}
+      {files.length > 2 && (
+        <details>
+          <summary>Mais {files.length - 2} anexos dos comentários</summary>
           <ul className="ut-request-files">
-            {files.map(({ attachment, event }) => (
+            {files.slice(2).map(({ attachment, event }) => (
               <li key={`${event.id}:${attachment.path}`}>
                 <CommentAttachment attachment={attachment} />
                 <small className="ut-muted">
@@ -51,12 +60,8 @@ export function TaskRequestContext({ events }: { events: TaskFeed["events"] }) {
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="ut-muted">
-            Nenhum arquivo anexado aos comentários. As entregas ficam no checklist.
-          </p>
-        )}
-      </details>
+        </details>
+      )}
     </section>
   );
 }

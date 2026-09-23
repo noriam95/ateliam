@@ -95,6 +95,8 @@ export const updateUserTask = createServerFn({ method: "POST" })
     scope
       .extend({
         action: z.enum([
+          "delete",
+          "restore",
           "cancel",
           "pause",
           "resume",
@@ -133,7 +135,7 @@ export const updateUserTask = createServerFn({ method: "POST" })
       p_payload: data.payload,
     });
     if (error) throw new Error(error.message);
-    return result as { id: string; documentId?: string };
+    return result as { id: string; documentId?: string; revision?: number };
   });
 
 export const loadTaskAreas = createServerFn({ method: "POST" })

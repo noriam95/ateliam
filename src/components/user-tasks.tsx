@@ -1,3 +1,5 @@
+import { TaskDeleteAction } from "./task-delete-action";
+import { TaskHeaderSummary } from "./task-header-summary";
 import { TaskRequestContext } from "./task-request-context";
 import { TaskQuickActionDialog } from "./task-quick-action-dialog";
 import { taskQuickActions } from "@/lib/user-tasks";
@@ -35,6 +37,10 @@ import {
   Plus,
   Paperclip,
   Search,
+  SlidersHorizontal,
+  ChevronDown,
+  Eye,
+  EyeOff,
   SquareKanban,
   TrendingUp,
   X,
@@ -58,6 +64,7 @@ import {
 } from "@/lib/user-tasks";
 import { TaskDialog } from "./task-dialog";
 import "./user-tasks.css";
+import "./user-tasks-approved.css";
 type ViewState = TaskFilters & {
   layout?: "list" | "kanban" | "calendar";
   group?: "status" | "modality";
@@ -70,7 +77,8 @@ type ViewState = TaskFilters & {
 function parseState(raw?: string): ViewState {
   try {
     const value = raw ? JSON.parse(raw) : {};
-    if (!value || typeof value !== "object" || Array.isArray(value)) return { layout: "calendar" };
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      return { layout: "kanban", cardDensity: "compact" };
     const strings = [
       "stage",
       "dueBefore",
@@ -85,7 +93,7 @@ function parseState(raw?: string): ViewState {
       "id",
       "documentQuery",
     ];
-    const parsed: Record<string, unknown> = { layout: "calendar" };
+    const parsed: Record<string, unknown> = { layout: "kanban", cardDensity: "compact" };
     for (const key of strings) if (typeof value[key] === "string") parsed[key] = value[key];
     if (["list", "kanban", "calendar"].includes(value.layout)) parsed.layout = value.layout;
     if (["detailed", "compact"].includes(value.cardDensity)) parsed.cardDensity = value.cardDensity;
@@ -99,7 +107,7 @@ function parseState(raw?: string): ViewState {
     parsed.team = value.team === true;
     return parsed as ViewState;
   } catch {
-    return { layout: "calendar" };
+    return { layout: "kanban", cardDensity: "compact" };
   }
 }
 const pending = (t: UserTask) => t.checklist.filter((i) => !i.completed);
@@ -116,8 +124,10 @@ export function UserTasks({
   state?: string;
   onState: (value: string) => void;
 }) {
+  const boardRef = useRef<HTMLDivElement>(null);
   const [contextTask, setContextTask] = useState<UserTask | null>(null);
   const state = parseState(raw);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState(state.q || "");
   const [modal, setModal] = useState<"create" | null>(null);
   const load = useServerFn(loadUserTasks);
@@ -136,7 +146,33 @@ export function UserTasks({
   });
   const change = (values: Partial<ViewState>) =>
     onState(JSON.stringify({ ...state, offset: 0, ...values }));
+  useEffect(() => setFiltersOpen(false), [state.layout]);
   useEffect(() => setSearch(state.q || ""), [state.q]);
+  useEffect(() => {
+    if (search === (state.q || "")) return;
+    const timer = window.setTimeout(
+      () => onState(JSON.stringify({ ...parseState(raw), offset: 0, q: search })),
+      350,
+    );
+    return () => window.clearTimeout(timer);
+  }, [search, state.q, raw, onState]);
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const measure = () =>
+      board.style.setProperty(
+        "--ut-board-height",
+        `${Math.max(240, window.innerHeight - board.getBoundingClientRect().top - 76)}px`,
+      );
+    measure();
+    window.addEventListener("resize", measure);
+    const observer = new ResizeObserver(measure);
+    if (board.parentElement) observer.observe(board.parentElement);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, [state.layout, filtersOpen, query.data]);
   const data = query.data;
   const refresh = async () => {
     await query.refetch();
@@ -175,7 +211,7 @@ export function UserTasks({
           <p>
             {overview
               ? "O que está sob sua responsabilidade."
-              : "Organize suas atividades, acompanhe prazos e execute as entregas."}
+              : "Acompanhe solicitações, prazos e entregas."}
           </p>
         </div>
         {!overview && data?.canCreate && (
@@ -237,7 +273,7 @@ export function UserTasks({
                     <Search size={16} />
                     <input
                       aria-label="Buscar tarefas e reuniões"
-                      placeholder="Código, título, pessoa ou reunião"
+                      placeholder="Buscar por código, título ou pessoa"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
@@ -253,41 +289,37 @@ export function UserTasks({
                         <X size={14} />
                       </button>
                     )}
-                    <button type="submit">Buscar</button>
+                    <button type="submit" className="ut-sr-only">
+                      Buscar
+                    </button>
                   </form>
+                  <button
+                    className="ut-filter-toggle"
+                    aria-expanded={filtersOpen}
+                    aria-controls="task-filters"
+                    onClick={() => setFiltersOpen((value) => !value)}
+                  >
+                    <SlidersHorizontal size={16} />
+                    Filtros
+                    <ChevronDown size={16} />
+                  </button>
                   <div className="ut-view-switch" aria-label="Visualização">
-                    {(["calendar", "list", "kanban"] as const).map((v, i) => {
-                      const Icon = [CalendarDays, List, SquareKanban][i];
+                    {(["kanban", "list", "calendar"] as const).map((v, i) => {
+                      const Icon = [SquareKanban, List, CalendarDays][i];
                       return (
                         <button
                           key={v}
-                          aria-pressed={(state.layout || "calendar") === v}
+                          aria-pressed={(state.layout || "kanban") === v}
                           onClick={() => change({ layout: v })}
                         >
                           <Icon size={16} />
-                          {["Calendário", "Lista", "Kanban"][i]}
+                          {["Kanban", "Lista", "Calendário"][i]}
                         </button>
                       );
                     })}
                   </div>
                 </div>
-                <details className="ut-task-filters" key={state.layout}>
-                  <summary>
-                    Filtros de tarefas{" "}
-                    <span>
-                      {[
-                        state.kind,
-                        state.status,
-                        state.modality,
-                        state.team,
-                        state.q,
-                        state.stage,
-                        state.dueBefore,
-                        state.dueFrom,
-                        state.dueThrough,
-                      ].filter(Boolean).length || "Todos"}
-                    </span>
-                  </summary>
+                <section id="task-filters" className="ut-task-filters" hidden={!filtersOpen}>
                   {(state.stage || state.dueBefore || state.dueFrom || state.dueThrough) && (
                     <p className="ut-muted">
                       Filtro da Home:{" "}
@@ -300,6 +332,16 @@ export function UserTasks({
                     </p>
                   )}
                   <div className="ut-filters">
+                    <label className="ut-inline">
+                      Agrupar por
+                      <select
+                        value={state.group || "status"}
+                        onChange={(e) => change({ group: e.target.value as "status" | "modality" })}
+                      >
+                        <option value="status">Situação da tarefa</option>
+                        <option value="modality">Modalidade de mapeamento</option>
+                      </select>
+                    </label>
                     <label>
                       Tipo
                       <select
@@ -321,6 +363,7 @@ export function UserTasks({
                         onChange={(e) => change({ status: e.target.value })}
                       >
                         <option value="">Todas</option>
+                        {data.isAdmin && <option value="deleted">Excluídas</option>}
                         {TASK_STATUSES.map((s) => (
                           <option value={s} key={s}>
                             {TASK_STATUS_LABELS[s]}
@@ -395,12 +438,13 @@ export function UserTasks({
                       Limpar filtros
                     </button>
                   </div>
-                </details>
+                </section>
                 {state.layout === "kanban" ? (
                   <>
                     <div className="ut-heading">
-                      <p>{data.total} tarefa(s)</p>
+                      <p>{data.total} tarefas</p>
                       <div className="ut-kanban-controls">
+                        <span className="ut-muted">Cards</span>
                         <div
                           className="ut-density-switch"
                           role="group"
@@ -410,33 +454,25 @@ export function UserTasks({
                             aria-pressed={state.cardDensity !== "compact"}
                             onClick={() => change({ cardDensity: "detailed" })}
                           >
-                            Detalhado
+                            Detalhados
                           </button>
                           <button
                             aria-pressed={state.cardDensity === "compact"}
                             onClick={() => change({ cardDensity: "compact" })}
                           >
-                            Compacto
+                            Compactos
                           </button>
                         </div>
-                        <label className="ut-inline">
-                          Agrupar por
-                          <select
-                            value={state.group || "status"}
-                            onChange={(e) =>
-                              change({ group: e.target.value as "status" | "modality" })
-                            }
-                          >
-                            <option value="status">Situação da tarefa</option>
-                            <option value="modality">Modalidade de mapeamento</option>
-                          </select>
-                        </label>
                       </div>
                     </div>
-                    <div className="ut-kanban">
+                    <div className="ut-kanban" ref={boardRef}>
                       {(state.group === "modality"
                         ? [...TASK_MODALITIES, "Sem modalidade"]
-                        : TASK_STATUSES
+                        : TASK_STATUSES.filter(
+                            (status) =>
+                              status !== "cancelled" ||
+                              data.tasks.some((task) => task.status === "cancelled"),
+                          )
                       ).map((group) => {
                         const tasks = data.tasks.filter(
                           (t) =>
@@ -445,7 +481,7 @@ export function UserTasks({
                               : t.status) === group,
                         );
                         return (
-                          <section className="ut-column" key={group}>
+                          <section className={`ut-column ut-column-${group}`} key={group}>
                             <h3>
                               {TASK_STATUS_LABELS[group as keyof typeof TASK_STATUS_LABELS] ||
                                 group}
@@ -456,6 +492,13 @@ export function UserTasks({
                                 <TaskKanbanCard
                                   key={t.id}
                                   task={t}
+                                  actions={
+                                    <TaskDeleteAction
+                                      task={t}
+                                      allowed={data.isAdmin}
+                                      changed={refresh}
+                                    />
+                                  }
                                   compact={state.cardDensity === "compact"}
                                   open={() => open(t.id)}
                                 />
@@ -558,7 +601,7 @@ export function UserTasks({
                     />
                   </>
                 ) : (
-                  renderTable(data.tasks, open)
+                  renderTable(data.tasks, open, data.isAdmin, refresh)
                 )}
                 {!data.tasks.length && state.layout !== "list" && (
                   <p className="ut-empty">
@@ -706,7 +749,12 @@ function TaskGantt({
     </div>
   );
 }
-function renderTable(tasks: UserTask[], open: (id: string) => void) {
+function renderTable(
+  tasks: UserTask[],
+  open: (id: string) => void,
+  isAdmin: boolean,
+  refresh: () => Promise<void>,
+) {
   return (
     <div className="ut-table-wrap">
       <table>
@@ -752,6 +800,7 @@ function renderTable(tasks: UserTask[], open: (id: string) => void) {
               </td>
               <td>
                 <button onClick={() => open(t.id)}>Ver detalhes</button>
+                <TaskDeleteAction task={t} allowed={isAdmin} changed={refresh} />
               </td>
             </tr>
           ))}
@@ -1101,13 +1150,15 @@ function TaskDetails({
   const [editing, setEditing] = useState<TaskItem | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [headerExpanded, setHeaderExpanded] = useState(false);
   const [detailTab, setDetailTab] = useState("data");
   const [activityTab, setActivityTab] = useState("comments");
   const [commentDirty, setCommentDirty] = useState(false);
   const [fieldsDirty, setFieldsDirty] = useState(false);
   const data = query.data;
   const t = data?.tasks[0];
-  const canAct = !!t && data?.canCreate && (data?.isAdmin || data?.userId === t.assigned_to);
+  const canAct =
+    !!t && !t.deleted_at && data?.canCreate && (data?.isAdmin || data?.userId === t.assigned_to);
   const canEdit =
     canAct &&
     t?.status !== "completed" &&
@@ -1152,7 +1203,32 @@ function TaskDetails({
     <TaskDialog
       wide
       dirty={commentDirty || fieldsDirty}
-      title={t ? `${taskCode(t)} · ${t.title}` : "Detalhes da tarefa"}
+      className="ut-task-detail-dialog"
+      title={t ? t.title : "Detalhes da tarefa"}
+      titlePrefix={
+        t && (
+          <div className="ut-detail-code">
+            <span>{taskCode(t)}</span>
+            <span className="ut-status">
+              {t.deleted_at ? "Excluída" : TASK_STATUS_LABELS[t.status]}
+            </span>
+          </div>
+        )
+      }
+      headerActions={
+        t &&
+        data && (
+          <TaskDeleteAction
+            task={t}
+            allowed={data.isAdmin}
+            changed={async () => {
+              await changed();
+              await query.refetch();
+            }}
+            onDeleted={close}
+          />
+        )
+      }
       onClose={close}
       busy={busy}
     >
@@ -1168,6 +1244,22 @@ function TaskDetails({
         <p className="ut-empty">Tarefa não encontrada ou sem acesso.</p>
       ) : (
         <div>
+          <TaskHeaderSummary
+            task={t}
+            canEdit={
+              !!data &&
+              !t.deleted_at &&
+              !["completed", "cancelled"].includes(t.status) &&
+              (data.isAdmin || (t.assigned_to === data.userId && t.documenter_id === data.userId))
+            }
+            expanded={headerExpanded}
+            toggle={() => setHeaderExpanded((value) => !value)}
+          />
+          {headerExpanded && data && !t.deleted_at && (
+            <div className="ut-summary-editor" onChange={() => setFieldsDirty(true)}>
+              <TaskManagement task={t} data={data} busy={busy} write={write} />
+            </div>
+          )}
           <nav className="ut-inline ut-detail-tabs" aria-label="Abas da tarefa">
             <button aria-pressed={detailTab === "data"} onClick={() => setDetailTab("data")}>
               Dados da tarefa
@@ -1182,124 +1274,92 @@ function TaskDetails({
               Fluxo do processo
             </button>
           </nav>
-          <TaskRequestContext events={data?.events || []} />
-          <section
-            hidden={detailTab !== "movements"}
-            className="ut-movements"
-            onChange={() => setFieldsDirty(true)}
-          >
-            {canAct && data && (
-              <TaskRoutingActions
-                key={`${t.id}:${t.stage}:${t.status}:${t.assigned_to}`}
-                task={t}
-                data={data}
-                busy={busy}
-                write={write}
-              />
-            )}
-            {error && (
-              <p role="alert" className="ut-error">
-                {error}
-              </p>
-            )}
-            <div className="ut-movement-history" aria-label="Histórico de movimentações">
-              {(data?.events || [])
-                .filter((ev) => ev.movement_action)
-                .sort((a, b) => b.created_at.localeCompare(a.created_at))
-                .map((ev) => (
-                  <article key={ev.id} className="ut-routing-description">
-                    <div className="ut-movement-heading">
-                      <strong>{movementActivityTitle(ev.movement_action!, t.kind)}</strong>
-                      <time dateTime={ev.created_at}>
-                        {new Date(ev.created_at).toLocaleString("pt-BR", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
-                      </time>
-                    </div>
-                    <div className="ut-movement-author">
-                      {ev.actor_photo && <img src={ev.actor_photo} alt="" />}
-                      <span>{ev.actor_name}</span>
-                    </div>
-                    <p style={{ whiteSpace: "pre-wrap" }}>
-                      {ev.movement_note || "Sem descrição registrada."}
-                    </p>
-                  </article>
-                ))}
-            </div>
-          </section>
-          {detailTab === "flow" && <TaskProcessFlow task={t} />}
-          <div hidden={detailTab !== "data"}>
+          <div>
             <div className="ut-detail-grid">
               <section className="ut-detail-main">
-                <div className="ut-detail" onChange={() => setFieldsDirty(true)}>
-                  <div className="ut-inline">
-                    <span className={`ut-status ut-status-${t.status}`}>
-                      {TASK_STATUS_LABELS[t.status]}
-                    </span>
-                    {t.kind === "mapping" && <strong>{TASK_STAGE_LABELS[t.stage]}</strong>}
-                  </div>
-                  {data &&
-                  (data.isAdmin ||
-                    (t.assigned_to === data.userId && t.documenter_id === data.userId)) &&
-                  !["completed", "cancelled"].includes(t.status) ? (
-                    <TaskManagement task={t} data={data} busy={busy} write={write} />
-                  ) : (
-                    <div className="ut-detail-meta">
-                      <span>
-                        <small>Responsável atual</small>
-                        {t.assignee_name}
-                      </span>
-                      <span>
-                        <small>Solicitante</small>
-                        {t.requester_name}
-                      </span>
-                      <span>
-                        <small>Tipo / modalidade</small>
-                        {TASK_KINDS[t.kind]}
-                        {t.modality ? ` · ${t.modality}` : ""}
-                      </span>
-                      <span>
-                        <small>Período / prazo</small>
-                        {taskDate(t.starts_on)} a {taskDate(t.due_on)}
-                      </span>
-                    </div>
-                  )}
-                  <section>
-                    <div className="ut-heading">
-                      <h3>Checklist{t.modality ? ` · ${t.modality}` : ""}</h3>
-                      <button onClick={() => setHideDone((v) => !v)}>
-                        {hideDone ? "Mostrar todos" : "Ocultar concluídos"}
-                      </button>
-                    </div>
-                    <div className="ut-progress">
-                      <small>
-                        {t.checklist.length - remainder.length}/{t.checklist.length}
-                      </small>
-                      <progress
-                        aria-label="Itens concluídos"
-                        max={t.checklist.length || 1}
-                        value={t.checklist.length - remainder.length}
-                      />
-                    </div>
-                    <p className="ut-muted">Rascunhos permanecem em andamento.</p>
-                    {t.status === "completed" && <TaskChecklistDownload task={t} />}
-                    <TaskChecklist
+                <section
+                  hidden={detailTab !== "movements"}
+                  className="ut-movements"
+                  onChange={() => setFieldsDirty(true)}
+                >
+                  {canAct && data && (
+                    <TaskRoutingActions
+                      key={`${t.id}:${t.stage}:${t.status}:${t.assigned_to}`}
                       task={t}
-                      canEdit={!!canEdit}
+                      data={data}
                       busy={busy}
-                      hideDone={hideDone}
-                      edit={setEditing}
                       write={write}
-                      setBusy={setBusy}
                     />
-                  </section>
-
+                  )}
                   {error && (
                     <p role="alert" className="ut-error">
                       {error}
                     </p>
                   )}
+                  <div className="ut-movement-history" aria-label="Histórico de movimentações">
+                    {(data?.events || [])
+                      .filter((ev) => ev.movement_action)
+                      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+                      .map((ev) => (
+                        <article key={ev.id} className="ut-routing-description">
+                          <div className="ut-movement-heading">
+                            <strong>{movementActivityTitle(ev.movement_action!, t.kind)}</strong>
+                            <time dateTime={ev.created_at}>
+                              {new Date(ev.created_at).toLocaleString("pt-BR", {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              })}
+                            </time>
+                          </div>
+                          <div className="ut-movement-author">
+                            {ev.actor_photo && <img src={ev.actor_photo} alt="" />}
+                            <span>{ev.actor_name}</span>
+                          </div>
+                          <p style={{ whiteSpace: "pre-wrap" }}>
+                            {ev.movement_note || "Sem descrição registrada."}
+                          </p>
+                        </article>
+                      ))}
+                  </div>
+                </section>
+                {detailTab === "flow" && <TaskProcessFlow task={t} />}
+
+                <div hidden={detailTab !== "data"}>
+                  <div className="ut-detail" onChange={() => setFieldsDirty(true)}>
+                    <TaskRequestContext events={data?.events || []} />
+                    <section>
+                      <div className="ut-heading">
+                        <h3>Entregas do checklist</h3>
+                        <span className="ut-checklist-count">
+                          {t.checklist.length - remainder.length} de {t.checklist.length} concluídas
+                        </span>
+                        <button
+                          className="ut-icon-action"
+                          title={hideDone ? "Mostrar todos" : "Ocultar concluídos"}
+                          aria-label={hideDone ? "Mostrar todos" : "Ocultar concluídos"}
+                          onClick={() => setHideDone((value) => !value)}
+                        >
+                          {hideDone ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                      {t.status === "completed" && <TaskChecklistDownload task={t} />}
+                      <TaskChecklist
+                        task={t}
+                        canEdit={!!canEdit}
+                        busy={busy}
+                        hideDone={hideDone}
+                        edit={setEditing}
+                        write={write}
+                        setBusy={setBusy}
+                      />
+                    </section>
+
+                    {error && (
+                      <p role="alert" className="ut-error">
+                        {error}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </section>
               <aside className="ut-detail-history">
@@ -1321,7 +1381,7 @@ function TaskDetails({
                   </button>
                 </nav>
                 <div hidden={activityTab !== "comments"}>
-                  {data && (
+                  {data && !t.deleted_at && (
                     <TaskComment
                       task={t}
                       userId={data.userId}

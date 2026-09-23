@@ -8,8 +8,14 @@ export function TaskDialog({
   busy = false,
   wide = false,
   dirty = false,
+  headerActions,
+  className = "",
+  titlePrefix,
 }: {
   title: string;
+  titlePrefix?: ReactNode;
+  headerActions?: ReactNode;
+  className?: string;
   children: ReactNode;
   onClose: () => void;
   busy?: boolean;
@@ -31,7 +37,7 @@ export function TaskDialog({
   }, []);
   return (
     <dialog
-      className={`ut-dialog ${wide ? "ut-dialog-wide" : ""}`}
+      className={`ut-dialog ${wide ? "ut-dialog-wide" : ""} ${className}`}
       ref={ref}
       onClickCapture={(event) => {
         const button = (event.target as HTMLElement).closest("button");
@@ -54,7 +60,11 @@ export function TaskDialog({
       }}
     >
       <header>
-        <h2 id={id}>{title}</h2>
+        <div className="ut-dialog-heading">
+          {titlePrefix}
+          <h2 id={id}>{title}</h2>
+        </div>
+        {headerActions}
         <button type="button" aria-label="Fechar" onClick={requestClose} disabled={busy}>
           <X size={18} />
         </button>
