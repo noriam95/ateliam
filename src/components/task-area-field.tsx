@@ -38,6 +38,7 @@ export function TaskAreaField({ organizationId }: { organizationId: string }) {
       {!adding && !q.isLoading && (
         <button
           type="button"
+          className="ut-area-create-link"
           onClick={() => {
             setSearch("");
             setSigla("");

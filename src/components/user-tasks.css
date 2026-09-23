@@ -1798,3 +1798,22 @@
 .ut-meeting-undo > span {
   flex: 1;
 }
+.ut-dialog button.ut-area-create-link {
+  display: inline-flex;
+  width: auto;
+  min-height: 28px;
+  margin-top: 2px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 400;
+}
+.ut-dialog button.ut-area-create-link:hover {
+  background: transparent;
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
