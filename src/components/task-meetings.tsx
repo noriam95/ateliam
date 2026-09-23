@@ -1,10 +1,16 @@
 import { useState, useRef, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { loadTaskMeetings, saveTaskMeeting, type TaskMeeting } from "@/lib/task-meetings.functions";
+import {
+  loadTaskMeetings,
+  saveTaskMeeting,
+  changeMeetingVisibility,
+  type TaskMeeting,
+} from "@/lib/task-meetings.functions";
 import { localDay, type UserTask } from "@/lib/user-tasks";
 import { periodRange, type TaskPeriod } from "@/lib/task-period";
 import { TaskDialog } from "./task-dialog";
+import { MeetingDeleteAction } from "./meeting-delete-action";
 export type ScheduleEntry = Pick<
   UserTask,
   "id" | "code" | "title" | "starts_on" | "due_on" | "status" | "assignee_name"
@@ -64,6 +70,10 @@ export function TaskMeetings({
   const meetingId = useRef(crypto.randomUUID());
   const load = useServerFn(loadTaskMeetings);
   const save = useServerFn(saveTaskMeeting);
+  const changeVisibility = useServerFn(changeMeetingVisibility);
+  const [removedMeeting, setRemovedMeeting] = useState<TaskMeeting | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
   const range = periodRange(anchor, period);
   const [showTasks, setShowTasks] = useState(true);
   const [showMeetings, setShowMeetings] = useState(true);
@@ -135,8 +145,51 @@ export function TaskMeetings({
   };
   const current = editor && editor !== "new" ? editor : null;
   const canEdit = !current || current.organizer_id === query.data?.userId || isAdmin;
+  const refreshMeetings = async () => {
+    await cache.invalidateQueries({ queryKey: ["task-meetings", organizationId] });
+    await cache.invalidateQueries({ queryKey: ["task-detail", organizationId] });
+    await cache.invalidateQueries({ queryKey: ["user-tasks", organizationId] });
+  };
   return (
     <div className="ut-meetings">
+      {removedMeeting && (
+        <div className="ut-meeting-undo">
+          <span role="status">Reunião “{removedMeeting.title}” excluída.</span>
+          <button
+            type="button"
+            disabled={restoreBusy}
+            onClick={async () => {
+              setRestoreBusy(true);
+              setRestoreError("");
+              try {
+                await changeVisibility({
+                  data: {
+                    organizationId,
+                    id: removedMeeting.id,
+                    revision: removedMeeting.revision,
+                    action: "restore",
+                  },
+                });
+                await refreshMeetings();
+                setRemovedMeeting(null);
+              } catch (cause) {
+                setRestoreError(
+                  cause instanceof Error ? cause.message : "Não foi possível restaurar a reunião.",
+                );
+              } finally {
+                setRestoreBusy(false);
+              }
+            }}
+          >
+            {restoreBusy ? "Restaurando…" : "Desfazer"}
+          </button>
+          {restoreError && (
+            <p role="alert" className="ut-error">
+              {restoreError}
+            </p>
+          )}
+        </div>
+      )}
       <div className="ut-agenda-actions" hidden={home}>
         {!taskId && (
           <div className="ut-agenda-visibility" role="group" aria-label="Atividades exibidas">
@@ -174,17 +227,29 @@ export function TaskMeetings({
       ) : (
         <div className="ut-meeting-list">
           {meetings.map((m) => (
-            <button key={m.id} onClick={() => openMeeting(m.id)}>
-              <strong>{m.title}</strong>
-              <span>
-                {new Date(m.starts_at).toLocaleString("pt-BR")} – {clock(m.ends_at)} ·{" "}
-                {m.status === "cancelled"
-                  ? "Cancelada"
-                  : m.status === "completed"
-                    ? "Realizada"
-                    : "Agendada"}
-              </span>
-            </button>
+            <div key={m.id} className="ut-meeting-row">
+              <button onClick={() => openMeeting(m.id)}>
+                <strong>{m.title}</strong>
+                <span>
+                  {new Date(m.starts_at).toLocaleString("pt-BR")} – {clock(m.ends_at)} ·{" "}
+                  {m.status === "cancelled"
+                    ? "Cancelada"
+                    : m.status === "completed"
+                      ? "Realizada"
+                      : "Agendada"}
+                </span>
+              </button>
+              {(m.organizer_id === query.data?.userId || isAdmin) && (
+                <MeetingDeleteAction
+                  meeting={m}
+                  changed={refreshMeetings}
+                  onDeleted={(meeting) => {
+                    setRestoreError("");
+                    setRemovedMeeting(meeting);
+                  }}
+                />
+              )}
+            </div>
           ))}
           {!meetings.length && !query.isLoading && <p>Nenhuma reunião vinculada.</p>}
         </div>
@@ -200,6 +265,20 @@ export function TaskMeetings({
           dirty={dirty && !saved}
           busy={busy}
           onClose={() => setEditor(null)}
+          headerActions={
+            current && canEdit && !saved ? (
+              <MeetingDeleteAction
+                meeting={current}
+                changed={refreshMeetings}
+                onDeleted={(meeting) => {
+                  setRestoreError("");
+                  setRemovedMeeting(meeting);
+                  setDirty(false);
+                  setEditor(null);
+                }}
+              />
+            ) : undefined
+          }
         >
           {saved ? (
             <>

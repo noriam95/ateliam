@@ -14,6 +14,7 @@ export type TaskMeeting = {
   agenda: string;
   status: "scheduled" | "completed" | "cancelled";
   revision: number;
+  deleted_at?: string | null;
   people_search?: string;
 };
 export const loadTaskMeetings = createServerFn({ method: "POST" })
@@ -49,19 +50,21 @@ export const loadTaskMeetings = createServerFn({ method: "POST" })
       .from("profiles")
       .select("id,display_name,username,email");
     if (peopleError) throw new Error(peopleError.message);
-    const meetings = (rows as TaskMeeting[]).map((m) => ({
-      ...m,
-      people_search: (people || [])
-        .filter(
-          (p) =>
-            p.id === m.organizer_id ||
-            m.attendees.some(
-              (email) => email.toLowerCase() === (p.email || p.username || "").toLowerCase(),
-            ),
-        )
-        .map((p) => [p.display_name, p.username, p.email].filter(Boolean).join(" "))
-        .join(" "),
-    }));
+    const meetings = (rows as TaskMeeting[])
+      .filter((m) => !m.deleted_at)
+      .map((m) => ({
+        ...m,
+        people_search: (people || [])
+          .filter(
+            (p) =>
+              p.id === m.organizer_id ||
+              m.attendees.some(
+                (email) => email.toLowerCase() === (p.email || p.username || "").toLowerCase(),
+              ),
+          )
+          .map((p) => [p.display_name, p.username, p.email].filter(Boolean).join(" "))
+          .join(" "),
+      }));
     return {
       meetings,
       total: count || 0,
@@ -101,5 +104,34 @@ export const saveTaskMeeting = createServerFn({ method: "POST" })
       p_payload: data.payload,
     });
     if (error) throw new Error(error.message);
+    return meeting as TaskMeeting;
+  });
+
+export const changeMeetingVisibility = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((v: unknown) =>
+    z
+      .object({
+        organizationId: z.string().uuid(),
+        id: z.string().uuid(),
+        revision: z.number().int().nonnegative(),
+        action: z.enum(["delete", "restore"]),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as unknown as SupabaseClient;
+    const { data: meeting, error } = await db.rpc("task_meeting_visibility", {
+      p_org: data.organizationId,
+      p_id: data.id,
+      p_revision: data.revision,
+      p_action: data.action,
+    });
+    if (error)
+      throw new Error(
+        error.code === "PGRST202"
+          ? "A exclusão de reuniões depende da atualização do banco de dados."
+          : error.message,
+      );
     return meeting as TaskMeeting;
   });
