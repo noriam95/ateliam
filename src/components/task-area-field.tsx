@@ -1,3 +1,4 @@
+import { DropdownTextField } from "./dropdown-text-field";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -18,36 +19,32 @@ export function TaskAreaField({ organizationId }: { organizationId: string }) {
   const [error, setError] = useState("");
   return (
     <div>
-      <label>
-        Área
-        <select
-          name="areaId"
-          value={selected}
-          onChange={(e) => {
-            setSelected(e.target.value);
+      <input type="hidden" name="areaId" value={selected} />
+      <div className="ut-area-search">
+        <DropdownTextField
+          label="Área"
+          value={search}
+          options={(q.data || []).map((area) => area.name)}
+          placeholder="Pesquisar área"
+          compact
+          createOnlyWhenEmpty
+          onChange={(value) => {
+            setSearch(value);
+            setSelected(q.data?.find((area) => area.name === value)?.id || "");
           }}
-        >
-          <option value="">Selecione uma área</option>
-          {(q.data || []).map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {!adding && !q.isLoading && (
-        <button
-          type="button"
-          className="ut-area-create-link"
-          onClick={() => {
-            setSearch("");
-            setSigla("");
-            setAdding(true);
-          }}
-        >
-          Cadastrar nova área
-        </button>
-      )}
+          createLabel="Cadastrar área"
+          onCreate={
+            !adding && !q.isLoading && !q.error
+              ? (name) => {
+                  setSearch(name);
+                  setSigla("");
+                  setError("");
+                  setAdding(true);
+                }
+              : undefined
+          }
+        />
+      </div>
       {adding && (
         <div>
           <label>
@@ -72,6 +69,7 @@ export function TaskAreaField({ organizationId }: { organizationId: string }) {
                 const row = await save({ data: { organizationId, name: search, sigla } });
                 await q.refetch();
                 setSelected(row.id);
+                setSearch(row.name);
                 setAdding(false);
               } catch (e) {
                 setError((e as Error).message);

@@ -1817,3 +1817,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.ut-dialog .ut-area-search input[role="combobox"] { padding-left: 36px; padding-right: 36px; }
+.ut-dialog .ut-area-search label > span { font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--foreground); }
+.ut-dialog .ut-area-search [role="listbox"] { top: 100%; left: 0; }
+.ut-dialog .ut-area-search [role="option"] { border: 0; box-shadow: none; }
+
