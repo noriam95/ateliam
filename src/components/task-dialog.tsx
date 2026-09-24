@@ -56,6 +56,7 @@ export function TaskDialog({
       aria-labelledby={id}
       onCancel={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!busy) requestClose();
       }}
     >

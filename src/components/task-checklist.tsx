@@ -1,3 +1,4 @@
+import { documentLabel } from "@/lib/document-label";
 import { TaskDocumentPreview } from "./task-delivery-export";
 import { Pencil, Trash2, Eye, Paperclip, Plus, Download } from "lucide-react";
 import { useRef, useState } from "react";
@@ -122,7 +123,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                           {item.entry_type === "file"
                             ? item.attachment?.name || `Anexo ${index + 1}`
                             : item.document_id
-                              ? `${item.document_code || "Código pendente"} · ${item.document_name || item.label}`
+                              ? documentLabel(item.document_code, item.document_name || item.label)
                               : `Preenchimento ${index + 1}`}
                         </strong>
                         <small>

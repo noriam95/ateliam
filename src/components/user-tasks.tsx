@@ -1,3 +1,4 @@
+import { documentLabel } from "@/lib/document-label";
 import { TaskDeleteAction } from "./task-delete-action";
 import { TaskHeaderSummary } from "./task-header-summary";
 import { TaskRequestContext } from "./task-request-context";
@@ -875,7 +876,7 @@ function DocumentPicker({
             )}
             {query.data?.documents.map((d) => (
               <option value={d.id} key={d.id}>
-                {d.code || "Sem código"} · {d.name}
+                {documentLabel(d.code, d.name)}
               </option>
             ))}
           </select>
@@ -1253,12 +1254,20 @@ function TaskDetails({
               (data.isAdmin || (t.assigned_to === data.userId && t.documenter_id === data.userId))
             }
             expanded={headerExpanded}
-            toggle={() => setHeaderExpanded((value) => !value)}
+            toggle={() => {
+              setError("");
+              setHeaderExpanded(true);
+            }}
           />
           {headerExpanded && data && !t.deleted_at && (
-            <div className="ut-summary-editor" onChange={() => setFieldsDirty(true)}>
-              <TaskManagement task={t} data={data} busy={busy} write={write} />
-            </div>
+            <TaskManagement
+              task={t}
+              data={data}
+              busy={busy}
+              write={write}
+              serverError={error}
+              onClose={() => setHeaderExpanded(false)}
+            />
           )}
           <nav className="ut-inline ut-detail-tabs" aria-label="Abas da tarefa">
             <button aria-pressed={detailTab === "data"} onClick={() => setDetailTab("data")}>

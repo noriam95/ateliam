@@ -1,3 +1,4 @@
+import { mappingCodeForMode } from "@/lib/document-label";
 import { DropdownTextField } from "@/components/dropdown-text-field";
 import { visibleModulesFor } from "@/lib/module-visibility";
 import type { SearchSchemaInput } from "@tanstack/react-router";
@@ -7315,7 +7316,18 @@ function ModuleWorkspacePage() {
           );
         }
       }
-      if (!isDraftSave && isAutoCodeModule && !currentModuleCode(workspaceToSave)) {
+      // Mapping codes are assigned by the server together with their draft/final state.
+      if (moduleId === "ddp" && isDemo) {
+        let code = currentModuleCode(workspaceToSave);
+        if (!code) code = await reserveModuleCode();
+        workspaceToSave = withModuleCode(workspaceToSave, mappingCodeForMode(code, mode));
+      }
+      if (
+        moduleId !== "ddp" &&
+        !isDraftSave &&
+        isAutoCodeModule &&
+        !currentModuleCode(workspaceToSave)
+      ) {
         const reserved = await reserveModuleCode();
         workspaceToSave = withModuleCode(workspaceToSave, reserved);
       }
@@ -7358,6 +7370,15 @@ function ModuleWorkspacePage() {
           primaryProcessVersion: payload.primaryProcessVersion,
         },
       });
+      if (moduleId === "ddp" && row.content_inline) {
+        const saved = JSON.parse(row.content_inline);
+        const savedCode = (saved.modules || saved).ddp?.meta?.codigo;
+        if (savedCode) {
+          workspaceToSave = withModuleCode(workspaceToSave, savedCode);
+          setWorkspace(workspaceToSave);
+          window.localStorage.setItem(draftKey, JSON.stringify(workspaceToSave));
+        }
+      }
       return { version: row.current_version, document: row, mode };
     },
     onSuccess: (result) => {
@@ -21439,7 +21460,6 @@ function ActivityActorField({
     </div>
   );
 }
-
 
 function SelectField({
   label,

@@ -1,3 +1,4 @@
+import { documentLabel } from "@/lib/document-label";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Download, Eye } from "lucide-react";
@@ -59,7 +60,7 @@ export function TaskChecklistDownload({ task }: { task: UserTask }) {
                   data.brand,
                 );
                 zip.file(
-                  prefix + filename(`${doc.code ? doc.code + " - " : ""}${doc.name}`) + ".docx",
+                  prefix + filename(documentLabel(doc.code, doc.name)) + ".docx",
                   await rendered.word.arrayBuffer(),
                 );
               }

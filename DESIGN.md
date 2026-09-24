@@ -96,3 +96,10 @@ Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, 
 Tarefas: botão direito (ou Shift+F10) abre ações permitidas com motivo obrigatório. Cancelamento preserva entregas e histórico, encerra alterações e não conta como tarefa aberta. Revisão técnica não permite pausa/cancelamento. Checklist reutiliza DocumentPicker filtrado pelo módulo e mantém códigos de origem.
 
 Revisão de tarefas aprovada: Kanban inicial e cards Compactos por padrão; ordem Kanban, Lista, Calendário. Filtros e checklist iniciam recolhidos. Cabeçalho unifica busca, filtros e seletores; detalhe traz metadados no cabeçalho, edição por lápis, solicitação e anexos na coluna principal, comentários/reuniões à direita. Exclusão lógica apenas para administrador, com confirmação e Desfazer; tarefas excluídas consultáveis no filtro Excluídas; dados, documentos e histórico preservados. Ações e restauração validadas no servidor por organização e revisão.
+
+
+## Identificação e edição da tarefa — 24/09/2026
+
+Códigos aparecem uma única vez nas entregas, seleção de documentos e nomes exportados, inclusive quando o nome legado já contém o código. Mapeamentos salvos como rascunho usam MAP.ÁREA.NNN.TEMP; a finalização remove .TEMP e preserva a sequência reservada. A área é necessária para a primeira reserva. Documentos antigos recebem a identificação temporária no próximo salvamento como rascunho. A reserva usa comparação atômica do contador organizacional e considera códigos já existentes.
+
+TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e modalidade separadamente. Editar dados abre TaskManagement no TaskDialog compartilhado, com grupos Pessoas, Período e Classificação, salvar/cancelar explícitos e confirmação de descarte. Falhas preservam os campos; sucesso fecha a edição e atualiza o resumo. As permissões e restrições de modalidade permanecem no servidor. Tokens de src/styles.css continuam canônicos.

@@ -105,3 +105,10 @@ Revisão de tarefas aprovada: Kanban inicial e cards Compactos por padrão; orde
 Reuniões: exclusão lógica permitida ao organizador e administrador, com lixeira na lista vinculada e nos detalhes, confirmação e Desfazer dentro da superfície ativa (inclusive diálogos). Exclusão/recuperação preservam conteúdo e geram auditoria. Convites do Outlook não são cancelados automaticamente; a confirmação informa esse limite.
 
 Seleção de área em tarefas reutiliza DropdownTextField do mapeamento: pesquisa e seleção em um único campo, cadastro disponível apenas sem resultados, com nome pesquisado preenchido e ID da área enviado no formulário.
+
+
+## Identificação e edição da tarefa — 24/09/2026
+
+Códigos aparecem uma única vez nas entregas, seleção de documentos e nomes exportados, inclusive quando o nome legado já contém o código. Mapeamentos salvos como rascunho usam MAP.ÁREA.NNN.TEMP; a finalização remove .TEMP e preserva a sequência reservada. A área é necessária para a primeira reserva. Documentos antigos recebem a identificação temporária no próximo salvamento como rascunho. A reserva usa comparação atômica do contador organizacional e considera códigos já existentes.
+
+TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e modalidade separadamente. Editar dados abre TaskManagement no TaskDialog compartilhado, com grupos Pessoas, Período e Classificação, salvar/cancelar explícitos e confirmação de descarte. Falhas preservam os campos; sucesso fecha a edição e atualiza o resumo. As permissões e restrições de modalidade permanecem no servidor. Tokens de src/styles.css continuam canônicos.

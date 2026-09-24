@@ -1,3 +1,6 @@
+import { documentTitle } from "./document-label";
+import { prepareMappingIdentity } from "./mapping-identity";
+import { reserveOrganizationCode } from "./code-reservation";
 import { dashboardRows } from "./dashboard-pagination";
 import { MODULE_IDS } from "@/lib/module-visibility";
 import { createServerFn } from "@tanstack/react-start";
@@ -8,7 +11,6 @@ import { z } from "zod";
 import {
   DOC_TYPES,
   type DocType,
-  applyNextDocumentCode,
   normalizeCodeSettings,
   normalizeSigla,
 } from "@/lib/code-generation";
@@ -524,21 +526,14 @@ export const reserveCode = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const sigla = normalizeSigla(data.areaSigla);
-    if (sigla.length !== 3) throw new Error("Sigla da área inválida (esperado 3 letras).");
-    const { data: org, error } = await context.supabase
-      .from("organizations")
-      .select("code_settings")
-      .eq("id", access.organizationId)
-      .single();
-    if (error) throw new Error(error.message);
-    const settings = normalizeCodeSettings(org.code_settings);
-    const { code, settings: updated } = applyNextDocumentCode(settings, data.type, sigla);
-    const { error: updateError } = await context.supabase
-      .from("organizations")
-      .update({ code_settings: updated, updated_at: new Date().toISOString() })
-      .eq("id", access.organizationId);
-    if (updateError) throw new Error(updateError.message);
+    // Editors can reserve codes, but organization settings themselves are admin-only in RLS.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const code = await reserveOrganizationCode(
+      supabaseAdmin,
+      access.organizationId,
+      data.type,
+      data.areaSigla,
+    );
     return { code };
   });
 
@@ -1519,16 +1514,16 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
   .validator((d: z.infer<typeof moduleDocumentSchema>) => moduleDocumentSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
-    const title = data.title.trim().toLocaleUpperCase("pt-BR");
-    const content = uppercaseModuleDocumentContent(data.content, data.moduleId);
-    const name = data.code ? `${data.code} - ${title}` : title;
+    let content = uppercaseModuleDocumentContent(data.content, data.moduleId);
+    let code = data.code || "";
     const isDraftSave = data.saveMode === "draft";
     let primaryProcessVersion = data.primaryProcessVersion ?? null;
+    let primaryProcessArea = "";
 
     if (data.primaryProcessId) {
       const { data: process, error: processError } = await context.supabase
         .from("organization_processes")
-        .select("organization_id, current_version")
+        .select("organization_id, current_version, department")
         .eq("id", data.primaryProcessId)
         .single();
       if (processError) throw new Error("O processo vinculado não foi encontrado.");
@@ -1536,6 +1531,7 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
         throw new Error("O processo precisa pertencer à organização ativa.");
       }
       primaryProcessVersion = data.moduleId === "ddp" ? null : process.current_version;
+      primaryProcessArea = process.department || "";
     }
 
     let doc: Database["public"]["Tables"]["documents"]["Row"] | null = null;
@@ -1551,6 +1547,50 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
         throw new Error("Você só pode salvar documentos da sua organização.");
       }
     }
+
+    if (doc && (doc.organization_id !== access.organizationId || doc.module !== data.moduleId)) {
+      throw new Error("O documento precisa pertencer ao módulo e à organização ativos.");
+    }
+    if (data.moduleId === "ddp") {
+      const { data: org, error: orgError } = await context.supabase
+        .from("organizations")
+        .select("code_settings")
+        .eq("id", access.organizationId)
+        .single();
+      if (orgError) throw new Error(orgError.message);
+      const identity = await prepareMappingIdentity({
+        content,
+        savedContent: doc?.content_inline,
+        requestedCode: code,
+        automatic: normalizeCodeSettings(org.code_settings).mapeamento.mode === "auto",
+        mode: isDraftSave ? "draft" : "final",
+        reserve: async (area) => {
+          area = area || primaryProcessArea;
+          const { data: departments, error: departmentError } = await context.supabase
+            .from("organization_departments")
+            .select("name,sigla")
+            .eq("organization_id", access.organizationId);
+          if (departmentError) throw new Error(departmentError.message);
+          const department = departments?.find(
+            (item) =>
+              item.name.trim().toLocaleUpperCase("pt-BR") === area.toLocaleUpperCase("pt-BR"),
+          );
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          return reserveOrganizationCode(
+            supabaseAdmin,
+            access.organizationId,
+            "mapeamento",
+            department?.sigla || normalizeSigla(area),
+          );
+        },
+      });
+      code = identity.code;
+      content = identity.content;
+    }
+    const title =
+      documentTitle(data.title, code).trim().toLocaleUpperCase("pt-BR") ||
+      data.title.trim().toLocaleUpperCase("pt-BR");
+    const name = code ? `${code} - ${title}` : title;
 
     if (!doc) {
       const { data: created, error } = await context.supabase

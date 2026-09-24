@@ -305,25 +305,60 @@
   border-radius: 4px;
   background: var(--accent);
 }
-.ut-task-metadata {
-  display: grid;
-  grid-template-columns: 1.15fr 1.15fr 1fr 1fr;
-  gap: 15px;
+.ut-task-summary {
   margin: 0 25px;
-  padding-bottom: 17px;
+  padding-bottom: 18px;
   border-bottom: 1px solid var(--border);
 }
-.ut-task-metadata small {
-  display: block;
-  font-size: 10px;
-  color: var(--muted-foreground);
-  margin-bottom: 7px;
-}
-.ut-task-metadata span {
-  font-size: 12px;
+.ut-summary-heading {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ut-summary-heading h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ut-dialog .ut-edit-details {
+  display: inline-flex;
+  align-items: center;
   gap: 7px;
+  min-height: 36px;
+  padding: 7px 11px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.ut-task-metadata {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
+  gap: 18px 24px;
+  margin: 0;
+}
+.ut-task-metadata > div {
+  min-width: 0;
+}
+.ut-task-metadata dt {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+}
+.ut-task-metadata dd {
+  margin: 0;
+  min-height: 28px;
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.ut-task-metadata time {
+  font-variant-numeric: tabular-nums;
 }
 .ut-task-metadata .ut-avatar {
   width: 28px;
@@ -489,6 +524,8 @@
   }
   .ut-task-metadata {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-flow: row;
   }
   .ut-task-detail-dialog .ut-detail-grid {
     grid-template-columns: 1fr;
@@ -515,7 +552,7 @@
   .ut-task-detail-dialog > header {
     padding: 18px;
   }
-  .ut-task-metadata {
+  .ut-task-summary {
     margin: 0 18px;
   }
   .ut-task-detail-dialog .ut-detail-tabs {
@@ -646,4 +683,75 @@
 }
 .ut-task-detail-dialog .ut-request-files > li > small {
   font-size: 10px;
+}
+
+/* TaskManagement uses the shared modal and the established native input controls. */
+.ut-task-edit-dialog {
+  width: min(620px, calc(100vw - 32px));
+}
+.ut-dialog .ut-task-edit-form {
+  gap: 20px;
+}
+.ut-edit-context {
+  margin: 0;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.ut-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.ut-edit-fields legend {
+  padding: 0;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.ut-edit-fields label {
+  min-width: 0;
+}
+.ut-edit-readonly {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  font-size: 13px;
+}
+.ut-edit-readonly > span {
+  color: var(--muted-foreground);
+}
+.ut-edit-readonly strong {
+  font-weight: 500;
+}
+.ut-field-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+.ut-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.ut-edit-actions button {
+  min-width: 132px;
+}
+@media (max-width: 540px) {
+  .ut-edit-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ut-task-metadata {
+    gap: 14px;
+  }
+  .ut-summary-heading {
+    flex-wrap: wrap;
+  }
 }
