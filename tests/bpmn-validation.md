@@ -37,3 +37,9 @@
 - Saving captures the edit revision before asynchronous XML serialization, so edits made during a save remain unsaved until the next successful save. Two regression tests cover delayed serialization and serialization failure.
 - Local recovery is refreshed with the newly saved version when additional edits remain, and is offered only to users with edit access.
 - Lane catalog search is reset when switching lanes or responsible entity type.
+
+## Import access follow-up
+
+- Import is available in the document library, the new-drawing dialog and the editing header.
+- Browser-verified the editor button through file selection, reference preview, process association, confirmation and replacement of the open canvas.
+- Replacement retains the document identity/code, pauses autosave while the wizard is open, offers an export of the current drawing and requires an explicit replacement confirmation.

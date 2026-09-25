@@ -422,6 +422,10 @@ export function BpmnWorkspace({
             />
           </div>
           <footer>
+            <button onClick={() => setModal("import")}>
+              <Upload size={17} />
+              Importar arquivo BPMN
+            </button>
             <button onClick={() => setModal(null)}>Cancelar</button>
             <button
               className="bf-bpmn-primary"

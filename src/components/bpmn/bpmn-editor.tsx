@@ -12,6 +12,7 @@ import {
   Link2,
   Save,
   Download,
+  Upload,
   Presentation,
   Pencil,
   SlidersHorizontal,
@@ -20,6 +21,7 @@ import {
   ClipboardPaste,
   Trash2,
 } from "lucide-react";
+import { BpmnImportWizard } from "./import-wizard";
 import { TaskDialog } from "@/components/task-dialog";
 import { BpmnCanvas, type BpmnCanvasHandle, type CanvasSelection } from "./bpmn-canvas";
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
@@ -101,6 +103,7 @@ export function BpmnEditor({
   const documentRef = useRef(document);
   documentRef.current = document;
   const [seed, setSeed] = useState(initial.xml);
+  const [canvasGeneration, setCanvasGeneration] = useState(0);
   const [presentationXml, setPresentationXml] = useState(initial.xml);
   const [record, setRecord] = useState(saved);
   const recordRef = useRef(saved);
@@ -126,6 +129,8 @@ export function BpmnEditor({
   const [showWarnings, setShowWarnings] = useState(false);
   const [help, setHelp] = useState(false);
   const [exit, setExit] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<BpmnDocument | null>(null);
   const [autoSave, setAutoSave] = useState(initial.origin !== "legacy");
   const [recovery, setRecovery] = useState<{
     document: BpmnDocument;
@@ -282,10 +287,10 @@ export function BpmnEditor({
   const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(() => {
-    if (!autoSave || !dirty || !canEdit || recovery) return;
+    if (!autoSave || !dirty || !canEdit || recovery || importing || imported) return;
     const timer = setInterval(() => void saveRef.current(), 30_000);
     return () => clearInterval(timer);
-  }, [autoSave, dirty, canEdit, recovery]);
+  }, [autoSave, dirty, canEdit, recovery, importing, imported]);
   async function exportFile(kind: "bpmn" | "svg" | "original") {
     try {
       const name =
@@ -350,6 +355,12 @@ export function BpmnEditor({
           >
             <span>{presenting ? <Pencil size={16} /> : <Presentation size={16} />}</span>
             {presenting ? "Editar" : "Apresentar"}
+          </button>
+        )}
+        {!readOnly && (
+          <button disabled={busy || !ready} onClick={() => setImporting(true)}>
+            <Upload size={16} />
+            Importar BPMN
           </button>
         )}
         {!readOnly && (
@@ -495,6 +506,7 @@ export function BpmnEditor({
           }}
         >
           <BpmnCanvas
+            key={canvasGeneration}
             ref={canvas}
             xml={seed}
             readOnly={!canEdit}
@@ -760,6 +772,48 @@ export function BpmnEditor({
           </div>
           <footer>
             <button onClick={() => setHelp(false)}>Fechar</button>
+          </footer>
+        </TaskDialog>
+      )}
+      {importing && (
+        <BpmnImportWizard
+          catalogs={catalogs}
+          create={create}
+          onClose={() => setImporting(false)}
+          onImport={(next) => {
+            setImporting(false);
+            setImported(next);
+          }}
+        />
+      )}
+      {imported && (
+        <TaskDialog title="Substituir o desenho aberto?" onClose={() => setImported(null)}>
+          <div className="bf-bpmn-form">
+            <p>
+              O arquivo {imported.originalFilename} substituirá o conteúdo deste desenho. O processo
+              e os responsáveis serão os selecionados na importação.
+            </p>
+            <p>Exporte o desenho atual se quiser guardar uma cópia antes de continuar.</p>
+          </div>
+          <footer>
+            <button onClick={() => void exportFile("bpmn")}>Exportar desenho atual</button>
+            <button onClick={() => setImported(null)}>Cancelar</button>
+            <button
+              className="bf-bpmn-primary"
+              onClick={() => {
+                setReady(false);
+                setDocument({ ...imported, codigo: record?.code || document.codigo });
+                setSeed(imported.xml);
+                setCanvasGeneration((generation) => generation + 1);
+                setSelection(null);
+                setWarnings([]);
+                pending.current = null;
+                setImported(null);
+                changed();
+              }}
+            >
+              Substituir desenho
+            </button>
           </footer>
         </TaskDialog>
       )}
