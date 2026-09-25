@@ -116,3 +116,5 @@ TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e mo
 - O modo de apresentação usa NavigatedViewer. O modelador fica oculto para conservar desfazer/refazer ao retornar. Leitores não instanciam um modelador editável.
 - Salvamento manual e automático (30 s quando houver mudanças), cópia local com recuperação explícita e bloqueio de saída com alterações. Desenhos convertidos do editor anterior começam com salvamento automático desligado e preservam os dados antigos para download.
 - Arquivo de referência: `tests/fixtures/MERCADO_INTERNO_ASIS_Bizagi_REV02_premissas_visuais.bpmn`. Conferência de geometria por identificador, pois a ordem XML de elementos não determina sua posição.
+
+BPMN visual finish: retain control positions and geometry; reuse BF Flow font and gold accent with quiet neutral surfaces. Appearance modes (original, color, monochrome) are local viewing preferences, never document edits. Original remains default; exports retain source colors. Keep bpmn.io watermark fully visible as required by the installed license.

@@ -117,6 +117,15 @@ export function BpmnEditor({
   const [ready, setReady] = useState(false);
   const [presenting, setPresenting] = useState(!canEdit);
   const [frozen, setFrozen] = useState(true);
+  const [appearance, setAppearance] = useState<"original" | "color" | "mono">(() => {
+    try {
+      const preference = localStorage.getItem("bf-flow:bpmn:appearance");
+      return preference === "color" || preference === "mono" ? preference : "original";
+    } catch {
+      return "original";
+    }
+  });
+
   const [properties, setProperties] = useState(
     () => typeof window === "undefined" || window.innerWidth >= 1000,
   );
@@ -319,7 +328,10 @@ export function BpmnEditor({
     ["bpmn:TextAnnotation", "Anotação", MessageSquare],
   ] as const;
   return (
-    <section className={`bf-bpmn-editor ${readOnly ? "is-presentation" : ""}`}>
+    <section
+      data-appearance={appearance}
+      className={`bf-bpmn-editor ${readOnly ? "is-presentation" : ""}`}
+    >
       <header className="bf-bpmn-process-header">
         <button
           aria-label="Voltar aos desenhos"
@@ -645,6 +657,37 @@ export function BpmnEditor({
               <small>Criado em {new Date(record.created_at).toLocaleString("pt-BR")}</small>
             )}
             {document.originalFilename && <small>Origem: {document.originalFilename}</small>}
+            <fieldset className="bf-bpmn-appearance">
+              <legend>Aparência do desenho</legend>
+              <div role="group" aria-label="Cores do desenho">
+                {(
+                  [
+                    ["original", "Original"],
+                    ["color", "Com cores"],
+                    ["mono", "Preto e branco"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={appearance === value}
+                    onClick={() => {
+                      setAppearance(value);
+                      try {
+                        localStorage.setItem("bf-flow:bpmn:appearance", value);
+                      } catch {
+                        /* Preference remains for this session. */
+                      }
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <small>
+                Preferência de visualização. O arquivo e as cores originais são preservados.
+              </small>
+            </fieldset>
           </aside>
         )}
       </div>

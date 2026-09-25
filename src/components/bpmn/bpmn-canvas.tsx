@@ -122,6 +122,11 @@ export const BpmnCanvas = forwardRef<
       let importing = true;
       const updateOverlay = () => {
         if (disposed || !instance.getDefinitions()) return;
+        const registry = instance.get("elementRegistry");
+        registry.forEach((element: any) => {
+          const graphics = registry.getGraphics(element);
+          if (graphics) graphics.setAttribute("data-bf-type", element.type);
+        });
         const canvas = instance.get("canvas");
         const vb = canvas.viewbox();
         view.current = vb;

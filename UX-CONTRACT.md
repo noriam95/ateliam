@@ -133,3 +133,5 @@ TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e mo
 - Importações aceitam até 1,5 MB; salvar verifica o tamanho total de envio antes de iniciar a requisição. Falha não limpa o conteúdo nem indica sucesso.
 - O congelamento de cabeçalho/raias e a navegação nunca alteram coordenadas, dimensões, cores ou waypoints. O importador de compatibilidade que reposiciona subprocessos foi desativado.
 - A lista de desenhos usa paginação de 20 linhas, pesquisa no servidor, estados de carregamento, vazio e erro recuperável. Trocar organização recarrega os cadastros e a lista.
+
+BPMN visual finish: retain control positions and geometry; reuse BF Flow font and gold accent with quiet neutral surfaces. Appearance modes (original, color, monochrome) are local viewing preferences, never document edits. Original remains default; exports retain source colors. Keep bpmn.io watermark fully visible as required by the installed license.

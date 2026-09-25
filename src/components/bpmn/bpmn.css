@@ -789,3 +789,181 @@
   line-height: 1.4;
   text-align: center;
 }
+
+/* BF Flow finish: retain all existing dimensions and control positions. */
+.bf-bpmn-editor,
+.bf-bpmn-library {
+  font-family: var(--font-sans);
+}
+.bf-bpmn-global-header {
+  background: var(--card);
+}
+.bf-bpmn-process-header {
+  border-bottom-color: color-mix(in srgb, var(--border) 65%, transparent);
+}
+.bf-bpmn-process-title h1 {
+  letter-spacing: -0.025em;
+}
+.bf-bpmn-process-title > span {
+  letter-spacing: 0.025em;
+}
+.bf-bpmn-status {
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--card));
+  color: var(--foreground);
+}
+.bf-bpmn-editor button,
+.bf-bpmn-library button {
+  border-radius: 9px;
+}
+.bf-bpmn-editor .bf-bpmn-primary {
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.bf-bpmn-toolbar {
+  background: color-mix(in srgb, var(--card) 96%, var(--primary));
+}
+.bf-bpmn-toolbar button {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+.bf-bpmn-toolbar button:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+}
+.bf-bpmn-palette {
+  background: var(--card);
+  border-right-color: color-mix(in srgb, var(--border) 65%, transparent);
+}
+.bf-bpmn-palette > button {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+.bf-bpmn-palette > button > svg {
+  color: var(--foreground);
+}
+.bf-bpmn-palette > button:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--primary) 12%, var(--card));
+}
+.bf-bpmn-palette > button:hover > svg {
+  color: var(--primary);
+}
+.bf-bpmn-palette > small {
+  color: var(--muted-foreground);
+}
+.bf-bpmn-canvas {
+  background: #fafbfc;
+}
+.bf-bpmn-engine {
+  background-image: radial-gradient(#d8dfe6 0.6px, transparent 0.6px);
+}
+.bf-bpmn-frozen-lanes button {
+  border-radius: 0;
+  background: #f5f7fa;
+  color: #344152;
+  border-color: #e4e8ee;
+  box-shadow: none;
+}
+.bf-bpmn-frozen-lanes button small {
+  color: #667487;
+}
+.bf-bpmn-properties {
+  border-left-color: color-mix(in srgb, var(--border) 65%, transparent);
+}
+.bf-bpmn-properties input:not([type="checkbox"]),
+.bf-bpmn-properties textarea,
+.bf-bpmn-properties select {
+  border-radius: 8px;
+}
+.bf-bpmn-footer {
+  border-top-color: color-mix(in srgb, var(--border) 65%, transparent);
+}
+.bf-bpmn-context-menu {
+  border-radius: 12px;
+  border-color: color-mix(in srgb, var(--border) 65%, transparent);
+  box-shadow: 0 8px 28px #14203018;
+}
+.bf-bpmn-context-menu button {
+  font-family: var(--font-sans);
+}
+.bf-bpmn-canvas .djs-context-pad .entry {
+  border-radius: 6px;
+  background-color: #fff;
+  box-shadow: 0 1px 5px #14203020;
+}
+.bf-bpmn-zoom {
+  border-radius: 10px;
+  border-color: #e4e8ee;
+  box-shadow: 0 3px 12px #1420300d;
+  overflow: hidden;
+}
+.bf-bpmn-appearance {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.bf-bpmn-appearance legend {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.bf-bpmn-appearance > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.bf-bpmn-appearance button {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+.bf-bpmn-appearance button[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--card));
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.bf-bpmn-appearance small {
+  display: block;
+  margin-top: 8px;
+}
+/* Presentation-only color overrides: neither BPMN XML nor DI is mutated. */
+.bf-bpmn-editor[data-appearance="color"] [data-bf-type$="Task"] > .djs-visual > rect,
+.bf-bpmn-editor[data-appearance="color"] [data-bf-type="bpmn:SubProcess"] > .djs-visual > rect {
+  fill: #edf4fc !important;
+  stroke: #3671a8 !important;
+}
+.bf-bpmn-editor[data-appearance="color"] [data-bf-type="bpmn:StartEvent"] > .djs-visual > circle {
+  fill: #e7f5df !important;
+  stroke: #639444 !important;
+}
+.bf-bpmn-editor[data-appearance="color"] [data-bf-type="bpmn:EndEvent"] > .djs-visual > circle {
+  fill: #fbe7e7 !important;
+  stroke: #bd5157 !important;
+}
+.bf-bpmn-editor[data-appearance="color"] [data-bf-type*="Intermediate"] > .djs-visual > circle {
+  fill: #fff4d9 !important;
+  stroke: #ac8433 !important;
+}
+.bf-bpmn-editor[data-appearance="color"] [data-bf-type$="Gateway"] > .djs-visual > polygon {
+  fill: #fff4d9 !important;
+  stroke: #ac8433 !important;
+}
+.bf-bpmn-editor[data-appearance="mono"]
+  .djs-visual
+  > :is(rect, circle, polygon, path, polyline, line) {
+  stroke: #26313e !important;
+}
+.bf-bpmn-editor[data-appearance="mono"]
+  .djs-shape
+  > .djs-visual
+  > :is(rect, circle, polygon):first-child {
+  fill: #fff !important;
+}
+.bf-bpmn-editor[data-appearance="mono"] .djs-label {
+  fill: #26313e !important;
+}
+
+.bf-bpmn-editor[data-appearance="mono"] .djs-container > svg {
+  filter: grayscale(1);
+}
