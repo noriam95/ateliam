@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-- `node --test tests/*.test.mjs`: 41 passed, zero failures.
+- `node --test tests/*.test.mjs`: 43 passed, zero failures.
 - Browser harness (`node tests/preview-bpmn.mjs`, after build): 15 engine assertions passed, including exact DI round trips for the supplied Bizagi reference in both Modeler and NavigatedViewer.
 - Engine checks cover moving, undo/redo, labels, task resizing, lanes, duplication, connection waypoints and read-only presentation.
 - Persistence tests execute repository mutations against PGlite: concurrent writes, stale timestamps, idempotent retries, tenant scoping, deleted documents and stable code reservation.
@@ -31,3 +31,9 @@
 3. `npm run build`
 4. `node tests/preview-bpmn.mjs`
 5. Open the local address printed by the harness and click “Testar motor BPMN”.
+
+## Follow-up reliability checks
+
+- Saving captures the edit revision before asynchronous XML serialization, so edits made during a save remain unsaved until the next successful save. Two regression tests cover delayed serialization and serialization failure.
+- Local recovery is refreshed with the newly saved version when additional edits remain, and is offered only to users with edit access.
+- Lane catalog search is reset when switching lanes or responsible entity type.

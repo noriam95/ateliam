@@ -23,6 +23,7 @@ import {
 import { TaskDialog } from "@/components/task-dialog";
 import { BpmnCanvas, type BpmnCanvasHandle, type CanvasSelection } from "./bpmn-canvas";
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
+import { captureBpmnSaveAttempt } from "@/lib/bpmn-save-attempt";
 import { inspectBpmn, type BpmnDocument } from "@/lib/bpmn-document";
 import "@/components/user-tasks.css";
 
@@ -168,6 +169,7 @@ export function BpmnEditor({
     if (selection) setLaneKind(documentRef.current.laneBindings[selection.id]?.kind || "area");
   }, [selection]);
   useEffect(() => {
+    if (!canEdit) return;
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
@@ -181,7 +183,7 @@ export function BpmnEditor({
     } catch {
       setLocalStatus("A recuperação local não está disponível neste navegador.");
     }
-  }, [storageKey, initial]);
+  }, [storageKey, initial, canEdit]);
   useEffect(() => {
     if (!dirty || !ready || !canEdit || recovery) return;
     let cancelled = false;
@@ -206,7 +208,7 @@ export function BpmnEditor({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [revision, dirty, ready, canEdit, storageKey, recovery]);
+  }, [revision, dirty, ready, canEdit, storageKey, recovery, record]);
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -233,16 +235,14 @@ export function BpmnEditor({
         pending.current = null;
       // Retry the exact mutation when the snapshot has not changed.
       if (!pending.current)
-        pending.current = {
-          input: {
-            id: newId.current,
-            mutationId: crypto.randomUUID(),
-            expectedVersion: recordRef.current?.current_version ?? null,
-            expectedUpdatedAt: recordRef.current?.updated_at ?? null,
-            document: await capture(),
-          },
+        pending.current = await captureBpmnSaveAttempt({
+          id: newId.current,
+          mutationId: crypto.randomUUID(),
+          expectedVersion: recordRef.current?.current_version ?? null,
+          expectedUpdatedAt: recordRef.current?.updated_at ?? null,
           revision: revisionRef.current,
-        };
+          capture,
+        });
       const attempt = pending.current;
       if (new TextEncoder().encode(JSON.stringify(attempt.input)).length > 4_000_000) {
         pending.current = null;
@@ -566,6 +566,7 @@ export function BpmnEditor({
                       </select>
                     </label>
                     <CatalogPicker
+                      key={`${selection.id}:${laneKind}`}
                       kind={laneKind}
                       catalogs={catalogs}
                       value={
