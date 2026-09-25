@@ -312,12 +312,9 @@ export function BpmnEditor({
     }
   }
   const palette = [
-    ["bpmn:StartEvent", "Início", Circle],
-    ["bpmn:IntermediateThrowEvent", "Intermediário", Circle],
-    ["bpmn:EndEvent", "Fim", Circle],
+    ["bpmn:StartEvent", "Evento", Circle],
     ["bpmn:Task", "Tarefa", Square],
-    ["bpmn:ExclusiveGateway", "Decisão exclusiva", Diamond],
-    ["bpmn:ParallelGateway", "Paralelo", Plus],
+    ["bpmn:ExclusiveGateway", "Gateway", Diamond],
     ["bpmn:SubProcess", "Subprocesso", Square],
     ["bpmn:TextAnnotation", "Anotação", MessageSquare],
   ] as const;
@@ -455,6 +452,7 @@ export function BpmnEditor({
         {!readOnly && (
           <aside className="bf-bpmn-palette" aria-label="Elementos BPMN">
             <span>Elementos</span>
+            <small>Botão direito para alterar o tipo.</small>
             {palette.map(([type, label, Icon]) => (
               <button
                 key={type}
@@ -473,14 +471,6 @@ export function BpmnEditor({
             <details>
               <summary>Mais elementos</summary>
               {[
-                ["bpmn:UserTask", "Tarefa de usuário"],
-                ["bpmn:ManualTask", "Tarefa manual"],
-                ["bpmn:ServiceTask", "Tarefa de serviço"],
-                ["bpmn:SendTask", "Envio"],
-                ["bpmn:ReceiveTask", "Recebimento"],
-                ["bpmn:InclusiveGateway", "Gateway inclusivo"],
-                ["bpmn:EventBasedGateway", "Gateway de eventos"],
-                ["bpmn:IntermediateCatchEvent", "Evento de captura"],
                 ["bpmn:DataObjectReference", "Dados"],
                 ["bpmn:DataStoreReference", "Armazenamento"],
               ].map(([type, label]) => (
@@ -513,6 +503,7 @@ export function BpmnEditor({
             frozen={frozen}
             bindings={document.laneBindings}
             onChange={changed}
+            onProperties={() => setProperties(true)}
             onSelection={setSelection}
             onWarnings={setWarnings}
             onReady={() => setReady(true)}

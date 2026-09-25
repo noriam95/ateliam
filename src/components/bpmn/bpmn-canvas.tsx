@@ -29,6 +29,7 @@ export const BpmnCanvas = forwardRef<
     onSelection?: (selection: CanvasSelection) => void;
     onWarnings?: (warnings: string[]) => void;
     onReady?: () => void;
+    onProperties?: () => void;
   }
 >(
   (
@@ -41,13 +42,14 @@ export const BpmnCanvas = forwardRef<
       onSelection,
       onWarnings,
       onReady,
+      onProperties,
     },
     ref,
   ) => {
     const host = useRef<HTMLDivElement>(null);
     const engine = useRef<any>(null);
-    const callbacks = useRef({ onChange, onSelection, onWarnings, onReady });
-    callbacks.current = { onChange, onSelection, onWarnings, onReady };
+    const callbacks = useRef({ onChange, onSelection, onWarnings, onReady, onProperties });
+    callbacks.current = { onChange, onSelection, onWarnings, onReady, onProperties };
     const [error, setError] = useState("");
     const [ready, setReady] = useState(false);
     const [zoom, setZoom] = useState(100);
@@ -57,6 +59,57 @@ export const BpmnCanvas = forwardRef<
     const [diagrams, setDiagrams] = useState<{ id: string; name: string }[]>([]);
     const [diagram, setDiagram] = useState("");
     const view = useRef<any>(null);
+    const [contextMenu, setContextMenu] = useState<{ element: any; x: number; y: number } | null>(
+      null,
+    );
+    const menuRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+      if (!contextMenu) return;
+      menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+      const dismiss = (event: PointerEvent) => {
+        if (!menuRef.current?.contains(event.target as Node)) setContextMenu(null);
+      };
+      window.addEventListener("pointerdown", dismiss, true);
+      return () => window.removeEventListener("pointerdown", dismiss, true);
+    }, [contextMenu]);
+    const menuAction = (action: string) => {
+      const m = engine.current;
+      if (!m || !contextMenu || readOnly) return;
+      const { element, x, y } = contextMenu;
+      setContextMenu(null);
+      try {
+        if (action === "type") {
+          m.get("popupMenu").open(
+            element,
+            "bpmn-replace",
+            { x, y },
+            {
+              title: "Alterar tipo do elemento",
+              width: "320px",
+              search: true,
+            },
+          );
+        }
+        if (action === "edit") m.get("directEditing").activate(element);
+        if (action === "properties") callbacks.current.onProperties?.();
+        if (action === "copy" || action === "cut") m.get("copyPaste").copy([element]);
+        if (action === "delete" || action === "cut") m.get("modeling").removeElements([element]);
+        if (action === "duplicate") {
+          const duplicated = m.get("copyPaste").duplicate([element], {
+            element: element.parent,
+            point: {
+              x: element.x + element.width / 2 + 40,
+              y: element.y + element.height / 2 + 40,
+            },
+          });
+          if (duplicated) m.get("selection").select(duplicated);
+        }
+      } catch (error) {
+        callbacks.current.onWarnings?.([
+          error instanceof Error ? error.message : "Não foi possível executar a ação.",
+        ]);
+      }
+    };
 
     useEffect(() => {
       let disposed = false;
@@ -86,6 +139,23 @@ export const BpmnCanvas = forwardRef<
         );
       };
       instance.on("canvas.viewbox.changed", updateOverlay);
+      instance.on("canvas.viewbox.changed", () => setContextMenu(null));
+      if (!readOnly)
+        instance.on("element.contextmenu", 1500, (event: any) => {
+          const element = event.element.labelTarget || event.element;
+          if (!element.parent) return;
+          event.originalEvent.preventDefault();
+          event.originalEvent.stopPropagation();
+          instance.get("selection").select(element);
+          instance.get("contextPad").close();
+          setContextMenu({
+            element,
+            x: Math.max(8, Math.min(event.originalEvent.clientX, window.innerWidth - 248)),
+            y: Math.max(8, Math.min(event.originalEvent.clientY, window.innerHeight - 310)),
+          });
+          return false;
+        });
+
       instance.on("commandStack.changed", () => {
         if (!importing && !disposed) {
           updateOverlay();
@@ -291,8 +361,80 @@ export const BpmnCanvas = forwardRef<
         <div
           className="bf-bpmn-engine"
           ref={host}
+          tabIndex={-1}
           aria-label={readOnly ? "Desenho BPMN em apresentação" : "Área de desenho BPMN"}
         />
+        {contextMenu && !readOnly && (
+          <div
+            ref={menuRef}
+            className="bf-bpmn-context-menu"
+            role="menu"
+            aria-label="Ações do elemento"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onContextMenu={(event) => event.preventDefault()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setContextMenu(null);
+                host.current?.focus();
+              }
+              if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+                event.preventDefault();
+                const buttons = Array.from(
+                  menuRef.current!.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
+                );
+                const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                const next =
+                  event.key === "Home"
+                    ? 0
+                    : event.key === "End"
+                      ? buttons.length - 1
+                      : (current + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) %
+                        buttons.length;
+                buttons[next]?.focus();
+              }
+              if (event.key === "Tab") setContextMenu(null);
+            }}
+          >
+            <button role="menuitem" onClick={() => menuAction("edit")}>
+              Editar texto
+            </button>
+            {!engine.current.get("popupMenu").isEmpty(contextMenu.element, "bpmn-replace") && (
+              <button role="menuitem" onClick={() => menuAction("type")}>
+                {contextMenu.element.type.includes("Task") ||
+                contextMenu.element.type === "bpmn:SubProcess"
+                  ? "Tipo de tarefa / subprocesso"
+                  : contextMenu.element.type.includes("Event")
+                    ? "Tipo de evento"
+                    : contextMenu.element.type.includes("Gateway")
+                      ? "Tipo de gateway"
+                      : "Alterar tipo"}{" "}
+                <span>›</span>
+              </button>
+            )}
+            <hr />
+            <button role="menuitem" onClick={() => menuAction("cut")}>
+              Recortar
+            </button>
+            <button role="menuitem" onClick={() => menuAction("copy")}>
+              Copiar
+            </button>
+            <button
+              role="menuitem"
+              disabled={!!contextMenu.element.waypoints}
+              onClick={() => menuAction("duplicate")}
+            >
+              Duplicar
+            </button>
+            <button role="menuitem" onClick={() => menuAction("delete")}>
+              Excluir
+            </button>
+            <hr />
+            <button role="menuitem" onClick={() => menuAction("properties")}>
+              Propriedades
+            </button>
+          </div>
+        )}
         {!ready && (
           <div className="bf-bpmn-canvas-state" role={error ? "alert" : "status"}>
             {error || "Abrindo desenho…"}

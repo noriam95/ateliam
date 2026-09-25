@@ -27,6 +27,26 @@ function PreserveDiagramGeometry(eventBus: any, elementRegistry: any, graphicsFa
 PreserveDiagramGeometry.$inject = ["eventBus", "elementRegistry", "graphicsFactory"];
 
 const translations: Record<string, string> = {
+  "Parallel multi-instance": "Múltiplas instâncias paralelas",
+  "Sequential multi-instance": "Múltiplas instâncias sequenciais",
+  "Sub-process (collapsed)": "Subprocesso recolhido",
+  "Sub-process (expanded)": "Subprocesso expandido",
+  "Ad-hoc sub-process (collapsed)": "Subprocesso ad hoc recolhido",
+  "Ad-hoc sub-process (expanded)": "Subprocesso ad hoc expandido",
+  "Event-based gateway": "Gateway baseado em eventos",
+  "Conditional start event": "Início condicional",
+  "Signal start event": "Início por sinal",
+  "Signal end event": "Fim por sinal",
+  "Escalation end event": "Fim por escalonamento",
+  "Compensation end event": "Fim por compensação",
+  "Cancel end event": "Fim por cancelamento",
+  "Conditional intermediate catch event": "Captura condicional",
+  "Signal intermediate catch event": "Captura de sinal",
+  "Link intermediate catch event": "Captura de ligação",
+  "Link intermediate throw event": "Lançamento de ligação",
+  "Escalation intermediate throw event": "Lançamento de escalonamento",
+  "Compensation intermediate throw event": "Lançamento de compensação",
+
   "Append end event": "Adicionar evento de fim",
   "Append gateway": "Adicionar decisão",
   "Append task": "Adicionar tarefa",

@@ -43,3 +43,9 @@
 - Import is available in the document library, the new-drawing dialog and the editing header.
 - Browser-verified the editor button through file selection, reference preview, process association, confirmation and replacement of the open canvas.
 - Replacement retains the document identity/code, pauses autosave while the wizard is open, offers an export of the current drawing and requires an explicit replacement confirmation.
+
+## Context menu follow-up
+
+- Simplified palette to five base elements; element variants use the BPMN replacement menu.
+- Browser-verified right-click task, event and gateway menus and conversion from manual task to user task. Native replacement retains BPMN modeling rules and undo support.
+- Context actions include text editing, cut, copy, duplicate, delete and properties; menu supports arrow keys, Escape and dismissal on outside click. Presentation mode does not expose editing actions.
