@@ -921,20 +921,16 @@ export const savePositionRegistration = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
     const query = data.id
-      ? (context.supabase as any).from("organization_positions").update(payload).eq("id", data.id)
+      ? (context.supabase as any)
+          .from("organization_positions")
+          .update(payload)
+          .eq("id", data.id)
+          .eq("organization_id", access.organizationId)
       : (context.supabase as any)
           .from("organization_positions")
           .insert({ ...payload, created_by: context.userId });
     const { data: row, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
-    if (data.id && previousName && previousName !== data.name) {
-      const { error: processError } = await context.supabase
-        .from("organization_processes")
-        .update({ department: data.name, updated_at: new Date().toISOString() })
-        .eq("organization_id", access.organizationId)
-        .eq("department", previousName);
-      if (processError) throw new Error(processError.message);
-    }
     return row;
   });
 
@@ -1475,12 +1471,141 @@ export const getModuleDocumentContent = createServerFn({ method: "POST" })
     const { data: row, error } = await context.supabase
       .from("documents")
       .select(
-        "id, name, module, content_inline, current_version, primary_process_id, primary_process_version",
+        "id, name, module, content_inline, current_version, primary_process_id, primary_process_version, organization_id, updated_at, created_at, owner_id",
       )
       .eq("id", data.id)
       .single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+const bpmnSaveSchema = z.object({
+  organizationId: z.string().uuid(),
+  id: z.string().uuid(),
+  mutationId: z.string().uuid(),
+  expectedVersion: z.number().int().nonnegative().nullable(),
+  expectedUpdatedAt: z.string().nullable(),
+  document: z.object({
+    schemaVersion: z.literal(2),
+    xml: z.string().max(12_000_000),
+    processId: z.string().uuid(),
+    processName: z.string().max(500),
+    status: z.enum(["Rascunho", "Em revisão", "Publicado"]),
+    origin: z.enum(["created", "imported", "legacy"]),
+    originalXml: z.string().max(12_000_000).optional(),
+    originalFilename: z.string().max(500).optional(),
+    importedAt: z.string().optional(),
+    codigo: z.string().max(120).optional(),
+    legacySource: z.string().max(12_000_000).optional(),
+    laneBindings: z.record(
+      z.object({
+        kind: z.enum(["area", "position"]),
+        id: z.string().uuid(),
+        name: z.string().max(500),
+      }),
+    ),
+  }),
+});
+
+/** Single-row compare-and-swap keeps XML, metadata and version consistent. */
+export const saveBpmnDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: z.infer<typeof bpmnSaveSchema>) => bpmnSaveSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationEditor(context, data.organizationId);
+    const { inspectBpmn } = await import("./bpmn-document");
+    const inspection = await inspectBpmn(data.document.xml);
+    const { data: process, error: processError } = await context.supabase
+      .from("organization_processes")
+      .select("id,name,current_version,department")
+      .eq("organization_id", access.organizationId)
+      .eq("id", data.document.processId)
+      .single();
+    if (processError || !process)
+      throw new Error("Selecione um processo válido da organização ativa.");
+    const bindings: typeof data.document.laneBindings = {};
+    for (const [laneId, binding] of Object.entries(data.document.laneBindings)) {
+      if (!inspection.lanes.some((l) => l.id === laneId)) continue;
+      const table = binding.kind === "area" ? "organization_departments" : "organization_positions";
+      const column = binding.kind === "area" ? "name" : "title";
+      const result = await (context.supabase as any)
+        .from(table)
+        .select(`id,${column}`)
+        .eq("organization_id", access.organizationId)
+        .eq("id", binding.id)
+        .single();
+      if (result.error || !result.data)
+        throw new Error(
+          `O responsável da raia ${laneId} não pertence ao cadastro ativo. Selecione novamente.`,
+        );
+      bindings[laneId] = { ...binding, name: result.data[column] };
+    }
+    const document = { ...data.document, processName: process.name, laneBindings: bindings };
+    const { persistBpmnDocument } = await import("./bpmn-persistence.server");
+    return persistBpmnDocument({
+      supabase: context.supabase,
+      userId: context.userId,
+      organizationId: access.organizationId,
+      id: data.id,
+      mutationId: data.mutationId,
+      expectedVersion: data.expectedVersion,
+      expectedUpdatedAt: data.expectedUpdatedAt,
+      document,
+      processVersion: process.current_version,
+      reserveCode: async () => {
+        const { data: organization, error } = await context.supabase
+          .from("organizations")
+          .select("code_settings")
+          .eq("id", access.organizationId)
+          .single();
+        if (error) throw new Error(error.message);
+        if (normalizeCodeSettings(organization.code_settings).fluxograma.mode !== "auto")
+          return data.document.codigo;
+        const { data: areas, error: areaError } = await context.supabase
+          .from("organization_departments")
+          .select("name,sigla")
+          .eq("organization_id", access.organizationId);
+        if (areaError) throw new Error(areaError.message);
+        const area = areas?.find(
+          (a) =>
+            a.name.toLocaleUpperCase("pt-BR") === process.department?.toLocaleUpperCase("pt-BR"),
+        );
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        return reserveOrganizationCode(
+          supabaseAdmin,
+          access.organizationId,
+          "fluxograma",
+          area?.sigla || "GER",
+        );
+      },
+    });
+  });
+
+export const listBpmnDocuments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { organizationId: string; page?: number; search?: string }) =>
+    z
+      .object({
+        organizationId: z.string().uuid(),
+        page: z.number().int().nonnegative().default(0),
+        search: z.string().max(120).default(""),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await permissionContext(context, data.organizationId);
+    let query = context.supabase
+      .from("documents")
+      .select("id,name,current_version,updated_at,owner_id", { count: "exact" })
+      .eq("organization_id", access.organizationId)
+      .eq("module", "bpmn");
+    if (data.search.trim()) query = query.ilike("name", `%${data.search.replace(/[%_]/g, "")}%`);
+    const result = await query
+      .order("updated_at", { ascending: false })
+      .order("id")
+      .range(data.page * 20, data.page * 20 + 19);
+    if (result.error) throw new Error(result.error.message);
+    return { rows: result.data || [], count: result.count || 0 };
   });
 
 export const listModuleDocumentVersions = createServerFn({ method: "POST" })
@@ -1514,6 +1639,10 @@ export const saveModuleDocument = createServerFn({ method: "POST" })
   .validator((d: z.infer<typeof moduleDocumentSchema>) => moduleDocumentSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    if (data.moduleId === "bpmn")
+      throw new Error(
+        "Atualize a página e use o novo editor BPMN para salvar este desenho com controle de versão.",
+      );
     let content = uppercaseModuleDocumentContent(data.content, data.moduleId);
     let code = data.code || "";
     const isDraftSave = data.saveMode === "draft";

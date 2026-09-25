@@ -103,3 +103,16 @@ Revisão de tarefas aprovada: Kanban inicial e cards Compactos por padrão; orde
 Códigos aparecem uma única vez nas entregas, seleção de documentos e nomes exportados, inclusive quando o nome legado já contém o código. Mapeamentos salvos como rascunho usam MAP.ÁREA.NNN.TEMP; a finalização remove .TEMP e preserva a sequência reservada. A área é necessária para a primeira reserva. Documentos antigos recebem a identificação temporária no próximo salvamento como rascunho. A reserva usa comparação atômica do contador organizacional e considera códigos já existentes.
 
 TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e modalidade separadamente. Editar dados abre TaskManagement no TaskDialog compartilhado, com grupos Pessoas, Período e Classificação, salvar/cancelar explícitos e confirmação de descarte. Falhas preservam os campos; sucesso fecha a edição e atualiza o resumo. As permissões e restrições de modalidade permanecem no servidor. Tokens de src/styles.css continuam canônicos.
+
+
+## Desenho BPMN — reformulação de 25/09/2026
+
+- Público: equipes brasileiras de processos; uso principal em desktop, com consulta e apresentação em telas menores. Idioma pt-BR.
+- O editor BPMN anterior foi removido. A rota `/m/bpmn` abre um workspace independente com canvas bpmn-js, paleta curta, ações contextuais e propriedades recolhíveis. O motor só é carregado ao entrar nesse módulo.
+- Tokens de cor, fonte, borda e espaçamento seguem `src/styles.css`; a folha `src/components/bpmn/bpmn.css` restringe as mudanças ao módulo. O canvas de notação permanece claro para conservar cores importadas. O crédito obrigatório bpmn.io permanece visível.
+- Nome do processo no cabeçalho fixo; identificações das raias em uma faixa de interface separada. Essa faixa reserva espaço visual e não modifica coordenadas BPMN DI.
+- Processos, Áreas e Cargos reutilizam `DropdownTextField`, `TaskDialog` e os serviços centrais de cadastro. `CatalogPicker` é a variante compartilhada do BPMN para criação e seleção imediata, inclusive no assistente.
+- Importação em quatro etapas: arquivo, conferência visual, associação explícita e confirmação. As correspondências por nome são sugestões. O original permanece separado do XML editável. Nenhum auto-layout é executado na importação.
+- O modo de apresentação usa NavigatedViewer. O modelador fica oculto para conservar desfazer/refazer ao retornar. Leitores não instanciam um modelador editável.
+- Salvamento manual e automático (30 s quando houver mudanças), cópia local com recuperação explícita e bloqueio de saída com alterações. Desenhos convertidos do editor anterior começam com salvamento automático desligado e preservam os dados antigos para download.
+- Arquivo de referência: `tests/fixtures/MERCADO_INTERNO_ASIS_Bizagi_REV02_premissas_visuais.bpmn`. Conferência de geometria por identificador, pois a ordem XML de elementos não determina sua posição.

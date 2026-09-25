@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:vendor="https://example.org/vendor" id="Definitions_Regression" targetNamespace="https://bfflow.app/tests">
+  <bpmn:collaboration id="Collaboration_1">
+    <bpmn:participant id="Pool_1" name="MERCADO INTERNO — teste sintético" processRef="Process_1" />
+    <bpmn:participant id="Pool_2" name="Cliente" />
+    <bpmn:messageFlow id="Message_1" sourceRef="User_1" targetRef="Pool_2" name="Retorno" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_1" name="MERCADO INTERNO" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="Lane_1" name="COMERCIAL"><bpmn:flowNodeRef>Start_1</bpmn:flowNodeRef><bpmn:flowNodeRef>Manual_1</bpmn:flowNodeRef><bpmn:flowNodeRef>Exclusive_1</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_2" name="ANALISTA"><bpmn:flowNodeRef>User_1</bpmn:flowNodeRef><bpmn:flowNodeRef>Parallel_1</bpmn:flowNodeRef><bpmn:flowNodeRef>Intermediate_1</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_3" name="EXPEDIÇÃO"><bpmn:flowNodeRef>Sub_1</bpmn:flowNodeRef><bpmn:flowNodeRef>End_1</bpmn:flowNodeRef></bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_1" name="Pedido"><bpmn:outgoing>Flow_1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:manualTask id="Manual_1" name="Conferir pedido" vendor:review="required"><bpmn:incoming>Flow_1</bpmn:incoming><bpmn:outgoing>Flow_2</bpmn:outgoing></bpmn:manualTask>
+    <bpmn:exclusiveGateway id="Exclusive_1" name="Aprovado?"><bpmn:incoming>Flow_2</bpmn:incoming><bpmn:outgoing>Flow_3</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:userTask id="User_1" name="Analisar crédito"><bpmn:incoming>Flow_3</bpmn:incoming><bpmn:outgoing>Flow_4</bpmn:outgoing></bpmn:userTask>
+    <bpmn:parallelGateway id="Parallel_1"><bpmn:incoming>Flow_4</bpmn:incoming><bpmn:outgoing>Flow_5</bpmn:outgoing></bpmn:parallelGateway>
+    <bpmn:intermediateCatchEvent id="Intermediate_1" name="Aguardar"><bpmn:incoming>Flow_5</bpmn:incoming><bpmn:outgoing>Flow_6</bpmn:outgoing><bpmn:timerEventDefinition id="Timer_1" /></bpmn:intermediateCatchEvent>
+    <bpmn:subProcess id="Sub_1" name="Expedir"><bpmn:incoming>Flow_6</bpmn:incoming><bpmn:outgoing>Flow_7</bpmn:outgoing><bpmn:startEvent id="Sub_Start" /></bpmn:subProcess>
+    <bpmn:endEvent id="End_1" name="Entregue"><bpmn:incoming>Flow_7</bpmn:incoming></bpmn:endEvent>
+    <bpmn:textAnnotation id="Note_1"><bpmn:text>Conferência manual antes da análise.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Association_1" sourceRef="Manual_1" targetRef="Note_1" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Manual_1" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Manual_1" targetRef="Exclusive_1" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Exclusive_1" targetRef="User_1" name="Sim" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="User_1" targetRef="Parallel_1" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Parallel_1" targetRef="Intermediate_1" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Intermediate_1" targetRef="Sub_1" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Sub_1" targetRef="End_1" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_1"><bpmndi:BPMNPlane id="Plane_1" bpmnElement="Collaboration_1">
+    <bpmndi:BPMNShape id="Pool_1_di" bpmnElement="Pool_1" isHorizontal="true"><dc:Bounds x="100.5" y="80.25" width="1700" height="660" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Lane_1_di" bpmnElement="Lane_1" isHorizontal="true"><dc:Bounds x="130.5" y="80.25" width="1670" height="220" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Lane_2_di" bpmnElement="Lane_2" isHorizontal="true"><dc:Bounds x="130.5" y="300.25" width="1670" height="220" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Lane_3_di" bpmnElement="Lane_3" isHorizontal="true"><dc:Bounds x="130.5" y="520.25" width="1670" height="220" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Pool_2_di" bpmnElement="Pool_2" isHorizontal="true"><dc:Bounds x="100.5" y="820.25" width="1700" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Start_1_di" bpmnElement="Start_1" bioc:fill="#d5f5e3" bioc:stroke="#1e8449"><dc:Bounds x="210.5" y="170.25" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="200.5" y="210.25" width="60" height="20" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Manual_1_di" bpmnElement="Manual_1" bioc:fill="#fff2cc" bioc:stroke="#7f6000"><dc:Bounds x="330.5" y="148.25" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Exclusive_1_di" bpmnElement="Exclusive_1" isMarkerVisible="true"><dc:Bounds x="570.5" y="163.25" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="555.5" y="220.25" width="90" height="20" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="User_1_di" bpmnElement="User_1"><dc:Bounds x="690.5" y="370.25" width="180" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Parallel_1_di" bpmnElement="Parallel_1"><dc:Bounds x="950.5" y="385.25" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Intermediate_1_di" bpmnElement="Intermediate_1"><dc:Bounds x="1080.5" y="392.25" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Sub_1_di" bpmnElement="Sub_1" isExpanded="true"><dc:Bounds x="1220.5" y="560.25" width="300" height="140" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Sub_Start_di" bpmnElement="Sub_Start"><dc:Bounds x="1260.5" y="620.25" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="End_1_di" bpmnElement="End_1"><dc:Bounds x="1640.5" y="612.25" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Note_1_di" bpmnElement="Note_1"><dc:Bounds x="335.5" y="95.25" width="200" height="40" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1"><di:waypoint x="246.5" y="188.25" /><di:waypoint x="330.5" y="188.25" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2"><di:waypoint x="490.5" y="188.25" /><di:waypoint x="570.5" y="188.25" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3"><di:waypoint x="620.5" y="188.25" /><di:waypoint x="650.5" y="188.25" /><di:waypoint x="650.5" y="410.25" /><di:waypoint x="690.5" y="410.25" /><bpmndi:BPMNLabel><dc:Bounds x="630.5" y="170.25" width="25" height="15" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4"><di:waypoint x="870.5" y="410.25" /><di:waypoint x="950.5" y="410.25" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5"><di:waypoint x="1000.5" y="410.25" /><di:waypoint x="1080.5" y="410.25" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6"><di:waypoint x="1116.5" y="410.25" /><di:waypoint x="1180.5" y="410.25" /><di:waypoint x="1180.5" y="630.25" /><di:waypoint x="1220.5" y="630.25" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7"><di:waypoint x="1520.5" y="630.25" /><di:waypoint x="1640.5" y="630.25" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Association_1_di" bpmnElement="Association_1"><di:waypoint x="410.5" y="148.25" /><di:waypoint x="435.5" y="135.25" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="Message_1_di" bpmnElement="Message_1" bioc:stroke="#336699"><di:waypoint x="780.5" y="450.25" /><di:waypoint x="780.5" y="490.25" /><di:waypoint x="1850.5" y="490.25" /><di:waypoint x="1850.5" y="790.25" /><di:waypoint x="780.5" y="790.25" /><di:waypoint x="780.5" y="820.25" /></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,338 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_MercadoInterno_REV02" targetNamespace="http://bomfuturo.com.br/bpmn/mercado-interno" exporter="OpenAI" exporterVersion="2.0">
+  <bpmn:collaboration id="Collaboration_MI">
+    <bpmn:participant id="Participant_Cliente" name="CLIENTE" processRef="Process_Cliente" />
+    <bpmn:participant id="Participant_BF" name="MERCADO INTERNO - AS IS" processRef="Process_BF" />
+    <bpmn:messageFlow id="MF_NotaCliente" name="Nota fiscal de venda" sourceRef="Task_FaturarCliente" targetRef="Start_Cliente" />
+    <bpmn:messageFlow id="MF_PagamentoCliente" name="Pagamento" sourceRef="Task_ClientePagar" targetRef="Sub_RecebimentoFinanceiro" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Cliente" name="CLIENTE" isExecutable="false">
+    <bpmn:startEvent id="Start_Cliente" name="Receber nota fiscal de venda">
+      <bpmn:messageEventDefinition id="MsgDef_NotaCliente" />
+    </bpmn:startEvent>
+    <bpmn:manualTask id="Task_ClientePagar" name="Realizar pagamento" />
+    <bpmn:endEvent id="End_Cliente" name="Participação concluída" />
+    <bpmn:sequenceFlow id="CF01" sourceRef="Start_Cliente" targetRef="Task_ClientePagar" />
+    <bpmn:sequenceFlow id="CF02" sourceRef="Task_ClientePagar" targetRef="End_Cliente" />
+  </bpmn:process>
+  <bpmn:process id="Process_BF" name="MERCADO INTERNO" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_BF">
+      <bpmn:lane id="Lane_Financeiro" name="FINANCEIRO">
+        <bpmn:flowNodeRef>Sub_RecebimentoFinanceiro</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Comercial" name="COMERCIAL">
+        <bpmn:flowNodeRef>Start_BF</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CadastrarContrato</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReservarLotes</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_Tackup</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AcompanharSaldo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_BF</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Tackup" name="A DEFINIR">
+        <bpmn:flowNodeRef>Task_TackupQualidade</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Operacional" name="A DEFINIR">
+        <bpmn:flowNodeRef>Task_PrepararInstrucao</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_GerarTransferencia</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AceitarTransferencia</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FaturarCliente</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_BF" name="Contrato-pai a cadastrar" />
+    <bpmn:userTask id="Task_CadastrarContrato" name="Cadastrar contrato e projeções financeiras">
+      <bpmn:documentation>O Comercial cadastra o contrato-pai no ERP TOTVS Protheus, identifica a operação como Mercado Interno e registra as projeções financeiras. No exemplo demonstrado, a moeda utilizada no faturamento é real.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ReservarLotes" name="Reservar lotes destinados ao contrato">
+      <bpmn:documentation>O Comercial registra as reservas vinculadas ao contrato e aos lotes destinados ao atendimento, mantendo referência do contrato-pai, cliente, filial de origem, blocos, quantidades e preço contratual.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gw_Tackup" name="Há tackup aplicável ao atendimento?" />
+    <bpmn:userTask id="Task_TackupQualidade" name="Executar tackup e tratar qualidade dos lotes">
+      <bpmn:documentation>Quando aplicável, os lotes passam pelo tackup e pelo tratamento das informações de qualidade, incluindo ágios e deságios. O levantamento não confirmou que essa etapa seja obrigatória em todos os contratos de Mercado Interno nem confirmou formalmente a área responsável.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_PrepararInstrucao" name="Preparar instrução dos lotes">
+      <bpmn:documentation>Na rotina demonstrada, é preparada uma instrução na unidade, relacionando cliente, safra, quantidade de fardos, reservas, blocos e os contratos utilizados na movimentação. O executante formal não foi confirmado.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_GerarTransferencia" name="Gerar romaneio, pedido e nota de transferência">
+      <bpmn:documentation>É gerado o romaneio da algodoeira para a produtora, informando contrato de transferência, quantidade de fardos, instrução, blocos e dados logísticos. A rotina gera pedido e nota fiscal de transferência. Essa movimentação transfere saldo/estoque entre unidades e não gera financeiro.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_AceitarTransferencia" name="Aceitar transferência na produtora">
+      <bpmn:documentation>Na produtora, o documento transferido é localizado e aceito, gerando a nota de entrada correspondente e alterando o status do documento para aceito.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_FaturarCliente" name="Gerar pedido e nota fiscal de venda ao cliente">
+      <bpmn:documentation>Após o aceite da transferência, é executada a rotina de envio ao cliente. A rotina utiliza os documentos de origem e o contrato de destino para gerar novo pedido e nova nota fiscal para o cliente. Diferentemente da transferência interna, essa operação gera financeiro.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:subProcess id="Sub_RecebimentoFinanceiro" name="Processar recebimento e conciliação financeira">
+      <bpmn:documentation>Subprocesso detalhado em RECEBIMENTO E CONCILIAÇÃO FINANCEIRA. No Mercado Interno, o levantamento financeiro indicou tratamento com RA lançado diretamente pelo Financeiro, sem PR como regra, e possibilidade de compensação direta quando a nota fiscal já está emitida.</bpmn:documentation>
+    </bpmn:subProcess>
+    <bpmn:userTask id="Task_AcompanharSaldo" name="Acompanhar saldo e encerrar projeções">
+      <bpmn:documentation>O Comercial acompanha os valores projetados, faturados, recebidos e ainda pendentes. Quando identificado saldo que não será realizado, ajusta a projeção para encerramento do valor esperado do contrato.</bpmn:documentation>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_BF" name="Contrato atendido e recebimento tratado" />
+    <bpmn:sequenceFlow id="F01" sourceRef="Start_BF" targetRef="Task_CadastrarContrato" />
+    <bpmn:sequenceFlow id="F02" sourceRef="Task_CadastrarContrato" targetRef="Task_ReservarLotes" />
+    <bpmn:sequenceFlow id="F03" sourceRef="Task_ReservarLotes" targetRef="Gw_Tackup" />
+    <bpmn:sequenceFlow id="F04A" sourceRef="Gw_Tackup" targetRef="Task_TackupQualidade" name="SIM" />
+    <bpmn:sequenceFlow id="F05A" sourceRef="Task_TackupQualidade" targetRef="Task_PrepararInstrucao" />
+    <bpmn:sequenceFlow id="F04B" sourceRef="Gw_Tackup" targetRef="Task_PrepararInstrucao" name="NÃO / NÃO APLICÁVEL" />
+    <bpmn:sequenceFlow id="F06" sourceRef="Task_PrepararInstrucao" targetRef="Task_GerarTransferencia" />
+    <bpmn:sequenceFlow id="F07" sourceRef="Task_GerarTransferencia" targetRef="Task_AceitarTransferencia" />
+    <bpmn:sequenceFlow id="F08" sourceRef="Task_AceitarTransferencia" targetRef="Task_FaturarCliente" />
+    <bpmn:sequenceFlow id="F09" sourceRef="Task_FaturarCliente" targetRef="Sub_RecebimentoFinanceiro" />
+    <bpmn:sequenceFlow id="F10" sourceRef="Sub_RecebimentoFinanceiro" targetRef="Task_AcompanharSaldo" />
+    <bpmn:sequenceFlow id="F11" sourceRef="Task_AcompanharSaldo" targetRef="End_BF" />
+    <bpmn:textAnnotation id="N_Contrato">
+      <bpmn:text>REGRA DO PROCESSO: o tipo da operação é definido no cadastro do contrato-pai como MERCADO INTERNO.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_Contrato" sourceRef="Task_CadastrarContrato" targetRef="N_Contrato" />
+    <bpmn:textAnnotation id="N_Moeda">
+      <bpmn:text>PARTICULARIDADE: no exemplo apresentado para Mercado Interno, a moeda utilizada no faturamento é REAL.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_Moeda" sourceRef="Task_CadastrarContrato" targetRef="N_Moeda" />
+    <bpmn:textAnnotation id="N_Tackup">
+      <bpmn:text>LACUNA / RESPONSÁVEL A DEFINIR: o levantamento mostrou reserva e referências ao tackup, mas não confirmou sua obrigatoriedade em todos os contratos de Mercado Interno nem a área formal executora.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_Tackup" sourceRef="Gw_Tackup" targetRef="N_Tackup" />
+    <bpmn:textAnnotation id="N_Instrucao">
+      <bpmn:text>CONTROLE ATUAL / OPORTUNIDADE: na instrução demonstrada, os blocos precisam ser selecionados individualmente. Foi citado desenvolvimento para permitir informar a reserva e preencher os blocos automaticamente.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_Instrucao" sourceRef="Task_PrepararInstrucao" targetRef="N_Instrucao" />
+    <bpmn:textAnnotation id="N_Transferencia">
+      <bpmn:text>REGRA DO PROCESSO: a transferência entre unidades movimenta estoque, mas NÃO GERA FINANCEIRO.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_Transferencia" sourceRef="Task_GerarTransferencia" targetRef="N_Transferencia" />
+    <bpmn:textAnnotation id="N_ResponsavelOperacional">
+      <bpmn:text>RESPONSÁVEL A DEFINIR: a execução foi demonstrada por usuários da algodoeira e da produtora, mas o nome formal da área/cargo responsável não foi confirmado.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_ResponsavelOperacional" sourceRef="Task_AceitarTransferencia" targetRef="N_ResponsavelOperacional" />
+    <bpmn:textAnnotation id="N_VendaCliente">
+      <bpmn:text>REGRA DO PROCESSO: a venda ao cliente gera NOVO PEDIDO E NOVA NOTA FISCAL e, diferente da transferência interna, GERA FINANCEIRO.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_VendaCliente" sourceRef="Task_FaturarCliente" targetRef="N_VendaCliente" />
+    <bpmn:textAnnotation id="N_SemExportacao">
+      <bpmn:text>PARTICULARIDADE DO MERCADO INTERNO: após o faturamento ao cliente não há invoice de exportação, certificadora de pesagem nem despachante aduaneiro.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_SemExportacao" sourceRef="Task_FaturarCliente" targetRef="N_SemExportacao" />
+    <bpmn:textAnnotation id="N_Financeiro">
+      <bpmn:text>PARTICULARIDADE FINANCEIRA: para recebimentos internos, foi relatado lançamento de RA diretamente pelo Financeiro, sem PR como regra. Quando a nota já existe, a compensação pode ocorrer diretamente contra ela.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_Financeiro" sourceRef="Sub_RecebimentoFinanceiro" targetRef="N_Financeiro" />
+    <bpmn:textAnnotation id="N_Saldo">
+      <bpmn:text>CONTROLE DO CONTRATO: o Comercial acompanha projeção, faturamento, recebimento e saldos pendentes até o encerramento.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="A_N_Saldo" sourceRef="Task_AcompanharSaldo" targetRef="N_Saldo" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_MI">
+    <bpmndi:BPMNPlane id="Plane_MI" bpmnElement="Collaboration_MI">
+      <bpmndi:BPMNShape id="Participant_Cliente_di" bpmnElement="Participant_Cliente">
+        <dc:Bounds x="20" y="80" width="3900" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_BF_di" bpmnElement="Participant_BF">
+        <dc:Bounds x="20" y="300" width="3900" height="1000" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Financeiro_di" bpmnElement="Lane_Financeiro">
+        <dc:Bounds x="50" y="300" width="3870" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Comercial_di" bpmnElement="Lane_Comercial">
+        <dc:Bounds x="50" y="490" width="3870" height="270" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Tackup_di" bpmnElement="Lane_Tackup">
+        <dc:Bounds x="50" y="760" width="3870" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Operacional_di" bpmnElement="Lane_Operacional">
+        <dc:Bounds x="50" y="930" width="3870" height="370" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Cliente_di" bpmnElement="Start_Cliente">
+        <dc:Bounds x="2540" y="145" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ClientePagar_di" bpmnElement="Task_ClientePagar">
+        <dc:Bounds x="2630" y="123" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Cliente_di" bpmnElement="End_Cliente">
+        <dc:Bounds x="2880" y="145" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_BF_di" bpmnElement="Start_BF">
+        <dc:Bounds x="90" y="585" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CadastrarContrato_di" bpmnElement="Task_CadastrarContrato">
+        <dc:Bounds x="160" y="560" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReservarLotes_di" bpmnElement="Task_ReservarLotes">
+        <dc:Bounds x="420" y="560" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Tackup_di" bpmnElement="Gw_Tackup" isMarkerVisible="true">
+        <dc:Bounds x="670" y="575" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_TackupQualidade_di" bpmnElement="Task_TackupQualidade">
+        <dc:Bounds x="800" y="800" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PrepararInstrucao_di" bpmnElement="Task_PrepararInstrucao">
+        <dc:Bounds x="1080" y="990" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GerarTransferencia_di" bpmnElement="Task_GerarTransferencia">
+        <dc:Bounds x="1360" y="990" width="220" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AceitarTransferencia_di" bpmnElement="Task_AceitarTransferencia">
+        <dc:Bounds x="1650" y="990" width="210" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FaturarCliente_di" bpmnElement="Task_FaturarCliente">
+        <dc:Bounds x="1940" y="990" width="220" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sub_RecebimentoFinanceiro_di" bpmnElement="Sub_RecebimentoFinanceiro">
+        <dc:Bounds x="2240" y="350" width="230" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AcompanharSaldo_di" bpmnElement="Task_AcompanharSaldo">
+        <dc:Bounds x="2540" y="560" width="210" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_BF_di" bpmnElement="End_BF">
+        <dc:Bounds x="2830" y="582" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Contrato_di" bpmnElement="N_Contrato" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="110" y="660" width="380" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Moeda_di" bpmnElement="N_Moeda" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="500" y="660" width="360" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Tackup_di" bpmnElement="N_Tackup" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="620" y="850" width="470" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Instrucao_di" bpmnElement="N_Instrucao" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="1000" y="1090" width="480" height="85" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Transferencia_di" bpmnElement="N_Transferencia" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="1310" y="1090" width="430" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_ResponsavelOperacional_di" bpmnElement="N_ResponsavelOperacional" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="1620" y="1170" width="470" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_VendaCliente_di" bpmnElement="N_VendaCliente" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="1900" y="1090" width="470" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_SemExportacao_di" bpmnElement="N_SemExportacao" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="2390" y="990" width="470" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Financeiro_di" bpmnElement="N_Financeiro" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="2190" y="435" width="520" height="85" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Saldo_di" bpmnElement="N_Saldo" bioc:fill="#FFF2CC" bioc:stroke="#7F6000">
+        <dc:Bounds x="2520" y="660" width="430" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="CF01_di" bpmnElement="CF01">
+        <di:waypoint x="2576" y="163" />
+        <di:waypoint x="2630" y="163" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="CF02_di" bpmnElement="CF02">
+        <di:waypoint x="2810" y="163" />
+        <di:waypoint x="2880" y="163" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F01_di" bpmnElement="F01">
+        <di:waypoint x="126" y="603" />
+        <di:waypoint x="160" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F02_di" bpmnElement="F02">
+        <di:waypoint x="350" y="600" />
+        <di:waypoint x="420" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F03_di" bpmnElement="F03">
+        <di:waypoint x="600" y="600" />
+        <di:waypoint x="670" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F04A_di" bpmnElement="F04A">
+        <di:waypoint x="695" y="625" />
+        <di:waypoint x="695" y="840" />
+        <di:waypoint x="800" y="840" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F05A_di" bpmnElement="F05A">
+        <di:waypoint x="1000" y="840" />
+        <di:waypoint x="1040" y="840" />
+        <di:waypoint x="1040" y="1030" />
+        <di:waypoint x="1080" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F04B_di" bpmnElement="F04B">
+        <di:waypoint x="720" y="600" />
+        <di:waypoint x="1040" y="600" />
+        <di:waypoint x="1040" y="1030" />
+        <di:waypoint x="1080" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F06_di" bpmnElement="F06">
+        <di:waypoint x="1280" y="1030" />
+        <di:waypoint x="1360" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F07_di" bpmnElement="F07">
+        <di:waypoint x="1580" y="1030" />
+        <di:waypoint x="1650" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F08_di" bpmnElement="F08">
+        <di:waypoint x="1860" y="1030" />
+        <di:waypoint x="1940" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F09_di" bpmnElement="F09">
+        <di:waypoint x="2160" y="1030" />
+        <di:waypoint x="2200" y="1030" />
+        <di:waypoint x="2200" y="390" />
+        <di:waypoint x="2240" y="390" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10">
+        <di:waypoint x="2470" y="390" />
+        <di:waypoint x="2500" y="390" />
+        <di:waypoint x="2500" y="600" />
+        <di:waypoint x="2540" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F11_di" bpmnElement="F11">
+        <di:waypoint x="2750" y="600" />
+        <di:waypoint x="2830" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_NotaCliente_di" bpmnElement="MF_NotaCliente">
+        <di:waypoint x="2050" y="990" />
+        <di:waypoint x="2050" y="280" />
+        <di:waypoint x="2558" y="280" />
+        <di:waypoint x="2558" y="181" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_PagamentoCliente_di" bpmnElement="MF_PagamentoCliente">
+        <di:waypoint x="2720" y="203" />
+        <di:waypoint x="2720" y="290" />
+        <di:waypoint x="2355" y="290" />
+        <di:waypoint x="2355" y="350" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_Contrato_di" bpmnElement="A_N_Contrato">
+        <di:waypoint x="255" y="640" />
+        <di:waypoint x="255" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_Moeda_di" bpmnElement="A_N_Moeda">
+        <di:waypoint x="320" y="640" />
+        <di:waypoint x="680" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_Tackup_di" bpmnElement="A_N_Tackup">
+        <di:waypoint x="695" y="625" />
+        <di:waypoint x="695" y="850" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_Instrucao_di" bpmnElement="A_N_Instrucao">
+        <di:waypoint x="1180" y="1070" />
+        <di:waypoint x="1180" y="1090" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_Transferencia_di" bpmnElement="A_N_Transferencia">
+        <di:waypoint x="1470" y="1070" />
+        <di:waypoint x="1470" y="1090" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_ResponsavelOperacional_di" bpmnElement="A_N_ResponsavelOperacional">
+        <di:waypoint x="1755" y="1070" />
+        <di:waypoint x="1850" y="1170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_VendaCliente_di" bpmnElement="A_N_VendaCliente">
+        <di:waypoint x="2050" y="1070" />
+        <di:waypoint x="2050" y="1090" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_SemExportacao_di" bpmnElement="A_N_SemExportacao">
+        <di:waypoint x="2160" y="1030" />
+        <di:waypoint x="2390" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_Financeiro_di" bpmnElement="A_N_Financeiro">
+        <di:waypoint x="2355" y="430" />
+        <di:waypoint x="2355" y="435" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A_N_Saldo_di" bpmnElement="A_N_Saldo">
+        <di:waypoint x="2645" y="640" />
+        <di:waypoint x="2645" y="660" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

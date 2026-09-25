@@ -112,3 +112,24 @@ Seleção de área em tarefas reutiliza DropdownTextField do mapeamento: pesquis
 Códigos aparecem uma única vez nas entregas, seleção de documentos e nomes exportados, inclusive quando o nome legado já contém o código. Mapeamentos salvos como rascunho usam MAP.ÁREA.NNN.TEMP; a finalização remove .TEMP e preserva a sequência reservada. A área é necessária para a primeira reserva. Documentos antigos recebem a identificação temporária no próximo salvamento como rascunho. A reserva usa comparação atômica do contador organizacional e considera códigos já existentes.
 
 TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e modalidade separadamente. Editar dados abre TaskManagement no TaskDialog compartilhado, com grupos Pessoas, Período e Classificação, salvar/cancelar explícitos e confirmação de descarte. Falhas preservam os campos; sucesso fecha a edição e atualiza o resumo. As permissões e restrições de modalidade permanecem no servidor. Tokens de src/styles.css continuam canônicos.
+
+
+## Contrato BPMN — 25/09/2026
+
+| Capacidade | Dono canônico | Comportamento |
+| --- | --- | --- |
+| Navegação global | WorkspaceLauncher | Mesmos destinos e permissões de módulos |
+| Pesquisa e cadastro | DropdownTextField + TaskDialog + CatalogPicker | Exige seleção de ID; cadastrar usa serviços centrais e seleciona o retorno |
+| Modelagem | BpmnCanvas / bpmn-js | Paleta, contexto, seleção múltipla, conexões, redimensionamento e desfazer/refazer |
+| Importação | BpmnImportWizard | Arquivo → prévia → vínculos → confirmação; erros não substituem o desenho aberto |
+| Persistência | saveBpmnDocument / persistBpmnDocument | Valida organização, processo e responsáveis; grava versão e XML juntos, com comparação de versão e data |
+| Recuperação | BpmnEditor | Cópia local por usuário/organização/documento; recuperação depende de escolha explícita |
+| Tarefa vinculada | TaskEditorContext | Rascunhos mantêm a entrega em andamento; publicação usa confirmação existente do checklist |
+
+- O estado do cliente não concede permissão: toda gravação exige autenticação e papel de editor no servidor; IDs de processos/áreas/cargos são conferidos na organização ativa.
+- Cada tentativa de salvar mantém um identificador de mutação para tolerar respostas perdidas sem duplicar documentos. Conflitos preservam o desenho local e oferecem exportação.
+- Campos obrigatórios: processo cadastrado e XML BPMN 2.0 com DI. Raia não vinculada é aviso A DEFINIR, não bloqueio. Fonte externa não cria registros silenciosamente.
+- O XML original é imutável na experiência de edição e pode ser baixado separado. Avisos de elementos/extensões não suportados são apresentados antes de confirmar importação.
+- Importações aceitam até 1,5 MB; salvar verifica o tamanho total de envio antes de iniciar a requisição. Falha não limpa o conteúdo nem indica sucesso.
+- O congelamento de cabeçalho/raias e a navegação nunca alteram coordenadas, dimensões, cores ou waypoints. O importador de compatibilidade que reposiciona subprocessos foi desativado.
+- A lista de desenhos usa paginação de 20 linhas, pesquisa no servidor, estados de carregamento, vazio e erro recuperável. Trocar organização recarrega os cadastros e a lista.
