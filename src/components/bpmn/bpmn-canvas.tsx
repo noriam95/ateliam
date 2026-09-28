@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { edgeIdentification } from "@/lib/bpmn-viewport";
+import { bpmnLaneModule } from "@/lib/bpmn-lanes";
 import { bpmnSelectionModule } from "@/lib/bpmn-selection";
 import Modeler from "bpmn-js/lib/Modeler";
 import NavigatedViewer from "bpmn-js/lib/NavigatedViewer";
@@ -16,7 +17,13 @@ import "bpmn-js/dist/assets/diagram-js.css";
 import "bpmn-js/dist/assets/bpmn-font/css/bpmn.css";
 import "./bpmn.css";
 
-export type CanvasSelection = { id: string; type: string; name: string; count: number } | null;
+export type CanvasSelection = {
+  id: string;
+  type: string;
+  name: string;
+  fill?: string;
+  count: number;
+} | null;
 export type BpmnCanvasHandle = {
   xml(): Promise<string>;
   svg(): Promise<string>;
@@ -132,7 +139,7 @@ export const BpmnCanvas = forwardRef<
         ? new NavigatedViewer({ container: host.current!, additionalModules: bpmnEngineModules })
         : new Modeler({
             container: host.current!,
-            additionalModules: [...bpmnEngineModules, bpmnSelectionModule],
+            additionalModules: [...bpmnEngineModules, bpmnSelectionModule, bpmnLaneModule],
           });
       engine.current = instance;
       let importing = true;
@@ -141,7 +148,15 @@ export const BpmnCanvas = forwardRef<
         const registry = instance.get("elementRegistry");
         registry.forEach((element: any) => {
           const graphics = registry.getGraphics(element);
-          if (graphics) graphics.setAttribute("data-bf-type", element.type);
+          if (graphics) {
+            graphics.setAttribute("data-bf-type", element.type);
+            graphics.setAttribute(
+              "data-bf-custom-fill",
+              String(
+                Boolean(element.di?.get("bioc:fill") || element.di?.get("color:background-color")),
+              ),
+            );
+          }
         });
         const canvas = instance.get("canvas");
         const vb = canvas.viewbox();
@@ -218,6 +233,7 @@ export const BpmnCanvas = forwardRef<
                 id: el.id,
                 type: el.type,
                 name: el.businessObject.name || el.businessObject.text || "",
+                fill: el.di?.get("bioc:fill") || el.di?.get("color:background-color"),
                 count: newSelection.length,
               }
             : null,
@@ -231,6 +247,7 @@ export const BpmnCanvas = forwardRef<
             id: el.id,
             type: el.type,
             name: el.businessObject.name || el.businessObject.text || "",
+            fill: el.di?.get("bioc:fill") || el.di?.get("color:background-color"),
             count: selected.length,
           });
       });
@@ -300,10 +317,11 @@ export const BpmnCanvas = forwardRef<
           }
         },
         color(fill) {
-          if (!readOnly && ready)
-            engine.current
-              .get("modeling")
-              .setColor(engine.current.get("selection").get(), { fill });
+          if (readOnly || !ready) return;
+          const modeler = engine.current;
+          const elements = modeler.get("selection").get();
+          if (elements.every((e: any) => e.di?.get("bioc:fill") === fill)) return;
+          modeler.get("modeling").setColor(elements, { fill });
         },
         create(type, event) {
           if (readOnly || !ready) return;
@@ -388,6 +406,10 @@ export const BpmnCanvas = forwardRef<
               },
             });
             if (duplicated) m.get("selection").select(duplicated);
+          }
+          if (name === "lane" && event) {
+            m.get("bfLaneDrag").start(event);
+            return;
           }
           if (name === "lane") {
             const target =

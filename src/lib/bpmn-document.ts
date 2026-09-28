@@ -1,3 +1,4 @@
+import { validateBpmnRules } from "./bpmn-validation";
 import { BpmnModdle } from "bpmn-moddle";
 
 export type LaneBinding = { kind: "area" | "position"; id: string; name: string };
@@ -142,7 +143,7 @@ export async function inspectBpmn(xml: string): Promise<BpmnInspection> {
       .filter((e) => is(e, "Lane"))
       .map((e) => ({ id: e.id, name: e.name || "A DEFINIR" })),
     counts,
-    warnings: [...new Set<string>(warnings)],
+    warnings: [...new Set<string>([...warnings, ...validateBpmnRules(elements)])],
   };
 }
 

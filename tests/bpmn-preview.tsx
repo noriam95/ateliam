@@ -7,6 +7,7 @@ import type { BpmnDocument } from "../src/lib/bpmn-document";
 import Modeler from "bpmn-js/lib/Modeler";
 import NavigatedViewer from "bpmn-js/lib/NavigatedViewer";
 import { BpmnModdle } from "bpmn-moddle";
+import { bpmnLaneModule } from "../src/lib/bpmn-lanes";
 import { bpmnSelectionModule } from "../src/lib/bpmn-selection";
 import { bpmnEngineModules } from "../src/lib/bpmn-engine-modules";
 import reference from "./fixtures/MERCADO_INTERNO_ASIS_Bizagi_REV02_premissas_visuais.bpmn";
@@ -92,7 +93,8 @@ export function Preview() {
           if (failure) throw new Error("Falha de rede simulada. Tente salvar novamente.");
           const record = {
             id: input.id,
-            current_version: (input.expectedVersion || 0) + 1,
+            code: input.saveMode === "draft" ? "FLU.COM.001.TEMP" : "FLU.COM.001",
+            current_version: (input.expectedVersion || 0) + (input.saveMode === "final" ? 1 : 0),
             updated_at: new Date().toISOString(),
           };
           setSaved({ document: input.document, record });
@@ -149,7 +151,7 @@ async function regression() {
     const before = await moddle.fromXML(source);
     engine = new Modeler({
       container: host,
-      additionalModules: [...bpmnEngineModules, bpmnSelectionModule],
+      additionalModules: [...bpmnEngineModules, bpmnSelectionModule, bpmnLaneModule],
     });
     await engine.importXML(source);
     const output = await engine.saveXML({ format: true });
@@ -187,6 +189,55 @@ async function regression() {
     modeling.removeElements([task, second]);
     check(!registry.get(task.id) && !registry.get(second.id), "excluir seleção em conjunto");
     stack.undo();
+    await engine.saveXML({ format: true });
+    const geometryBeforeReorder = JSON.stringify(geometry(engine.getDefinitions()));
+    const lane1 = registry.get("Lane_1"),
+      lane3 = registry.get("Lane_3");
+    const refsBefore = lane1.businessObject.flowNodeRef.map((e: any) => e.id).join();
+    const laneY = lane1.y,
+      taskY = task.y;
+    stack.execute("bf.lane.reorder", { lane: lane1, target: lane3, after: true });
+    check(lane1.y === laneY + 440 && task.y === taskY + 440, "reordenar raia com seu conteúdo");
+    check(
+      lane1.businessObject.flowNodeRef.map((e: any) => e.id).join() === refsBefore,
+      "reordenação preserva vínculos semânticos",
+    );
+    const crossLane = registry.get("Flow_3");
+    const touches = (point: any, shape: any) =>
+      point.x >= shape.x - 2 &&
+      point.x <= shape.x + shape.width + 2 &&
+      point.y >= shape.y - 2 &&
+      point.y <= shape.y + shape.height + 2;
+    check(
+      touches(crossLane.waypoints[0], crossLane.source) &&
+        touches(crossLane.waypoints.at(-1), crossLane.target),
+      "conexões entre raias continuam anexadas após reordenação",
+    );
+    const reordered = await moddle.fromXML((await engine.saveXML({ format: true })).xml);
+    check(
+      reordered.elementsById.Lane_1.$parent.lanes.at(-1).id === "Lane_1",
+      "ordem de raias persistida no XML",
+    );
+    stack.undo();
+    const restoredGeometry = geometry(engine.getDefinitions());
+    const expectedGeometry = JSON.parse(geometryBeforeReorder);
+    // bpmn-js materializes bounds for implicit external labels on redraw.
+    // Compare all original geometry; newly explicit label bounds are not a move.
+    restoredGeometry.forEach((plane: any[], pi: number) =>
+      plane.forEach((e: any, ei: number) => {
+        if (!expectedGeometry[pi][ei].label) delete e.label;
+      }),
+    );
+    check(
+      JSON.stringify(restoredGeometry) === geometryBeforeReorder,
+      "desfazer reordenação restaura toda a geometria original",
+    );
+    stack.redo();
+    check(task.y === taskY + 440, "refazer reordenação");
+    stack.undo();
+    modeling.setColor([task], { fill: "#aabbcc" });
+    check(task.di.get("bioc:fill") === "#aabbcc", "preenchimento personalizado persistido");
+    stack.undo();
     const x = task.x;
     modeling.moveShape(task, { x: 80, y: 0 });
     check(task.x === x + 80, "movimentação livre");
@@ -209,12 +260,16 @@ async function regression() {
     check(task.width === 220 && task.height === 100, "redimensionar tarefa");
     stack.undo();
     const count = registry.filter((e: any) => e.type === "bpmn:Lane").length;
-    modeling.addLane(registry.get("Lane_3"), "bottom");
+    stack.execute("bf.lane.insert", { target: registry.get("Lane_3"), after: true });
     check(
       registry.filter((e: any) => e.type === "bpmn:Lane").length === count + 1,
       "adicionar raia",
     );
     stack.undo();
+    check(
+      registry.filter((e: any) => e.type === "bpmn:Lane").length === count,
+      "desfazer inserção de raia em uma única ação",
+    );
     const copy = engine.get("copyPaste");
     const duplicated = copy.duplicate([task], { element: task.parent, point: { x: 900, y: 200 } });
     check(duplicated?.length > 0, "duplicar");
@@ -257,7 +312,7 @@ async function regression() {
     engine.destroy();
     engine = new Modeler({
       container: host,
-      additionalModules: [...bpmnEngineModules, bpmnSelectionModule],
+      additionalModules: [...bpmnEngineModules, bpmnSelectionModule, bpmnLaneModule],
     });
     await engine.importXML(reference);
     const refEdited = await moddle.fromXML((await engine.saveXML({ format: true })).xml);

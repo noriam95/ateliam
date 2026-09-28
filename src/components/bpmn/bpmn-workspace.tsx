@@ -288,7 +288,7 @@ export function BpmnWorkspace({
                     documentId: row.id,
                     version: row.current_version,
                     updatedAt: row.updated_at,
-                    draft: input.document.status !== "Publicado",
+                    draft: input.saveMode === "draft",
                   },
                 }),
               );
@@ -377,7 +377,7 @@ export function BpmnWorkspace({
                     {docs.data.rows.map((row) => (
                       <tr key={row.id}>
                         <td>{row.name}</td>
-                        <td>{row.current_version}</td>
+                        <td>{row.current_version || "Rascunho"}</td>
                         <td>{new Date(row.updated_at).toLocaleString("pt-BR")}</td>
                         <td>
                           <button onClick={() => void loadDocument(row.id)}>Abrir desenho</button>

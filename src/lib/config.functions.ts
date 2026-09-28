@@ -1483,6 +1483,7 @@ const bpmnSaveSchema = z.object({
   organizationId: z.string().uuid(),
   id: z.string().uuid(),
   mutationId: z.string().uuid(),
+  saveMode: z.enum(["draft", "final"]).default("draft"),
   expectedVersion: z.number().int().nonnegative().nullable(),
   expectedUpdatedAt: z.string().nullable(),
   document: z.object({
@@ -1542,12 +1543,15 @@ export const saveBpmnDocument = createServerFn({ method: "POST" })
     }
     const document = { ...data.document, processName: process.name, laneBindings: bindings };
     const { persistBpmnDocument } = await import("./bpmn-persistence.server");
+    const { supabaseAdmin: versionStore } = await import("@/integrations/supabase/client.server");
     return persistBpmnDocument({
+      versionStore,
       supabase: context.supabase,
       userId: context.userId,
       organizationId: access.organizationId,
       id: data.id,
       mutationId: data.mutationId,
+      saveMode: data.saveMode,
       expectedVersion: data.expectedVersion,
       expectedUpdatedAt: data.expectedUpdatedAt,
       document,
@@ -1559,7 +1563,7 @@ export const saveBpmnDocument = createServerFn({ method: "POST" })
           .eq("id", access.organizationId)
           .single();
         if (error) throw new Error(error.message);
-        if (normalizeCodeSettings(organization.code_settings).fluxograma.mode !== "auto")
+        if (normalizeCodeSettings(organization.code_settings).fluxograma.mode !== "auto" && data.document.codigo)
           return data.document.codigo;
         const { data: areas, error: areaError } = await context.supabase
           .from("organization_departments")

@@ -928,24 +928,42 @@
   margin-top: 8px;
 }
 /* Presentation-only color overrides: neither BPMN XML nor DI is mutated. */
-.bf-bpmn-editor[data-appearance="color"] [data-bf-type$="Task"] > .djs-visual > rect,
-.bf-bpmn-editor[data-appearance="color"] [data-bf-type="bpmn:SubProcess"] > .djs-visual > rect {
+.bf-bpmn-editor[data-appearance="color"]
+  [data-bf-type$="Task"][data-bf-custom-fill="false"]
+  > .djs-visual
+  > rect,
+.bf-bpmn-editor[data-appearance="color"]
+  [data-bf-type="bpmn:SubProcess"][data-bf-custom-fill="false"]
+  > .djs-visual
+  > rect {
   fill: #edf4fc !important;
   stroke: #3671a8 !important;
 }
-.bf-bpmn-editor[data-appearance="color"] [data-bf-type="bpmn:StartEvent"] > .djs-visual > circle {
+.bf-bpmn-editor[data-appearance="color"]
+  [data-bf-type="bpmn:StartEvent"][data-bf-custom-fill="false"]
+  > .djs-visual
+  > circle {
   fill: #e7f5df !important;
   stroke: #639444 !important;
 }
-.bf-bpmn-editor[data-appearance="color"] [data-bf-type="bpmn:EndEvent"] > .djs-visual > circle {
+.bf-bpmn-editor[data-appearance="color"]
+  [data-bf-type="bpmn:EndEvent"][data-bf-custom-fill="false"]
+  > .djs-visual
+  > circle {
   fill: #fbe7e7 !important;
   stroke: #bd5157 !important;
 }
-.bf-bpmn-editor[data-appearance="color"] [data-bf-type*="Intermediate"] > .djs-visual > circle {
+.bf-bpmn-editor[data-appearance="color"]
+  [data-bf-type*="Intermediate"][data-bf-custom-fill="false"]
+  > .djs-visual
+  > circle {
   fill: #fff4d9 !important;
   stroke: #ac8433 !important;
 }
-.bf-bpmn-editor[data-appearance="color"] [data-bf-type$="Gateway"] > .djs-visual > polygon {
+.bf-bpmn-editor[data-appearance="color"]
+  [data-bf-type$="Gateway"][data-bf-custom-fill="false"]
+  > .djs-visual
+  > polygon {
   fill: #fff4d9 !important;
   stroke: #ac8433 !important;
 }
@@ -1015,4 +1033,26 @@
 }
 .bf-bpmn-edge-label.is-pool > small {
   display: none;
+}
+
+.bf-bpmn-lane-drop {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  background: #a27a39;
+  color: white;
+  border-radius: 3px;
+  font-size: 11px;
+  padding: 2px;
+}
+.bf-bpmn-save-options {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+.bf-bpmn-save-options button {
+  padding: 10px 16px;
+  border: 1px solid #d7dce2;
+  border-radius: 7px;
 }

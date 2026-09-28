@@ -54,6 +54,7 @@ const elementLabels: Record<string, string> = {
 export type SavedBpmn = {
   code?: string;
   id: string;
+  code?: string;
   current_version: number | null;
   updated_at: string;
   created_at?: string;
@@ -62,6 +63,7 @@ export type SavedBpmn = {
 export type BpmnSaveInput = {
   id: string;
   mutationId: string;
+  saveMode: "draft" | "final";
   expectedVersion: number | null;
   expectedUpdatedAt: string | null;
   document: BpmnDocument;
@@ -118,12 +120,12 @@ export function BpmnEditor({
   const [ready, setReady] = useState(false);
   const [presenting, setPresenting] = useState(!canEdit);
   const [frozen, setFrozen] = useState(true);
-  const [appearance, setAppearance] = useState<"original" | "color" | "mono">(() => {
+  const [appearance, setAppearance] = useState<"color" | "mono">(() => {
     try {
       const preference = localStorage.getItem("bf-flow:bpmn:appearance");
-      return preference === "color" || preference === "mono" ? preference : "original";
+      return preference === "color" || preference === "mono" ? preference : "color";
     } catch {
-      return "original";
+      return "color";
     }
   });
 
@@ -138,6 +140,7 @@ export function BpmnEditor({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [showWarnings, setShowWarnings] = useState(false);
   const [help, setHelp] = useState(false);
+  const [saveMenu, setSaveMenu] = useState(false);
   const [exit, setExit] = useState(false);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<BpmnDocument | null>(null);
@@ -234,7 +237,17 @@ export function BpmnEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  async function save() {
+  function changeFill(fill: string) {
+    setAppearance("color");
+    try {
+      localStorage.setItem("bf-flow:bpmn:appearance", "color");
+    } catch {
+      /* Session preference remains available. */
+    }
+    canvas.current?.color(fill);
+  }
+
+  async function save(saveMode: "draft" | "final" = "draft") {
     if (busyRef.current || !ready || !canEdit) return;
     if (!documentRef.current.processId) {
       setError("Selecione um processo do cadastro central antes de salvar.");
@@ -246,17 +259,30 @@ export function BpmnEditor({
     setError("");
     try {
       // A corrected draft needs a new attempt. CAS still catches an earlier lost response.
-      if (pending.current && pending.current.revision !== revisionRef.current)
+      if (
+        pending.current &&
+        (pending.current.revision !== revisionRef.current ||
+          pending.current.input.saveMode !== saveMode)
+      )
         pending.current = null;
       // Retry the exact mutation when the snapshot has not changed.
       if (!pending.current)
         pending.current = await captureBpmnSaveAttempt({
+          saveMode,
           id: newId.current,
           mutationId: crypto.randomUUID(),
           expectedVersion: recordRef.current?.current_version ?? null,
           expectedUpdatedAt: recordRef.current?.updated_at ?? null,
           revision: revisionRef.current,
-          capture,
+          capture: async () => ({
+            ...(await capture()),
+            status:
+              saveMode === "draft"
+                ? "Rascunho"
+                : documentRef.current.status === "Rascunho"
+                  ? "Em revisão"
+                  : documentRef.current.status,
+          }),
         });
       const attempt = pending.current;
       if (new TextEncoder().encode(JSON.stringify(attempt.input)).length > 4_000_000) {
@@ -268,6 +294,12 @@ export function BpmnEditor({
       const next = await onSave(attempt.input);
       recordRef.current = next;
       setRecord(next);
+      const status = attempt.input.document.status;
+      setDocument((current) => ({
+        ...current,
+        codigo: next.code || current.codigo,
+        status: revisionRef.current === attempt.revision ? status : current.status,
+      }));
       pending.current = null;
       if (revisionRef.current === attempt.revision) {
         setDirty(false);
@@ -279,7 +311,7 @@ export function BpmnEditor({
         setLocalStatus("");
       }
       setNotice(
-        `Versão ${next.current_version} salva às ${new Date(next.updated_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`,
+        `${attempt.input.saveMode === "draft" ? "Rascunho salvo" : `Versão ${next.current_version} salva`} às ${new Date(next.updated_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`,
       );
     } catch (error) {
       const message =
@@ -297,10 +329,10 @@ export function BpmnEditor({
   const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(() => {
-    if (!autoSave || !dirty || !canEdit || recovery || importing || imported) return;
+    if (!autoSave || !dirty || !canEdit || recovery || importing || imported || saveMenu) return;
     const timer = setInterval(() => void saveRef.current(), 30_000);
     return () => clearInterval(timer);
-  }, [autoSave, dirty, canEdit, recovery, importing, imported]);
+  }, [autoSave, dirty, canEdit, recovery, importing, imported, saveMenu]);
   async function exportFile(kind: "bpmn" | "svg" | "original") {
     try {
       const name =
@@ -389,11 +421,23 @@ export function BpmnEditor({
             <Link2 size={16} />
             Conectar
           </button>
-          <button onClick={() => action("lane")}>
+          <button
+            title="Arraste uma raia para dentro de uma piscina"
+            onMouseDown={(e) => action("lane", e.nativeEvent)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") action("lane");
+            }}
+          >
             <Plus size={16} />
             Raia
           </button>
-          <button onClick={() => createShape("bpmn:Participant")}>
+          <button
+            title="Arraste uma piscina para o canvas"
+            onMouseDown={(e) => createShape("bpmn:Participant", e.nativeEvent)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") createShape("bpmn:Participant");
+            }}
+          >
             <Plus size={16} />
             Pool
           </button>
@@ -423,8 +467,8 @@ export function BpmnEditor({
             aria-label={busy ? "Salvando…" : "Salvar"}
             title="Salvar"
             className="bf-bpmn-primary"
-            disabled={busy || !ready || !dirty}
-            onClick={() => void save()}
+            disabled={busy || !ready}
+            onClick={() => setSaveMenu(true)}
           >
             <Save size={16} />
           </button>
@@ -436,6 +480,33 @@ export function BpmnEditor({
             <CircleHelp size={17} />
           </button>
         </div>
+      )}
+      {saveMenu && (
+        <TaskDialog title="Salvar desenho" onClose={() => setSaveMenu(false)}>
+          <p>
+            O rascunho mantém o mesmo registro e não cria versões. Salvar versão registra uma cópia
+            no histórico.
+          </p>
+          <div className="bf-bpmn-save-options">
+            <button
+              onClick={() => {
+                setSaveMenu(false);
+                void save("draft");
+              }}
+            >
+              Salvar rascunho
+            </button>
+            <button
+              className="bf-bpmn-primary"
+              onClick={() => {
+                setSaveMenu(false);
+                void save("final");
+              }}
+            >
+              Salvar versão
+            </button>
+          </div>
+        </TaskDialog>
       )}
       {error && (
         <div className="bf-bpmn-error" role="alert">
@@ -611,8 +682,9 @@ export function BpmnEditor({
                   Cor de preenchimento
                   <input
                     type="color"
-                    defaultValue="#ffffff"
-                    onChange={(e) => canvas.current?.color(e.target.value)}
+                    value={selection.fill || "#ffffff"}
+                    onInput={(e) => changeFill(e.currentTarget.value)}
+                    onChange={(e) => changeFill(e.target.value)}
                   />
                 </label>
                 <hr />
@@ -651,7 +723,7 @@ export function BpmnEditor({
                 checked={autoSave}
                 onChange={(e) => setAutoSave(e.target.checked)}
               />
-              Salvar automaticamente a cada 30 s
+              Salvar rascunho automaticamente a cada 30 s
             </label>
             <p>Alterações são guardadas também neste navegador para recuperação.</p>
             {record?.created_at && (
@@ -663,7 +735,6 @@ export function BpmnEditor({
               <div role="group" aria-label="Cores do desenho">
                 {(
                   [
-                    ["original", "Original"],
                     ["color", "Com cores"],
                     ["mono", "Preto e branco"],
                   ] as const
@@ -704,7 +775,7 @@ export function BpmnEditor({
         <span role="status">
           {busy ? "Salvando…" : dirty ? "Alterações não salvas" : "Salvo"}
           {localStatus ? ` · ${localStatus}` : ""}
-          {` · ${record?.code || document.codigo || "Desenho BPMN"}${record ? ` · v${record.current_version}` : ""} · ${document.status}`}
+          {` · ${record?.code || document.codigo || "Desenho BPMN"}${record?.current_version ? ` · v${record.current_version}` : ""} · ${document.status}`}
         </span>
         <label className="bf-bpmn-check">
           <input type="checkbox" checked={frozen} onChange={(e) => setFrozen(e.target.checked)} />
@@ -789,6 +860,15 @@ export function BpmnEditor({
           <div className="bf-bpmn-form">
             <ol>
               <li>Selecione um Processo e associe as raias a Áreas ou Cargos.</li>
+              <li>
+                Arraste Pool ou Raia da barra para o canvas. Raias só podem ser soltas dentro de
+                piscinas. Para reordenar, arraste o cabeçalho com o nome da raia até a posição
+                desejada na mesma piscina.
+              </li>
+              <li>
+                Salvar rascunho e o salvamento automático mantêm um registro temporário. Use Salvar
+                versão para criar uma versão no histórico.
+              </li>
               <li>
                 Arraste elementos da paleta. Pelo teclado, use Enter para inserir na raia
                 selecionada.

@@ -110,15 +110,20 @@ TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e mo
 - Público: equipes brasileiras de processos; uso principal em desktop, com consulta e apresentação em telas menores. Idioma pt-BR.
 - O editor BPMN anterior foi removido. A rota `/m/bpmn` abre um workspace independente com canvas bpmn-js, paleta curta, ações contextuais e propriedades recolhíveis. O motor só é carregado ao entrar nesse módulo.
 - Tokens de cor, fonte, borda e espaçamento seguem `src/styles.css`; a folha `src/components/bpmn/bpmn.css` restringe as mudanças ao módulo. O canvas de notação permanece claro para conservar cores importadas. O crédito obrigatório bpmn.io permanece visível.
-- Nome do processo no cabeçalho fixo; identificações das raias em uma faixa de interface separada. Essa faixa reserva espaço visual e não modifica coordenadas BPMN DI.
+- Processo identificado no rodapé; identificações adicionais nas bordas aparecem somente quando os nomes originais saem da área visível, sem reservar faixa permanente ou modificar coordenadas BPMN DI.
 - Processos, Áreas e Cargos reutilizam `DropdownTextField`, `TaskDialog` e os serviços centrais de cadastro. `CatalogPicker` é a variante compartilhada do BPMN para criação e seleção imediata, inclusive no assistente.
 - Importação em quatro etapas: arquivo, conferência visual, associação explícita e confirmação. As correspondências por nome são sugestões. O original permanece separado do XML editável. Nenhum auto-layout é executado na importação.
 - O modo de apresentação usa NavigatedViewer. O modelador fica oculto para conservar desfazer/refazer ao retornar. Leitores não instanciam um modelador editável.
 - Salvamento manual e automático (30 s quando houver mudanças), cópia local com recuperação explícita e bloqueio de saída com alterações. Desenhos convertidos do editor anterior começam com salvamento automático desligado e preservam os dados antigos para download.
 - Arquivo de referência: `tests/fixtures/MERCADO_INTERNO_ASIS_Bizagi_REV02_premissas_visuais.bpmn`. Conferência de geometria por identificador, pois a ordem XML de elementos não determina sua posição.
 
-BPMN visual finish: retain control positions and geometry; reuse BF Flow font and gold accent with quiet neutral surfaces. Appearance modes (original, color, monochrome) are local viewing preferences, never document edits. Original remains default; exports retain source colors. Keep bpmn.io watermark fully visible as required by the installed license.
+BPMN visual finish: retain control positions and geometry; reuse BF Flow font and gold accent with quiet neutral surfaces. Appearance has only color (default, Bizagi-like defaults) and monochrome. Explicit element colors take precedence in color mode; monochrome is a reversible viewing preference. Keep bpmn.io watermark fully visible as required by the installed license.
 
 ## BPMN navigation — 2026-09-28
 
 The editor has a single modeling toolbar: import beside Pool, icon-only save beside Properties, and icon-only presentation beside zoom. The former process header is removed; document/version/status remain in the footer. Plain left-drag on canvas/pool/lane background selects intersecting elements; containers require full enclosure to avoid moving an entire pool accidentally. Pan uses the hand tool or middle mouse. Edge identifications appear only when the original rendered name is clipped and its owning region still intersects the viewport; no permanent reserved lane strip or DI mutation. Explicit lane associations name the editable lane from the selected central record, including confirmed imports; original source XML remains retained.
+
+## BPMN — cores, raias e salvamento — 28/09/2026
+
+Com cores e Preto e branco são as únicas aparências. Preenchimentos explícitos prevalecem sobre a paleta padrão. Piscinas e raias são arrastadas da barra; a raia só aceita destino dentro de uma piscina. Seu cabeçalho permite reordenar a faixa inteira com atividades e conexões, com indicação do destino e desfazer/refazer.
+O ícone Salvar oferece Salvar rascunho e Salvar versão. Rascunho usa o mesmo documento com código TEMP e não incrementa a versão; autosave sempre usa essa modalidade. A versão explícita preserva cópia no histórico. Verificar desenho apresenta diagnósticos identificados por nome e ID do elemento, sem bloquear o salvamento.

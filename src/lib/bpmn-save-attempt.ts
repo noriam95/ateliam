@@ -6,6 +6,7 @@ export async function captureBpmnSaveAttempt({
   capture,
   ...identity
 }: {
+  saveMode: "draft" | "final";
   id: string;
   mutationId: string;
   expectedVersion: number | null;

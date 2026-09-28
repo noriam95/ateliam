@@ -164,3 +164,17 @@ test("selected catalog names replace lane labels without altering diagram geomet
   );
   assert.equal(updated.elementsById.Lane_1.name, "ANALISTA");
 });
+
+test("Validation derives real connectivity from endpoints and detects incorrect BPMN usage", async () => {
+  const broken = fixture
+    .replace('sourceRef="Start_1" targetRef="Manual_1"', 'sourceRef="End_1" targetRef="Start_1"')
+    .replace('sourceRef="User_1" targetRef="Pool_2"', 'sourceRef="User_1" targetRef="Manual_1"');
+  const { warnings } = await inspectBpmn(broken);
+  assert.ok(warnings.some((w) => w.includes("[Start_1]") && w.includes("não pode receber")));
+  assert.ok(warnings.some((w) => w.includes("[End_1]") && w.includes("não pode ter")));
+  assert.ok(warnings.some((w) => w.includes("[Manual_1]") && w.includes("sem fluxo de entrada")));
+  assert.ok(
+    warnings.some((w) => w.includes("[Message_1]") && w.includes("participantes diferentes")),
+  );
+  assert.ok(warnings.some((w) => w.includes("[Exclusive_1]") && w.includes("dois caminhos")));
+});

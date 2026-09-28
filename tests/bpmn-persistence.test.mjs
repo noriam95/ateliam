@@ -16,11 +16,14 @@ const db = new PGlite();
 await db.exec(
   `create table documents (id uuid primary key, organization_id uuid not null, owner_id uuid not null, name text, module text,content_inline text,primary_process_id uuid,primary_process_version int,current_version int,updated_at text,created_at text default '2026-09-25T00:00:00.000Z')`,
 );
+await db.exec(
+  `create table document_versions (id uuid default gen_random_uuid(), document_id uuid references documents(id), version_number int, author_id uuid, content_snapshot text, comment text, unique(document_id,version_number))`,
+);
 // Execute the exact repository filters and mutations against PostgreSQL, including concurrent CAS writes.
-function client() {
+function client(failVersionInsert = () => false) {
   return {
     from(table) {
-      assert.equal(table, "documents");
+      assert.ok(["documents", "document_versions"].includes(table));
       let mutation = null,
         payload = null;
       const filters = [];
@@ -46,6 +49,8 @@ function client() {
         maybeSingle: execute,
       };
       async function execute() {
+        if (table === "document_versions" && mutation === "insert" && failVersionInsert())
+          return { data: null, error: { message: "simulated history outage" } };
         const values = [];
         const param = (value) => {
           values.push(value);
@@ -53,14 +58,14 @@ function client() {
         };
         let sql;
         if (mutation === "insert")
-          sql = `insert into documents (${Object.keys(payload).join(",")}) values (${Object.values(payload).map(param).join(",")}) returning *`;
+          sql = `insert into ${table} (${Object.keys(payload).join(",")}) values (${Object.values(payload).map(param).join(",")}) returning *`;
         else {
           const set =
             mutation === "update"
-              ? `update documents set ${Object.entries(payload)
+              ? `update ${table} set ${Object.entries(payload)
                   .map(([k, v]) => `${k}=${param(v)}`)
                   .join(",")}`
-              : "select * from documents";
+              : `select * from ${table}`;
           sql =
             set +
             " where " +
@@ -188,4 +193,84 @@ test("The central code is reserved once and stays immutable on later saves", asy
   assert.equal(reservations, 1);
   assert.equal(JSON.parse(updated.content_inline).bpmn.codigo, "FLU.COM.001");
   assert.equal(updated.name, "FLU.COM.001 - MERCADO INTERNO");
+});
+
+test("Drafts keep one temporary record; only explicit saves create immutable versions", async () => {
+  const data = { ...input(), saveMode: "draft", reserveCode: async () => "FLU.COM.007" };
+  let row = await persistBpmnDocument(data);
+  const save = async (mode, xml) => {
+    row = await persistBpmnDocument({
+      ...data,
+      saveMode: mode,
+      mutationId: crypto.randomUUID(),
+      expectedVersion: row.current_version,
+      expectedUpdatedAt: row.updated_at,
+      document: { ...data.document, xml },
+    });
+  };
+  assert.equal(row.current_version, 0);
+  assert.equal(JSON.parse(row.content_inline).bpmn.codigo, "FLU.COM.007.TEMP");
+  await save("draft", "<draft-two/>");
+  assert.equal(row.current_version, 0);
+  await save("final", "<version-one/>");
+  assert.equal(row.current_version, 1);
+  assert.equal(JSON.parse(row.content_inline).bpmn.codigo, "FLU.COM.007");
+  await save("draft", "<draft-three/>");
+  assert.equal(row.current_version, 1);
+  assert.equal(JSON.parse(row.content_inline).bpmn.status, "Rascunho");
+  const history = await db.query("select * from document_versions where document_id=$1", [data.id]);
+  assert.equal(history.rows.length, 1);
+  assert.equal(JSON.parse(history.rows[0].content_snapshot).bpmn.xml, "<version-one/>");
+  await save("final", "<version-two/>");
+  assert.equal(row.current_version, 2);
+});
+
+test("An interrupted history write is recovered without losing the snapshot or allocating another version", async () => {
+  let fail = true;
+  const data = { ...input(), versionStore: client(() => fail) };
+  await assert.rejects(persistBpmnDocument(data), /concluir o histórico/);
+  const stored = (await db.query("select * from documents where id=$1", [data.id])).rows[0];
+  assert.equal(stored.current_version, 1);
+  assert.equal(JSON.parse(stored.content_inline).pendingVersion.version, 1);
+  fail = false;
+  const retry = await persistBpmnDocument(data);
+  assert.equal(retry.current_version, 1);
+  const history = (
+    await db.query("select * from document_versions where document_id=$1", [data.id])
+  ).rows;
+  assert.equal(history.length, 1);
+  assert.equal(JSON.parse(history[0].content_snapshot).bpmn.xml, "<test/>");
+  assert.ok(!JSON.parse(history[0].content_snapshot).pendingVersion);
+});
+
+test("Concurrent draft saves are protected even though neither increments the version", async () => {
+  const data = { ...input(), saveMode: "draft" };
+  const row = await persistBpmnDocument(data);
+  const results = await Promise.allSettled(
+    ["<a/>", "<b/>"].map((xml) =>
+      persistBpmnDocument({
+        ...data,
+        expectedVersion: 0,
+        expectedUpdatedAt: row.updated_at,
+        mutationId: crypto.randomUUID(),
+        document: { ...data.document, xml },
+      }),
+    ),
+  );
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  assert.match(results.find((r) => r.status === "rejected").reason.message, /CONFLICT/);
+});
+
+test("An existing drawing without a code gets a temporary central code on its next draft save", async () => {
+  const data = { ...input(), saveMode: "draft" };
+  const row = await persistBpmnDocument(data);
+  const saved = await persistBpmnDocument({
+    ...data,
+    mutationId: crypto.randomUUID(),
+    expectedVersion: 0,
+    expectedUpdatedAt: row.updated_at,
+    reserveCode: async () => "FLU.COM.009",
+  });
+  assert.equal(saved.current_version, 0);
+  assert.equal(JSON.parse(saved.content_inline).bpmn.codigo, "FLU.COM.009.TEMP");
 });
