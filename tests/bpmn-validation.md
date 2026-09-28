@@ -54,3 +54,10 @@
 
 - Verified original, color and monochrome controls in the actual editor preview, including rendered task fill/stroke. Appearance is a local preference and does not set the document dirty.
 - Existing control order, canvas positions and modeling commands are unchanged. Watermark remains visible under the installed bpmn-js license.
+
+## Navigation and selection — 2026-09-28
+
+- 46 automated tests pass, including partial overlap and crossed-connection selection, conditional viewport identifiers, and bound-lane renaming with unchanged DI.
+- 17 browser engine assertions pass, including grouped movement preserving relative positions, bulk deletion and undo, and exact reference DI import.
+- Manually exercised rectangle selection of eight elements, group movement, deletion/undo, zoom-dependent identifiers, fit-to-screen hiding and presentation switching.
+- Existing project-wide TypeScript diagnostics remain; no errors in the changed BPMN modules after validation.

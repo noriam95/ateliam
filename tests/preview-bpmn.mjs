@@ -35,6 +35,7 @@ createServer(async (req, res) => {
     return;
   }
   try {
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader(
       "Content-Type",
       file.endsWith(".js")

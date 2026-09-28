@@ -1,4 +1,13 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { edgeIdentification } from "@/lib/bpmn-viewport";
+import { bpmnSelectionModule } from "@/lib/bpmn-selection";
 import Modeler from "bpmn-js/lib/Modeler";
 import NavigatedViewer from "bpmn-js/lib/NavigatedViewer";
 import type { LaneBinding } from "@/lib/bpmn-document";
@@ -30,6 +39,8 @@ export const BpmnCanvas = forwardRef<
     onWarnings?: (warnings: string[]) => void;
     onReady?: () => void;
     onProperties?: () => void;
+    navigationAction?: ReactNode;
+    processName?: string;
   }
 >(
   (
@@ -43,6 +54,8 @@ export const BpmnCanvas = forwardRef<
       onWarnings,
       onReady,
       onProperties,
+      navigationAction,
+      processName,
     },
     ref,
   ) => {
@@ -54,7 +67,7 @@ export const BpmnCanvas = forwardRef<
     const [ready, setReady] = useState(false);
     const [zoom, setZoom] = useState(100);
     const [laneLabels, setLaneLabels] = useState<
-      { id: string; name: string; top: number; height: number }[]
+      { id: string; name: string; kind: string; left: number; top: number; maxWidth: number }[]
     >([]);
     const [diagrams, setDiagrams] = useState<{ id: string; name: string }[]>([]);
     const [diagram, setDiagram] = useState("");
@@ -117,7 +130,10 @@ export const BpmnCanvas = forwardRef<
       setError("");
       const instance: any = readOnly
         ? new NavigatedViewer({ container: host.current!, additionalModules: bpmnEngineModules })
-        : new Modeler({ container: host.current!, additionalModules: bpmnEngineModules });
+        : new Modeler({
+            container: host.current!,
+            additionalModules: [...bpmnEngineModules, bpmnSelectionModule],
+          });
       engine.current = instance;
       let importing = true;
       const updateOverlay = () => {
@@ -131,16 +147,43 @@ export const BpmnCanvas = forwardRef<
         const vb = canvas.viewbox();
         view.current = vb;
         setZoom(Math.round(vb.scale * 100));
+        const hostRect = host.current!.getBoundingClientRect();
+        const viewport = { x: 0, y: 0, width: hostRect.width, height: hostRect.height };
         setLaneLabels(
-          instance
-            .get("elementRegistry")
-            .filter((el: any) => el.type === "bpmn:Lane" && !el.hidden)
-            .map((el: any) => ({
-              id: el.id,
-              name: el.businessObject.name || "A DEFINIR",
-              top: (el.y - vb.y) * vb.scale,
-              height: el.height * vb.scale,
-            })),
+          registry
+            .filter((el: any) => ["bpmn:Lane", "bpmn:Participant"].includes(el.type) && !el.hidden)
+            .flatMap((el: any) => {
+              const graphics = registry.getGraphics(el);
+              const label = graphics?.querySelector(".djs-label");
+              if (!label) return [];
+              const bounds = label.getBoundingClientRect();
+              if (!bounds.width || !bounds.height) return [];
+              const position = edgeIdentification(
+                {
+                  x: (el.x - vb.x) * vb.scale,
+                  y: (el.y - vb.y) * vb.scale,
+                  width: el.width * vb.scale,
+                  height: el.height * vb.scale,
+                },
+                {
+                  x: bounds.left - hostRect.left,
+                  y: bounds.top - hostRect.top,
+                  width: bounds.width,
+                  height: bounds.height,
+                },
+                viewport,
+              );
+              return position
+                ? [
+                    {
+                      id: el.id,
+                      name: el.businessObject.name || "A DEFINIR",
+                      kind: el.type,
+                      ...position,
+                    },
+                  ]
+                : [];
+            }),
         );
       };
       instance.on("canvas.viewbox.changed", updateOverlay);
@@ -331,6 +374,7 @@ export const BpmnCanvas = forwardRef<
                 .filter((e: any) => e.parent === canvas.getRootElement() && !e.labelTarget),
             );
           if (name === "connect") m.get("globalConnect").start(event);
+          if (name === "pan") m.get("handTool").activateHand(event);
           if (name === "lasso") m.get("lassoTool").activateSelection(event);
           if (name === "copy") m.get("copyPaste").copy(selection);
           if (name === "paste") m.get("copyPaste").paste();
@@ -445,37 +489,40 @@ export const BpmnCanvas = forwardRef<
             {error || "Abrindo desenho…"}
           </div>
         )}
-        {ready && frozen && (
-          <div className="bf-bpmn-frozen-lanes" aria-label="Identificações fixas das raias">
-            {laneLabels
-              .filter((l) => l.top + l.height > 0)
-              .map((l) => (
-                <button
-                  key={l.id}
-                  type="button"
-                  disabled={readOnly}
-                  style={{
-                    top: Math.max(0, l.top),
-                    height: Math.max(24, l.height + Math.min(0, l.top)),
-                  }}
-                  onClick={() =>
-                    engine.current
-                      ?.get("selection")
-                      .select(engine.current.get("elementRegistry").get(l.id))
-                  }
-                >
-                  <span title={`Rótulo no desenho: ${l.name}`}>
-                    {bindings[l.id]?.name || l.name}
-                  </span>
-                  <small>
-                    {bindings[l.id]
-                      ? bindings[l.id].kind === "area"
-                        ? "Área"
-                        : "Cargo"
-                      : "A DEFINIR"}
-                  </small>
-                </button>
-              ))}
+        {ready && frozen && laneLabels.length > 0 && (
+          <div
+            className="bf-bpmn-edge-identifications"
+            aria-label="Identificações fora da área visível"
+          >
+            {laneLabels.map((label) => (
+              <div
+                key={label.id}
+                className={`bf-bpmn-edge-label ${label.kind === "bpmn:Participant" ? "is-pool" : "is-lane"}`}
+                style={{
+                  left:
+                    label.kind === "bpmn:Lane" &&
+                    label.left === 8 &&
+                    laneLabels.some(
+                      (other) => other.kind === "bpmn:Participant" && other.left === 8,
+                    )
+                      ? 46
+                      : label.left,
+                  top: label.kind === "bpmn:Participant" ? Math.max(8, label.top - 70) : label.top,
+                  maxWidth: label.maxWidth,
+                }}
+                title={label.name}
+              >
+                <small>{label.kind === "bpmn:Lane" ? "Raia" : "Piscina"}</small>
+                <span>
+                  {label.kind === "bpmn:Participant" && processName && processName !== label.name
+                    ? `${processName} · ${label.name}`
+                    : bindings[label.id]?.name || label.name}
+                </span>
+                {label.kind === "bpmn:Participant" && processName && processName !== label.name && (
+                  <small>Processo: {processName}</small>
+                )}
+              </div>
+            ))}
           </div>
         )}
         {diagrams.length > 1 && (
@@ -511,6 +558,7 @@ export const BpmnCanvas = forwardRef<
             >
               −
             </button>
+            {navigationAction}
             <output aria-label="Zoom atual">{zoom}%</output>
             <button
               aria-label="Aumentar zoom"

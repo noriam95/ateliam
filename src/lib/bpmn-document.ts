@@ -283,3 +283,19 @@ export function legacyBpmn(data: any): BpmnDocument {
     legacySource: JSON.stringify(data),
   };
 }
+
+/** Only explicitly associated lane names change; source XML remains separately retained. */
+export async function applyBpmnLaneNames(xml: string, bindings: Record<string, LaneBinding>) {
+  if (!Object.keys(bindings).length) return xml;
+  const moddle = new BpmnModdle();
+  const parsed = await moddle.fromXML(xml);
+  let changed = false;
+  for (const [id, binding] of Object.entries(bindings)) {
+    const lane = parsed.elementsById[id];
+    if (lane?.$type === "bpmn:Lane" && lane.name !== binding.name) {
+      lane.name = binding.name;
+      changed = true;
+    }
+  }
+  return changed ? (await moddle.toXML(parsed.rootElement, { format: true })).xml : xml;
+}

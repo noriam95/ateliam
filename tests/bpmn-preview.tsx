@@ -7,6 +7,7 @@ import type { BpmnDocument } from "../src/lib/bpmn-document";
 import Modeler from "bpmn-js/lib/Modeler";
 import NavigatedViewer from "bpmn-js/lib/NavigatedViewer";
 import { BpmnModdle } from "bpmn-moddle";
+import { bpmnSelectionModule } from "../src/lib/bpmn-selection";
 import { bpmnEngineModules } from "../src/lib/bpmn-engine-modules";
 import reference from "./fixtures/MERCADO_INTERNO_ASIS_Bizagi_REV02_premissas_visuais.bpmn";
 import source from "./fixtures/bpmn-di-rich.bpmn";
@@ -146,7 +147,10 @@ async function regression() {
   try {
     const moddle = new BpmnModdle();
     const before = await moddle.fromXML(source);
-    engine = new Modeler({ container: host, additionalModules: bpmnEngineModules });
+    engine = new Modeler({
+      container: host,
+      additionalModules: [...bpmnEngineModules, bpmnSelectionModule],
+    });
     await engine.importXML(source);
     const output = await engine.saveXML({ format: true });
     const after = await moddle.fromXML(output.xml);
@@ -167,6 +171,22 @@ async function regression() {
       modeling = engine.get("modeling"),
       stack = engine.get("commandStack");
     const task = registry.get("Manual_1");
+    const second = registry.get("User_1");
+    if (!second) throw new Error("Missing group fixture task");
+    const start = [task.x, task.y, second.x, second.y];
+    engine.get("selection").select([task, second]);
+    modeling.moveElements([task, second], { x: 30, y: 20 }, task.parent);
+    check(
+      task.x === start[0] + 30 &&
+        second.x === start[2] + 30 &&
+        task.y === start[1] + 20 &&
+        second.y === start[3] + 20,
+      "mover seleção mantendo posições relativas",
+    );
+    stack.undo();
+    modeling.removeElements([task, second]);
+    check(!registry.get(task.id) && !registry.get(second.id), "excluir seleção em conjunto");
+    stack.undo();
     const x = task.x;
     modeling.moveShape(task, { x: 80, y: 0 });
     check(task.x === x + 80, "movimentação livre");
@@ -219,8 +239,9 @@ async function regression() {
     engine.get("canvas").scroll({ dx: 120, dy: 90 });
     const readOnlyXml = (await engine.saveXML({ format: true })).xml;
     const presented = await moddle.fromXML(readOnlyXml);
+    const editedSnapshot = await moddle.fromXML(finalXml);
     check(
-      JSON.stringify(geometry(before.rootElement)) ===
+      JSON.stringify(geometry(editedSnapshot.rootElement)) ===
         JSON.stringify(geometry(presented.rootElement)),
       "pan e zoom não alteram DI",
     );
@@ -234,7 +255,10 @@ async function regression() {
       "referência Bizagi preservada no visualizador",
     );
     engine.destroy();
-    engine = new Modeler({ container: host, additionalModules: bpmnEngineModules });
+    engine = new Modeler({
+      container: host,
+      additionalModules: [...bpmnEngineModules, bpmnSelectionModule],
+    });
     await engine.importXML(reference);
     const refEdited = await moddle.fromXML((await engine.saveXML({ format: true })).xml);
     check(

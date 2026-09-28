@@ -4,6 +4,7 @@ import { BpmnCanvas } from "./bpmn-canvas";
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
 import {
   inspectBpmn,
+  applyBpmnLaneNames,
   normalizedBpmnName,
   type BpmnDocument,
   type BpmnInspection,
@@ -304,23 +305,32 @@ export function BpmnImportWizard({
         {step === 3 && (
           <button
             className="bf-bpmn-primary"
-            disabled={!confirmed || !process || !source}
-            onClick={() =>
-              source &&
-              process &&
-              onImport({
-                schemaVersion: 2,
-                xml: source.xml,
-                originalXml: source.xml,
-                originalFilename: source.name,
-                importedAt: new Date().toISOString(),
-                origin: "imported",
-                processId: process.id,
-                processName: process.name,
-                laneBindings: bindings,
-                status: "Rascunho",
-              })
-            }
+            disabled={busy || !confirmed || !process || !source}
+            onClick={async () => {
+              if (!source || !process || busy) return;
+              setBusy(true);
+              try {
+                const xml = await applyBpmnLaneNames(source.xml, bindings);
+                onImport({
+                  schemaVersion: 2,
+                  xml,
+                  originalXml: source.xml,
+                  originalFilename: source.name,
+                  importedAt: new Date().toISOString(),
+                  origin: "imported",
+                  processId: process.id,
+                  processName: process.name,
+                  laneBindings: bindings,
+                  status: "Rascunho",
+                });
+              } catch (error) {
+                setError(
+                  error instanceof Error ? error.message : "Não foi possível associar as raias.",
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
           >
             Importar e editar
           </button>

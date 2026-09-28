@@ -967,3 +967,52 @@
 .bf-bpmn-editor[data-appearance="mono"] .djs-container > svg {
   filter: grayscale(1);
 }
+
+/* Viewport context appears only while the original label is clipped. */
+.bf-bpmn-canvas.has-frozen-lanes .bf-bpmn-engine {
+  left: 0;
+}
+.bf-bpmn-edge-identifications {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+}
+.bf-bpmn-edge-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 9px;
+  background: #fffffff2;
+  border: 1px solid #dce2e9;
+  border-radius: 7px;
+  box-shadow: 0 2px 7px #18233214;
+  font: 11px var(--font-sans);
+  color: #26313e;
+}
+.bf-bpmn-edge-label > span {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bf-bpmn-edge-label > small {
+  font-size: 9px;
+  color: #647083;
+}
+.bf-bpmn-canvas .djs-lasso-overlay {
+  fill: #d1a24a20;
+  stroke: #a87925;
+  stroke-width: 1;
+}
+
+.bf-bpmn-edge-label.is-pool {
+  writing-mode: vertical-rl;
+  max-height: 190px;
+  padding: 8px 5px;
+}
+.bf-bpmn-edge-label.is-pool > small {
+  display: none;
+}

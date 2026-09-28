@@ -135,3 +135,7 @@ TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e mo
 - A lista de desenhos usa paginação de 20 linhas, pesquisa no servidor, estados de carregamento, vazio e erro recuperável. Trocar organização recarrega os cadastros e a lista.
 
 BPMN visual finish: retain control positions and geometry; reuse BF Flow font and gold accent with quiet neutral surfaces. Appearance modes (original, color, monochrome) are local viewing preferences, never document edits. Original remains default; exports retain source colors. Keep bpmn.io watermark fully visible as required by the installed license.
+
+## BPMN navigation — 2026-09-28
+
+The editor has a single modeling toolbar: import beside Pool, icon-only save beside Properties, and icon-only presentation beside zoom. The former process header is removed; document/version/status remain in the footer. Plain left-drag on canvas/pool/lane background selects intersecting elements; containers require full enclosure to avoid moving an entire pool accidentally. Pan uses the hand tool or middle mouse. Edge identifications appear only when the original rendered name is clipped and its owning region still intersects the viewport; no permanent reserved lane strip or DI mutation. Explicit lane associations name the editable lane from the selected central record, including confirmed imports; original source XML remains retained.

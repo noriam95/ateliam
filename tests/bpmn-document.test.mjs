@@ -10,7 +10,7 @@ const bundle = await build({
   format: "esm",
   write: false,
 });
-const { inspectBpmn, blankBpmn, readBpmnDocument } = await import(
+const { inspectBpmn, blankBpmn, readBpmnDocument, applyBpmnLaneNames } = await import(
   "data:text/javascript;base64," + Buffer.from(bundle.outputFiles[0].text).toString("base64")
 );
 const fixture = await readFile("tests/fixtures/bpmn-di-rich.bpmn", "utf8");
@@ -136,4 +136,31 @@ test("Legacy drawings remain accessible through the data adapter", async () => {
   assert.equal(doc.origin, "legacy");
   assert.equal(parsed.elementsById.Legacy_a.name, "Conferir");
   assert.equal(parsed.elementsById.Legacy_a_di.bounds.x, 330);
+});
+
+test("selected catalog names replace lane labels without altering diagram geometry", async () => {
+  const parser = new BpmnModdle();
+  const before = await parser.fromXML(fixture);
+  const output = await applyBpmnLaneNames(fixture, {
+    Lane_1: { id: "area", kind: "area", name: "FINANCEIRO" },
+  });
+  const after = await parser.fromXML(output);
+  assert.equal(after.elementsById.Lane_1.name, "FINANCEIRO");
+  const geometry = (root) =>
+    root.diagrams
+      .flatMap((d) =>
+        d.plane.planeElement.map((e) => ({
+          id: e.id,
+          bounds: e.bounds && [e.bounds.x, e.bounds.y, e.bounds.width, e.bounds.height],
+          waypoints: e.waypoint?.map((p) => [p.x, p.y]),
+        })),
+      )
+      .sort((a, b) => a.id.localeCompare(b.id));
+  assert.deepEqual(geometry(before.rootElement), geometry(after.rootElement));
+  const updated = await parser.fromXML(
+    await applyBpmnLaneNames(output, {
+      Lane_1: { id: "position", kind: "position", name: "ANALISTA" },
+    }),
+  );
+  assert.equal(updated.elementsById.Lane_1.name, "ANALISTA");
 });

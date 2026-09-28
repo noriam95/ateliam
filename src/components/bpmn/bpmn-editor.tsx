@@ -9,6 +9,7 @@ import {
   Undo2,
   Redo2,
   MousePointer2,
+  Hand,
   Link2,
   Save,
   Download,
@@ -320,6 +321,25 @@ export function BpmnEditor({
       setError(String(error));
     }
   }
+  const presentationAction = canEdit ? (
+    <button
+      aria-label={presenting ? "Editar desenho" : "Apresentar"}
+      title={presenting ? "Editar desenho" : "Apresentar"}
+      disabled={!ready || busy}
+      onClick={async () => {
+        try {
+          const snapshot = await capture();
+          setPresentationXml(snapshot.xml);
+          if (!presenting) setReady(false);
+          setPresenting(!presenting);
+        } catch (error) {
+          setError(String(error));
+        }
+      }}
+    >
+      <span>{presenting ? <Pencil size={16} /> : <Presentation size={16} />}</span>
+    </button>
+  ) : null;
   const palette = [
     ["bpmn:StartEvent", "Evento", Circle],
     ["bpmn:Task", "Tarefa", Square],
@@ -332,60 +352,17 @@ export function BpmnEditor({
       data-appearance={appearance}
       className={`bf-bpmn-editor ${readOnly ? "is-presentation" : ""}`}
     >
-      <header className="bf-bpmn-process-header">
-        <button
-          aria-label="Voltar aos desenhos"
-          disabled={busy}
-          onClick={() => (dirty ? setExit(true) : onBack())}
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="bf-bpmn-process-title">
-          <span>
-            {record?.code || document.codigo || "Desenho BPMN"}{" "}
-            {record ? `· versão ${record.current_version}` : "· novo"}
-          </span>
-          <h1 title={document.processName}>{document.processName || "Selecione um processo"}</h1>
-        </div>
-        <span className="bf-bpmn-status">{document.status}</span>
-        {canEdit && (
-          <button
-            disabled={!ready || busy}
-            onClick={async () => {
-              try {
-                const snapshot = await capture();
-                setPresentationXml(snapshot.xml);
-                if (!presenting) setReady(false);
-                setPresenting(!presenting);
-              } catch (error) {
-                setError(String(error));
-              }
-            }}
-          >
-            <span>{presenting ? <Pencil size={16} /> : <Presentation size={16} />}</span>
-            {presenting ? "Editar" : "Apresentar"}
-          </button>
-        )}
-        {!readOnly && (
-          <button disabled={busy || !ready} onClick={() => setImporting(true)}>
-            <Upload size={16} />
-            Importar BPMN
-          </button>
-        )}
-        {!readOnly && (
-          <button
-            className="bf-bpmn-primary"
-            disabled={busy || !ready || !dirty}
-            onClick={() => void save()}
-          >
-            <Save size={16} />
-            {busy ? "Salvando…" : "Salvar"}
-          </button>
-        )}
-      </header>
       {taskContext && <div hidden={readOnly}>{taskContext}</div>}
       {!readOnly && (
         <div className="bf-bpmn-toolbar" aria-label="Ferramentas de edição">
+          <button
+            aria-label="Voltar aos desenhos"
+            title="Voltar aos desenhos"
+            disabled={busy}
+            onClick={() => (dirty ? setExit(true) : onBack())}
+          >
+            <ArrowLeft size={18} />
+          </button>
           <button aria-label="Desfazer" title="Desfazer (Ctrl+Z)" onClick={() => action("undo")}>
             <Undo2 size={17} />
           </button>
@@ -401,6 +378,13 @@ export function BpmnEditor({
             <MousePointer2 size={16} />
             Selecionar
           </button>
+          <button
+            title="Mover a área de desenho (ou arraste com o botão do meio)"
+            onClick={(e) => action("pan", e.nativeEvent)}
+          >
+            <Hand size={16} />
+            Navegar
+          </button>
           <button onClick={(e) => action("connect", e.nativeEvent)}>
             <Link2 size={16} />
             Conectar
@@ -412,6 +396,10 @@ export function BpmnEditor({
           <button onClick={() => createShape("bpmn:Participant")}>
             <Plus size={16} />
             Pool
+          </button>
+          <button disabled={busy || !ready} onClick={() => setImporting(true)}>
+            <Upload size={16} />
+            Importar BPMN
           </button>
           <span className="bf-bpmn-divider" />
           <button aria-label="Copiar seleção" disabled={!selection} onClick={() => action("copy")}>
@@ -431,6 +419,15 @@ export function BpmnEditor({
             <Trash2 size={16} />
           </button>
           <div className="bf-bpmn-toolbar-spacer" />
+          <button
+            aria-label={busy ? "Salvando…" : "Salvar"}
+            title="Salvar"
+            className="bf-bpmn-primary"
+            disabled={busy || !ready || !dirty}
+            onClick={() => void save()}
+          >
+            <Save size={16} />
+          </button>
           <button onClick={() => setProperties(!properties)} aria-pressed={properties}>
             <SlidersHorizontal size={16} />
             Propriedades
@@ -476,7 +473,7 @@ export function BpmnEditor({
                   if (e.detail === 0) createShape(type);
                 }}
               >
-                <Icon size={22} strokeWidth={type === "bpmn:EndEvent" ? 3 : 1.6} />
+                <Icon size={22} strokeWidth={1.6} />
                 <span>{label}</span>
               </button>
             ))}
@@ -509,6 +506,8 @@ export function BpmnEditor({
         >
           <BpmnCanvas
             key={canvasGeneration}
+            navigationAction={presentationAction}
+            processName={document.processName}
             ref={canvas}
             xml={seed}
             readOnly={!canEdit}
@@ -523,6 +522,8 @@ export function BpmnEditor({
         </div>
         {presenting && canEdit && (
           <BpmnCanvas
+            navigationAction={presentationAction}
+            processName={document.processName}
             ref={presentationCanvas}
             xml={presentationXml}
             readOnly
@@ -692,13 +693,22 @@ export function BpmnEditor({
         )}
       </div>
       <footer className="bf-bpmn-footer">
+        {readOnly && (
+          <button
+            aria-label="Voltar aos desenhos"
+            onClick={() => (dirty ? setExit(true) : onBack())}
+          >
+            <ArrowLeft size={16} />
+          </button>
+        )}
         <span role="status">
           {busy ? "Salvando…" : dirty ? "Alterações não salvas" : "Salvo"}
           {localStatus ? ` · ${localStatus}` : ""}
+          {` · ${record?.code || document.codigo || "Desenho BPMN"}${record ? ` · v${record.current_version}` : ""} · ${document.status}`}
         </span>
         <label className="bf-bpmn-check">
           <input type="checkbox" checked={frozen} onChange={(e) => setFrozen(e.target.checked)} />
-          Fixar raias
+          Identificar fora da tela
         </label>
         <button disabled={!ready} onClick={() => action("center")}>
           Centralizar
