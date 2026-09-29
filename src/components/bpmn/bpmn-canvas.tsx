@@ -489,6 +489,20 @@ export const BpmnCanvas = forwardRef<
               if (event.key === "Tab") setContextMenu(null);
             }}
           >
+            {contextMenu.element.parent && (
+              <>
+                <button role="menuitem" onClick={() => menuAction("edit")}>
+                  Editar texto
+                </button>
+                <hr />
+                <button role="menuitem" onClick={() => menuAction("cut")}>
+                  Recortar
+                </button>
+                <button role="menuitem" onClick={() => menuAction("copy")}>
+                  Copiar
+                </button>
+              </>
+            )}
             <button
               role="menuitem"
               disabled={engine.current.get("clipboard").isEmpty()}
@@ -498,9 +512,14 @@ export const BpmnCanvas = forwardRef<
             </button>
             {contextMenu.element.parent && (
               <>
-                <button role="menuitem" onClick={() => menuAction("edit")}>
-                  Editar texto
+                <button
+                  role="menuitem"
+                  disabled={!!contextMenu.element.waypoints}
+                  onClick={() => menuAction("duplicate")}
+                >
+                  Duplicar
                 </button>
+                <hr />
                 {!engine.current.get("popupMenu").isEmpty(contextMenu.element, "bpmn-replace") && (
                   <button role="menuitem" onClick={() => menuAction("type")}>
                     {contextMenu.element.type.includes("Task") ||
@@ -514,26 +533,12 @@ export const BpmnCanvas = forwardRef<
                     <span>›</span>
                   </button>
                 )}
-                <hr />
-                <button role="menuitem" onClick={() => menuAction("cut")}>
-                  Recortar
-                </button>
-                <button role="menuitem" onClick={() => menuAction("copy")}>
-                  Copiar
-                </button>
-                <button
-                  role="menuitem"
-                  disabled={!!contextMenu.element.waypoints}
-                  onClick={() => menuAction("duplicate")}
-                >
-                  Duplicar
-                </button>
-                <button role="menuitem" onClick={() => menuAction("delete")}>
-                  Excluir
-                </button>
-                <hr />
                 <button role="menuitem" onClick={() => menuAction("properties")}>
                   Propriedades
+                </button>
+                <hr />
+                <button role="menuitem" onClick={() => menuAction("delete")}>
+                  Excluir
                 </button>
               </>
             )}
