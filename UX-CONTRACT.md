@@ -153,3 +153,6 @@ Menu de contexto BPMN: Editar texto; grupo Recortar, Copiar, Colar, Duplicar; gr
 A área de modelagem mantém a identidade do BF Flow e os tokens de src/styles.css. Paleta compacta com ícones e nomes; painel de propriedades dividido em Elemento e Desenho; identificação do processo/código e estado do salvamento no rodapé. Controles de zoom, centralização e apresentação têm faixa própria fora do canvas. Em telas estreitas, propriedades ficam abaixo do desenho, com rolagem interna, sem cobrir o canvas.
 
 Pesquisas do módulo reutilizam DropdownTextField com a variante inlineOptions: resultados ocupam espaço no formulário, sem sobrepor campos. Menus contextuais e menus nativos de tipo usam uma camada fora do canvas recortado e respeitam os limites da janela. Exportação usa TaskDialog, com BPMN, PNG e original importado identificados. Avisos de importação recolhíveis, com contagem visível. Mensagens de sucesso de salvamento ficam no rodapé, sem deslocar o desenho.
+
+Exportar fica imediatamente após Importar na barra de edição. Em apresentação/somente leitura, mantém acesso no rodapé, pois a barra de edição fica oculta.
+Verificar desenho acompanha o mesmo grupo: Importar → Exportar → Verificar desenho.

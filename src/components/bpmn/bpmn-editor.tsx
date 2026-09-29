@@ -428,6 +428,34 @@ export function BpmnEditor({
             <Upload size={16} />
             <span className="bf-bpmn-tool-label">Importar BPMN</span>
           </button>
+          <button
+            aria-label={exporting ? "Exportando…" : "Exportar"}
+            title="Exportar desenho"
+            disabled={!ready || exporting}
+            onClick={() => setExportMenu(true)}
+          >
+            <Download size={16} />
+            <span className="bf-bpmn-tool-label">{exporting ? "Exportando…" : "Exportar"}</span>
+          </button>
+          <button
+            aria-label="Verificar desenho"
+            title="Verificar desenho"
+            disabled={!ready}
+            onClick={async () => {
+              try {
+                const check = await inspectBpmn(await canvas.current!.xml());
+                const unbound = check.lanes
+                  .filter((l) => !document.laneBindings[l.id])
+                  .map((l) => `Raia sem responsável: ${l.name} (A DEFINIR).`);
+                setWarnings([...check.warnings, ...unbound]);
+                setShowWarnings(true);
+              } catch (error) {
+                setError(String(error));
+              }
+            }}
+          >
+            <CheckCircle2 size={16} /> <span className="bf-bpmn-tool-label">Verificar desenho</span>
+          </button>
           <div className="bf-bpmn-toolbar-spacer" />
           <button
             aria-label={busy ? "Salvando…" : "Salvar"}
@@ -853,28 +881,11 @@ export function BpmnEditor({
           {busy ? "Salvando…" : dirty ? "Alterações não salvas" : notice || "Salvo"}
         </span>
         <div className="bf-bpmn-footer-actions">
-          {!readOnly && (
-            <button
-              disabled={!ready}
-              onClick={async () => {
-                try {
-                  const check = await inspectBpmn(await canvas.current!.xml());
-                  const unbound = check.lanes
-                    .filter((l) => !document.laneBindings[l.id])
-                    .map((l) => `Raia sem responsável: ${l.name} (A DEFINIR).`);
-                  setWarnings([...check.warnings, ...unbound]);
-                  setShowWarnings(true);
-                } catch (error) {
-                  setError(String(error));
-                }
-              }}
-            >
-              <CheckCircle2 size={15} /> Verificar desenho
+          {readOnly && (
+            <button disabled={!ready || exporting} onClick={() => setExportMenu(true)}>
+              <Download size={15} /> {exporting ? "Exportando…" : "Exportar"}
             </button>
           )}
-          <button disabled={!ready || exporting} onClick={() => setExportMenu(true)}>
-            <Download size={15} /> {exporting ? "Exportando…" : "Exportar"}
-          </button>
         </div>
       </footer>
       {exportMenu && (

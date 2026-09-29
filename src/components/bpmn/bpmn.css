@@ -1458,3 +1458,12 @@ dialog.bf-bpmn-import {
     align-items: stretch;
   }
 }
+
+@media (max-width: 380px) {
+  .bf-bpmn-toolbar {
+    flex-wrap: wrap;
+  }
+  .bf-bpmn-toolbar-spacer {
+    display: none;
+  }
+}
