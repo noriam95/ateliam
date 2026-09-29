@@ -1,11 +1,14 @@
 import {
   forwardRef,
   useEffect,
+  useLayoutEffect,
   useImperativeHandle,
   useRef,
   useState,
   type ReactNode,
 } from "react";
+import { Crosshair } from "lucide-react";
+import { createPortal } from "react-dom";
 import { exportBpmnPng } from "@/lib/bpmn-export";
 import { edgeIdentification } from "@/lib/bpmn-viewport";
 import { bpmnLaneModule } from "@/lib/bpmn-lanes";
@@ -87,6 +90,13 @@ export const BpmnCanvas = forwardRef<
       point: { x: number; y: number };
     } | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+      const menu = menuRef.current;
+      if (!contextMenu || !menu) return;
+      const bounds = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(8, Math.min(contextMenu.x, window.innerWidth - bounds.width - 8))}px`;
+      menu.style.top = `${Math.max(8, Math.min(contextMenu.y, window.innerHeight - bounds.height - 8))}px`;
+    }, [contextMenu]);
     useEffect(() => {
       if (!contextMenu) return;
       menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
@@ -158,6 +168,30 @@ export const BpmnCanvas = forwardRef<
             additionalModules: [...bpmnEngineModules, bpmnSelectionModule, bpmnLaneModule],
           });
       engine.current = instance;
+      // Native replace menus share the viewport overlay layer, not the clipped canvas.
+      let popupLayer: HTMLElement | null = null;
+      let popupFrame = 0;
+      instance.on("popupMenu.open", () => {
+        popupLayer = host.current?.querySelector<HTMLElement>(".djs-popup-parent") || null;
+        if (!popupLayer) return;
+        popupLayer.classList.add("bf-bpmn-engine-popup", "bio-theme-parent", "djs-parent");
+        (host.current?.closest("dialog") || window.document.body).appendChild(popupLayer);
+      });
+      instance.on("popupMenu.opened", () => {
+        popupFrame = requestAnimationFrame(() => {
+          const popup = popupLayer?.querySelector<HTMLElement>(".djs-popup");
+          if (!popup || disposed) return;
+          const bounds = popup.getBoundingClientRect();
+          popup.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - bounds.width - 8))}px`;
+          popup.style.top = `${Math.max(8, Math.min(bounds.top, window.innerHeight - bounds.height - 8))}px`;
+        });
+      });
+      const closeMenus = () => {
+        setContextMenu(null);
+        if (!readOnly) instance.get("popupMenu").close();
+      };
+      window.addEventListener("resize", closeMenus);
+
       let importing = true;
       const updateOverlay = () => {
         if (disposed || !instance.getDefinitions()) return;
@@ -305,7 +339,10 @@ export const BpmnCanvas = forwardRef<
       return () => {
         disposed = true;
         resize.disconnect();
+        window.removeEventListener("resize", closeMenus);
+        cancelAnimationFrame(popupFrame);
         instance.destroy();
+        popupLayer?.remove();
         if (engine.current === instance) engine.current = null;
       };
     }, [xml, readOnly]);
@@ -457,93 +494,98 @@ export const BpmnCanvas = forwardRef<
           tabIndex={-1}
           aria-label={readOnly ? "Desenho BPMN em apresentação" : "Área de desenho BPMN"}
         />
-        {contextMenu && !readOnly && (
-          <div
-            ref={menuRef}
-            className="bf-bpmn-context-menu"
-            role="menu"
-            aria-label="Ações do elemento"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onContextMenu={(event) => event.preventDefault()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault();
-                setContextMenu(null);
-                host.current?.focus();
-              }
-              if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-                event.preventDefault();
-                const buttons = Array.from(
-                  menuRef.current!.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
-                );
-                const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-                const next =
-                  event.key === "Home"
-                    ? 0
-                    : event.key === "End"
-                      ? buttons.length - 1
-                      : (current + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) %
-                        buttons.length;
-                buttons[next]?.focus();
-              }
-              if (event.key === "Tab") setContextMenu(null);
-            }}
-          >
-            {contextMenu.element.parent && (
-              <>
-                <button role="menuitem" onClick={() => menuAction("edit")}>
-                  Editar texto
-                </button>
-                <hr />
-                <button role="menuitem" onClick={() => menuAction("cut")}>
-                  Recortar
-                </button>
-                <button role="menuitem" onClick={() => menuAction("copy")}>
-                  Copiar
-                </button>
-              </>
-            )}
-            <button
-              role="menuitem"
-              disabled={engine.current.get("clipboard").isEmpty()}
-              onClick={() => menuAction("paste")}
+        {contextMenu &&
+          !readOnly &&
+          createPortal(
+            <div
+              ref={menuRef}
+              className="bf-bpmn-context-menu"
+              role="menu"
+              aria-label="Ações do elemento"
+              style={{ left: contextMenu.x, top: contextMenu.y }}
+              onContextMenu={(event) => event.preventDefault()}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setContextMenu(null);
+                  host.current?.focus();
+                }
+                if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+                  event.preventDefault();
+                  const buttons = Array.from(
+                    menuRef.current!.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
+                  );
+                  const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                  const next =
+                    event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? buttons.length - 1
+                        : (current + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) %
+                          buttons.length;
+                  buttons[next]?.focus();
+                }
+                if (event.key === "Tab") setContextMenu(null);
+              }}
             >
-              Colar
-            </button>
-            {contextMenu.element.parent && (
-              <>
-                <button
-                  role="menuitem"
-                  disabled={!!contextMenu.element.waypoints}
-                  onClick={() => menuAction("duplicate")}
-                >
-                  Duplicar
-                </button>
-                <hr />
-                {!engine.current.get("popupMenu").isEmpty(contextMenu.element, "bpmn-replace") && (
-                  <button role="menuitem" onClick={() => menuAction("type")}>
-                    {contextMenu.element.type.includes("Task") ||
-                    contextMenu.element.type === "bpmn:SubProcess"
-                      ? "Tipo de tarefa / subprocesso"
-                      : contextMenu.element.type.includes("Event")
-                        ? "Tipo de evento"
-                        : contextMenu.element.type.includes("Gateway")
-                          ? "Tipo de gateway"
-                          : "Alterar tipo"}{" "}
-                    <span>›</span>
+              {contextMenu.element.parent && (
+                <>
+                  <button role="menuitem" onClick={() => menuAction("edit")}>
+                    Editar texto
                   </button>
-                )}
-                <button role="menuitem" onClick={() => menuAction("properties")}>
-                  Propriedades
-                </button>
-                <hr />
-                <button role="menuitem" onClick={() => menuAction("delete")}>
-                  Excluir
-                </button>
-              </>
-            )}
-          </div>
-        )}
+                  <hr />
+                  <button role="menuitem" onClick={() => menuAction("cut")}>
+                    Recortar
+                  </button>
+                  <button role="menuitem" onClick={() => menuAction("copy")}>
+                    Copiar
+                  </button>
+                </>
+              )}
+              <button
+                role="menuitem"
+                disabled={engine.current.get("clipboard").isEmpty()}
+                onClick={() => menuAction("paste")}
+              >
+                Colar
+              </button>
+              {contextMenu.element.parent && (
+                <>
+                  <button
+                    role="menuitem"
+                    disabled={!!contextMenu.element.waypoints}
+                    onClick={() => menuAction("duplicate")}
+                  >
+                    Duplicar
+                  </button>
+                  <hr />
+                  {!engine.current
+                    .get("popupMenu")
+                    .isEmpty(contextMenu.element, "bpmn-replace") && (
+                    <button role="menuitem" onClick={() => menuAction("type")}>
+                      {contextMenu.element.type.includes("Task") ||
+                      contextMenu.element.type === "bpmn:SubProcess"
+                        ? "Tipo de tarefa / subprocesso"
+                        : contextMenu.element.type.includes("Event")
+                          ? "Tipo de evento"
+                          : contextMenu.element.type.includes("Gateway")
+                            ? "Tipo de gateway"
+                            : "Alterar tipo"}{" "}
+                      <span>›</span>
+                    </button>
+                  )}
+                  <button role="menuitem" onClick={() => menuAction("properties")}>
+                    Propriedades
+                  </button>
+                  <hr />
+                  <button role="menuitem" onClick={() => menuAction("delete")}>
+                    Excluir
+                  </button>
+                </>
+              )}
+            </div>,
+            host.current?.closest("dialog") || window.document.body,
+          )}
         {!ready && (
           <div className="bf-bpmn-canvas-state" role={error ? "alert" : "status"}>
             {error || "Abrindo desenho…"}
@@ -585,48 +627,70 @@ export const BpmnCanvas = forwardRef<
             ))}
           </div>
         )}
-        {diagrams.length > 1 && (
-          <select
-            className="bf-bpmn-diagrams"
-            aria-label="Diagrama do arquivo"
-            value={diagram}
-            onChange={async (e) => {
-              const next = e.target.value;
-              try {
-                await engine.current.open(
-                  engine.current.getDefinitions().diagrams.find((d: any) => d.id === next),
-                );
-                setDiagram(next);
-                engine.current.get("canvas").zoom("fit-viewport", "auto");
-              } catch (error) {
-                setError(String(error));
-              }
-            }}
-          >
-            {diagrams.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        )}
         {ready && (
           <div className="bf-bpmn-zoom" aria-label="Navegação do desenho">
+            {diagrams.length > 1 && (
+              <select
+                className="bf-bpmn-diagrams"
+                aria-label="Diagrama do arquivo"
+                value={diagram}
+                onChange={async (e) => {
+                  const next = e.target.value;
+                  try {
+                    await engine.current.open(
+                      engine.current.getDefinitions().diagrams.find((d: any) => d.id === next),
+                    );
+                    setDiagram(next);
+                    engine.current.get("canvas").zoom("fit-viewport", "auto");
+                  } catch (error) {
+                    setError(String(error));
+                  }
+                }}
+              >
+                {diagrams.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
             <button
               aria-label="Diminuir zoom"
+              title="Diminuir zoom"
               onClick={() => engine.current.get("canvas").zoom(Math.max(0.15, zoom / 100 / 1.2))}
             >
               −
             </button>
-            {navigationAction}
             <output aria-label="Zoom atual">{zoom}%</output>
             <button
               aria-label="Aumentar zoom"
+              title="Aumentar zoom"
               onClick={() => engine.current.get("canvas").zoom(Math.min(4, (zoom / 100) * 1.2))}
             >
               +
             </button>
-            <button onClick={() => engine.current.get("canvas").zoom("fit-viewport", "auto")}>
+            <button
+              title="Centralizar sem alterar o zoom"
+              aria-label="Centralizar"
+              onClick={() => {
+                const canvas = engine.current.get("canvas");
+                const box = canvas.viewbox();
+                canvas.viewbox({
+                  x: box.inner.x - (box.width - box.inner.width) / 2,
+                  y: box.inner.y - (box.height - box.inner.height) / 2,
+                  width: box.width,
+                  height: box.height,
+                });
+              }}
+            >
+              <Crosshair size={15} />
+            </button>
+            {navigationAction}
+            <button
+              title="Exibir o desenho inteiro"
+              onClick={() => engine.current.get("canvas").zoom("fit-viewport", "auto")}
+            >
               Ajustar à tela
             </button>
           </div>

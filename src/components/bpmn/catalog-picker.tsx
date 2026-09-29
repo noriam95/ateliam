@@ -46,26 +46,29 @@ export function CatalogPicker({
   }, [value, items]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
-      <DropdownTextField
-        label={label || names[kind]}
-        value={text}
-        options={items.map(itemLabel)}
-        placeholder={`Pesquisar ${names[kind].toLocaleLowerCase("pt-BR")}…`}
-        onChange={(next) => {
-          setText(next);
-          onChange(items.find((i) => itemLabel(i) === next) || null);
-        }}
-        createLabel={`Cadastrar ${names[kind].toLocaleLowerCase("pt-BR")}`}
-        onCreate={
-          create
-            ? (name) => {
-                setError("");
-                setInvalidField(null);
-                setCreation({ name, sigla: "", areaId: "" });
-              }
-            : undefined
-        }
-      />
+      <div className="bf-bpmn-catalog">
+        <DropdownTextField
+          inlineOptions
+          label={label || names[kind]}
+          value={text}
+          options={items.map(itemLabel)}
+          placeholder={`Pesquisar ${names[kind].toLocaleLowerCase("pt-BR")}…`}
+          onChange={(next) => {
+            setText(next);
+            onChange(items.find((i) => itemLabel(i) === next) || null);
+          }}
+          createLabel={`Cadastrar ${names[kind].toLocaleLowerCase("pt-BR")}`}
+          onCreate={
+            create
+              ? (name) => {
+                  setError("");
+                  setInvalidField(null);
+                  setCreation({ name, sigla: "", areaId: "" });
+                }
+              : undefined
+          }
+        />
+      </div>
       {creation && (
         <TaskDialog
           title={`Cadastrar ${names[kind].toLocaleLowerCase("pt-BR")}`}

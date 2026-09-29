@@ -15,6 +15,8 @@ import {
   Pencil,
   SlidersHorizontal,
   CircleHelp,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 import { BpmnImportWizard } from "./import-wizard";
 import { TaskDialog } from "@/components/task-dialog";
@@ -127,6 +129,8 @@ export function BpmnEditor({
   const [properties, setProperties] = useState(
     () => typeof window === "undefined" || window.innerWidth >= 1000,
   );
+  const [propertySection, setPropertySection] = useState<"element" | "document">("document");
+  const [exportMenu, setExportMenu] = useState(false);
   const [selection, setSelection] = useState<CanvasSelection>(null);
   const [elementName, setElementName] = useState("");
   const [laneKind, setLaneKind] = useState<"area" | "position">("area");
@@ -247,6 +251,7 @@ export function BpmnEditor({
     if (!documentRef.current.processId) {
       setError("Selecione um processo do cadastro central antes de salvar.");
       setProperties(true);
+      setPropertySection("document");
       return;
     }
     busyRef.current = true;
@@ -407,15 +412,21 @@ export function BpmnEditor({
           </button>
           <span className="bf-bpmn-divider" />
           <button
+            aria-label="Navegar"
             title="Mover a área de desenho (ou arraste com o botão do meio)"
             onClick={(e) => action("pan", e.nativeEvent)}
           >
             <Hand size={16} />
-            Navegar
+            <span className="bf-bpmn-tool-label">Navegar</span>
           </button>
-          <button disabled={busy || !ready} onClick={() => setImporting(true)}>
+          <button
+            aria-label="Importar BPMN"
+            title="Importar BPMN"
+            disabled={busy || !ready}
+            onClick={() => setImporting(true)}
+          >
             <Upload size={16} />
-            Importar BPMN
+            <span className="bf-bpmn-tool-label">Importar BPMN</span>
           </button>
           <div className="bf-bpmn-toolbar-spacer" />
           <button
@@ -427,22 +438,33 @@ export function BpmnEditor({
           >
             <Save size={16} />
           </button>
-          <button onClick={() => setProperties(!properties)} aria-pressed={properties}>
+          <button
+            title="Propriedades"
+            aria-label="Propriedades"
+            onClick={() => setProperties(!properties)}
+            aria-pressed={properties}
+          >
             <SlidersHorizontal size={16} />
-            Propriedades
+            <span className="bf-bpmn-tool-label">Propriedades</span>
           </button>
-          <button aria-label="Ajuda do editor" onClick={() => setHelp(true)}>
+          <button
+            title="Ajuda do editor"
+            aria-label="Ajuda do editor"
+            onClick={() => setHelp(true)}
+          >
             <CircleHelp size={17} />
           </button>
         </div>
       )}
       {saveMenu && (
         <TaskDialog title="Salvar desenho" onClose={() => setSaveMenu(false)}>
-          <p>
-            O rascunho mantém o mesmo registro e não cria versões. Salvar versão registra uma cópia
-            no histórico.
-          </p>
-          <div className="bf-bpmn-save-options">
+          <div className="bf-bpmn-form">
+            <p>
+              O rascunho mantém o mesmo registro e não cria versões. Salvar versão registra uma
+              cópia no histórico.
+            </p>
+          </div>
+          <footer>
             <button
               onClick={() => {
                 setSaveMenu(false);
@@ -460,7 +482,7 @@ export function BpmnEditor({
             >
               Salvar versão
             </button>
-          </div>
+          </footer>
         </TaskDialog>
       )}
       {error && (
@@ -472,11 +494,6 @@ export function BpmnEditor({
           </button>
         </div>
       )}
-      {!!notice && (
-        <div className="bf-bpmn-notice" role="status">
-          {notice}
-        </div>
-      )}
       {document.origin === "legacy" && (
         <div className="bf-bpmn-warning">
           Desenho convertido do editor anterior. Confira raias, símbolos e conexões antes de salvar
@@ -486,8 +503,9 @@ export function BpmnEditor({
       <div className="bf-bpmn-workarea">
         {!readOnly && (
           <aside className="bf-bpmn-palette" aria-label="Elementos BPMN">
-            <span>Elementos</span>
-            <small>Botão direito para alterar o tipo.</small>
+            <span title="Arraste para inserir. Use o botão direito para alterar o tipo.">
+              Elementos
+            </span>
             {palette.map(([type, label, Icon]) => (
               <button
                 key={type}
@@ -546,7 +564,21 @@ export function BpmnEditor({
         >
           <BpmnCanvas
             key={canvasGeneration}
-            navigationAction={presentationAction}
+            navigationAction={
+              <>
+                {presentationAction}
+                {readOnly && (
+                  <button
+                    title="Identificar raias e piscinas fora da tela"
+                    aria-label="Identificar raias e piscinas fora da tela"
+                    aria-pressed={frozen}
+                    onClick={() => setFrozen(!frozen)}
+                  >
+                    <SlidersHorizontal size={15} />
+                  </button>
+                )}
+              </>
+            }
             processName={document.processName}
             ref={canvas}
             xml={seed}
@@ -554,15 +586,35 @@ export function BpmnEditor({
             frozen={frozen}
             bindings={document.laneBindings}
             onChange={changed}
-            onProperties={() => setProperties(true)}
-            onSelection={setSelection}
+            onProperties={() => {
+              setPropertySection("element");
+              setProperties(true);
+            }}
+            onSelection={(next) => {
+              setSelection(next);
+              if (next) setPropertySection("element");
+            }}
             onWarnings={setWarnings}
             onReady={() => setReady(true)}
           />
         </div>
         {presenting && canEdit && (
           <BpmnCanvas
-            navigationAction={presentationAction}
+            navigationAction={
+              <>
+                {presentationAction}
+                {readOnly && (
+                  <button
+                    title="Identificar raias e piscinas fora da tela"
+                    aria-label="Identificar raias e piscinas fora da tela"
+                    aria-pressed={frozen}
+                    onClick={() => setFrozen(!frozen)}
+                  >
+                    <SlidersHorizontal size={15} />
+                  </button>
+                )}
+              </>
+            }
             processName={document.processName}
             ref={presentationCanvas}
             xml={presentationXml}
@@ -576,221 +628,288 @@ export function BpmnEditor({
         {!readOnly && properties && (
           <aside className="bf-bpmn-properties" aria-label="Propriedades do desenho">
             <div className="bf-bpmn-section-heading">
-              <h2>{selection ? "Elemento selecionado" : "Propriedades"}</h2>
+              <h2>Propriedades</h2>
               <button aria-label="Fechar propriedades" onClick={() => setProperties(false)}>
-                ×
+                <X size={16} />
               </button>
             </div>
-            {selection ? (
-              <>
-                <small>
-                  {selection.count > 1
-                    ? `${selection.count} elementos selecionados`
-                    : elementLabels[selection.type.replace("bpmn:", "")] || "Elemento BPMN"}
-                </small>
-                <label>
-                  Texto do elemento
-                  <textarea
-                    className="resize-none"
-                    key={selection.id}
-                    value={elementName}
-                    onChange={(e) => setElementName(e.target.value)}
-                    onBlur={() => {
-                      if (elementName !== selection.name)
-                        canvas.current?.rename(selection.id, elementName);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        canvas.current?.rename(selection.id, elementName);
-                        e.currentTarget.blur();
-                      }
-                    }}
-                  />
-                </label>
-                <small>Dê dois cliques no elemento para editar diretamente no desenho.</small>
-                {selection.type === "bpmn:Lane" && (
-                  <>
-                    <label>
-                      Responsável da raia
-                      <select
-                        value={laneKind}
-                        onChange={(e) => setLaneKind(e.target.value as "area" | "position")}
-                      >
-                        <option value="area">Área</option>
-                        <option value="position">Cargo</option>
-                      </select>
-                    </label>
-                    <CatalogPicker
-                      key={`${selection.id}:${laneKind}`}
-                      kind={laneKind}
-                      catalogs={catalogs}
-                      value={
-                        document.laneBindings[selection.id]?.kind === laneKind
-                          ? document.laneBindings[selection.id]?.id || ""
-                          : ""
-                      }
-                      onChange={(item) => {
-                        const next = { ...document.laneBindings };
-                        if (item) {
-                          next[selection.id] = { kind: laneKind, id: item.id, name: item.name };
-                          canvas.current?.rename(selection.id, item.name);
-                        } else delete next[selection.id];
-                        update({ laneBindings: next });
-                      }}
-                      create={create}
-                    />
-                    <p>
-                      {document.laneBindings[selection.id]
-                        ? `Vinculada a ${document.laneBindings[selection.id].name}`
-                        : "A DEFINIR · selecione uma Área ou um Cargo."}
-                    </p>
-                  </>
-                )}
-                <label>
-                  Cor de preenchimento
-                  <input
-                    type="color"
-                    value={selection.fill || "#ffffff"}
-                    onInput={(e) => changeFill(e.currentTarget.value)}
-                    onChange={(e) => changeFill(e.target.value)}
-                  />
-                </label>
-                <hr />
-              </>
-            ) : (
-              <p>
-                Selecione um elemento para editar. Arraste os símbolos da paleta para o desenho.
-              </p>
-            )}
-            <CatalogPicker
-              kind="process"
-              catalogs={catalogs}
-              value={document.processId}
-              onChange={(item) => {
-                if (item && document.origin === "created")
-                  canvas.current?.rename("Pool_Flow", item.name);
-                update({ processId: item?.id || "", processName: item?.name || "" });
-              }}
-              create={create}
-              label="Processo vinculado (obrigatório)"
-            />
-            <label>
-              Status
-              <select
-                value={document.status}
-                onChange={(e) => update({ status: e.target.value as BpmnDocument["status"] })}
+            <div
+              className="bf-bpmn-property-switch"
+              role="group"
+              aria-label="Seção de propriedades"
+            >
+              <button
+                aria-pressed={propertySection === "element"}
+                onClick={() => setPropertySection("element")}
               >
-                <option>Rascunho</option>
-                <option>Em revisão</option>
-                <option>Publicado</option>
-              </select>
-            </label>
-            <label className="bf-bpmn-check">
-              <input
-                type="checkbox"
-                checked={autoSave}
-                onChange={(e) => setAutoSave(e.target.checked)}
+                Elemento
+              </button>
+              <button
+                aria-pressed={propertySection === "document"}
+                onClick={() => setPropertySection("document")}
+              >
+                Desenho
+              </button>
+            </div>
+            <div className="bf-bpmn-property-content" hidden={propertySection !== "element"}>
+              {selection ? (
+                <>
+                  <small>
+                    {selection.count > 1
+                      ? `${selection.count} elementos selecionados`
+                      : elementLabels[selection.type.replace("bpmn:", "")] || "Elemento BPMN"}
+                  </small>
+                  {selection.count === 1 && (
+                    <label>
+                      Texto do elemento
+                      <textarea
+                        className="resize-none"
+                        key={selection.id}
+                        value={elementName}
+                        onChange={(e) => setElementName(e.target.value)}
+                        onBlur={() => {
+                          if (elementName !== selection.name)
+                            canvas.current?.rename(selection.id, elementName);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            canvas.current?.rename(selection.id, elementName);
+                            e.currentTarget.blur();
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                  <small>
+                    {selection.count > 1
+                      ? "Mova, copie ou exclua os elementos em conjunto. A cor será aplicada à seleção."
+                      : "Dê dois cliques para editar o texto no desenho."}
+                  </small>
+                  {selection.count === 1 && selection.type === "bpmn:Lane" && (
+                    <>
+                      <label>
+                        Responsável da raia
+                        <select
+                          value={laneKind}
+                          onChange={(e) => setLaneKind(e.target.value as "area" | "position")}
+                        >
+                          <option value="area">Área</option>
+                          <option value="position">Cargo</option>
+                        </select>
+                      </label>
+                      <CatalogPicker
+                        key={`${selection.id}:${laneKind}`}
+                        kind={laneKind}
+                        catalogs={catalogs}
+                        value={
+                          document.laneBindings[selection.id]?.kind === laneKind
+                            ? document.laneBindings[selection.id]?.id || ""
+                            : ""
+                        }
+                        onChange={(item) => {
+                          const next = { ...document.laneBindings };
+                          if (item) {
+                            next[selection.id] = { kind: laneKind, id: item.id, name: item.name };
+                            canvas.current?.rename(selection.id, item.name);
+                          } else delete next[selection.id];
+                          update({ laneBindings: next });
+                        }}
+                        create={create}
+                      />
+                      <p>
+                        {document.laneBindings[selection.id]
+                          ? `Vinculada a ${document.laneBindings[selection.id].name}`
+                          : "A DEFINIR · selecione uma Área ou um Cargo."}
+                      </p>
+                    </>
+                  )}
+                  <label>
+                    {selection.count > 1
+                      ? "Cor dos elementos selecionados"
+                      : "Cor de preenchimento"}
+                    <input
+                      type="color"
+                      value={selection.fill || "#ffffff"}
+                      onInput={(e) => changeFill(e.currentTarget.value)}
+                      onChange={(e) => changeFill(e.target.value)}
+                    />
+                  </label>
+                </>
+              ) : (
+                <p>
+                  Selecione um elemento para editar. Arraste os símbolos da paleta para o desenho.
+                </p>
+              )}
+            </div>
+            <div className="bf-bpmn-property-content" hidden={propertySection !== "document"}>
+              <h3>Processo e situação</h3>
+              <CatalogPicker
+                kind="process"
+                catalogs={catalogs}
+                value={document.processId}
+                onChange={(item) => {
+                  if (item && document.origin === "created")
+                    canvas.current?.rename("Pool_Flow", item.name);
+                  update({ processId: item?.id || "", processName: item?.name || "" });
+                }}
+                create={create}
+                label="Processo vinculado (obrigatório)"
               />
-              Salvar rascunho automaticamente a cada 30 s
-            </label>
-            <p>Alterações são guardadas também neste navegador para recuperação.</p>
-            {record?.created_at && (
-              <small>Criado em {new Date(record.created_at).toLocaleString("pt-BR")}</small>
-            )}
-            {document.originalFilename && <small>Origem: {document.originalFilename}</small>}
-            <fieldset className="bf-bpmn-appearance">
-              <legend>Aparência do desenho</legend>
-              <div role="group" aria-label="Cores do desenho">
-                {(
-                  [
-                    ["color", "Com cores"],
-                    ["mono", "Preto e branco"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={appearance === value}
-                    onClick={() => {
-                      setAppearance(value);
-                      try {
-                        localStorage.setItem("bf-flow:bpmn:appearance", value);
-                      } catch {
-                        /* Preference remains for this session. */
-                      }
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <small>
-                Preferência de visualização. O arquivo e as cores originais são preservados.
-              </small>
-            </fieldset>
+              <label>
+                Status
+                <select
+                  value={document.status}
+                  onChange={(e) => update({ status: e.target.value as BpmnDocument["status"] })}
+                >
+                  <option>Rascunho</option>
+                  <option>Em revisão</option>
+                  <option>Publicado</option>
+                </select>
+              </label>
+              <h3>Salvamento</h3>
+              <label className="bf-bpmn-check">
+                <input
+                  type="checkbox"
+                  checked={autoSave}
+                  onChange={(e) => setAutoSave(e.target.checked)}
+                />
+                Rascunho automático a cada 30 s
+              </label>
+              <p>{localStatus || "Cópia de recuperação neste navegador."}</p>
+              <details className="bf-bpmn-file-info">
+                <summary>Informações do arquivo</summary>
+                {record?.created_at && (
+                  <small>Criado em {new Date(record.created_at).toLocaleString("pt-BR")}</small>
+                )}
+                {document.originalFilename && <small>Origem: {document.originalFilename}</small>}
+              </details>
+              <fieldset className="bf-bpmn-appearance">
+                <legend>Aparência do desenho</legend>
+                <div role="group" aria-label="Cores do desenho">
+                  {(
+                    [
+                      ["color", "Com cores"],
+                      ["mono", "Preto e branco"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={appearance === value}
+                      onClick={() => {
+                        setAppearance(value);
+                        try {
+                          localStorage.setItem("bf-flow:bpmn:appearance", value);
+                        } catch {
+                          /* Preference remains for this session. */
+                        }
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <small>
+                  Preferência de visualização. O arquivo e as cores originais são preservados.
+                </small>
+              </fieldset>
+              <label className="bf-bpmn-check">
+                <input
+                  type="checkbox"
+                  checked={frozen}
+                  onChange={(e) => setFrozen(e.target.checked)}
+                />
+                Identificar raias e piscinas fora da tela
+              </label>
+            </div>
           </aside>
         )}
       </div>
       <footer className="bf-bpmn-footer">
-        {!canEdit && (
-          <button onClick={onBack} aria-label="Voltar aos desenhos">
-            <ArrowLeft size={16} />
-          </button>
-        )}
         {readOnly && (
           <button
+            title="Voltar aos desenhos"
             aria-label="Voltar aos desenhos"
             onClick={() => (dirty ? setExit(true) : onBack())}
           >
             <ArrowLeft size={16} />
           </button>
         )}
-        <span role="status">
-          {busy ? "Salvando…" : dirty ? "Alterações não salvas" : "Salvo"}
-          {localStatus ? ` · ${localStatus}` : ""}
-          {` · ${record?.code || document.codigo || "Desenho BPMN"}${record?.current_version ? ` · v${record.current_version}` : ""} · ${document.status}`}
+        <div className="bf-bpmn-document-identity">
+          <strong title={document.processName}>
+            {document.processName || "Desenho sem processo"}
+          </strong>
+          <span title={record?.code || document.codigo || "Novo desenho"}>
+            {record?.code || document.codigo || "Novo desenho"}
+            {record?.current_version ? ` · v${record.current_version}` : ""} · {document.status}
+          </span>
+        </div>
+        <span
+          className="bf-bpmn-save-status"
+          role="status"
+          title={localStatus || notice || undefined}
+        >
+          {busy ? "Salvando…" : dirty ? "Alterações não salvas" : notice || "Salvo"}
         </span>
-        <label className="bf-bpmn-check">
-          <input type="checkbox" checked={frozen} onChange={(e) => setFrozen(e.target.checked)} />
-          Identificar fora da tela
-        </label>
-        <button disabled={!ready} onClick={() => action("center")}>
-          Centralizar
-        </button>
-        {!readOnly && (
-          <button
-            disabled={!ready}
-            onClick={async () => {
-              try {
-                const check = await inspectBpmn(await canvas.current!.xml());
-                const unbound = check.lanes
-                  .filter((l) => !document.laneBindings[l.id])
-                  .map((l) => `Raia sem responsável: ${l.name} (A DEFINIR).`);
-                setWarnings([...check.warnings, ...unbound]);
-                setShowWarnings(true);
-              } catch (error) {
-                setError(String(error));
-              }
-            }}
-          >
-            Verificar desenho
+        <div className="bf-bpmn-footer-actions">
+          {!readOnly && (
+            <button
+              disabled={!ready}
+              onClick={async () => {
+                try {
+                  const check = await inspectBpmn(await canvas.current!.xml());
+                  const unbound = check.lanes
+                    .filter((l) => !document.laneBindings[l.id])
+                    .map((l) => `Raia sem responsável: ${l.name} (A DEFINIR).`);
+                  setWarnings([...check.warnings, ...unbound]);
+                  setShowWarnings(true);
+                } catch (error) {
+                  setError(String(error));
+                }
+              }}
+            >
+              <CheckCircle2 size={15} /> Verificar desenho
+            </button>
+          )}
+          <button disabled={!ready || exporting} onClick={() => setExportMenu(true)}>
+            <Download size={15} /> {exporting ? "Exportando…" : "Exportar"}
           </button>
-        )}
-        <details className="bf-bpmn-export">
-          <summary>
-            <Download size={14} />
-            {exporting ? "Exportando…" : "Exportar"}
-          </summary>
-          <div>
-            <button disabled={!ready || exporting} onClick={() => void exportFile("bpmn")}>
+        </div>
+      </footer>
+      {exportMenu && (
+        <TaskDialog title="Exportar desenho" onClose={() => setExportMenu(false)}>
+          <div className="bf-bpmn-form bf-bpmn-export-options">
+            <p>O desenho inteiro será exportado, independentemente do zoom atual.</p>
+
+            <button
+              disabled={!ready || exporting}
+              onClick={() => {
+                setExportMenu(false);
+                void exportFile("bpmn");
+              }}
+            >
               Arquivo BPMN
             </button>
-            <button disabled={!ready || exporting} onClick={() => void exportFile("png")}>
+            <button
+              disabled={!ready || exporting}
+              onClick={() => {
+                setExportMenu(false);
+                void exportFile("png");
+              }}
+            >
               Imagem PNG
             </button>
             {document.originalXml && (
-              <button onClick={() => void exportFile("original")}>BPMN original importado</button>
+              <button
+                disabled={exporting}
+                onClick={() => {
+                  setExportMenu(false);
+                  void exportFile("original");
+                }}
+              >
+                BPMN original importado
+              </button>
             )}
             {document.legacySource && (
               <button
@@ -806,8 +925,8 @@ export function BpmnEditor({
               </button>
             )}
           </div>
-        </details>
-      </footer>
+        </TaskDialog>
+      )}
       {showWarnings && (
         <TaskDialog title="Verificação do desenho" onClose={() => setShowWarnings(false)}>
           <div className="bf-bpmn-form">
@@ -856,7 +975,8 @@ export function BpmnEditor({
                 tarefas, pools e raias para redimensionar.
               </li>
               <li>
-                Arraste o fundo para navegar. Use a roda para deslocar e Ctrl + roda para zoom.
+                Arraste o fundo para selecionar vários elementos. Para navegar, use Navegar ou o
+                botão do meio. Ctrl + roda ajusta o zoom.
               </li>
               <li>
                 Shift + clique seleciona vários elementos. Ctrl+C / Ctrl+V copiam e colam; Delete

@@ -156,7 +156,7 @@ export function BpmnImportWizard({
               />
             </div>
             {!!warnings.length && (
-              <details open>
+              <details className="bf-bpmn-import-warnings">
                 <summary>{warnings.length} avisos para conferência</summary>
                 <ul>
                   {warnings.map((w) => (
@@ -198,8 +198,10 @@ export function BpmnImportWizard({
               );
               return (
                 <div className="bf-bpmn-lane-association" key={lane.id}>
-                  <strong>{lane.name}</strong>
-                  <small>Raia {index + 1}</small>
+                  <div className="bf-bpmn-lane-identity">
+                    <small>Raia {index + 1}</small>
+                    <strong>{lane.name}</strong>
+                  </div>
                   <label>
                     Tipo de responsável
                     <select
@@ -271,7 +273,7 @@ export function BpmnImportWizard({
             )}
             <p>
               O XML original será mantido. Associar cadastros não modifica as coordenadas, os
-              trajetos nem os rótulos importados.
+              trajetos. Os nomes das raias seguem os vínculos selecionados.
             </p>
             <label className="bf-bpmn-check">
               <input

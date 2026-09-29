@@ -147,3 +147,9 @@ BPMN — 29/09/2026: exportação principal em arquivo BPMN editável e imagem P
 Ajuste confirmado em 29/09: no grupo de comandos indicado pelo usuário, manter somente Navegar e Importar. Seleção por arraste e conexões contextuais continuam; copiar/recortar/colar/excluir ficam no botão direito. Raia e Pool passam para a paleta. Dados usa ícone nativo de documento BPMN e Armazenamento usa cilindro, iguais às formas do motor. Colar funciona também no fundo do canvas e conserva propriedades.
 
 Menu de contexto BPMN: Editar texto; grupo Recortar, Copiar, Colar, Duplicar; grupo Alterar tipo e Propriedades; Excluir isolado ao final. No fundo do canvas, somente Colar. A ordem visual também orienta a navegação por teclado.
+
+## Revisão de UX do desenho — 29/09/2026
+
+A área de modelagem mantém a identidade do BF Flow e os tokens de src/styles.css. Paleta compacta com ícones e nomes; painel de propriedades dividido em Elemento e Desenho; identificação do processo/código e estado do salvamento no rodapé. Controles de zoom, centralização e apresentação têm faixa própria fora do canvas. Em telas estreitas, propriedades ficam abaixo do desenho, com rolagem interna, sem cobrir o canvas.
+
+Pesquisas do módulo reutilizam DropdownTextField com a variante inlineOptions: resultados ocupam espaço no formulário, sem sobrepor campos. Menus contextuais e menus nativos de tipo usam uma camada fora do canvas recortado e respeitam os limites da janela. Exportação usa TaskDialog, com BPMN, PNG e original importado identificados. Avisos de importação recolhíveis, com contagem visível. Mensagens de sucesso de salvamento ficam no rodapé, sem deslocar o desenho.

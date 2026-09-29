@@ -324,7 +324,7 @@ export function BpmnWorkspace({
               </div>
             )}
           </div>
-          <label className="bf-bpmn-search">
+          <div className="bf-bpmn-search">
             <Search size={17} />
             <input
               aria-label="Pesquisar desenhos"
@@ -335,7 +335,19 @@ export function BpmnWorkspace({
                 setPage(0);
               }}
             />
-          </label>
+            {search && (
+              <button
+                aria-label="Limpar pesquisa"
+                onClick={(event) => {
+                  setSearch("");
+                  setPage(0);
+                  event.currentTarget.parentElement?.querySelector("input")?.focus();
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
           {docs.isPending ? (
             <p role="status">Buscando desenhos…</p>
           ) : docs.error ? (

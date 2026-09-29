@@ -25,6 +25,7 @@ export function DropdownTextField({
   createLabel,
   onCreate,
   compact,
+  inlineOptions = false,
   createOnlyWhenEmpty = false,
 }: {
   label: string;
@@ -35,6 +36,8 @@ export function DropdownTextField({
   createLabel?: string;
   onCreate?: (initial: string) => void;
   compact?: boolean;
+  /** Keeps options in the scroll flow of constrained inspectors and dialogs. */
+  inlineOptions?: boolean;
   createOnlyWhenEmpty?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -127,7 +130,7 @@ export function DropdownTextField({
           id={listboxId}
           role="listbox"
           aria-label={`Opções de ${label}`}
-          className="absolute z-40 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg"
+          className={`${inlineOptions ? "relative" : "absolute z-40"} mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-popover p-1.5 shadow-lg`}
         >
           {filteredOptions.length ? (
             filteredOptions.map((option, index) => (
