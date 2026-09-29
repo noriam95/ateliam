@@ -195,45 +195,47 @@ export function BpmnWorkspace({
     error || me.error?.message || organizations.error?.message || catalogQuery.error?.message;
   return (
     <main className="bf-bpmn-root">
-      <header className="bf-bpmn-global-header">
-        <WorkspaceLauncher
-          activeArea="modules"
-          visibleModules={visibleModulesFor(me.data?.profile, !!me.data?.roles.includes("admin"))}
-          onSelect={(area) => void navigate({ to: "/", search: { area } as any })}
-        />
-        <BFFlowMark className="h-7" />
-        <span className="bf-bpmn-global-name">Desenhos BPMN</span>
-        <span className="bf-bpmn-org">
-          {organizations.data?.find((o) => o.id === organizationId)?.name}
-        </span>
-        {!active && (
-          <label className="bf-bpmn-org-select">
-            <span className="sr-only">Organização ativa</span>
-            <select
-              aria-label="Organização ativa"
-              value={organizationId}
-              onChange={(e) => {
-                loadToken.current++;
-                setOrganizationId(e.target.value);
-                setPage(0);
-                setSearch("");
-                setCatalogs({ process: [], area: [], position: [] });
-                try {
-                  localStorage.setItem("ateliam-active-organization", e.target.value);
-                } catch {
-                  /* Membership still applies for this session. */
-                }
-              }}
-            >
-              {organizations.data?.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </header>
+      {!active && (
+        <header className="bf-bpmn-global-header">
+          <WorkspaceLauncher
+            activeArea="modules"
+            visibleModules={visibleModulesFor(me.data?.profile, !!me.data?.roles.includes("admin"))}
+            onSelect={(area) => void navigate({ to: "/", search: { area } as any })}
+          />
+          <BFFlowMark className="h-7" />
+          <span className="bf-bpmn-global-name">Desenhos BPMN</span>
+          <span className="bf-bpmn-org">
+            {organizations.data?.find((o) => o.id === organizationId)?.name}
+          </span>
+          {!active && (
+            <label className="bf-bpmn-org-select">
+              <span className="sr-only">Organização ativa</span>
+              <select
+                aria-label="Organização ativa"
+                value={organizationId}
+                onChange={(e) => {
+                  loadToken.current++;
+                  setOrganizationId(e.target.value);
+                  setPage(0);
+                  setSearch("");
+                  setCatalogs({ process: [], area: [], position: [] });
+                  try {
+                    localStorage.setItem("ateliam-active-organization", e.target.value);
+                  } catch {
+                    /* Membership still applies for this session. */
+                  }
+                }}
+              >
+                {organizations.data?.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </header>
+      )}
       {failure && (
         <div className="bf-bpmn-error" role="alert">
           {failure}

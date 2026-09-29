@@ -7,6 +7,7 @@ import type { BpmnDocument } from "../src/lib/bpmn-document";
 import Modeler from "bpmn-js/lib/Modeler";
 import NavigatedViewer from "bpmn-js/lib/NavigatedViewer";
 import { BpmnModdle } from "bpmn-moddle";
+import { exportBpmnPng } from "../src/lib/bpmn-export";
 import { bpmnLaneModule } from "../src/lib/bpmn-lanes";
 import { bpmnSelectionModule } from "../src/lib/bpmn-selection";
 import { bpmnEngineModules } from "../src/lib/bpmn-engine-modules";
@@ -237,6 +238,43 @@ async function regression() {
     stack.undo();
     modeling.setColor([task], { fill: "#aabbcc" });
     check(task.di.get("bioc:fill") === "#aabbcc", "preenchimento personalizado persistido");
+    const png = await exportBpmnPng(engine);
+    const signature = new Uint8Array(await png.arrayBuffer());
+    check(
+      png.type === "image/png" && signature.slice(0, 8).join() === "137,80,78,71,13,10,26,10",
+      "exportação produz PNG válido",
+    );
+    const bitmap = await createImageBitmap(png);
+    check(
+      bitmap.width > 1700 && bitmap.height > 800,
+      "PNG inclui desenho inteiro em alta resolução",
+    );
+    const pixelsCanvas = document.createElement("canvas");
+    pixelsCanvas.width = bitmap.width;
+    pixelsCanvas.height = bitmap.height;
+    const pixelsContext = pixelsCanvas.getContext("2d")!;
+    pixelsContext.drawImage(bitmap, 0, 0);
+    const pixels = pixelsContext.getImageData(0, 0, bitmap.width, bitmap.height).data;
+    check(
+      pixels.some(
+        (v, i) =>
+          i % 4 === 0 &&
+          Math.abs(v - 174) < 3 &&
+          Math.abs(pixels[i + 1] - 190) < 3 &&
+          Math.abs(pixels[i + 2] - 207) < 3,
+      ),
+      "PNG preserva preenchimento personalizado",
+    );
+    bitmap.close();
+    engine.get("canvas").zoom(0.3);
+    engine.get("canvas").scroll({ dx: -700, dy: -400 });
+    const movedPng = await createImageBitmap(await exportBpmnPng(engine));
+    check(
+      movedPng.width === pixelsCanvas.width && movedPng.height === pixelsCanvas.height,
+      "PNG não é recortado pelo zoom ou deslocamento",
+    );
+    movedPng.close();
+
     stack.undo();
     const x = task.x;
     modeling.moveShape(task, { x: 80, y: 0 });
@@ -271,6 +309,23 @@ async function regression() {
       "desfazer inserção de raia em uma única ação",
     );
     const copy = engine.get("copyPaste");
+    const pasteParent = task.parent;
+    const originalName = task.businessObject.name,
+      originalFill = task.di.get("bioc:fill");
+    copy.cut([task]);
+    check(!registry.get(task.id), "recortar retira elemento copiado");
+    const pasted = copy.paste({ element: pasteParent, point: { x: 900, y: 200 } });
+    check(
+      pasted.some(
+        (e: any) =>
+          e.type === task.type &&
+          e.businessObject.name === originalName &&
+          e.di.get("bioc:fill") === originalFill,
+      ),
+      "colar preserva tipo, texto e cor após recorte",
+    );
+    stack.undo();
+    stack.undo();
     const duplicated = copy.duplicate([task], { element: task.parent, point: { x: 900, y: 200 } });
     check(duplicated?.length > 0, "duplicar");
     stack.undo();

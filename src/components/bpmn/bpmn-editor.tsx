@@ -5,12 +5,9 @@ import {
   Square,
   Diamond,
   MessageSquare,
-  Plus,
   Undo2,
   Redo2,
-  MousePointer2,
   Hand,
-  Link2,
   Save,
   Download,
   Upload,
@@ -18,9 +15,6 @@ import {
   Pencil,
   SlidersHorizontal,
   CircleHelp,
-  Copy,
-  ClipboardPaste,
-  Trash2,
 } from "lucide-react";
 import { BpmnImportWizard } from "./import-wizard";
 import { TaskDialog } from "@/components/task-dialog";
@@ -54,7 +48,6 @@ const elementLabels: Record<string, string> = {
 export type SavedBpmn = {
   code?: string;
   id: string;
-  code?: string;
   current_version: number | null;
   updated_at: string;
   created_at?: string;
@@ -68,8 +61,10 @@ export type BpmnSaveInput = {
   expectedUpdatedAt: string | null;
   document: BpmnDocument;
 };
-function downloadBpmnFile(content: string, filename: string, mime = "application/xml") {
-  const url = URL.createObjectURL(new Blob([content], { type: mime }));
+function downloadBpmnFile(content: string | Blob, filename: string, mime = "application/xml") {
+  const url = URL.createObjectURL(
+    content instanceof Blob ? content : new Blob([content], { type: mime }),
+  );
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
@@ -333,7 +328,10 @@ export function BpmnEditor({
     const timer = setInterval(() => void saveRef.current(), 30_000);
     return () => clearInterval(timer);
   }, [autoSave, dirty, canEdit, recovery, importing, imported, saveMenu]);
-  async function exportFile(kind: "bpmn" | "svg" | "original") {
+  const [exporting, setExporting] = useState(false);
+  async function exportFile(kind: "bpmn" | "png" | "original") {
+    if (exporting) return;
+    setExporting(true);
     try {
       const name =
         document.processName.replace(/[^\p{L}\p{N}\-_ ]/gu, "").slice(0, 100) || "desenho";
@@ -342,15 +340,17 @@ export function BpmnEditor({
           document.originalXml,
           document.originalFilename || `${name}-original.bpmn`,
         );
-      else if (kind === "svg")
+      else if (kind === "png")
         downloadBpmnFile(
-          await (presenting && canEdit ? presentationCanvas : canvas).current!.svg(),
-          `${name}.svg`,
-          "image/svg+xml",
+          await (presenting && canEdit ? presentationCanvas : canvas).current!.png(),
+          `${name}.png`,
+          "image/png",
         );
       else downloadBpmnFile(await canvas.current!.xml(), `${name}.bpmn`);
     } catch (error) {
-      setError(String(error));
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setExporting(false);
     }
   }
   const presentationAction = canEdit ? (
@@ -406,10 +406,6 @@ export function BpmnEditor({
             <Redo2 size={17} />
           </button>
           <span className="bf-bpmn-divider" />
-          <button onClick={(e) => action("lasso", e.nativeEvent)}>
-            <MousePointer2 size={16} />
-            Selecionar
-          </button>
           <button
             title="Mover a área de desenho (ou arraste com o botão do meio)"
             onClick={(e) => action("pan", e.nativeEvent)}
@@ -417,50 +413,9 @@ export function BpmnEditor({
             <Hand size={16} />
             Navegar
           </button>
-          <button onClick={(e) => action("connect", e.nativeEvent)}>
-            <Link2 size={16} />
-            Conectar
-          </button>
-          <button
-            title="Arraste uma raia para dentro de uma piscina"
-            onMouseDown={(e) => action("lane", e.nativeEvent)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") action("lane");
-            }}
-          >
-            <Plus size={16} />
-            Raia
-          </button>
-          <button
-            title="Arraste uma piscina para o canvas"
-            onMouseDown={(e) => createShape("bpmn:Participant", e.nativeEvent)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") createShape("bpmn:Participant");
-            }}
-          >
-            <Plus size={16} />
-            Pool
-          </button>
           <button disabled={busy || !ready} onClick={() => setImporting(true)}>
             <Upload size={16} />
             Importar BPMN
-          </button>
-          <span className="bf-bpmn-divider" />
-          <button aria-label="Copiar seleção" disabled={!selection} onClick={() => action("copy")}>
-            <Copy size={16} />
-          </button>
-          <button aria-label="Colar" onClick={() => action("paste")}>
-            <ClipboardPaste size={16} />
-          </button>
-          <button disabled={!selection} onClick={() => action("duplicate")}>
-            Duplicar
-          </button>
-          <button
-            aria-label="Excluir seleção"
-            disabled={!selection}
-            onClick={() => action("delete")}
-          >
-            <Trash2 size={16} />
           </button>
           <div className="bf-bpmn-toolbar-spacer" />
           <button
@@ -548,23 +503,37 @@ export function BpmnEditor({
                 <span>{label}</span>
               </button>
             ))}
-            <details>
-              <summary>Mais elementos</summary>
-              {[
-                ["bpmn:DataObjectReference", "Dados"],
-                ["bpmn:DataStoreReference", "Armazenamento"],
-              ].map(([type, label]) => (
-                <button
-                  key={type}
-                  onMouseDown={(e) => createShape(type, e.nativeEvent)}
-                  onClick={(e) => {
-                    if (!e.detail) createShape(type);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </details>
+            {[
+              ["bpmn:DataObjectReference", "Dados", "bpmn-icon-data-object"],
+              ["bpmn:DataStoreReference", "Armazenamento", "bpmn-icon-data-store"],
+              ["bpmn:Participant", "Pool", "bpmn-icon-participant"],
+              ["bpmn:Lane", "Raia", "bpmn-icon-lane"],
+            ].map(([type, label, icon]) => (
+              <button
+                key={type}
+                title={`${label}: arraste para o desenho`}
+                onMouseDown={(e) => {
+                  if (e.button !== 0) return;
+                  if (type === "bpmn:Lane") action("lane", e.nativeEvent);
+                  else createShape(type, e.nativeEvent);
+                }}
+                onClick={(e) => {
+                  if (e.detail !== 0) return;
+                  if (type === "bpmn:Lane") action("lane");
+                  else createShape(type);
+                }}
+              >
+                {type === "bpmn:Lane" ? (
+                  <svg width="24" height="22" viewBox="0 0 28 22" aria-hidden="true">
+                    <rect x="1" y="1" width="26" height="20" fill="none" stroke="currentColor" />
+                    <path d="M6 1v20" fill="none" stroke="currentColor" />
+                  </svg>
+                ) : (
+                  <span className={`bf-bpmn-palette-icon ${icon}`} aria-hidden="true" />
+                )}
+                <span>{label}</span>
+              </button>
+            ))}
           </aside>
         )}
         <div
@@ -764,6 +733,11 @@ export function BpmnEditor({
         )}
       </div>
       <footer className="bf-bpmn-footer">
+        {!canEdit && (
+          <button onClick={onBack} aria-label="Voltar aos desenhos">
+            <ArrowLeft size={16} />
+          </button>
+        )}
         {readOnly && (
           <button
             aria-label="Voltar aos desenhos"
@@ -806,17 +780,17 @@ export function BpmnEditor({
         <details className="bf-bpmn-export">
           <summary>
             <Download size={14} />
-            Exportar
+            {exporting ? "Exportando…" : "Exportar"}
           </summary>
           <div>
-            <button disabled={!ready} onClick={() => void exportFile("bpmn")}>
-              BPMN editável
+            <button disabled={!ready || exporting} onClick={() => void exportFile("bpmn")}>
+              Arquivo BPMN
             </button>
-            <button disabled={!ready} onClick={() => void exportFile("svg")}>
-              Imagem SVG
+            <button disabled={!ready || exporting} onClick={() => void exportFile("png")}>
+              Imagem PNG
             </button>
             {document.originalXml && (
-              <button onClick={() => void exportFile("original")}>Arquivo original</button>
+              <button onClick={() => void exportFile("original")}>BPMN original importado</button>
             )}
             {document.legacySource && (
               <button
@@ -861,7 +835,7 @@ export function BpmnEditor({
             <ol>
               <li>Selecione um Processo e associe as raias a Áreas ou Cargos.</li>
               <li>
-                Arraste Pool ou Raia da barra para o canvas. Raias só podem ser soltas dentro de
+                Arraste Pool ou Raia da paleta para o canvas. Raias só podem ser soltas dentro de
                 piscinas. Para reordenar, arraste o cabeçalho com o nome da raia até a posição
                 desejada na mesma piscina.
               </li>

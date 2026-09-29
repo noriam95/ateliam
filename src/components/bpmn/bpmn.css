@@ -158,7 +158,7 @@
   border-color: transparent;
   padding: 9px 3px;
   gap: 4px;
-  min-height: 61px;
+  min-height: 52px;
   font-size: 10px;
 }
 .bf-bpmn-palette details {
@@ -1055,4 +1055,12 @@
   padding: 10px 16px;
   border: 1px solid #d7dce2;
   border-radius: 7px;
+}
+
+.bf-bpmn-palette-icon {
+  font-size: 25px;
+  line-height: 1;
+}
+.bf-bpmn-palette {
+  overflow-y: auto;
 }

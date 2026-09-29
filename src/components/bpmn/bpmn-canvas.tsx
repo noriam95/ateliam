@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { exportBpmnPng } from "@/lib/bpmn-export";
 import { edgeIdentification } from "@/lib/bpmn-viewport";
 import { bpmnLaneModule } from "@/lib/bpmn-lanes";
 import { bpmnSelectionModule } from "@/lib/bpmn-selection";
@@ -26,7 +27,7 @@ export type CanvasSelection = {
 } | null;
 export type BpmnCanvasHandle = {
   xml(): Promise<string>;
-  svg(): Promise<string>;
+  png(): Promise<Blob>;
   action(name: string, event?: any): void;
   rename(id: string, name: string): void;
   color(color: string): void;
@@ -79,9 +80,12 @@ export const BpmnCanvas = forwardRef<
     const [diagrams, setDiagrams] = useState<{ id: string; name: string }[]>([]);
     const [diagram, setDiagram] = useState("");
     const view = useRef<any>(null);
-    const [contextMenu, setContextMenu] = useState<{ element: any; x: number; y: number } | null>(
-      null,
-    );
+    const [contextMenu, setContextMenu] = useState<{
+      element: any;
+      x: number;
+      y: number;
+      point: { x: number; y: number };
+    } | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
       if (!contextMenu) return;
@@ -98,6 +102,15 @@ export const BpmnCanvas = forwardRef<
       const { element, x, y } = contextMenu;
       setContextMenu(null);
       try {
+        if (action === "paste") {
+          const parent =
+            ["bpmn:Participant", "bpmn:Lane", "bpmn:SubProcess"].includes(element.type) ||
+            !element.parent
+              ? element
+              : element.parent;
+          const pasted = m.get("copyPaste").paste({ element: parent, point: contextMenu.point });
+          if (pasted) m.get("selection").select(pasted);
+        }
         if (action === "type") {
           m.get("popupMenu").open(
             element,
@@ -112,8 +125,11 @@ export const BpmnCanvas = forwardRef<
         }
         if (action === "edit") m.get("directEditing").activate(element);
         if (action === "properties") callbacks.current.onProperties?.();
-        if (action === "copy" || action === "cut") m.get("copyPaste").copy([element]);
-        if (action === "delete" || action === "cut") m.get("modeling").removeElements([element]);
+        const selected = m.get("selection").get();
+        const targets = selected.includes(element) ? selected : [element];
+        if (action === "copy") m.get("copyPaste").copy(targets);
+        if (action === "cut") m.get("copyPaste").cut(targets);
+        if (action === "delete") m.get("modeling").removeElements(targets);
         if (action === "duplicate") {
           const duplicated = m.get("copyPaste").duplicate([element], {
             element: element.parent,
@@ -206,13 +222,19 @@ export const BpmnCanvas = forwardRef<
       if (!readOnly)
         instance.on("element.contextmenu", 1500, (event: any) => {
           const element = event.element.labelTarget || event.element;
-          if (!element.parent) return;
           event.originalEvent.preventDefault();
           event.originalEvent.stopPropagation();
-          instance.get("selection").select(element);
+          if (element.parent && !instance.get("selection").get().includes(element))
+            instance.get("selection").select(element);
+          const vb = instance.get("canvas").viewbox();
+          const rect = host.current!.getBoundingClientRect();
           instance.get("contextPad").close();
           setContextMenu({
             element,
+            point: {
+              x: vb.x + (event.originalEvent.clientX - rect.left) / vb.scale,
+              y: vb.y + (event.originalEvent.clientY - rect.top) / vb.scale,
+            },
             x: Math.max(8, Math.min(event.originalEvent.clientX, window.innerWidth - 248)),
             y: Math.max(8, Math.min(event.originalEvent.clientY, window.innerHeight - 310)),
           });
@@ -295,9 +317,9 @@ export const BpmnCanvas = forwardRef<
           if (!ready) throw new Error("Aguarde a abertura do desenho.");
           return (await engine.current.saveXML({ format: true })).xml;
         },
-        async svg() {
+        async png() {
           if (!ready) throw new Error("Aguarde a abertura do desenho.");
-          return (await engine.current.saveSVG()).svg;
+          return exportBpmnPng(engine.current);
         },
         lanes() {
           return (
@@ -467,43 +489,54 @@ export const BpmnCanvas = forwardRef<
               if (event.key === "Tab") setContextMenu(null);
             }}
           >
-            <button role="menuitem" onClick={() => menuAction("edit")}>
-              Editar texto
-            </button>
-            {!engine.current.get("popupMenu").isEmpty(contextMenu.element, "bpmn-replace") && (
-              <button role="menuitem" onClick={() => menuAction("type")}>
-                {contextMenu.element.type.includes("Task") ||
-                contextMenu.element.type === "bpmn:SubProcess"
-                  ? "Tipo de tarefa / subprocesso"
-                  : contextMenu.element.type.includes("Event")
-                    ? "Tipo de evento"
-                    : contextMenu.element.type.includes("Gateway")
-                      ? "Tipo de gateway"
-                      : "Alterar tipo"}{" "}
-                <span>›</span>
-              </button>
-            )}
-            <hr />
-            <button role="menuitem" onClick={() => menuAction("cut")}>
-              Recortar
-            </button>
-            <button role="menuitem" onClick={() => menuAction("copy")}>
-              Copiar
-            </button>
             <button
               role="menuitem"
-              disabled={!!contextMenu.element.waypoints}
-              onClick={() => menuAction("duplicate")}
+              disabled={engine.current.get("clipboard").isEmpty()}
+              onClick={() => menuAction("paste")}
             >
-              Duplicar
+              Colar
             </button>
-            <button role="menuitem" onClick={() => menuAction("delete")}>
-              Excluir
-            </button>
-            <hr />
-            <button role="menuitem" onClick={() => menuAction("properties")}>
-              Propriedades
-            </button>
+            {contextMenu.element.parent && (
+              <>
+                <button role="menuitem" onClick={() => menuAction("edit")}>
+                  Editar texto
+                </button>
+                {!engine.current.get("popupMenu").isEmpty(contextMenu.element, "bpmn-replace") && (
+                  <button role="menuitem" onClick={() => menuAction("type")}>
+                    {contextMenu.element.type.includes("Task") ||
+                    contextMenu.element.type === "bpmn:SubProcess"
+                      ? "Tipo de tarefa / subprocesso"
+                      : contextMenu.element.type.includes("Event")
+                        ? "Tipo de evento"
+                        : contextMenu.element.type.includes("Gateway")
+                          ? "Tipo de gateway"
+                          : "Alterar tipo"}{" "}
+                    <span>›</span>
+                  </button>
+                )}
+                <hr />
+                <button role="menuitem" onClick={() => menuAction("cut")}>
+                  Recortar
+                </button>
+                <button role="menuitem" onClick={() => menuAction("copy")}>
+                  Copiar
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={!!contextMenu.element.waypoints}
+                  onClick={() => menuAction("duplicate")}
+                >
+                  Duplicar
+                </button>
+                <button role="menuitem" onClick={() => menuAction("delete")}>
+                  Excluir
+                </button>
+                <hr />
+                <button role="menuitem" onClick={() => menuAction("properties")}>
+                  Propriedades
+                </button>
+              </>
+            )}
           </div>
         )}
         {!ready && (
