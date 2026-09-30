@@ -156,3 +156,7 @@ Pesquisas do módulo reutilizam DropdownTextField com a variante inlineOptions: 
 
 Exportar fica imediatamente após Importar na barra de edição. Em apresentação/somente leitura, mantém acesso no rodapé, pois a barra de edição fica oculta.
 Verificar desenho acompanha o mesmo grupo: Importar → Exportar → Verificar desenho.
+
+## Menu de módulos — 30/09/2026
+
+Fonte: pedido explícito do usuário nesta data. WorkspaceModulesTree/ModuleActionsRow são os donos das ações Novo e Consultar: botões na mesma linha do nome, destinos e visibilidade preservados, indicação da ação atual, nomes acessíveis incluindo módulo e dicas no hover/foco. Esses módulos não exigem expansão; Cadastros conserva sua árvore recolhível. WorkspaceLauncher mantém popover não modal, Escape/clique fora/fechamento ao navegar, altura até a base da janela e rolagem interna sem modificar a página. Nomes longos podem quebrar dentro da coluna do nome, sem mover as ações para outra linha.

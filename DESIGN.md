@@ -137,3 +137,7 @@ Ajuste confirmado em 29/09: no grupo de comandos indicado pelo usuário, manter 
 A área de modelagem mantém a identidade do BF Flow e os tokens de src/styles.css. Paleta compacta com ícones e nomes; painel de propriedades dividido em Elemento e Desenho; identificação do processo/código e estado do salvamento no rodapé. Controles de zoom, centralização e apresentação têm faixa própria fora do canvas. Em telas estreitas, propriedades ficam abaixo do desenho, com rolagem interna, sem cobrir o canvas.
 
 Pesquisas do módulo reutilizam DropdownTextField com a variante inlineOptions: resultados ocupam espaço no formulário, sem sobrepor campos. Menus contextuais e menus nativos de tipo usam uma camada fora do canvas recortado e respeitam os limites da janela. Exportação usa TaskDialog, com BPMN, PNG e original importado identificados. Avisos de importação recolhíveis, com contagem visível. Mensagens de sucesso de salvamento ficam no rodapé, sem deslocar o desenho.
+
+## Menu de módulos — 30/09/2026
+
+Pedido explícito do usuário: Novo e Consultar na mesma linha do nome e menu até a base da tela. WorkspaceModulesTree usa ModuleActionsRow para Mapeamento, Documentação, Fluxograma e Oportunidades de melhoria: nome legível e ações por ícones de mais/lupa, sempre visíveis, com rótulos acessíveis e dicas no hover/foco. Cadastros mantém expansão. WorkspaceLauncher continua não modal e cobre a lateral desde 60px até a base do viewport, com rolagem própria e área segura inferior. Tokens permanecem em src/styles.css; geometria em workspace-launcher.css.

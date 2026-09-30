@@ -334,6 +334,54 @@ const MODULES_TREE_REGISTRATIONS: Array<{
   },
 ];
 
+function ModuleActionsRow({
+  title,
+  icon,
+  active,
+  newActive,
+  consultActive,
+  onNew,
+  onConsult,
+}: {
+  title: string;
+  icon: ReactNode;
+  active: boolean;
+  newActive: boolean;
+  consultActive: boolean;
+  onNew: () => void;
+  onConsult: () => void;
+}) {
+  return (
+    <div className="workspace-module-row" data-active={active} role="group" aria-label={title}>
+      <span className="workspace-module-label">
+        <span aria-hidden="true">{icon}</span>
+        <span>{title}</span>
+      </span>
+      <div className="workspace-module-actions">
+        {[
+          { label: "Novo", Icon: Plus, onClick: onNew, current: newActive },
+          { label: "Consultar", Icon: Search, onClick: onConsult, current: consultActive },
+        ].map(({ label, Icon, onClick, current }) => (
+          <button
+            key={label}
+            type="button"
+            className="workspace-module-action"
+            data-workspace-destination
+            aria-label={`${label} — ${title}`}
+            aria-current={current ? "page" : undefined}
+            onClick={onClick}
+          >
+            <Icon size={16} aria-hidden="true" />
+            <span className="workspace-module-tooltip" aria-hidden="true">
+              {label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function WorkspaceModulesTree({
   expanded,
   onToggle,
@@ -365,66 +413,42 @@ export function WorkspaceModulesTree({
       {MODULES_TREE_BRANCHES.map((branch) => (
         <Fragment key={branch.moduleId}>
           {visibleModules.includes(branch.moduleId) && (
-            <ModuleBranch
+            <ModuleActionsRow
               title={branch.title}
               icon={branch.icon}
               active={branchIsActive(branch.moduleId)}
-              open={!!expanded[branch.moduleId]}
-              destination={false}
-              onSelect={() => onToggle(branch.moduleId)}
-              onToggle={() => onToggle(branch.moduleId)}
-            >
-              <TreeButton
-                active={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
-                onClick={() =>
-                  onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
-                }
-              >
-                <Plus className="h-4 w-4" /> Novo
-              </TreeButton>
-              <TreeButton
-                active={isActive({
-                  kind: "module-task",
-                  moduleId: branch.moduleId,
-                  task: "consult",
-                })}
-                onClick={() =>
-                  onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
-                }
-              >
-                <Search className="h-4 w-4" /> Consultar
-              </TreeButton>
-            </ModuleBranch>
+              newActive={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
+              onNew={() =>
+                onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
+              }
+              consultActive={isActive({
+                kind: "module-task",
+                moduleId: branch.moduleId,
+                task: "consult",
+              })}
+              onConsult={() =>
+                onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
+              }
+            />
           )}
           {branch.moduleId === "ddp" && visibleModules.includes("improvements") ? (
-            <ModuleBranch
-              destination={false}
+            <ModuleActionsRow
               title="Oportunidades de melhoria"
               active={["cause-new", "cause-consult"].some((task) =>
                 isActive({ kind: "module-task", moduleId: "ddp", task: task as ModulesTreeTask }),
               )}
-              onSelect={() => onToggle("causes")}
               icon={<FlaskConical className="h-4 w-4" />}
-              open={!!expanded.causes}
-              onToggle={() => onToggle("causes")}
-            >
-              <TreeButton
-                active={isActive({ kind: "module-task", moduleId: "ddp", task: "cause-new" })}
-                onClick={() =>
-                  onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-new" })
-                }
-              >
-                <Plus className="h-4 w-4" /> Novo
-              </TreeButton>
-              <TreeButton
-                active={isActive({ kind: "module-task", moduleId: "ddp", task: "cause-consult" })}
-                onClick={() =>
-                  onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-consult" })
-                }
-              >
-                <Search className="h-4 w-4" /> Consultar
-              </TreeButton>
-            </ModuleBranch>
+              newActive={isActive({ kind: "module-task", moduleId: "ddp", task: "cause-new" })}
+              onNew={() => onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-new" })}
+              consultActive={isActive({
+                kind: "module-task",
+                moduleId: "ddp",
+                task: "cause-consult",
+              })}
+              onConsult={() =>
+                onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-consult" })
+              }
+            />
           ) : null}
         </Fragment>
       ))}

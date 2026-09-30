@@ -23,15 +23,17 @@
 }
 .workspace-launcher-panel {
   position: fixed;
-  inset: 60px auto auto 12px;
+  inset: 60px auto 0 0;
   margin: 0;
-  width: min(400px, calc(100vw - 24px));
-  max-height: calc(100dvh - 76px);
+  width: min(400px, 100vw);
+  height: calc(100dvh - 60px);
+  max-height: none;
+  box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 10px;
+  padding: 10px 10px max(10px, env(safe-area-inset-bottom));
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0 12px 0 0;
   background: var(--card);
   color: var(--foreground);
   box-shadow: 0 16px 45px #0003;
@@ -96,6 +98,88 @@
   margin: 4px 8px 10px 20px;
   padding: 8px 4px 4px 12px;
   border-left: 2px solid var(--border);
+}
+.workspace-module-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 8px;
+  color: var(--foreground);
+}
+.workspace-module-row[data-active="true"] {
+  background: var(--accent);
+}
+.workspace-module-label {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.workspace-module-label > span:first-child {
+  flex-shrink: 0;
+  color: var(--gold);
+}
+.workspace-module-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+}
+.workspace-module-action {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  background: var(--card);
+  cursor: pointer;
+}
+.workspace-module-action:hover,
+.workspace-module-action[aria-current="page"] {
+  color: var(--foreground);
+  border-color: var(--gold);
+  background: var(--accent);
+}
+.workspace-module-action:active {
+  background: var(--muted);
+}
+.workspace-module-action:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.workspace-module-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 1;
+  visibility: hidden;
+  pointer-events: none;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--popover);
+  color: var(--foreground);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.workspace-module-action:is(:hover, :focus-visible) .workspace-module-tooltip {
+  visibility: visible;
+}
+@media (pointer: coarse) {
+  .workspace-module-action {
+    width: 44px;
+    height: 44px;
+  }
 }
 @media print {
   .workspace-launcher {
