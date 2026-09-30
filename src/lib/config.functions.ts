@@ -1,4 +1,5 @@
 import { documentTitle } from "./document-label";
+import { bpmnListMetadata } from "./bpmn-list-metadata";
 import { prepareMappingIdentity } from "./mapping-identity";
 import { reserveOrganizationCode } from "./code-reservation";
 import { dashboardRows } from "./dashboard-pagination";
@@ -1600,7 +1601,9 @@ export const listBpmnDocuments = createServerFn({ method: "POST" })
     const access = await permissionContext(context, data.organizationId);
     let query = context.supabase
       .from("documents")
-      .select("id,name,current_version,updated_at,owner_id", { count: "exact" })
+      .select("id,name,current_version,updated_at,created_at,primary_process_id,content_inline", {
+        count: "exact",
+      })
       .eq("organization_id", access.organizationId)
       .eq("module", "bpmn");
     if (data.search.trim()) query = query.ilike("name", `%${data.search.replace(/[%_]/g, "")}%`);
@@ -1609,7 +1612,30 @@ export const listBpmnDocuments = createServerFn({ method: "POST" })
       .order("id")
       .range(data.page * 20, data.page * 20 + 19);
     if (result.error) throw new Error(result.error.message);
-    return { rows: result.data || [], count: result.count || 0 };
+    const rows = (result.data || []).map(({ content_inline, ...row }) => ({
+      ...row,
+      ...bpmnListMetadata(row.name, content_inline),
+    }));
+    const processIds = [
+      ...new Set(rows.map((row) => row.primary_process_id || row.processId)),
+    ].filter((id) => z.string().uuid().safeParse(id).success);
+    const areas = new Map<string, string | null>();
+    if (processIds.length) {
+      const processes = await context.supabase
+        .from("organization_processes")
+        .select("id,department")
+        .eq("organization_id", access.organizationId)
+        .in("id", processIds);
+      if (processes.error) throw new Error(processes.error.message);
+      for (const process of processes.data || []) areas.set(process.id, process.department);
+    }
+    return {
+      rows: rows.map(({ processId, primary_process_id, ...row }) => ({
+        ...row,
+        area: areas.get(primary_process_id || processId) || null,
+      })),
+      count: result.count || 0,
+    };
   });
 
 export const listModuleDocumentVersions = createServerFn({ method: "POST" })

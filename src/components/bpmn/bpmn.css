@@ -1194,14 +1194,42 @@
   min-height: 0;
   flex: 1;
 }
-.bf-bpmn-library td:first-child {
-  min-width: 180px;
+.bf-bpmn-documents-table {
+  min-width: 900px;
+}
+.bf-bpmn-documents-table th,
+.bf-bpmn-documents-table td:is(:nth-child(1), :nth-child(3), :nth-child(4), :nth-child(6)) {
+  white-space: nowrap;
+}
+.bf-bpmn-documents-table td:nth-child(2) {
+  min-width: 240px;
+}
+.bf-bpmn-documents-table td:nth-child(5) {
+  min-width: 160px;
   overflow-wrap: anywhere;
 }
-.bf-bpmn-library td:last-child,
-.bf-bpmn-library th:last-child {
-  text-align: right;
-  white-space: nowrap;
+.bf-bpmn-document-code {
+  font-family: var(--font-data);
+}
+.bf-bpmn-library button.bf-bpmn-document-title {
+  display: inline;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.bf-bpmn-library button.bf-bpmn-document-title:hover {
+  text-decoration-color: var(--gold);
+}
+.bf-bpmn-table-wrap:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 .bf-bpmn-search:focus-within {
   outline: 2px solid var(--primary);

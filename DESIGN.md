@@ -141,3 +141,5 @@ Pesquisas do módulo reutilizam DropdownTextField com a variante inlineOptions: 
 ## Menu de módulos — 30/09/2026
 
 Pedido explícito do usuário: Novo e Consultar na mesma linha do nome e menu até a base da tela. WorkspaceModulesTree usa ModuleActionsRow para Mapeamento, Documentação, Fluxograma e Oportunidades de melhoria: nome legível e ações por ícones de mais/lupa, sempre visíveis, com rótulos acessíveis e dicas no hover/foco. Cadastros mantém expansão. WorkspaceLauncher continua não modal e cobre a lateral desde 60px até a base do viewport, com rolagem própria e área segura inferior. Tokens permanecem em src/styles.css; geometria em workspace-launcher.css.
+
+Consulta de desenhos — 30/09/2026: seis colunas conforme pedido do usuário, código em fonte de dados, título clicável e datas em pt-BR. BpmnDocumentsTable reutiliza os tokens de src/styles.css e a superfície de tabela de bpmn.css, com rolagem horizontal interna em telas estreitas.

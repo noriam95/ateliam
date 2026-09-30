@@ -25,6 +25,7 @@ import { blankBpmn, readBpmnDocument, type BpmnDocument } from "@/lib/bpmn-docum
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
 import { BpmnEditor, type SavedBpmn } from "./bpmn-editor";
 import { BpmnImportWizard } from "./import-wizard";
+import { BpmnDocumentsTable } from "./documents-table";
 import "./bpmn.css";
 
 export function BpmnWorkspace({
@@ -375,32 +376,7 @@ export function BpmnWorkspace({
             </div>
           ) : (
             <>
-              <div className="bf-bpmn-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Processo / desenho</th>
-                      <th>Versão</th>
-                      <th>Atualizado em</th>
-                      <th>
-                        <span className="sr-only">Ação</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {docs.data.rows.map((row) => (
-                      <tr key={row.id}>
-                        <td>{row.name}</td>
-                        <td>{row.current_version || "Rascunho"}</td>
-                        <td>{new Date(row.updated_at).toLocaleString("pt-BR")}</td>
-                        <td>
-                          <button onClick={() => void loadDocument(row.id)}>Abrir desenho</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <BpmnDocumentsTable rows={docs.data.rows} onOpen={(id) => void loadDocument(id)} />
               <div className="bf-bpmn-pagination">
                 <span>
                   {docs.data.count} desenhos · página {page + 1}

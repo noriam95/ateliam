@@ -160,3 +160,5 @@ Verificar desenho acompanha o mesmo grupo: Importar → Exportar → Verificar d
 ## Menu de módulos — 30/09/2026
 
 Fonte: pedido explícito do usuário nesta data. WorkspaceModulesTree/ModuleActionsRow são os donos das ações Novo e Consultar: botões na mesma linha do nome, destinos e visibilidade preservados, indicação da ação atual, nomes acessíveis incluindo módulo e dicas no hover/foco. Esses módulos não exigem expansão; Cadastros conserva sua árvore recolhível. WorkspaceLauncher mantém popover não modal, Escape/clique fora/fechamento ao navegar, altura até a base da janela e rolagem interna sem modificar a página. Nomes longos podem quebrar dentro da coluna do nome, sem mover as ações para outra linha.
+
+Consulta de desenhos — 30/09/2026: BpmnDocumentsTable apresenta Código, Título, Versão, Atualizado em, Área e Data criação, nessa ordem. Título clicável abre o desenho. Área vem do processo vinculado na mesma organização; criação usa documents.created_at. Sem código: travessão; sem área: Não informada. Paginação de 20 registros e busca preservadas. A tabela tem rolagem horizontal própria em telas estreitas.
