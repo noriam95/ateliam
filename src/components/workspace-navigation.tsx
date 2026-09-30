@@ -17,8 +17,6 @@ import {
   Link2,
   ListChecks,
   Network,
-  Plus,
-  Search,
   Users,
   Workflow,
 } from "lucide-react";
@@ -334,54 +332,6 @@ const MODULES_TREE_REGISTRATIONS: Array<{
   },
 ];
 
-function ModuleActionsRow({
-  title,
-  icon,
-  active,
-  newActive,
-  consultActive,
-  onNew,
-  onConsult,
-}: {
-  title: string;
-  icon: ReactNode;
-  active: boolean;
-  newActive: boolean;
-  consultActive: boolean;
-  onNew: () => void;
-  onConsult: () => void;
-}) {
-  return (
-    <div className="workspace-module-row" data-active={active} role="group" aria-label={title}>
-      <span className="workspace-module-label">
-        <span aria-hidden="true">{icon}</span>
-        <span>{title}</span>
-      </span>
-      <div className="workspace-module-actions">
-        {[
-          { label: "Novo", Icon: Plus, onClick: onNew, current: newActive },
-          { label: "Consultar", Icon: Search, onClick: onConsult, current: consultActive },
-        ].map(({ label, Icon, onClick, current }) => (
-          <button
-            key={label}
-            type="button"
-            className="workspace-module-action"
-            data-workspace-destination
-            aria-label={`${label} — ${title}`}
-            aria-current={current ? "page" : undefined}
-            onClick={onClick}
-          >
-            <Icon size={16} aria-hidden="true" />
-            <span className="workspace-module-tooltip" aria-hidden="true">
-              {label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function WorkspaceModulesTree({
   expanded,
   onToggle,
@@ -396,14 +346,16 @@ export function WorkspaceModulesTree({
   onNavigate: (target: ModulesTreeTarget) => void;
 }) {
   const branchIsActive = (moduleId: ModulesTreeModuleId) =>
-    isActive({ kind: "module-root", moduleId }) ||
-    (
-      [
-        "new",
-        "consult",
-        ...(moduleId === "ddp" ? ["cause-new", "cause-consult"] : []),
-      ] as ModulesTreeTask[]
-    ).some((task) => isActive({ kind: "module-task", moduleId, task }));
+    !(
+      moduleId === "ddp" &&
+      (["cause-new", "cause-consult"] as ModulesTreeTask[]).some((task) =>
+        isActive({ kind: "module-task", moduleId, task }),
+      )
+    ) &&
+    (isActive({ kind: "module-root", moduleId }) ||
+      (["new", "consult"] as ModulesTreeTask[]).some((task) =>
+        isActive({ kind: "module-task", moduleId, task }),
+      ));
   const registrationsAreActive =
     isActive({ kind: "registrations-root" }) ||
     MODULES_TREE_REGISTRATIONS.some((item) => isActive({ kind: "registration", view: item.view }));
@@ -413,42 +365,26 @@ export function WorkspaceModulesTree({
       {MODULES_TREE_BRANCHES.map((branch) => (
         <Fragment key={branch.moduleId}>
           {visibleModules.includes(branch.moduleId) && (
-            <ModuleActionsRow
-              title={branch.title}
-              icon={branch.icon}
+            <TreeButton
               active={branchIsActive(branch.moduleId)}
-              newActive={isActive({ kind: "module-task", moduleId: branch.moduleId, task: "new" })}
-              onNew={() =>
-                onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "new" })
-              }
-              consultActive={isActive({
-                kind: "module-task",
-                moduleId: branch.moduleId,
-                task: "consult",
-              })}
-              onConsult={() =>
+              onClick={() =>
                 onNavigate({ kind: "module-task", moduleId: branch.moduleId, task: "consult" })
               }
-            />
+            >
+              {branch.icon} {branch.title}
+            </TreeButton>
           )}
           {branch.moduleId === "ddp" && visibleModules.includes("improvements") ? (
-            <ModuleActionsRow
-              title="Oportunidades de melhoria"
+            <TreeButton
               active={["cause-new", "cause-consult"].some((task) =>
                 isActive({ kind: "module-task", moduleId: "ddp", task: task as ModulesTreeTask }),
               )}
-              icon={<FlaskConical className="h-4 w-4" />}
-              newActive={isActive({ kind: "module-task", moduleId: "ddp", task: "cause-new" })}
-              onNew={() => onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-new" })}
-              consultActive={isActive({
-                kind: "module-task",
-                moduleId: "ddp",
-                task: "cause-consult",
-              })}
-              onConsult={() =>
+              onClick={() =>
                 onNavigate({ kind: "module-task", moduleId: "ddp", task: "cause-consult" })
               }
-            />
+            >
+              <FlaskConical className="h-4 w-4" /> Oportunidades de melhoria
+            </TreeButton>
           ) : null}
         </Fragment>
       ))}

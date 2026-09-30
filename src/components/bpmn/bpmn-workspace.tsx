@@ -1,10 +1,11 @@
+import { ProcessLibraryHeader, ProcessLibrarySearch } from "@/components/process-library-header";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useNavigate } from "@tanstack/react-router";
-import { Plus, Upload, Workflow, Search } from "lucide-react";
+import { Plus, Upload, Workflow } from "lucide-react";
 import { BFFlowMark } from "@/components/bf-flow-mark";
-import { WorkspaceLauncher } from "@/components/workspace-navigation";
+import { WorkspaceLauncher, WorkspaceModulesTree } from "@/components/workspace-navigation";
 import { TaskDialog } from "@/components/task-dialog";
 import { TaskEditorContext } from "@/components/task-editor-context";
 import {
@@ -71,6 +72,7 @@ export function BpmnWorkspace({
   const [newProcess, setNewProcess] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [expandedNavigation, setExpandedNavigation] = useState<Record<string, boolean>>({});
   const opened = useRef("");
   const loadToken = useRef(0);
   const canEdit = !!me.data?.roles.some((role) => role === "admin" || role === "editor");
@@ -201,14 +203,38 @@ export function BpmnWorkspace({
           <WorkspaceLauncher
             activeArea="modules"
             visibleModules={visibleModulesFor(me.data?.profile, !!me.data?.roles.includes("admin"))}
-            onSelect={(area) => void navigate({ to: "/", search: { area } as any })}
-          />
+            onSelect={(area) => {
+              if (area !== "modules") void navigate({ to: "/", search: { area } as any });
+            }}
+          >
+            <WorkspaceModulesTree
+              visibleModules={visibleModulesFor(
+                me.data?.profile,
+                !!me.data?.roles.includes("admin"),
+              )}
+              expanded={expandedNavigation}
+              onToggle={(key) =>
+                setExpandedNavigation((current) => ({ ...current, [key]: !current[key] }))
+              }
+              isActive={(target) =>
+                (target.kind === "module-task" || target.kind === "module-root") &&
+                target.moduleId === "bpmn"
+              }
+              onNavigate={(target) => {
+                if (target.kind === "module-task" || target.kind === "module-root") {
+                  void navigate({
+                    to: "/m/$module",
+                    params: { module: target.moduleId },
+                    search: { view: target.kind === "module-task" ? target.task : "consult" },
+                  });
+                } else if (target.kind === "registration") {
+                  void navigate({ to: "/", search: { area: "modules", view: target.view } });
+                }
+              }}
+            />
+          </WorkspaceLauncher>
           <BFFlowMark className="h-7" />
-          <span className="bf-bpmn-global-name">Desenhos BPMN</span>
-          <span className="bf-bpmn-org">
-            {organizations.data?.find((o) => o.id === organizationId)?.name}
-          </span>
-          {!active && (
+          {(organizations.data?.length || 0) > 1 && (
             <label className="bf-bpmn-org-select">
               <span className="sr-only">Organização ativa</span>
               <select
@@ -301,11 +327,10 @@ export function BpmnWorkspace({
         />
       ) : (
         <div className="bf-bpmn-library">
-          <div className="bf-bpmn-library-heading">
-            <div>
-              <h1>Desenhos BPMN</h1>
-              <p>Modele processos e aproveite os desenhos que sua equipe já possui.</p>
-            </div>
+          <ProcessLibraryHeader
+            title="Desenhos BPMN"
+            description="Modele processos e aproveite os desenhos que sua equipe já possui."
+          >
             {canEdit && (
               <div className="bf-bpmn-actions">
                 <button onClick={() => setModal("import")}>
@@ -324,30 +349,16 @@ export function BpmnWorkspace({
                 </button>
               </div>
             )}
-          </div>
-          <div className="bf-bpmn-search">
-            <Search size={17} />
-            <input
-              aria-label="Pesquisar desenhos"
-              placeholder="Pesquisar por processo…"
+          </ProcessLibraryHeader>
+          <div className="mb-5">
+            <ProcessLibrarySearch
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
+              onChange={(value) => {
+                setSearch(value);
                 setPage(0);
               }}
+              placeholder="Pesquisar por processo…"
             />
-            {search && (
-              <button
-                aria-label="Limpar pesquisa"
-                onClick={(event) => {
-                  setSearch("");
-                  setPage(0);
-                  event.currentTarget.parentElement?.querySelector("input")?.focus();
-                }}
-              >
-                ×
-              </button>
-            )}
           </div>
           {docs.isPending ? (
             <p role="status">Buscando desenhos…</p>

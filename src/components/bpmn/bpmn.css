@@ -6,7 +6,7 @@
   color: var(--foreground);
   font-family: var(--font-sans);
 }
-.bf-bpmn-root button,
+.bf-bpmn-root button:not(:where(.workspace-launcher *)),
 .bf-bpmn-editor button,
 .bf-bpmn-form button,
 .bf-bpmn-import footer button {
@@ -22,12 +22,12 @@
   font-size: 12px;
   cursor: pointer;
 }
-.bf-bpmn-root button:hover,
+.bf-bpmn-root button:not(:where(.workspace-launcher *)):hover,
 .bf-bpmn-editor button:hover,
 .bf-bpmn-form button:hover {
   background: var(--muted);
 }
-.bf-bpmn-root button:disabled,
+.bf-bpmn-root button:not(:where(.workspace-launcher *)):disabled,
 .bf-bpmn-editor button:disabled,
 .bf-bpmn-form button:disabled {
   opacity: 0.5;
@@ -68,6 +68,9 @@
 }
 .bf-bpmn-org-select select {
   max-width: 230px;
+}
+.bf-bpmn-org-select {
+  margin-left: auto;
 }
 .bf-bpmn-editor {
   display: flex;

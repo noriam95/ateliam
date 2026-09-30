@@ -1,3 +1,4 @@
+import { ProcessLibraryHeader, ProcessLibrarySearch } from "@/components/process-library-header";
 import { mappingCodeForMode } from "@/lib/document-label";
 import { DropdownTextField } from "@/components/dropdown-text-field";
 import { visibleModulesFor } from "@/lib/module-visibility";
@@ -6377,7 +6378,9 @@ function ModuleWorkspacePage() {
   const [railArea, setRailArea] = useState<RailArea>("modules");
   const [contentMode, setContentMode] = useState<ModuleContentMode>("module");
   const [moduleSurface, setModuleSurface] = useState<ModuleSurface>(() =>
-    search.view === "consult" ? "consult" : "editor",
+    search.view === "new" || search.view?.startsWith("cause-") || search.document
+      ? "editor"
+      : "consult",
   );
   const [registrationView, setRegistrationView] = useState<ModuleRegistrationView>("processes");
   const [settingsView, setSettingsView] = useState<ModuleSettingsView>("theme");
@@ -6754,9 +6757,9 @@ function ModuleWorkspacePage() {
 
       return;
     }
-    // No view param — always reset to editor to avoid stale surface from previous navigation
-    setModuleSurface("editor");
-  }, [moduleId, search.view]);
+    // A module opens its library unless a document was explicitly requested.
+    setModuleSurface(search.document ? "editor" : "consult");
+  }, [moduleId, search.view, search.document]);
 
   function updateWorkspace(updater: (current: WorkspaceState) => WorkspaceState) {
     setWorkspace((current) => updater(current));
@@ -7511,6 +7514,7 @@ function ModuleWorkspacePage() {
     openModuleBranch(targetModule);
     setModuleSurface("editor");
     newModuleDocument();
+    void navigate({ to: "/m/$module", params: { module: targetModule }, search: { view: "new" } });
   }
 
   function openSearchForModule(targetModule: AteliamModule) {
@@ -7524,6 +7528,11 @@ function ModuleWorkspacePage() {
     }
     openModuleBranch(targetModule);
     setModuleSurface("consult");
+    void navigate({
+      to: "/m/$module",
+      params: { module: targetModule },
+      search: { view: "consult" },
+    });
   }
 
   function openCauses(view: "new" | "consult" | "edit") {
@@ -7538,6 +7547,11 @@ function ModuleWorkspacePage() {
     openModuleBranch("ddp");
     setModuleSurface("editor");
     setDdpView("causes");
+    void navigate({
+      to: "/m/$module",
+      params: { module: "ddp" },
+      search: { view: `cause-${view}` as ModuleRouteView },
+    });
   }
 
   const savedDemoDocument = (() => {
@@ -8222,6 +8236,7 @@ function ModuleWorkspacePage() {
         moduleId={moduleId}
         rows={documentRows}
         loading={cloudDocsQ.isLoading && !isDemo}
+        onCreate={() => openNewForModule(moduleId)}
         onEdit={editDocumentRow}
         onDelete={deleteDocumentRows}
         onExport={exportDocumentRow}
@@ -8288,6 +8303,7 @@ function ModuleWorkspacePage() {
               moduleId={moduleId}
               rows={documentRows}
               loading={cloudDocsQ.isLoading && !isDemo}
+              onCreate={() => openNewForModule(moduleId)}
               onEdit={editDocumentRow}
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
@@ -8339,6 +8355,7 @@ function ModuleWorkspacePage() {
               moduleId={moduleId}
               rows={documentRows}
               loading={cloudDocsQ.isLoading && !isDemo}
+              onCreate={() => openNewForModule(moduleId)}
               onEdit={editDocumentRow}
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
@@ -9292,6 +9309,7 @@ function ModuleDocumentGrid({
   moduleId,
   rows,
   loading,
+  onCreate,
   onEdit,
   onDelete,
   onExport,
@@ -9303,6 +9321,7 @@ function ModuleDocumentGrid({
   moduleId: AteliamModule;
   rows: ModuleGridRow[];
   loading: boolean;
+  onCreate: () => void;
   onEdit: (row: ModuleGridRow) => void | Promise<void>;
   onDelete: (ids: string[]) => void | Promise<void>;
   onExport: (row: ModuleGridRow, format: ExportFormat) => void | Promise<void>;
@@ -9346,7 +9365,6 @@ function ModuleDocumentGrid({
   } | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [deleteSaving, setDeleteSaving] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (initialQuery) setQuery(initialQuery);
@@ -9466,38 +9484,37 @@ function ModuleDocumentGrid({
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <header className="border-b border-border bg-card px-5 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-              processos · {moduleDocumentLabel(moduleId)}
-            </div>
-            <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {selected.length > 1 ? (
-              <button
-                type="button"
-                onClick={removeSelected}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-destructive hover:bg-destructive/5"
-              >
-                <Trash2 className="h-4 w-4" />
-                Excluir selecionados ({selected.length})
-              </button>
-            ) : null}
-          </div>
-        </div>
+    <section className="process-library">
+      <header>
+        <ProcessLibraryHeader
+          title={moduleId === "ddp" ? "Mapeamentos" : "Documentação"}
+          description={
+            moduleId === "ddp"
+              ? "Consulte os mapeamentos e registre os processos da sua organização."
+              : "Consulte e crie os documentos dos processos da sua organização."
+          }
+        >
+          <button type="button" className="process-library-new" onClick={onCreate}>
+            <Plus size={17} />
+            {moduleId === "ddp" ? "Novo mapeamento" : "Novo documento"}
+          </button>
+          {selected.length > 1 ? (
+            <button
+              type="button"
+              onClick={removeSelected}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-destructive hover:bg-destructive/5"
+            >
+              <Trash2 className="h-4 w-4" />
+              Excluir selecionados ({selected.length})
+            </button>
+          ) : null}
+        </ProcessLibraryHeader>
         <div className="mt-4 flex max-w-xl items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar na tabela"
-              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
+          <ProcessLibrarySearch
+            value={query}
+            onChange={setQuery}
+            placeholder="Pesquisar registros…"
+          />
           <button
             type="button"
             onClick={() => setCompact((current) => !current)}
@@ -9534,7 +9551,13 @@ function ModuleDocumentGrid({
         ) : null}
       </header>
 
-      <div className="overflow-x-auto">
+      <div
+        className="process-library-table"
+        data-density={compact ? "compact" : "comfortable"}
+        role="region"
+        aria-label="Registros"
+        tabIndex={0}
+      >
         <table className="w-full min-w-[960px] border-collapse text-left text-sm">
           <thead className="bg-muted/80 text-xs font-semibold text-muted-foreground">
             <tr>
@@ -9607,13 +9630,7 @@ function ModuleDocumentGrid({
                     ) : (
                       <button
                         type="button"
-                        onClick={() =>
-                          navigate({
-                            to: "/m/$module",
-                            params: { module: moduleId },
-                            search: { view: "new" },
-                          })
-                        }
+                        onClick={onCreate}
                         className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
                       >
                         <Plus className="h-4 w-4" /> Criar registro
@@ -9693,7 +9710,7 @@ function ModuleDocumentGrid({
           </tbody>
         </table>
       </div>
-      <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
+      <footer>
         {sortedRows.length} registro(s) exibido(s) · {selected.length} selecionado(s)
       </footer>
       {pendingStatus ? (
@@ -10760,51 +10777,38 @@ function DdpCausesModuleV2({
 
   return (
     <div className="grid gap-5">
-      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-        <header className="border-b border-border px-5 py-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-                Processos · Mapeamento · Oportunidades de melhoria
-              </div>
-              <h1 className="mt-1 text-xl font-semibold text-foreground">
-                Consultar oportunidades de melhoria
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Oportunidades identificadas nos mapeamentos e registros avulsos da organização.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {selectedIds.length ? (
-                <button
-                  type="button"
-                  onClick={() => setPendingDeleteIds(selectedIds)}
-                  className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-destructive hover:bg-destructive/5"
-                >
-                  <Trash2 className="h-4 w-4" /> Excluir ({selectedIds.length})
-                </button>
-              ) : null}
+      <section className="process-library">
+        <header>
+          <ProcessLibraryHeader
+            title="Oportunidades de melhoria"
+            description="Oportunidades identificadas nos mapeamentos e registros avulsos da organização."
+          >
+            {selectedIds.length ? (
               <button
                 type="button"
-                onClick={openNewCause}
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+                onClick={() => setPendingDeleteIds(selectedIds)}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-destructive hover:bg-destructive/5"
               >
-                <Plus className="h-4 w-4" /> Nova oportunidade
+                <Trash2 className="h-4 w-4" /> Excluir ({selectedIds.length})
               </button>
-            </div>
-          </div>
-          <div className="relative mt-4 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar oportunidade, mapeamento ou responsável"
-              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
+            ) : null}
+            <button type="button" onClick={openNewCause} className="process-library-new">
+              <Plus className="h-4 w-4" /> Nova oportunidade
+            </button>
+          </ProcessLibraryHeader>
+          <ProcessLibrarySearch
+            value={query}
+            onChange={setQuery}
+            placeholder="Pesquisar oportunidade, mapeamento ou responsável…"
+          />
         </header>
 
-        <div className="overflow-x-auto">
+        <div
+          className="process-library-table"
+          role="region"
+          aria-label="Oportunidades de melhoria"
+          tabIndex={0}
+        >
           <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
             <thead className="bg-muted/80 text-xs font-semibold text-muted-foreground">
               <tr>
@@ -10961,7 +10965,7 @@ function DdpCausesModuleV2({
             </tbody>
           </table>
         </div>
-        <footer className="border-t border-border bg-muted/35 px-5 py-3 text-xs text-muted-foreground">
+        <footer>
           {filtered.length} registro(s) · {mappingCauses.length} de mapeamentos ·{" "}
           {standaloneCauses.length} avulsa(s)
         </footer>
