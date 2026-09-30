@@ -1,3 +1,5 @@
+import { UserProfileMenu } from "@/components/user-profile-menu";
+import { supabase } from "@/integrations/supabase/client";
 import { ProcessLibraryHeader, ProcessLibrarySearch } from "@/components/process-library-header";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -204,7 +206,7 @@ export function BpmnWorkspace({
   return (
     <main className="bf-bpmn-root">
       {!active && (
-        <header className="bf-bpmn-global-header">
+        <header className="bf-bpmn-workspace-header sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
           <WorkspaceLauncher
             activeArea="modules"
             visibleModules={visibleModulesFor(me.data?.profile, !!me.data?.roles.includes("admin"))}
@@ -238,11 +240,22 @@ export function BpmnWorkspace({
               }}
             />
           </WorkspaceLauncher>
-          <BFFlowMark className="h-7" />
-          {(organizations.data?.length || 0) > 1 && (
-            <label className="bf-bpmn-org-select">
+          <button
+            type="button"
+            onClick={() => void navigate({ to: "/" })}
+            className="flex h-full items-center rounded-md transition-opacity hover:opacity-80"
+            title="Ir para a página inicial"
+            aria-label="Ir para a página inicial"
+          >
+            <BFFlowMark className="h-9" />
+          </button>
+          <div className="flex-1" />
+          {!!organizations.data?.length && (
+            <label className="hidden md:block">
               <span className="sr-only">Organização ativa</span>
               <select
+                className="h-9 max-w-[220px] rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20"
+                title="Organização ativa"
                 aria-label="Organização ativa"
                 value={organizationId}
                 onChange={(e) => {
@@ -266,6 +279,26 @@ export function BpmnWorkspace({
               </select>
             </label>
           )}
+          <UserProfileMenu
+            canConfigure={!!me.data?.roles.includes("admin")}
+            email={me.data?.profile?.email ?? ""}
+            organizationName={
+              organizations.data?.find((organization) => organization.id === organizationId)
+                ?.name ?? "BF Flow"
+            }
+            profilePhoto={me.data?.profile?.avatar_data_url ?? ""}
+            onProfileUpdated={async () => {
+              await me.refetch();
+            }}
+            onSignOut={async () => {
+              const { error } = await supabase.auth.signOut();
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
+              await navigate({ to: "/auth", replace: true });
+            }}
+          />
         </header>
       )}
       {failure && (
