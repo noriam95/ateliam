@@ -1201,13 +1201,14 @@
   min-width: 900px;
 }
 .bf-bpmn-documents-table th,
-.bf-bpmn-documents-table td:is(:nth-child(1), :nth-child(3), :nth-child(4), :nth-child(6)) {
+.bf-bpmn-documents-table .bf-bpmn-nowrap,
+.bf-bpmn-document-code {
   white-space: nowrap;
 }
-.bf-bpmn-documents-table td:nth-child(2) {
+.bf-bpmn-documents-table .bf-bpmn-title-cell {
   min-width: 240px;
 }
-.bf-bpmn-documents-table td:nth-child(5) {
+.bf-bpmn-documents-table .bf-bpmn-area-cell {
   min-width: 160px;
   overflow-wrap: anywhere;
 }
@@ -1497,4 +1498,61 @@ dialog.bf-bpmn-import {
   .bf-bpmn-toolbar-spacer {
     display: none;
   }
+}
+
+.bf-bpmn-delete-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.bf-bpmn-root button.bf-bpmn-delete {
+  color: var(--destructive);
+}
+.bf-bpmn-root button.bf-bpmn-delete:hover {
+  background: color-mix(in oklab, var(--destructive) 8%, var(--card));
+}
+.bf-bpmn-documents-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.bf-bpmn-row-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(240px, calc(100vw - 16px));
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 12px 30px #0003;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+}
+.bf-bpmn-root .bf-bpmn-row-menu button {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 40px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+}
+.bf-bpmn-root .bf-bpmn-row-menu button:hover {
+  background: var(--muted);
+}
+.bf-bpmn-root .bf-bpmn-row-menu button.bf-bpmn-row-delete {
+  border-top: 1px solid var(--border);
+  color: var(--destructive);
+  margin-top: 4px;
 }

@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useNavigate } from "@tanstack/react-router";
 import { Plus, Upload, Workflow } from "lucide-react";
+import { toast } from "sonner";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { WorkspaceLauncher, WorkspaceModulesTree } from "@/components/workspace-navigation";
 import { TaskDialog } from "@/components/task-dialog";
@@ -15,6 +16,7 @@ import {
   listBpmnDocuments,
   getModuleDocumentContent,
   saveBpmnDocument,
+  deleteModuleDocument,
   saveProcessArea,
   savePositionRegistration,
   saveProcessRegistration,
@@ -49,6 +51,7 @@ export function BpmnWorkspace({
   const getDocuments = useServerFn(listBpmnDocuments);
   const getDocument = useServerFn(getModuleDocumentContent);
   const saveDocument = useServerFn(saveBpmnDocument);
+  const deleteDocument = useServerFn(deleteModuleDocument);
   const createArea = useServerFn(saveProcessArea);
   const createPosition = useServerFn(savePositionRegistration);
   const createProcess = useServerFn(saveProcessRegistration);
@@ -66,6 +69,7 @@ export function BpmnWorkspace({
     key: string;
   } | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [viewOnly, setViewOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [modal, setModal] = useState<"new" | "import" | null>(null);
@@ -190,6 +194,7 @@ export function BpmnWorkspace({
     return item;
   };
   const openNew = (document: BpmnDocument) => {
+    setViewOnly(false);
     setActive({ document, record: null, key: "new" });
     setModal(null);
     setDirty(true);
@@ -291,7 +296,7 @@ export function BpmnWorkspace({
           storageKey={`bf-flow:bpmn:${me.data?.userId}:${organizationId}:${active.key}`}
           catalogs={catalogs}
           create={create}
-          canEdit={canEdit}
+          canEdit={canEdit && !viewOnly}
           onDirty={setDirty}
           taskContext={
             taskId && itemKey && documentId && active.record?.id === documentId ? (
@@ -387,7 +392,50 @@ export function BpmnWorkspace({
             </div>
           ) : (
             <>
-              <BpmnDocumentsTable rows={docs.data.rows} onOpen={(id) => void loadDocument(id)} />
+              <BpmnDocumentsTable
+                key={`${organizationId}:${page}:${search}`}
+                rows={docs.data.rows}
+                onOpen={(id) => {
+                  setViewOnly(false);
+                  void loadDocument(id);
+                }}
+                onView={(id) => {
+                  setViewOnly(true);
+                  void loadDocument(id);
+                }}
+                onDelete={
+                  canEdit
+                    ? async (ids) => {
+                        let deleted = 0;
+                        let failure: unknown;
+                        for (const id of ids) {
+                          try {
+                            await deleteDocument({ data: { organizationId, id } });
+                            deleted++;
+                          } catch (cause) {
+                            failure = cause;
+                            break;
+                          }
+                        }
+                        const refreshed = await docs.refetch();
+                        if (refreshed.data)
+                          setPage((current) =>
+                            Math.min(
+                              current,
+                              Math.max(0, Math.ceil(refreshed.data.count / 20) - 1),
+                            ),
+                          );
+                        if (failure)
+                          throw new Error(
+                            `${deleted ? `${deleted} desenho(s) excluído(s). ` : ""}${failure instanceof Error ? failure.message : "Não foi possível concluir a exclusão."}`,
+                          );
+                        toast.success(
+                          ids.length === 1 ? "Desenho excluído." : "Desenhos excluídos.",
+                        );
+                      }
+                    : undefined
+                }
+              />
               <div className="bf-bpmn-pagination">
                 <span>
                   {docs.data.count} desenhos · página {page + 1}
