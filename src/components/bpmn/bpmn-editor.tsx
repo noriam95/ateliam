@@ -13,7 +13,6 @@ import {
   Upload,
   Presentation,
   Pencil,
-  SlidersHorizontal,
   CircleHelp,
   X,
   CheckCircle2,
@@ -887,38 +886,7 @@ export function BpmnEditor({
         >
           <BpmnCanvas
             key={canvasGeneration}
-            navigationAction={
-              <>
-                {presentationAction}
-                {readOnly && (
-                  <>
-                    <button
-                      title="Voltar aos desenhos"
-                      aria-label="Voltar aos desenhos"
-                      onClick={() => (dirty ? setExit(true) : onBack())}
-                    >
-                      <ArrowLeft size={15} />
-                    </button>
-                    <button
-                      title="Exportar desenho"
-                      aria-label="Exportar desenho"
-                      disabled={!ready || exporting}
-                      onClick={() => setExportMenu(true)}
-                    >
-                      <Download size={15} />
-                    </button>
-                    <button
-                      title="Identificar raias fora da tela"
-                      aria-label="Identificar raias fora da tela"
-                      aria-pressed={frozen}
-                      onClick={() => setFrozen(!frozen)}
-                    >
-                      <SlidersHorizontal size={15} />
-                    </button>
-                  </>
-                )}
-              </>
-            }
+            navigationAction={presentationAction}
             processName={document.processName}
             ref={canvas}
             xml={seed}
@@ -942,38 +910,7 @@ export function BpmnEditor({
         </div>
         {presenting && canEdit && (
           <BpmnCanvas
-            navigationAction={
-              <>
-                {presentationAction}
-                {readOnly && (
-                  <>
-                    <button
-                      title="Voltar aos desenhos"
-                      aria-label="Voltar aos desenhos"
-                      onClick={() => (dirty ? setExit(true) : onBack())}
-                    >
-                      <ArrowLeft size={15} />
-                    </button>
-                    <button
-                      title="Exportar desenho"
-                      aria-label="Exportar desenho"
-                      disabled={!ready || exporting}
-                      onClick={() => setExportMenu(true)}
-                    >
-                      <Download size={15} />
-                    </button>
-                    <button
-                      title="Identificar raias fora da tela"
-                      aria-label="Identificar raias fora da tela"
-                      aria-pressed={frozen}
-                      onClick={() => setFrozen(!frozen)}
-                    >
-                      <SlidersHorizontal size={15} />
-                    </button>
-                  </>
-                )}
-              </>
-            }
+            navigationAction={presentationAction}
             processName={document.processName}
             ref={presentationCanvas}
             xml={presentationXml}

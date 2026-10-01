@@ -1705,22 +1705,23 @@ dialog.bf-bpmn-import {
   min-height: 0;
 }
 .bf-bpmn-canvas.has-frozen-lanes .bf-bpmn-engine {
-  left: 104px;
+  left: 0;
 }
 .bf-bpmn-zoom {
   position: absolute;
-  inset: auto 16px 14px auto;
+  inset: auto auto 16px 50%;
+  transform: translateX(-50%);
   display: flex;
   flex: 0 0 auto;
   min-height: 36px;
   padding: 3px;
   gap: 1px;
-  border: 1px solid #ffffff24;
+  border: 1px solid #ffffff30;
   border-radius: 8px;
-  background: #171a1edb;
+  background: rgb(23 26 30 / 72%);
   color: #fff;
-  box-shadow: 0 8px 24px #0000002b;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px #00000024;
+  backdrop-filter: blur(14px);
   z-index: 12;
 }
 .bf-bpmn-zoom button {
@@ -1792,7 +1793,7 @@ dialog.bf-bpmn-import {
     box-shadow: -12px 0 30px #0004;
   }
   .bf-bpmn-zoom {
-    inset: auto 8px 8px auto;
+    inset: auto auto 8px 50%;
     justify-content: flex-end;
     max-width: calc(100% - 16px);
     overflow-x: auto;

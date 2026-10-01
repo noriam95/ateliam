@@ -154,7 +154,8 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 
 - O canvas ocupa toda a altura restante; o rodapé de identificação/status foi removido. O estado de salvamento fica no grupo Arquivo da barra superior.
 - A barra superior usa grupos Arquivo, Edição, Formatação, Visualização e Configurações, com controles compactos em duas linhas e separadores discretos. Ações contextualmente indisponíveis permanecem visíveis e desabilitadas. A barra pode ser recolhida sem alterar coordenadas BPMN DI.
-- Zoom, centralização, apresentação e ajuste à tela formam um controle flutuante translúcido sobre o canto inferior direito do canvas. O painel de configurações abre sobre o desenho e não reduz sua largura.
+- Zoom, centralização, apresentação e ajuste à tela formam um controle flutuante translúcido no centro inferior do canvas. O painel de configurações abre sobre o desenho e não reduz sua largura.
 - Nomes de piscinas ficam ocultos somente na renderização. Nomes e vínculos das raias permanecem visíveis e os dados semânticos do processo continuam no XML.
 - Imagem é um artefato arrastável da paleta. O arquivo fica em documentação BPMN padrão, com seleção, movimento, exclusão e redimensionamento proporcional pelo motor. Limite por imagem: 2,5 MB.
 - Formatação de texto persiste por elemento no documento do BF Flow: família, tamanho, negrito, itálico, sublinhado, tachado, cor e alinhamento. Preenchimento continua persistido no BPMN DI.
+- Ajuste de apresentação: a barra flutuante fica centralizada na base, com fundo escuro a 72% e desfoque, distante da marca bpmn.io. Voltar, exportar e identificação de raias saem dessa barra. As identificações de raia permanecem sobrepostas na borda esquerda, sem deslocar o canvas ou criar uma coluna lateral.
