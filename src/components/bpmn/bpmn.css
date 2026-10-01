@@ -1806,19 +1806,19 @@ dialog.bf-bpmn-import {
 }
 .bf-bpmn-zoom {
   position: absolute;
-  inset: auto auto 16px 50%;
-  transform: translateX(-50%);
+  inset: auto 80px 14px auto;
+  transform: none;
   display: flex;
   flex: 0 0 auto;
   min-height: 36px;
   padding: 3px;
   gap: 1px;
-  border: 1px solid #ffffff30;
+  border: 0;
   border-radius: 8px;
-  background: rgb(23 26 30 / 72%);
-  color: #fff;
-  box-shadow: 0 8px 24px #00000024;
-  backdrop-filter: blur(14px);
+  background: transparent;
+  color: #374151;
+  box-shadow: none;
+  backdrop-filter: none;
   z-index: 12;
 }
 .bf-bpmn-zoom button {
@@ -1830,7 +1830,8 @@ dialog.bf-bpmn-import {
   color: inherit;
 }
 .bf-bpmn-zoom button:hover {
-  background: #ffffff14;
+  background: transparent;
+  color: #111827;
 }
 .bf-bpmn-zoom output {
   min-width: 44px;
@@ -1840,9 +1841,9 @@ dialog.bf-bpmn-import {
   position: static;
   max-width: 180px;
   margin-right: 5px;
-  border-color: #ffffff30;
-  background: #111418;
-  color: #fff;
+  border-color: #1118273d;
+  background: transparent;
+  color: #374151;
 }
 .bf-bpmn-properties {
   position: absolute;
@@ -1894,9 +1895,9 @@ dialog.bf-bpmn-import {
     box-shadow: -12px 0 30px #0004;
   }
   .bf-bpmn-zoom {
-    inset: auto auto 8px 50%;
+    inset: auto 76px 8px auto;
     justify-content: flex-end;
-    max-width: calc(100% - 16px);
+    max-width: calc(100% - 92px);
     overflow-x: auto;
   }
 }
