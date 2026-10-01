@@ -34,6 +34,8 @@ import {
   Settings,
   Type,
   PaintBucket,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { BpmnImportWizard } from "./import-wizard";
 import { TaskDialog } from "@/components/task-dialog";
@@ -146,6 +148,7 @@ export function BpmnEditor({
 
   const [properties, setProperties] = useState(false);
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
+  const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [propertySection, setPropertySection] = useState<"element" | "document">("document");
   const [exportMenu, setExportMenu] = useState(false);
   const [selection, setSelection] = useState<CanvasSelection>(null);
@@ -745,15 +748,17 @@ export function BpmnEditor({
               >
                 <CircleHelp size={16} />
               </button>
-              <button
-                aria-label="Recolher barra de ferramentas"
-                title="Recolher barra de ferramentas"
-                onClick={() => setToolbarCollapsed(true)}
-              >
-                <ChevronUp size={16} />
-              </button>
             </div>
           </div>
+          <button
+            className="bf-bpmn-toolbar-collapse"
+            aria-label="Ocultar barra de ferramentas"
+            aria-expanded="true"
+            title="Ocultar barra de ferramentas"
+            onClick={() => setToolbarCollapsed(true)}
+          >
+            <ChevronUp size={16} />
+          </button>
         </div>
       )}
       {saveMenu && (
@@ -800,22 +805,47 @@ export function BpmnEditor({
           a nova versão. Conexões livres antigas ficam preservadas no arquivo original de dados.
         </div>
       )}
-      <div className="bf-bpmn-workarea">
+      <div
+        className={`bf-bpmn-workarea ${readOnly || paletteCollapsed ? "is-palette-collapsed" : ""}`}
+      >
         {!readOnly && toolbarCollapsed && (
           <button
             className="bf-bpmn-toolbar-restore"
-            aria-label="Exibir barra de ferramentas"
-            title="Exibir barra de ferramentas"
+            aria-label="Mostrar barra de ferramentas"
+            aria-expanded="false"
+            title="Mostrar barra de ferramentas"
             onClick={() => setToolbarCollapsed(false)}
           >
-            <ChevronDown size={17} />
+            <ChevronDown size={18} strokeWidth={2.4} />
           </button>
         )}
-        {!readOnly && (
+        {!readOnly && paletteCollapsed && (
+          <button
+            className="bf-bpmn-palette-restore"
+            aria-label="Mostrar elementos"
+            aria-expanded="false"
+            title="Mostrar elementos"
+            onClick={() => setPaletteCollapsed(false)}
+          >
+            <ChevronRight size={18} strokeWidth={2.4} />
+          </button>
+        )}
+        {!readOnly && !paletteCollapsed && (
           <aside className="bf-bpmn-palette" aria-label="Elementos BPMN">
-            <span title="Arraste para inserir. Use o botão direito para alterar o tipo.">
-              Elementos
-            </span>
+            <div className="bf-bpmn-palette-heading">
+              <span title="Arraste para inserir. Use o botão direito para alterar o tipo.">
+                Elementos
+              </span>
+              <button
+                className="bf-bpmn-palette-collapse"
+                aria-label="Ocultar elementos"
+                aria-expanded="true"
+                title="Ocultar elementos"
+                onClick={() => setPaletteCollapsed(true)}
+              >
+                <ChevronLeft size={18} strokeWidth={2.4} />
+              </button>
+            </div>
             {palette.map(([type, label, Icon]) => (
               <button
                 key={type}

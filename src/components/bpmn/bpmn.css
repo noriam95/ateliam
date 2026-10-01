@@ -1561,6 +1561,9 @@ dialog.bf-bpmn-import {
 .bf-bpmn-image-input {
   display: none;
 }
+.bf-bpmn-editor {
+  position: relative;
+}
 .bf-bpmn-toolbar {
   display: flex;
   flex-wrap: nowrap;
@@ -1680,19 +1683,113 @@ dialog.bf-bpmn-import {
 .bf-bpmn-workarea {
   min-height: 0;
 }
+.bf-bpmn-toolbar-collapse,
 .bf-bpmn-toolbar-restore {
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted-foreground);
+  box-shadow: none;
+}
+.bf-bpmn-toolbar-collapse:hover,
+.bf-bpmn-toolbar-restore:hover {
+  color: var(--foreground);
+  background: transparent;
+}
+.bf-bpmn-toolbar-collapse {
+  position: sticky;
+  right: 8px;
+  flex: 0 0 30px;
+  align-self: center;
+  margin-left: auto;
+}
+.bf-bpmn-toolbar-restore {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border-color: #1118273d;
+  background: transparent;
+  color: #374151;
+}
+.bf-bpmn-toolbar-restore:hover {
+  background: transparent;
+  color: #111827;
+}
+.bf-bpmn-palette-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 30px;
+  margin: 0 0 8px;
+  padding-left: 8px;
+}
+.bf-bpmn-palette-heading > span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bf-bpmn-palette-collapse {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 3px;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+.bf-bpmn-palette-collapse:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+.bf-bpmn-palette-restore {
   position: absolute;
   z-index: 25;
   top: 10px;
-  right: 12px;
+  left: 10px;
+  display: grid;
+  place-items: center;
   width: 34px;
-  height: 30px;
+  height: 32px;
   padding: 4px;
-  border-color: #ffffff30;
-  background: #171a1ecc;
-  color: #fff;
-  box-shadow: 0 4px 16px #0003;
-  backdrop-filter: blur(10px);
+  border: 1px solid #1118273d;
+  border-radius: 8px;
+  background: transparent;
+  color: #374151;
+  box-shadow: none;
+}
+.bf-bpmn-palette-restore:hover {
+  background: transparent;
+  color: #111827;
+}
+.bf-bpmn-editor .bf-bpmn-toolbar-collapse,
+.bf-bpmn-editor .bf-bpmn-toolbar-restore,
+.bf-bpmn-editor .bf-bpmn-palette-collapse,
+.bf-bpmn-editor .bf-bpmn-palette-restore,
+.bf-bpmn-editor .bf-bpmn-toolbar-collapse:hover,
+.bf-bpmn-editor .bf-bpmn-toolbar-restore:hover,
+.bf-bpmn-editor .bf-bpmn-palette-collapse:hover,
+.bf-bpmn-editor .bf-bpmn-palette-restore:hover {
+  background: transparent;
+}
+.bf-bpmn-editor .bf-bpmn-toolbar-restore,
+.bf-bpmn-editor .bf-bpmn-palette-restore {
+  border-color: #1118273d;
+  color: #374151;
+}
+.bf-bpmn-editor .bf-bpmn-toolbar-restore:hover,
+.bf-bpmn-editor .bf-bpmn-palette-restore:hover {
+  color: #111827;
 }
 .bf-bpmn-canvas {
   display: block;
@@ -1785,6 +1882,10 @@ dialog.bf-bpmn-import {
     display: grid;
     grid-template-columns: 78px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
+  }
+  .bf-bpmn-workarea.is-palette-collapsed,
+  .bf-bpmn-workarea.is-palette-collapsed:has(.bf-bpmn-properties) {
+    grid-template-columns: minmax(0, 1fr);
   }
   .bf-bpmn-properties {
     position: absolute;
