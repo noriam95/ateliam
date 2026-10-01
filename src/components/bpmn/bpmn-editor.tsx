@@ -36,6 +36,7 @@ import {
   PaintBucket,
   ChevronLeft,
   ChevronRight,
+  Paintbrush,
 } from "lucide-react";
 import { BpmnImportWizard } from "./import-wizard";
 import { TaskDialog } from "@/components/task-dialog";
@@ -43,6 +44,7 @@ import { BpmnCanvas, type BpmnCanvasHandle, type CanvasSelection } from "./bpmn-
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
 import { captureBpmnSaveAttempt } from "@/lib/bpmn-save-attempt";
 import { inspectBpmn, type BpmnDocument, type BpmnTextStyle } from "@/lib/bpmn-document";
+import { defaultBpmnColors } from "@/lib/bpmn-colors";
 import "@/components/user-tasks.css";
 
 const elementLabels: Record<string, string> = {
@@ -149,6 +151,13 @@ export function BpmnEditor({
   const [properties, setProperties] = useState(false);
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  const formatPainter = useRef<{
+    sourceId: string;
+    textStyle: BpmnTextStyle;
+    fill?: string;
+    stroke?: string;
+  } | null>(null);
+  const [formatPainterActive, setFormatPainterActive] = useState(false);
   const [propertySection, setPropertySection] = useState<"element" | "document">("document");
   const [exportMenu, setExportMenu] = useState(false);
   const [selection, setSelection] = useState<CanvasSelection>(null);
@@ -211,6 +220,52 @@ export function BpmnEditor({
       next[id] = { ...(next[id] || {}), ...patch };
     });
     update({ elementStyles: next });
+  };
+  const copyFormatting = () => {
+    if (!selection || selection.isImage) return;
+    if (formatPainter.current) {
+      formatPainter.current = null;
+      setFormatPainterActive(false);
+      setNotice("Cópia de formatação cancelada.");
+      return;
+    }
+    const defaults = defaultBpmnColors(selection.type);
+    formatPainter.current = {
+      sourceId: selection.id,
+      textStyle: {
+        fontFamily: activeTextStyle.fontFamily || "Segoe UI",
+        fontSize: activeTextStyle.fontSize || 12,
+        bold: Boolean(activeTextStyle.bold),
+        italic: Boolean(activeTextStyle.italic),
+        underline: Boolean(activeTextStyle.underline),
+        strike: Boolean(activeTextStyle.strike),
+        color: activeTextStyle.color || "#1f2937",
+        align: activeTextStyle.align || "center",
+      },
+      fill: selection.fill || defaults.fill,
+      stroke: selection.stroke || defaults.stroke,
+    };
+    setFormatPainterActive(true);
+    setNotice("Formatação copiada. Selecione o elemento de destino.");
+  };
+  const handleSelection = (next: CanvasSelection) => {
+    setSelection(next);
+    if (next) setPropertySection("element");
+    const copied = formatPainter.current;
+    if (!next || next.isImage || !copied || next.id === copied.sourceId) return;
+
+    formatPainter.current = null;
+    setFormatPainterActive(false);
+    const ids = canvas.current?.formatText(copied.textStyle) || [];
+    if (ids.length) {
+      const styles = { ...(documentRef.current.elementStyles || {}) };
+      ids.forEach((id) => {
+        styles[id] = { ...copied.textStyle };
+      });
+      update({ elementStyles: styles });
+    }
+    canvas.current?.color(copied.fill, copied.stroke);
+    setNotice("Formatação aplicada.");
   };
   const requestImage = (id: string) => {
     pendingImage.current = id;
@@ -577,40 +632,42 @@ export function BpmnEditor({
                 <option>Verdana</option>
                 <option>Times New Roman</option>
               </select>
-              <input
-                aria-label="Tamanho da fonte"
-                title="Tamanho da fonte"
-                type="number"
-                min="8"
-                max="72"
-                disabled={!canFormat}
-                value={activeTextStyle.fontSize || 12}
-                onChange={(e) =>
-                  applyTextStyle({
-                    fontSize: Math.max(8, Math.min(72, Number(e.target.value) || 12)),
-                  })
-                }
-              />
-              <button
-                aria-label="Diminuir fonte"
-                title="Diminuir fonte"
-                disabled={!canFormat}
-                onClick={() =>
-                  applyTextStyle({ fontSize: Math.max(8, (activeTextStyle.fontSize || 12) - 1) })
-                }
-              >
-                <Minus size={14} />
-              </button>
-              <button
-                aria-label="Aumentar fonte"
-                title="Aumentar fonte"
-                disabled={!canFormat}
-                onClick={() =>
-                  applyTextStyle({ fontSize: Math.min(72, (activeTextStyle.fontSize || 12) + 1) })
-                }
-              >
-                <Plus size={14} />
-              </button>
+              <div className="bf-bpmn-font-size-control" aria-label="Tamanho da fonte">
+                <button
+                  aria-label="Diminuir tamanho da fonte"
+                  title="Diminuir tamanho da fonte"
+                  disabled={!canFormat}
+                  onClick={() =>
+                    applyTextStyle({ fontSize: Math.max(8, (activeTextStyle.fontSize || 12) - 1) })
+                  }
+                >
+                  <Minus size={15} strokeWidth={2.2} />
+                </button>
+                <input
+                  aria-label="Tamanho da fonte em pontos"
+                  title="Tamanho da fonte em pontos"
+                  type="number"
+                  min="8"
+                  max="72"
+                  disabled={!canFormat}
+                  value={activeTextStyle.fontSize || 12}
+                  onChange={(e) =>
+                    applyTextStyle({
+                      fontSize: Math.max(8, Math.min(72, Number(e.target.value) || 12)),
+                    })
+                  }
+                />
+                <button
+                  aria-label="Aumentar tamanho da fonte"
+                  title="Aumentar tamanho da fonte"
+                  disabled={!canFormat}
+                  onClick={() =>
+                    applyTextStyle({ fontSize: Math.min(72, (activeTextStyle.fontSize || 12) + 1) })
+                  }
+                >
+                  <Plus size={15} strokeWidth={2.2} />
+                </button>
+              </div>
               <button
                 aria-label="Negrito"
                 title="Negrito"
@@ -693,6 +750,21 @@ export function BpmnEditor({
                 onClick={() => applyTextStyle({ align: "right" })}
               >
                 <AlignRight size={15} />
+              </button>
+              <button
+                aria-label={
+                  formatPainterActive ? "Cancelar cópia de formatação" : "Copiar formatação"
+                }
+                title={
+                  formatPainterActive
+                    ? "Cancelar cópia de formatação"
+                    : "Copiar formatação e aplicar no próximo elemento selecionado"
+                }
+                disabled={!canFormat}
+                aria-pressed={formatPainterActive}
+                onClick={copyFormatting}
+              >
+                <Paintbrush size={15} />
               </button>
             </div>
           </div>
@@ -930,10 +1002,7 @@ export function BpmnEditor({
               setPropertySection("element");
               setProperties(true);
             }}
-            onSelection={(next) => {
-              setSelection(next);
-              if (next) setPropertySection("element");
-            }}
+            onSelection={handleSelection}
             onWarnings={setWarnings}
             onReady={() => setReady(true)}
           />

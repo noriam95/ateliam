@@ -1,75 +1,25 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Consulte `README.md` para a visão técnica, os comandos, as variáveis de ambiente, a arquitetura e as práticas de segurança vigentes.
 
-## Commands
+## Regras do repositório
+
+- Stack: TypeScript, React 19, TanStack Start/Router/Query, Tailwind CSS 4, Supabase, Vite/Nitro e Vercel.
+- Rotas são baseadas em arquivos em `src/routes/`. Nunca edite `src/routeTree.gen.ts` manualmente.
+- Use o alias `@/` para imports internos.
+- Funções protegidas usam `createServerFn` com `requireSupabaseAuth`.
+- Nunca exponha `SUPABASE_SERVICE_ROLE_KEY` ao bundle cliente.
+- Mudanças de banco devem ser migrations em `supabase/migrations/`, com RLS e testes pertinentes.
+- Preserve o isolamento por `organization_id` em consultas e mutações.
+- O modo de demonstração está desativado; não presuma que ele substitui autenticação ou persistência.
+- Mantenha `DESIGN.md` atualizado ao alterar padrões de interface.
+
+## Verificações
 
 ```bash
-npm run dev       # Start dev server (Vite)
-npm run build     # Production build
-npm run lint      # ESLint check
-npm run format    # Prettier auto-format
+npm run lint
+npm test
+npm run build
 ```
 
-There are no automated tests. TypeScript is checked implicitly by the build (`noEmit: true` in tsconfig).
-
-## Architecture Overview
-
-**Ateliam** is a process management workspace (BPM/BPMN) built with TanStack Start (SSR) + React 19 + Tailwind v4, backed by Supabase. Hosted via Lovable Cloud.
-
-### Routing
-
-TanStack Router with file-based routes under `src/routes/`:
-- `/auth` — login page
-- `/_authenticated/` — main workspace (the entire app lives here, `index.tsx`)
-- `/_authenticated/settings` — system settings
-- `/_authenticated/m.$module` — individual module views (BPMN, etc.)
-
-The `/_authenticated` layout (`route.tsx`) handles auth: it checks for an active demo session first, then validates Supabase session. If neither, redirects to `/auth`.
-
-### Main Workspace (`src/routes/_authenticated/index.tsx`)
-
-Single large component (`WorkspaceHome`) that renders a sidebar + content area. Navigation state is managed via URL search params (`?area=...&view=...`). The `WorkspaceArea` union (`"home" | "modules" | "registrations" | "reports" | "settings"`) controls which sidebar section is active.
-
-### Server Functions
-
-All backend calls use `createServerFn` from `@tanstack/react-start` with the `requireSupabaseAuth` middleware (in `src/integrations/supabase/auth-middleware.ts`). The middleware validates the Bearer token and injects `{ supabase, userId, claims }` into context. Server functions live in `src/lib/*.functions.ts` and `src/lib/*.server.ts` files.
-
-Key server function files:
-- `src/lib/config.functions.ts` — organization config, dashboards, catalogs (value chains, process types, areas, etc.)
-- `src/lib/workspace.functions.ts` — workspace document CRUD + versioning + optional SharePoint upload
-- `src/lib/documents.functions.ts` — generic document operations
-
-### Demo Mode
-
-`src/lib/demo-session.ts` provides a client-side demo mode that bypasses Supabase auth, storing state in `localStorage`. Active only in `DEV` or when `VITE_ENABLE_DEMO_MODE=true`. The `/_authenticated/route.tsx` `beforeLoad` checks `isDemoSessionActive()` before attempting Supabase auth.
-
-When `isDemo` is true, components render static data from `DEMO_REGISTRY` (exported from `src/components/workspace-process-registrations.tsx`) instead of fetching from Supabase.
-
-### Feature Components
-
-- `src/components/workspace-process-registrations.tsx` — Cadastros section (value chains, process types, owners, areas, etc.). Exports `DEMO_REGISTRY` for use in other components.
-- `src/components/workspace-reports.tsx` — Relatórios section. Cadeia de Valor diagram (3-band Porter layout). Imports `DEMO_REGISTRY` to stay in sync with Cadastros in demo mode.
-- `src/components/workspace-system-settings.tsx` — Configurações section.
-
-### Code Generation (`src/lib/code-generation.ts`)
-
-Document codes follow the fixed format `SIGLA.ÁREA.NNN` (document-type sigla · area sigla · 3-digit sequence), e.g. `POP.ADM.001`. The six document types (`DOC_TYPES`) and their fixed siglas (`DOC_TYPE_SIGLA`) are: Procedimento=`POP`, Instrução de Trabalho=`IT`, Norma=`NOR`, Fluxograma=`FLU`, Mapeamento=`MAP`, Processo=`PR`. Each area carries a mandatory 3-letter `sigla` (column on `organization_departments`), required in the área registration form.
-
-The sequence restarts per **type + area** and is stored per-organization in `organizations.code_settings` (JSONB) as `{ [type]: { mode: "auto"|"manual", sequences: { [areaSigla]: nextNumber } } }`. Default mode for every type is `auto`. Key functions: `buildDocumentCode`, `previewDocumentCode`, `applyNextDocumentCode`, `isAutoCode`, plus the demo-mode helpers `previewDemoDocumentCode`/`reserveDemoDocumentCode`. `normalizeCodeSettings` migrates the legacy mask-based format. The `reserveCode` server function takes `{ type, areaSigla }` and consumes the sequence.
-
-### Styling
-
-Tailwind v4 with CSS custom properties: `--gold`, `--blue`, `--primary`, `--card`. Color mixing via `color-mix(in oklab, var(--gold) 22%, var(--card))`. Complex shapes use CSS `clip-path: polygon(...)`.
-
-### Path Alias
-
-`@/*` maps to `src/*`.
-
-### Vite / Build
-
-Config via `@lovable.dev/vite-tanstack-config` — do **not** add TanStack Start, React, Tailwind, or tsconfig-paths plugins manually; they are already included by the preset and duplicating them breaks the build.
-
-### Supabase Types
-
-Generated types live in `src/integrations/supabase/types.ts`. When a migration adds columns not yet in the generated types, use `as unknown as TargetType[]` to cast until types are regenerated.
+O lint atualmente pode emitir avisos de Fast Refresh, mas não deve apresentar erros. A publicação ocorre no projeto Vercel `noriam95/bf-flow-2026` após push para `main`; confirme sucesso para o SHA exato antes de considerar a entrega concluída.

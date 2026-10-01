@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "format:check": "prettier --check src tests vite.config.ts eslint.config.js",
     "format": "prettier --write .",
+    "test": "node --test tests/*.test.mjs",
     "test:tasks": "node --test tests/user-tasks.test.mjs"
   },
   "dependencies": {

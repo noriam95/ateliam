@@ -833,36 +833,49 @@
   [data-bf-type="bpmn:SubProcess"][data-bf-custom-fill="false"]
   > .djs-visual
   > rect {
-  fill: #edf4fc !important;
-  stroke: #3671a8 !important;
+  fill: #eef4fa !important;
+  stroke: #2563a6 !important;
 }
 .bf-bpmn-editor[data-appearance="color"]
   [data-bf-type="bpmn:StartEvent"][data-bf-custom-fill="false"]
   > .djs-visual
   > circle {
-  fill: #e7f5df !important;
-  stroke: #639444 !important;
+  fill: #edf7ed !important;
+  stroke: #4e8a48 !important;
 }
 .bf-bpmn-editor[data-appearance="color"]
   [data-bf-type="bpmn:EndEvent"][data-bf-custom-fill="false"]
   > .djs-visual
   > circle {
-  fill: #fbe7e7 !important;
-  stroke: #bd5157 !important;
+  fill: #fbedee !important;
+  stroke: #b64c57 !important;
 }
 .bf-bpmn-editor[data-appearance="color"]
   [data-bf-type*="Intermediate"][data-bf-custom-fill="false"]
   > .djs-visual
   > circle {
-  fill: #fff4d9 !important;
-  stroke: #ac8433 !important;
+  fill: #fff5de !important;
+  stroke: #b8862d !important;
 }
 .bf-bpmn-editor[data-appearance="color"]
   [data-bf-type$="Gateway"][data-bf-custom-fill="false"]
   > .djs-visual
   > polygon {
-  fill: #fff4d9 !important;
-  stroke: #ac8433 !important;
+  fill: #fff5de !important;
+  stroke: #b8862d !important;
+}
+.bf-bpmn-editor[data-appearance="color"]
+  :is([data-bf-type="bpmn:Participant"], [data-bf-type="bpmn:Lane"])[data-bf-custom-fill="false"]
+  > .djs-visual
+  > rect {
+  fill: #fff !important;
+  stroke: #606770 !important;
+}
+.bf-bpmn-editor[data-appearance="color"]
+  :is([data-bf-type$="Flow"], [data-bf-type="bpmn:Association"])[data-bf-custom-fill="false"]
+  > .djs-visual
+  > path {
+  stroke: #343a40 !important;
 }
 .bf-bpmn-editor[data-appearance="mono"]
   .djs-visual
@@ -1621,8 +1634,9 @@ dialog.bf-bpmn-import {
 }
 .bf-bpmn-toolbar-status {
   grid-row: 2;
+  grid-column: 3 / span 2;
   align-self: center;
-  width: 64px;
+  width: 60px;
   padding-left: 4px;
   overflow: hidden;
   color: var(--muted-foreground);
@@ -1632,13 +1646,15 @@ dialog.bf-bpmn-import {
   white-space: nowrap;
 }
 .bf-bpmn-format-group {
-  min-width: 392px;
+  min-width: 300px;
 }
 .bf-bpmn-format-grid {
-  grid-template-columns: 124px 48px repeat(8, 28px);
+  grid-template-columns: 124px repeat(5, 28px);
   grid-auto-columns: 28px;
 }
 .bf-bpmn-format-grid > select {
+  grid-row: 1;
+  grid-column: 1;
   width: 122px;
   height: 26px;
   padding: 2px 22px 2px 6px;
@@ -1648,7 +1664,15 @@ dialog.bf-bpmn-import {
   color: var(--foreground);
   font-size: 11px;
 }
-.bf-bpmn-format-grid > input[type="number"] {
+.bf-bpmn-font-size-control {
+  grid-row: 2;
+  grid-column: 1;
+  display: grid;
+  grid-template-columns: 28px 48px 28px;
+  gap: 2px;
+  width: 108px;
+}
+.bf-bpmn-font-size-control > input[type="number"] {
   width: 46px;
   height: 26px;
   padding: 2px 4px;
@@ -1657,6 +1681,13 @@ dialog.bf-bpmn-import {
   background: var(--background);
   color: var(--foreground);
   font-size: 11px;
+  text-align: center;
+  appearance: textfield;
+}
+.bf-bpmn-font-size-control > input[type="number"]::-webkit-inner-spin-button,
+.bf-bpmn-font-size-control > input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
 }
 .bf-bpmn-color-tool {
   position: relative;

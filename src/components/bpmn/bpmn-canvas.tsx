@@ -35,6 +35,7 @@ export type CanvasSelection = {
   type: string;
   name: string;
   fill?: string;
+  stroke?: string;
   count: number;
   isImage?: boolean;
 } | null;
@@ -43,7 +44,7 @@ export type BpmnCanvasHandle = {
   png(): Promise<Blob>;
   action(name: string, event?: any): void;
   rename(id: string, name: string): void;
-  color(color: string): void;
+  color(fill?: string, stroke?: string): void;
   create(type: string, event?: any): void;
   createImage(event?: any): void;
   setImage(id: string, payload: BpmnImagePayload): void;
@@ -281,7 +282,12 @@ export const BpmnCanvas = forwardRef<
             graphics.setAttribute(
               "data-bf-custom-fill",
               String(
-                Boolean(element.di?.get("bioc:fill") || element.di?.get("color:background-color")),
+                Boolean(
+                  element.di?.get("bioc:fill") ||
+                  element.di?.get("color:background-color") ||
+                  element.di?.get("bioc:stroke") ||
+                  element.di?.get("color:border-color"),
+                ),
               ),
             );
             graphics.toggleAttribute("data-bf-pool", element.type === "bpmn:Participant");
@@ -375,6 +381,7 @@ export const BpmnCanvas = forwardRef<
                 type: el.type,
                 name: el.businessObject.name || el.businessObject.text || "",
                 fill: el.di?.get("bioc:fill") || el.di?.get("color:background-color"),
+                stroke: el.di?.get("bioc:stroke") || el.di?.get("color:border-color"),
                 count: newSelection.length,
                 isImage: Boolean(readBpmnImageElement(el)),
               }
@@ -390,6 +397,7 @@ export const BpmnCanvas = forwardRef<
             type: el.type,
             name: el.businessObject.name || el.businessObject.text || "",
             fill: el.di?.get("bioc:fill") || el.di?.get("color:background-color"),
+            stroke: el.di?.get("bioc:stroke") || el.di?.get("color:border-color"),
             count: selected.length,
             isImage: Boolean(readBpmnImageElement(el)),
           });
@@ -466,12 +474,21 @@ export const BpmnCanvas = forwardRef<
               });
           }
         },
-        color(fill) {
-          if (readOnly || !ready) return;
+        color(fill, stroke) {
+          if (readOnly || !ready || (!fill && !stroke)) return;
           const modeler = engine.current;
           const elements = modeler.get("selection").get();
-          if (elements.every((e: any) => e.di?.get("bioc:fill") === fill)) return;
-          modeler.get("modeling").setColor(elements, { fill });
+          if (
+            elements.every(
+              (e: any) =>
+                (!fill || e.di?.get("bioc:fill") === fill) &&
+                (!stroke || e.di?.get("bioc:stroke") === stroke),
+            )
+          )
+            return;
+          modeler
+            .get("modeling")
+            .setColor(elements, { ...(fill ? { fill } : {}), ...(stroke ? { stroke } : {}) });
         },
         create(type, event) {
           if (readOnly || !ready) return;
