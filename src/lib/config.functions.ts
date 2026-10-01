@@ -1506,6 +1506,23 @@ const bpmnSaveSchema = z.object({
         name: z.string().max(500),
       }),
     ),
+    elementStyles: z
+      .record(
+        z.object({
+          fontFamily: z.string().max(120).optional(),
+          fontSize: z.number().min(8).max(72).optional(),
+          bold: z.boolean().optional(),
+          italic: z.boolean().optional(),
+          underline: z.boolean().optional(),
+          strike: z.boolean().optional(),
+          color: z
+            .string()
+            .regex(/^#[0-9a-f]{6}$/i)
+            .optional(),
+          align: z.enum(["left", "center", "right"]).optional(),
+        }),
+      )
+      .optional(),
   }),
 });
 
@@ -1564,7 +1581,10 @@ export const saveBpmnDocument = createServerFn({ method: "POST" })
           .eq("id", access.organizationId)
           .single();
         if (error) throw new Error(error.message);
-        if (normalizeCodeSettings(organization.code_settings).fluxograma.mode !== "auto" && data.document.codigo)
+        if (
+          normalizeCodeSettings(organization.code_settings).fluxograma.mode !== "auto" &&
+          data.document.codigo
+        )
           return data.document.codigo;
         const { data: areas, error: areaError } = await context.supabase
           .from("organization_departments")

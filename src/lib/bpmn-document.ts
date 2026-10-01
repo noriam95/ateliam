@@ -2,12 +2,23 @@ import { validateBpmnRules } from "./bpmn-validation";
 import { BpmnModdle } from "bpmn-moddle";
 
 export type LaneBinding = { kind: "area" | "position"; id: string; name: string };
+export type BpmnTextStyle = {
+  fontFamily?: string;
+  fontSize?: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  color?: string;
+  align?: "left" | "center" | "right";
+};
 export type BpmnDocument = {
   schemaVersion: 2;
   xml: string;
   processId: string;
   processName: string;
   laneBindings: Record<string, LaneBinding>;
+  elementStyles?: Record<string, BpmnTextStyle>;
   status: "Rascunho" | "Em revisão" | "Publicado";
   origin: "created" | "imported" | "legacy";
   originalXml?: string;

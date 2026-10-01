@@ -149,3 +149,12 @@ Bibliotecas de Processos — 30/09/2026: Mapeamento, Documentação e Oportunida
 Ações de desenhos — 30/09/2026: menu de três pontos na consulta, conforme referência do usuário; comandos com ícones, Excluir em tom destrutivo separado por divisor. Menu em popover nativo fora do recorte da tabela; confirmação no TaskDialog canônico. Seleção e exclusão em lote no padrão das demais consultas.
 
 Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com altura de 56px, espaçamento e logotipo h-9 clicável para a Home, organização ativa e UserProfileMenu compartilhado (foto, tema, perfil, configurações conforme permissão e sair). Controles globais ficam fora das regras genéricas dos botões do editor. O cabeçalho permanece oculto durante a modelagem.
+
+## Editor BPMN compacto — 01/10/2026
+
+- O canvas ocupa toda a altura restante; o rodapé de identificação/status foi removido. O estado de salvamento fica no grupo Arquivo da barra superior.
+- A barra superior usa grupos Arquivo, Edição, Formatação, Visualização e Configurações, com controles compactos em duas linhas e separadores discretos. Ações contextualmente indisponíveis permanecem visíveis e desabilitadas. A barra pode ser recolhida sem alterar coordenadas BPMN DI.
+- Zoom, centralização, apresentação e ajuste à tela formam um controle flutuante translúcido sobre o canto inferior direito do canvas. O painel de configurações abre sobre o desenho e não reduz sua largura.
+- Nomes de piscinas ficam ocultos somente na renderização. Nomes e vínculos das raias permanecem visíveis e os dados semânticos do processo continuam no XML.
+- Imagem é um artefato arrastável da paleta. O arquivo fica em documentação BPMN padrão, com seleção, movimento, exclusão e redimensionamento proporcional pelo motor. Limite por imagem: 2,5 MB.
+- Formatação de texto persiste por elemento no documento do BF Flow: família, tamanho, negrito, itálico, sublinhado, tachado, cor e alinhamento. Preenchimento continua persistido no BPMN DI.

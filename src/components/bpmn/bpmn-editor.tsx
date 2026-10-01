@@ -17,13 +17,31 @@ import {
   CircleHelp,
   X,
   CheckCircle2,
+  Image as ImageIcon,
+  Copy,
+  ClipboardPaste,
+  Trash2,
+  Minus,
+  Plus,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  ChevronUp,
+  ChevronDown,
+  Settings,
+  Type,
+  PaintBucket,
 } from "lucide-react";
 import { BpmnImportWizard } from "./import-wizard";
 import { TaskDialog } from "@/components/task-dialog";
 import { BpmnCanvas, type BpmnCanvasHandle, type CanvasSelection } from "./bpmn-canvas";
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
 import { captureBpmnSaveAttempt } from "@/lib/bpmn-save-attempt";
-import { inspectBpmn, type BpmnDocument } from "@/lib/bpmn-document";
+import { inspectBpmn, type BpmnDocument, type BpmnTextStyle } from "@/lib/bpmn-document";
 import "@/components/user-tasks.css";
 
 const elementLabels: Record<string, string> = {
@@ -41,6 +59,7 @@ const elementLabels: Record<string, string> = {
   Participant: "Pool",
   Lane: "Raia",
   TextAnnotation: "Anotação",
+  Group: "Imagem",
   SequenceFlow: "Fluxo de sequência",
   MessageFlow: "Fluxo de mensagem",
   Association: "Associação",
@@ -126,9 +145,8 @@ export function BpmnEditor({
     }
   });
 
-  const [properties, setProperties] = useState(
-    () => typeof window === "undefined" || window.innerWidth >= 1000,
-  );
+  const [properties, setProperties] = useState(false);
+  const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
   const [propertySection, setPropertySection] = useState<"element" | "document">("document");
   const [exportMenu, setExportMenu] = useState(false);
   const [selection, setSelection] = useState<CanvasSelection>(null);
@@ -151,6 +169,8 @@ export function BpmnEditor({
     id?: string;
   } | null>(null);
   const [localStatus, setLocalStatus] = useState("");
+  const imageInput = useRef<HTMLInputElement>(null);
+  const pendingImage = useRef<string | null>(null);
   const readOnly = presenting || !canEdit;
   const changed = () => {
     revisionRef.current++;
@@ -176,6 +196,62 @@ export function BpmnEditor({
     } catch (error) {
       setError(error instanceof Error ? error.message : "Não foi possível inserir o elemento.");
     }
+  };
+  const activeTextStyle = selection
+    ? document.elementStyles?.[selection.id] || {}
+    : ({} as BpmnTextStyle);
+  const canFormat = Boolean(selection && !selection.isImage);
+  const applyTextStyle = (patch: Partial<BpmnTextStyle>) => {
+    const ids = canvas.current?.formatText(patch) || [];
+    if (!ids.length) return;
+    const next = { ...(documentRef.current.elementStyles || {}) };
+    ids.forEach((id) => {
+      next[id] = { ...(next[id] || {}), ...patch };
+    });
+    update({ elementStyles: next });
+  };
+  const requestImage = (id: string) => {
+    pendingImage.current = id;
+    if (imageInput.current) {
+      imageInput.current.value = "";
+      imageInput.current.click();
+    }
+  };
+  const loadImage = (file?: File) => {
+    const id = pendingImage.current;
+    if (!id) return;
+    if (!file) {
+      canvas.current?.remove(id);
+      pendingImage.current = null;
+      return;
+    }
+    if (!file.type.startsWith("image/") || file.size > 2_500_000) {
+      canvas.current?.remove(id);
+      pendingImage.current = null;
+      setError("Selecione uma imagem válida com até 2,5 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => {
+      canvas.current?.remove(id);
+      pendingImage.current = null;
+      setError("Não foi possível ler a imagem selecionada.");
+    };
+    reader.onload = () => {
+      const src = String(reader.result || "");
+      const probe = new window.Image();
+      probe.onload = () => {
+        canvas.current?.setImage(id, {
+          src,
+          name: file.name,
+          aspectRatio: probe.naturalWidth / probe.naturalHeight,
+        });
+        pendingImage.current = null;
+      };
+      probe.onerror = reader.onerror;
+      probe.src = src;
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -389,99 +465,296 @@ export function BpmnEditor({
       data-appearance={appearance}
       className={`bf-bpmn-editor ${readOnly ? "is-presentation" : ""}`}
     >
+      <input
+        ref={imageInput}
+        className="bf-bpmn-image-input"
+        type="file"
+        accept="image/*"
+        tabIndex={-1}
+        onChange={(event) => loadImage(event.target.files?.[0])}
+        onCancel={() => loadImage()}
+      />
       {taskContext && <div hidden={readOnly}>{taskContext}</div>}
-      {!readOnly && (
+      {!readOnly && !toolbarCollapsed && (
         <div className="bf-bpmn-toolbar" aria-label="Ferramentas de edição">
-          <button
-            aria-label="Voltar aos desenhos"
-            title="Voltar aos desenhos"
-            disabled={busy}
-            onClick={() => (dirty ? setExit(true) : onBack())}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <button aria-label="Desfazer" title="Desfazer (Ctrl+Z)" onClick={() => action("undo")}>
-            <Undo2 size={17} />
-          </button>
-          <button
-            aria-label="Refazer"
-            title="Refazer (Ctrl+Shift+Z)"
-            onClick={() => action("redo")}
-          >
-            <Redo2 size={17} />
-          </button>
-          <span className="bf-bpmn-divider" />
-          <button
-            aria-label="Navegar"
-            title="Mover a área de desenho (ou arraste com o botão do meio)"
-            onClick={(e) => action("pan", e.nativeEvent)}
-          >
-            <Hand size={16} />
-            <span className="bf-bpmn-tool-label">Navegar</span>
-          </button>
-          <button
-            aria-label="Importar BPMN"
-            title="Importar BPMN"
-            disabled={busy || !ready}
-            onClick={() => setImporting(true)}
-          >
-            <Upload size={16} />
-            <span className="bf-bpmn-tool-label">Importar BPMN</span>
-          </button>
-          <button
-            aria-label={exporting ? "Exportando…" : "Exportar"}
-            title="Exportar desenho"
-            disabled={!ready || exporting}
-            onClick={() => setExportMenu(true)}
-          >
-            <Download size={16} />
-            <span className="bf-bpmn-tool-label">{exporting ? "Exportando…" : "Exportar"}</span>
-          </button>
-          <button
-            aria-label="Verificar desenho"
-            title="Verificar desenho"
-            disabled={!ready}
-            onClick={async () => {
-              try {
-                const check = await inspectBpmn(await canvas.current!.xml());
-                const unbound = check.lanes
-                  .filter((l) => !document.laneBindings[l.id])
-                  .map((l) => `Raia sem responsável: ${l.name} (A DEFINIR).`);
-                setWarnings([...check.warnings, ...unbound]);
-                setShowWarnings(true);
-              } catch (error) {
-                setError(String(error));
-              }
-            }}
-          >
-            <CheckCircle2 size={16} /> <span className="bf-bpmn-tool-label">Verificar desenho</span>
-          </button>
-          <div className="bf-bpmn-toolbar-spacer" />
-          <button
-            aria-label={busy ? "Salvando…" : "Salvar"}
-            title="Salvar"
-            className="bf-bpmn-primary"
-            disabled={busy || !ready}
-            onClick={() => setSaveMenu(true)}
-          >
-            <Save size={16} />
-          </button>
-          <button
-            title="Propriedades"
-            aria-label="Propriedades"
-            onClick={() => setProperties(!properties)}
-            aria-pressed={properties}
-          >
-            <SlidersHorizontal size={16} />
-            <span className="bf-bpmn-tool-label">Propriedades</span>
-          </button>
-          <button
-            title="Ajuda do editor"
-            aria-label="Ajuda do editor"
-            onClick={() => setHelp(true)}
-          >
-            <CircleHelp size={17} />
-          </button>
+          <div className="bf-bpmn-tool-group">
+            <span>Arquivo</span>
+            <div className="bf-bpmn-tool-grid">
+              <button
+                aria-label="Voltar aos desenhos"
+                title="Voltar aos desenhos"
+                disabled={busy}
+                onClick={() => (dirty ? setExit(true) : onBack())}
+              >
+                <ArrowLeft size={16} />
+              </button>
+              <button
+                aria-label="Importar BPMN"
+                title="Importar BPMN"
+                disabled={busy || !ready}
+                onClick={() => setImporting(true)}
+              >
+                <Upload size={16} />
+              </button>
+              <button
+                aria-label="Exportar"
+                title="Exportar desenho"
+                disabled={!ready || exporting}
+                onClick={() => setExportMenu(true)}
+              >
+                <Download size={16} />
+              </button>
+              <button
+                aria-label={busy ? "Salvando" : "Salvar"}
+                title="Salvar"
+                className="bf-bpmn-primary"
+                disabled={busy || !ready}
+                onClick={() => setSaveMenu(true)}
+              >
+                <Save size={16} />
+              </button>
+              <output className="bf-bpmn-toolbar-status" title={localStatus || notice || undefined}>
+                {busy ? "Salvando…" : dirty ? "Não salvo" : "Salvo"}
+              </output>
+            </div>
+          </div>
+
+          <div className="bf-bpmn-tool-group">
+            <span>Edição</span>
+            <div className="bf-bpmn-tool-grid">
+              <button
+                aria-label="Desfazer"
+                title="Desfazer (Ctrl+Z)"
+                onClick={() => action("undo")}
+              >
+                <Undo2 size={16} />
+              </button>
+              <button
+                aria-label="Refazer"
+                title="Refazer (Ctrl+Shift+Z)"
+                onClick={() => action("redo")}
+              >
+                <Redo2 size={16} />
+              </button>
+              <button
+                aria-label="Copiar"
+                title="Copiar (Ctrl+C)"
+                disabled={!selection}
+                onClick={() => action("copy")}
+              >
+                <Copy size={16} />
+              </button>
+              <button aria-label="Colar" title="Colar (Ctrl+V)" onClick={() => action("paste")}>
+                <ClipboardPaste size={16} />
+              </button>
+              <button
+                aria-label="Excluir"
+                title="Excluir"
+                disabled={!selection}
+                onClick={() => action("delete")}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="bf-bpmn-tool-group bf-bpmn-format-group">
+            <span>Formatação</span>
+            <div className="bf-bpmn-format-grid">
+              <select
+                aria-label="Família da fonte"
+                title="Família da fonte"
+                disabled={!canFormat}
+                value={activeTextStyle.fontFamily || "Segoe UI"}
+                onChange={(e) => applyTextStyle({ fontFamily: e.target.value })}
+              >
+                <option>Segoe UI</option>
+                <option>Arial</option>
+                <option>Calibri</option>
+                <option>Georgia</option>
+                <option>Verdana</option>
+                <option>Times New Roman</option>
+              </select>
+              <input
+                aria-label="Tamanho da fonte"
+                title="Tamanho da fonte"
+                type="number"
+                min="8"
+                max="72"
+                disabled={!canFormat}
+                value={activeTextStyle.fontSize || 12}
+                onChange={(e) =>
+                  applyTextStyle({
+                    fontSize: Math.max(8, Math.min(72, Number(e.target.value) || 12)),
+                  })
+                }
+              />
+              <button
+                aria-label="Diminuir fonte"
+                title="Diminuir fonte"
+                disabled={!canFormat}
+                onClick={() =>
+                  applyTextStyle({ fontSize: Math.max(8, (activeTextStyle.fontSize || 12) - 1) })
+                }
+              >
+                <Minus size={14} />
+              </button>
+              <button
+                aria-label="Aumentar fonte"
+                title="Aumentar fonte"
+                disabled={!canFormat}
+                onClick={() =>
+                  applyTextStyle({ fontSize: Math.min(72, (activeTextStyle.fontSize || 12) + 1) })
+                }
+              >
+                <Plus size={14} />
+              </button>
+              <button
+                aria-label="Negrito"
+                title="Negrito"
+                disabled={!canFormat}
+                aria-pressed={Boolean(activeTextStyle.bold)}
+                onClick={() => applyTextStyle({ bold: !activeTextStyle.bold })}
+              >
+                <Bold size={15} />
+              </button>
+              <button
+                aria-label="Itálico"
+                title="Itálico"
+                disabled={!canFormat}
+                aria-pressed={Boolean(activeTextStyle.italic)}
+                onClick={() => applyTextStyle({ italic: !activeTextStyle.italic })}
+              >
+                <Italic size={15} />
+              </button>
+              <button
+                aria-label="Sublinhado"
+                title="Sublinhado"
+                disabled={!canFormat}
+                aria-pressed={Boolean(activeTextStyle.underline)}
+                onClick={() => applyTextStyle({ underline: !activeTextStyle.underline })}
+              >
+                <Underline size={15} />
+              </button>
+              <button
+                aria-label="Tachado"
+                title="Tachado"
+                disabled={!canFormat}
+                aria-pressed={Boolean(activeTextStyle.strike)}
+                onClick={() => applyTextStyle({ strike: !activeTextStyle.strike })}
+              >
+                <Strikethrough size={15} />
+              </button>
+              <label className="bf-bpmn-color-tool" title="Cor do texto">
+                <Type size={15} />
+                <input
+                  aria-label="Cor do texto"
+                  type="color"
+                  disabled={!canFormat}
+                  value={activeTextStyle.color || "#1f2937"}
+                  onChange={(e) => applyTextStyle({ color: e.target.value })}
+                />
+              </label>
+              <label className="bf-bpmn-color-tool" title="Cor de preenchimento">
+                <PaintBucket size={15} />
+                <input
+                  aria-label="Cor de preenchimento"
+                  type="color"
+                  disabled={!selection}
+                  value={selection?.fill || "#ffffff"}
+                  onChange={(e) => changeFill(e.target.value)}
+                />
+              </label>
+              <button
+                aria-label="Alinhar à esquerda"
+                title="Alinhar à esquerda"
+                disabled={!canFormat}
+                aria-pressed={activeTextStyle.align === "left"}
+                onClick={() => applyTextStyle({ align: "left" })}
+              >
+                <AlignLeft size={15} />
+              </button>
+              <button
+                aria-label="Centralizar texto"
+                title="Centralizar texto"
+                disabled={!canFormat}
+                aria-pressed={!activeTextStyle.align || activeTextStyle.align === "center"}
+                onClick={() => applyTextStyle({ align: "center" })}
+              >
+                <AlignCenter size={15} />
+              </button>
+              <button
+                aria-label="Alinhar à direita"
+                title="Alinhar à direita"
+                disabled={!canFormat}
+                aria-pressed={activeTextStyle.align === "right"}
+                onClick={() => applyTextStyle({ align: "right" })}
+              >
+                <AlignRight size={15} />
+              </button>
+            </div>
+          </div>
+
+          <div className="bf-bpmn-tool-group">
+            <span>Visualização</span>
+            <div className="bf-bpmn-tool-grid">
+              <button
+                aria-label="Navegar"
+                title="Mover a área de desenho"
+                onClick={(e) => action("pan", e.nativeEvent)}
+              >
+                <Hand size={16} />
+              </button>
+              {presentationAction}
+            </div>
+          </div>
+
+          <div className="bf-bpmn-tool-group">
+            <span>Configurações</span>
+            <div className="bf-bpmn-tool-grid">
+              <button
+                aria-label="Verificar desenho"
+                title="Verificar desenho"
+                disabled={!ready}
+                onClick={async () => {
+                  try {
+                    const check = await inspectBpmn(await canvas.current!.xml());
+                    const unbound = check.lanes
+                      .filter((lane) => !document.laneBindings[lane.id])
+                      .map((lane) => `Raia sem responsável: ${lane.name} (A DEFINIR).`);
+                    setWarnings([...check.warnings, ...unbound]);
+                    setShowWarnings(true);
+                  } catch (error) {
+                    setError(String(error));
+                  }
+                }}
+              >
+                <CheckCircle2 size={16} />
+              </button>
+              <button
+                aria-label="Configurações do desenho"
+                title="Configurações do desenho"
+                aria-pressed={properties}
+                onClick={() => setProperties(!properties)}
+              >
+                <Settings size={16} />
+              </button>
+              <button
+                aria-label="Ajuda do editor"
+                title="Ajuda do editor"
+                onClick={() => setHelp(true)}
+              >
+                <CircleHelp size={16} />
+              </button>
+              <button
+                aria-label="Recolher barra de ferramentas"
+                title="Recolher barra de ferramentas"
+                onClick={() => setToolbarCollapsed(true)}
+              >
+                <ChevronUp size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {saveMenu && (
@@ -529,6 +802,16 @@ export function BpmnEditor({
         </div>
       )}
       <div className="bf-bpmn-workarea">
+        {!readOnly && toolbarCollapsed && (
+          <button
+            className="bf-bpmn-toolbar-restore"
+            aria-label="Exibir barra de ferramentas"
+            title="Exibir barra de ferramentas"
+            onClick={() => setToolbarCollapsed(false)}
+          >
+            <ChevronDown size={17} />
+          </button>
+        )}
         {!readOnly && (
           <aside className="bf-bpmn-palette" aria-label="Elementos BPMN">
             <span title="Arraste para inserir. Use o botão direito para alterar o tipo.">
@@ -549,6 +832,18 @@ export function BpmnEditor({
                 <span>{label}</span>
               </button>
             ))}
+            <button
+              title="Imagem: arraste para o desenho ou pressione Enter"
+              onMouseDown={(event) => {
+                if (event.button === 0) canvas.current?.createImage(event.nativeEvent);
+              }}
+              onClick={(event) => {
+                if (event.detail === 0) canvas.current?.createImage();
+              }}
+            >
+              <ImageIcon size={22} strokeWidth={1.6} />
+              <span>Imagem</span>
+            </button>
             {[
               ["bpmn:DataObjectReference", "Dados", "bpmn-icon-data-object"],
               ["bpmn:DataStoreReference", "Armazenamento", "bpmn-icon-data-store"],
@@ -596,14 +891,31 @@ export function BpmnEditor({
               <>
                 {presentationAction}
                 {readOnly && (
-                  <button
-                    title="Identificar raias e piscinas fora da tela"
-                    aria-label="Identificar raias e piscinas fora da tela"
-                    aria-pressed={frozen}
-                    onClick={() => setFrozen(!frozen)}
-                  >
-                    <SlidersHorizontal size={15} />
-                  </button>
+                  <>
+                    <button
+                      title="Voltar aos desenhos"
+                      aria-label="Voltar aos desenhos"
+                      onClick={() => (dirty ? setExit(true) : onBack())}
+                    >
+                      <ArrowLeft size={15} />
+                    </button>
+                    <button
+                      title="Exportar desenho"
+                      aria-label="Exportar desenho"
+                      disabled={!ready || exporting}
+                      onClick={() => setExportMenu(true)}
+                    >
+                      <Download size={15} />
+                    </button>
+                    <button
+                      title="Identificar raias fora da tela"
+                      aria-label="Identificar raias fora da tela"
+                      aria-pressed={frozen}
+                      onClick={() => setFrozen(!frozen)}
+                    >
+                      <SlidersHorizontal size={15} />
+                    </button>
+                  </>
                 )}
               </>
             }
@@ -613,6 +925,8 @@ export function BpmnEditor({
             readOnly={!canEdit}
             frozen={frozen}
             bindings={document.laneBindings}
+            elementStyles={document.elementStyles}
+            onImageRequest={requestImage}
             onChange={changed}
             onProperties={() => {
               setPropertySection("element");
@@ -632,14 +946,31 @@ export function BpmnEditor({
               <>
                 {presentationAction}
                 {readOnly && (
-                  <button
-                    title="Identificar raias e piscinas fora da tela"
-                    aria-label="Identificar raias e piscinas fora da tela"
-                    aria-pressed={frozen}
-                    onClick={() => setFrozen(!frozen)}
-                  >
-                    <SlidersHorizontal size={15} />
-                  </button>
+                  <>
+                    <button
+                      title="Voltar aos desenhos"
+                      aria-label="Voltar aos desenhos"
+                      onClick={() => (dirty ? setExit(true) : onBack())}
+                    >
+                      <ArrowLeft size={15} />
+                    </button>
+                    <button
+                      title="Exportar desenho"
+                      aria-label="Exportar desenho"
+                      disabled={!ready || exporting}
+                      onClick={() => setExportMenu(true)}
+                    >
+                      <Download size={15} />
+                    </button>
+                    <button
+                      title="Identificar raias fora da tela"
+                      aria-label="Identificar raias fora da tela"
+                      aria-pressed={frozen}
+                      onClick={() => setFrozen(!frozen)}
+                    >
+                      <SlidersHorizontal size={15} />
+                    </button>
+                  </>
                 )}
               </>
             }
@@ -649,6 +980,7 @@ export function BpmnEditor({
             readOnly
             frozen={frozen}
             bindings={document.laneBindings}
+            elementStyles={document.elementStyles}
             onReady={() => setReady(true)}
             onWarnings={setWarnings}
           />
@@ -687,7 +1019,7 @@ export function BpmnEditor({
                       ? `${selection.count} elementos selecionados`
                       : elementLabels[selection.type.replace("bpmn:", "")] || "Elemento BPMN"}
                   </small>
-                  {selection.count === 1 && (
+                  {selection.count === 1 && !selection.isImage && (
                     <label>
                       Texto do elemento
                       <textarea
@@ -710,9 +1042,11 @@ export function BpmnEditor({
                     </label>
                   )}
                   <small>
-                    {selection.count > 1
-                      ? "Mova, copie ou exclua os elementos em conjunto. A cor será aplicada à seleção."
-                      : "Dê dois cliques para editar o texto no desenho."}
+                    {selection.isImage
+                      ? "Mova a imagem livremente, use as alças para redimensionar ou pressione Delete para excluir."
+                      : selection.count > 1
+                        ? "Mova, copie ou exclua os elementos em conjunto. A cor será aplicada à seleção."
+                        : "Dê dois cliques para editar o texto no desenho."}
                   </small>
                   {selection.count === 1 && selection.type === "bpmn:Lane" && (
                     <>
@@ -752,17 +1086,19 @@ export function BpmnEditor({
                       </p>
                     </>
                   )}
-                  <label>
-                    {selection.count > 1
-                      ? "Cor dos elementos selecionados"
-                      : "Cor de preenchimento"}
-                    <input
-                      type="color"
-                      value={selection.fill || "#ffffff"}
-                      onInput={(e) => changeFill(e.currentTarget.value)}
-                      onChange={(e) => changeFill(e.target.value)}
-                    />
-                  </label>
+                  {!selection.isImage && (
+                    <label>
+                      {selection.count > 1
+                        ? "Cor dos elementos selecionados"
+                        : "Cor de preenchimento"}
+                      <input
+                        type="color"
+                        value={selection.fill || "#ffffff"}
+                        onInput={(e) => changeFill(e.currentTarget.value)}
+                        onChange={(e) => changeFill(e.target.value)}
+                      />
+                    </label>
+                  )}
                 </>
               ) : (
                 <p>
@@ -854,40 +1190,6 @@ export function BpmnEditor({
           </aside>
         )}
       </div>
-      <footer className="bf-bpmn-footer">
-        {readOnly && (
-          <button
-            title="Voltar aos desenhos"
-            aria-label="Voltar aos desenhos"
-            onClick={() => (dirty ? setExit(true) : onBack())}
-          >
-            <ArrowLeft size={16} />
-          </button>
-        )}
-        <div className="bf-bpmn-document-identity">
-          <strong title={document.processName}>
-            {document.processName || "Desenho sem processo"}
-          </strong>
-          <span title={record?.code || document.codigo || "Novo desenho"}>
-            {record?.code || document.codigo || "Novo desenho"}
-            {record?.current_version ? ` · v${record.current_version}` : ""} · {document.status}
-          </span>
-        </div>
-        <span
-          className="bf-bpmn-save-status"
-          role="status"
-          title={localStatus || notice || undefined}
-        >
-          {busy ? "Salvando…" : dirty ? "Alterações não salvas" : notice || "Salvo"}
-        </span>
-        <div className="bf-bpmn-footer-actions">
-          {readOnly && (
-            <button disabled={!ready || exporting} onClick={() => setExportMenu(true)}>
-              <Download size={15} /> {exporting ? "Exportando…" : "Exportar"}
-            </button>
-          )}
-        </div>
-      </footer>
       {exportMenu && (
         <TaskDialog title="Exportar desenho" onClose={() => setExportMenu(false)}>
           <div className="bf-bpmn-form bf-bpmn-export-options">

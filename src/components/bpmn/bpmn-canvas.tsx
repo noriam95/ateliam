@@ -13,9 +13,18 @@ import { exportBpmnPng } from "@/lib/bpmn-export";
 import { edgeIdentification } from "@/lib/bpmn-viewport";
 import { bpmnLaneModule } from "@/lib/bpmn-lanes";
 import { bpmnSelectionModule } from "@/lib/bpmn-selection";
+import {
+  bpmnImageModule,
+  encodeBpmnImage,
+  IMAGE_PENDING,
+  isBpmnImageElement,
+  isBpmnImagePending,
+  readBpmnImageElement,
+  type BpmnImagePayload,
+} from "@/lib/bpmn-images";
 import Modeler from "bpmn-js/lib/Modeler";
 import NavigatedViewer from "bpmn-js/lib/NavigatedViewer";
-import type { LaneBinding } from "@/lib/bpmn-document";
+import type { BpmnTextStyle, LaneBinding } from "@/lib/bpmn-document";
 import { bpmnEngineModules } from "@/lib/bpmn-engine-modules";
 import "bpmn-js/dist/assets/diagram-js.css";
 import "bpmn-js/dist/assets/bpmn-font/css/bpmn.css";
@@ -27,6 +36,7 @@ export type CanvasSelection = {
   name: string;
   fill?: string;
   count: number;
+  isImage?: boolean;
 } | null;
 export type BpmnCanvasHandle = {
   xml(): Promise<string>;
@@ -35,8 +45,51 @@ export type BpmnCanvasHandle = {
   rename(id: string, name: string): void;
   color(color: string): void;
   create(type: string, event?: any): void;
+  createImage(event?: any): void;
+  setImage(id: string, payload: BpmnImagePayload): void;
+  remove(id: string): void;
+  formatText(style: Partial<BpmnTextStyle>): string[];
   lanes(): { id: string; name: string }[];
 };
+
+const svgNamespace = "http://www.w3.org/2000/svg";
+
+function paintCanvasExtensions(instance: any, styles: Record<string, BpmnTextStyle>) {
+  if (!instance?.getDefinitions?.()) return;
+  const registry = instance.get("elementRegistry");
+  registry.forEach((element: any) => {
+    const graphics = registry.getGraphics(element);
+    if (!graphics) return;
+    const style = styles[element.labelTarget?.id || element.id];
+    const texts = graphics.querySelectorAll<SVGTextElement>(".djs-label, text");
+    texts.forEach((text) => {
+      text.style.fontFamily = style?.fontFamily || "";
+      text.style.fontSize = style?.fontSize ? `${style.fontSize}px` : "";
+      text.style.fontWeight = style?.bold ? "700" : "";
+      text.style.fontStyle = style?.italic ? "italic" : "";
+      text.style.textDecoration = [style?.underline && "underline", style?.strike && "line-through"]
+        .filter(Boolean)
+        .join(" ");
+      text.style.fill = style?.color || "";
+      text.style.textAnchor =
+        style?.align === "left" ? "start" : style?.align === "right" ? "end" : "";
+    });
+
+    const visual = graphics.querySelector<SVGGElement>(".djs-visual");
+    const image = readBpmnImageElement(element);
+    graphics.toggleAttribute("data-bf-image", Boolean(image));
+    visual?.querySelector(".bf-bpmn-image-render")?.remove();
+    if (!visual || !image) return;
+    const node = document.createElementNS(svgNamespace, "image");
+    node.classList.add("bf-bpmn-image-render");
+    node.setAttribute("href", image.src);
+    node.setAttribute("width", String(element.width));
+    node.setAttribute("height", String(element.height));
+    node.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    node.setAttribute("aria-label", image.name);
+    visual.appendChild(node);
+  });
+}
 
 export const BpmnCanvas = forwardRef<
   BpmnCanvasHandle,
@@ -52,6 +105,8 @@ export const BpmnCanvas = forwardRef<
     onProperties?: () => void;
     navigationAction?: ReactNode;
     processName?: string;
+    elementStyles?: Record<string, BpmnTextStyle>;
+    onImageRequest?: (id: string) => void;
   }
 >(
   (
@@ -67,13 +122,31 @@ export const BpmnCanvas = forwardRef<
       onProperties,
       navigationAction,
       processName,
+      elementStyles = {},
+      onImageRequest,
     },
     ref,
   ) => {
     const host = useRef<HTMLDivElement>(null);
     const engine = useRef<any>(null);
-    const callbacks = useRef({ onChange, onSelection, onWarnings, onReady, onProperties });
-    callbacks.current = { onChange, onSelection, onWarnings, onReady, onProperties };
+    const callbacks = useRef({
+      onChange,
+      onSelection,
+      onWarnings,
+      onReady,
+      onProperties,
+      onImageRequest,
+    });
+    callbacks.current = {
+      onChange,
+      onSelection,
+      onWarnings,
+      onReady,
+      onProperties,
+      onImageRequest,
+    };
+    const stylesRef = useRef(elementStyles);
+    stylesRef.current = elementStyles;
     const [error, setError] = useState("");
     const [ready, setReady] = useState(false);
     const [zoom, setZoom] = useState(100);
@@ -165,7 +238,12 @@ export const BpmnCanvas = forwardRef<
         ? new NavigatedViewer({ container: host.current!, additionalModules: bpmnEngineModules })
         : new Modeler({
             container: host.current!,
-            additionalModules: [...bpmnEngineModules, bpmnSelectionModule, bpmnLaneModule],
+            additionalModules: [
+              ...bpmnEngineModules,
+              bpmnSelectionModule,
+              bpmnLaneModule,
+              bpmnImageModule,
+            ],
           });
       engine.current = instance;
       // Native replace menus share the viewport overlay layer, not the clipped canvas.
@@ -206,8 +284,10 @@ export const BpmnCanvas = forwardRef<
                 Boolean(element.di?.get("bioc:fill") || element.di?.get("color:background-color")),
               ),
             );
+            graphics.toggleAttribute("data-bf-pool", element.type === "bpmn:Participant");
           }
         });
+        paintCanvasExtensions(instance, stylesRef.current);
         const canvas = instance.get("canvas");
         const vb = canvas.viewbox();
         view.current = vb;
@@ -216,7 +296,7 @@ export const BpmnCanvas = forwardRef<
         const viewport = { x: 0, y: 0, width: hostRect.width, height: hostRect.height };
         setLaneLabels(
           registry
-            .filter((el: any) => ["bpmn:Lane", "bpmn:Participant"].includes(el.type) && !el.hidden)
+            .filter((el: any) => el.type === "bpmn:Lane" && !el.hidden)
             .flatMap((el: any) => {
               const graphics = registry.getGraphics(el);
               const label = graphics?.querySelector(".djs-label");
@@ -274,6 +354,11 @@ export const BpmnCanvas = forwardRef<
           });
           return false;
         });
+      if (!readOnly)
+        instance.on("shape.added", ({ element }: any) => {
+          if (!importing && isBpmnImagePending(element))
+            callbacks.current.onImageRequest?.(element.id);
+        });
 
       instance.on("commandStack.changed", () => {
         if (!importing && !disposed) {
@@ -291,6 +376,7 @@ export const BpmnCanvas = forwardRef<
                 name: el.businessObject.name || el.businessObject.text || "",
                 fill: el.di?.get("bioc:fill") || el.di?.get("color:background-color"),
                 count: newSelection.length,
+                isImage: Boolean(readBpmnImageElement(el)),
               }
             : null,
         );
@@ -305,6 +391,7 @@ export const BpmnCanvas = forwardRef<
             name: el.businessObject.name || el.businessObject.text || "",
             fill: el.di?.get("bioc:fill") || el.di?.get("color:background-color"),
             count: selected.length,
+            isImage: Boolean(readBpmnImageElement(el)),
           });
       });
       instance
@@ -346,6 +433,10 @@ export const BpmnCanvas = forwardRef<
         if (engine.current === instance) engine.current = null;
       };
     }, [xml, readOnly]);
+
+    useEffect(() => {
+      if (ready && engine.current) paintCanvasExtensions(engine.current, elementStyles);
+    }, [elementStyles, ready]);
 
     useImperativeHandle(
       ref,
@@ -414,6 +505,89 @@ export const BpmnCanvas = forwardRef<
             );
             modeler.get("selection").select(shape);
           }
+        },
+        createImage(event) {
+          if (readOnly || !ready) return;
+          const modeler = engine.current;
+          const shape = modeler.get("elementFactory").createShape({
+            type: "bpmn:Group",
+            width: 240,
+            height: 160,
+          });
+          const pending = modeler
+            .get("bpmnFactory")
+            .create("bpmn:Documentation", { text: IMAGE_PENDING });
+          pending.$parent = shape.businessObject;
+          shape.businessObject.documentation = [pending];
+          if (event?.clientX) modeler.get("create").start(event, shape);
+          else {
+            const selected = modeler.get("selection").get()[0];
+            const parent =
+              selected?.type === "bpmn:Lane" || selected?.type === "bpmn:Participant"
+                ? selected
+                : modeler.get("elementRegistry").find((e: any) => e.type === "bpmn:Lane") ||
+                  modeler.get("canvas").getRootElement();
+            const vb = modeler.get("canvas").viewbox();
+            modeler.get("modeling").createShape(
+              shape,
+              {
+                x: parent.x ? parent.x + 240 : vb.x + vb.width / 2,
+                y: parent.y ? parent.y + parent.height / 2 : vb.y + vb.height / 2,
+              },
+              parent,
+            );
+            modeler.get("selection").select(shape);
+          }
+        },
+        setImage(id, payload) {
+          if (readOnly || !ready) return;
+          const modeler = engine.current;
+          const element = modeler.get("elementRegistry").get(id);
+          if (!element) return;
+          const width = 240;
+          const height = width / payload.aspectRatio;
+          const documentation = (element.businessObject.documentation || []).filter(
+            (item: any) => !item?.text?.startsWith("BF_IMAGE_V1:"),
+          );
+          const imageDocumentation = modeler.get("bpmnFactory").create("bpmn:Documentation", {
+            text: encodeBpmnImage(payload),
+          });
+          imageDocumentation.$parent = element.businessObject;
+          modeler.get("modeling").updateProperties(element, {
+            documentation: [...documentation, imageDocumentation],
+          });
+          modeler.get("modeling").resizeShape(
+            element,
+            {
+              x: element.x,
+              y: element.y + (element.height - height) / 2,
+              width,
+              height,
+            },
+            undefined,
+            { autoResize: true },
+          );
+          paintCanvasExtensions(modeler, stylesRef.current);
+        },
+        remove(id) {
+          if (readOnly || !ready) return;
+          const element = engine.current.get("elementRegistry").get(id);
+          if (element) engine.current.get("modeling").removeElements([element]);
+        },
+        formatText(patch) {
+          if (readOnly || !ready) return [];
+          const selected = engine.current
+            .get("selection")
+            .get()
+            .map((element: any) => element.labelTarget || element)
+            .filter((element: any) => element.parent && !readBpmnImageElement(element));
+          const ids = [...new Set<string>(selected.map((element: any) => element.id))];
+          stylesRef.current = { ...stylesRef.current };
+          ids.forEach((id) => {
+            stylesRef.current[id] = { ...(stylesRef.current[id] || {}), ...patch };
+          });
+          paintCanvasExtensions(engine.current, stylesRef.current);
+          return ids;
         },
         action(name, event) {
           const m = engine.current;
@@ -530,10 +704,14 @@ export const BpmnCanvas = forwardRef<
             >
               {contextMenu.element.parent && (
                 <>
-                  <button role="menuitem" onClick={() => menuAction("edit")}>
-                    Editar texto
-                  </button>
-                  <hr />
+                  {!isBpmnImageElement(contextMenu.element) && (
+                    <>
+                      <button role="menuitem" onClick={() => menuAction("edit")}>
+                        Editar texto
+                      </button>
+                      <hr />
+                    </>
+                  )}
                   <button role="menuitem" onClick={() => menuAction("cut")}>
                     Recortar
                   </button>
@@ -559,21 +737,22 @@ export const BpmnCanvas = forwardRef<
                     Duplicar
                   </button>
                   <hr />
-                  {!engine.current
-                    .get("popupMenu")
-                    .isEmpty(contextMenu.element, "bpmn-replace") && (
-                    <button role="menuitem" onClick={() => menuAction("type")}>
-                      {contextMenu.element.type.includes("Task") ||
-                      contextMenu.element.type === "bpmn:SubProcess"
-                        ? "Tipo de tarefa / subprocesso"
-                        : contextMenu.element.type.includes("Event")
-                          ? "Tipo de evento"
-                          : contextMenu.element.type.includes("Gateway")
-                            ? "Tipo de gateway"
-                            : "Alterar tipo"}{" "}
-                      <span>›</span>
-                    </button>
-                  )}
+                  {!isBpmnImageElement(contextMenu.element) &&
+                    !engine.current
+                      .get("popupMenu")
+                      .isEmpty(contextMenu.element, "bpmn-replace") && (
+                      <button role="menuitem" onClick={() => menuAction("type")}>
+                        {contextMenu.element.type.includes("Task") ||
+                        contextMenu.element.type === "bpmn:SubProcess"
+                          ? "Tipo de tarefa / subprocesso"
+                          : contextMenu.element.type.includes("Event")
+                            ? "Tipo de evento"
+                            : contextMenu.element.type.includes("Gateway")
+                              ? "Tipo de gateway"
+                              : "Alterar tipo"}{" "}
+                        <span>›</span>
+                      </button>
+                    )}
                   <button role="menuitem" onClick={() => menuAction("properties")}>
                     Propriedades
                   </button>
@@ -594,35 +773,21 @@ export const BpmnCanvas = forwardRef<
         {ready && frozen && laneLabels.length > 0 && (
           <div
             className="bf-bpmn-edge-identifications"
-            aria-label="Identificações fora da área visível"
+            aria-label="Identificações de raias fora da área visível"
           >
             {laneLabels.map((label) => (
               <div
                 key={label.id}
-                className={`bf-bpmn-edge-label ${label.kind === "bpmn:Participant" ? "is-pool" : "is-lane"}`}
+                className="bf-bpmn-edge-label is-lane"
                 style={{
-                  left:
-                    label.kind === "bpmn:Lane" &&
-                    label.left === 8 &&
-                    laneLabels.some(
-                      (other) => other.kind === "bpmn:Participant" && other.left === 8,
-                    )
-                      ? 46
-                      : label.left,
-                  top: label.kind === "bpmn:Participant" ? Math.max(8, label.top - 70) : label.top,
+                  left: label.left,
+                  top: label.top,
                   maxWidth: label.maxWidth,
                 }}
                 title={label.name}
               >
-                <small>{label.kind === "bpmn:Lane" ? "Raia" : "Piscina"}</small>
-                <span>
-                  {label.kind === "bpmn:Participant" && processName && processName !== label.name
-                    ? `${processName} · ${label.name}`
-                    : bindings[label.id]?.name || label.name}
-                </span>
-                {label.kind === "bpmn:Participant" && processName && processName !== label.name && (
-                  <small>Processo: {processName}</small>
-                )}
+                <small>Raia</small>
+                <span>{bindings[label.id]?.name || label.name}</span>
               </div>
             ))}
           </div>
