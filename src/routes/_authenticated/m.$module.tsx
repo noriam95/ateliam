@@ -52,7 +52,6 @@ import {
   Pencil,
   Plus,
   RotateCcw,
-  Rows3,
   Save,
   Search,
   Settings,
@@ -9276,27 +9275,6 @@ function moduleStatusStyle(status: string): CSSProperties {
   };
 }
 
-function ModuleStatusSummary({ rows }: { rows: ModuleGridRow[] }) {
-  const counts = MODULE_STATUS_OPTIONS.map((status) => ({
-    status,
-    count: rows.filter((row) => normalizeLabel(row.status) === normalizeLabel(status)).length,
-  }));
-  return (
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-      {counts.map((item) => (
-        <div
-          key={item.status}
-          className="flex items-center justify-between rounded-lg border px-3 py-2"
-          style={moduleStatusStyle(item.status)}
-        >
-          <span className="text-xs font-semibold">{item.status}</span>
-          <span className="font-data text-lg font-bold">{item.count}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ModuleDocumentGrid({
   moduleId,
   rows,
@@ -9340,11 +9318,6 @@ function ModuleDocumentGrid({
     if (typeof window === "undefined") return "desc";
     return window.localStorage.getItem(`${tablePreferenceKey}-sort-dir`) === "asc" ? "asc" : "desc";
   });
-  const [compact, setCompact] = useState(() =>
-    typeof window === "undefined"
-      ? false
-      : window.localStorage.getItem(`${tablePreferenceKey}-density`) === "compact",
-  );
   const [pendingStatus, setPendingStatus] = useState<{
     row: ModuleGridRow;
     status: string;
@@ -9365,11 +9338,7 @@ function ModuleDocumentGrid({
     window.localStorage.setItem(`${tablePreferenceKey}-query`, query);
     window.localStorage.setItem(`${tablePreferenceKey}-sort-field`, sortField);
     window.localStorage.setItem(`${tablePreferenceKey}-sort-dir`, sortDir);
-    window.localStorage.setItem(
-      `${tablePreferenceKey}-density`,
-      compact ? "compact" : "comfortable",
-    );
-  }, [compact, query, sortDir, sortField, tablePreferenceKey]);
+  }, [query, sortDir, sortField, tablePreferenceKey]);
   const filtered = useMemo(() => {
     return rows.filter((row) => matchesSearchTerms(query, Object.values(row)));
   }, [query, rows]);
@@ -9501,31 +9470,10 @@ function ModuleDocumentGrid({
             onChange={setQuery}
             placeholder="Pesquisar em todas as colunas…"
           />
-          <button
-            type="button"
-            onClick={() => setCompact((current) => !current)}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-            title={compact ? "Usar linhas confortáveis" : "Usar linhas compactas"}
-            aria-label={compact ? "Usar linhas confortáveis" : "Usar linhas compactas"}
-            aria-pressed={compact}
-          >
-            <Rows3 className="h-4 w-4" />
-          </button>
         </div>
-        {moduleId === "ddp" ? (
-          <div className="mt-4">
-            <ModuleStatusSummary rows={rows} />
-          </div>
-        ) : null}
       </header>
 
-      <div
-        className="process-library-table"
-        data-density={compact ? "compact" : "comfortable"}
-        role="region"
-        aria-label="Registros"
-        tabIndex={0}
-      >
+      <div className="process-library-table" role="region" aria-label="Registros" tabIndex={0}>
         <table className="w-full min-w-[960px] border-collapse text-left text-sm">
           <thead className="bg-muted/80 text-xs font-semibold text-muted-foreground">
             <tr>
@@ -9626,7 +9574,7 @@ function ModuleDocumentGrid({
                       selected.includes(row.id) ? "bg-accent/70" : "bg-card hover:bg-muted/45"
                     }`}
                   >
-                    <td className={compact ? "px-4 py-2" : "px-4 py-3"}>
+                    <td className="px-4 py-3">
                       <input
                         type="checkbox"
                         aria-label={`Selecionar ${row.name}`}
@@ -9641,7 +9589,7 @@ function ModuleDocumentGrid({
                           ? MODULE_STATUS_OPTIONS
                           : [value, ...MODULE_STATUS_OPTIONS];
                         return (
-                          <td key={key} className={compact ? "px-3 py-2" : "px-3 py-3"}>
+                          <td key={key} className="px-3 py-3">
                             <select
                               value={value}
                               onClick={(event) => event.stopPropagation()}
@@ -9663,15 +9611,12 @@ function ModuleDocumentGrid({
                         );
                       }
                       return (
-                        <td
-                          key={key}
-                          className={`break-words px-3 text-foreground ${compact ? "py-2" : "py-3"}`}
-                        >
+                        <td key={key} className="break-words px-3 py-3 text-foreground">
                           {key === "updatedAt" ? formatDateTimeBr(value) : value}
                         </td>
                       );
                     })}
-                    <td className={compact ? "px-4 py-2" : "px-4 py-3"}>
+                    <td className="px-4 py-3">
                       <RowActions
                         moduleId={moduleId}
                         onView={() => onView(row)}
