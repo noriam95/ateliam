@@ -126,9 +126,12 @@ export function UserHomeDashboard({
     : 0;
   const trend = values.slice(0, observed).map((_, i) => Math.max(0, mean + slope * (i - mx)));
   const max = Math.ceil(Math.max(1, ...values, ...trend) / 4) * 4,
-    step = 1040 / buckets.length;
+    chartWidth = scale === "week" ? 700 : 1100,
+    plotWidth = chartWidth - 60,
+    plotEnd = chartWidth - 20,
+    step = plotWidth / buckets.length;
   return (
-    <>
+    <div className="uh-dashboard">
       <section className="uh-agenda">
         <div className="uh-heading">
           <div>
@@ -306,7 +309,7 @@ export function UserHomeDashboard({
           <span>tarefas concluídas no período</span>
         </div>
         <svg
-          viewBox="0 0 1100 210"
+          viewBox={`0 0 ${chartWidth} 210`}
           role="img"
           aria-label={`Tarefas concluídas: ${sum}. ${buckets.map((b, i) => `${b.text}: ${values[i]}`).join("; ")}`}
         >
@@ -314,7 +317,7 @@ export function UserHomeDashboard({
             <g key={i}>
               <line
                 x1="40"
-                x2="1080"
+                x2={plotEnd}
                 y1={175 - i * 37.5}
                 y2={175 - i * 37.5}
                 stroke="var(--border)"
@@ -372,6 +375,6 @@ export function UserHomeDashboard({
             : ""}
         </p>
       </section>
-    </>
+    </div>
   );
 }

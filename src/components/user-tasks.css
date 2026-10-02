@@ -119,8 +119,8 @@
 .ut-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-  margin: 24px 0 36px;
+  gap: 16px;
+  margin: 18px 0 0;
 }
 .ut-summary a {
   display: grid;
@@ -1818,8 +1818,22 @@
   text-underline-offset: 3px;
 }
 
-.ut-dialog .ut-area-search input[role="combobox"] { padding-left: 36px; padding-right: 36px; }
-.ut-dialog .ut-area-search label > span { font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--foreground); }
-.ut-dialog .ut-area-search [role="listbox"] { top: 100%; left: 0; }
-.ut-dialog .ut-area-search [role="option"] { border: 0; box-shadow: none; }
-
+.ut-dialog .ut-area-search input[role="combobox"] {
+  padding-left: 36px;
+  padding-right: 36px;
+}
+.ut-dialog .ut-area-search label > span {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--foreground);
+}
+.ut-dialog .ut-area-search [role="listbox"] {
+  top: 100%;
+  left: 0;
+}
+.ut-dialog .ut-area-search [role="option"] {
+  border: 0;
+  box-shadow: none;
+}

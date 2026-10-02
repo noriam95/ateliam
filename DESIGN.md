@@ -78,6 +78,8 @@ Entregas: tarefa concluída oferece ZIP único com anexos originais e POP/Mapeam
 
 Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, indicadores com filtros exatos e gráfico de conclusões por semana/mês/ano. Próximas entregas removida. Datas de conclusão são persistidas na transição final; reabertura limpa a data; registros históricos sem data comprovável são informados e não entram no gráfico. Tendência usa regressão linear até hoje.
 
+Revisão responsiva da Home — 02/10/2026: os três indicadores usam cartões compactos com ícones destacados; agenda e tarefas concluídas dividem a largura somente em telas amplas e ficam empilhadas nas demais resoluções. O calendário mantém largura útil, o vazio do dia selecionado é centralizado e o gráfico limita seu crescimento vertical, com proporção própria para semana e períodos longos. A aba Minhas tarefas não é alterada.
+
 ## Consistência de navegação e formulários
 
 - Tema persistido exclusivamente por lib/theme; menu de perfil e controles compartilham a preferência.

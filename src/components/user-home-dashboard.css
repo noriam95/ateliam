@@ -1,9 +1,15 @@
+.uh-dashboard {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
 .uh-agenda,
 .uh-chart {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  margin: 18px 0 24px;
+  border-radius: 10px;
+  margin: 0;
+  min-width: 0;
   overflow: hidden;
 }
 .uh-heading {
@@ -26,7 +32,7 @@
 }
 .uh-agenda-body {
   display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(350px, 1.3fr);
+  grid-template-columns: minmax(340px, 0.88fr) minmax(360px, 1.12fr);
 }
 .uh-month {
   padding: 14px 18px;
@@ -115,6 +121,8 @@
 .uh-selected {
   padding: 16px 20px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .uh-selected-heading {
   display: flex;
@@ -129,6 +137,13 @@
   max-height: 280px;
   overflow-y: auto;
   margin-top: 12px;
+  flex: 1;
+}
+.uh-day-list > .ut-empty {
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+  text-align: center;
 }
 .ut-root button.uh-activity {
   display: flex;
@@ -169,6 +184,8 @@
 }
 .uh-chart {
   padding: 0 0 14px;
+  display: flex;
+  flex-direction: column;
 }
 .uh-chart-total {
   display: flex;
@@ -192,8 +209,10 @@
 .uh-chart > svg {
   width: 100%;
   height: auto;
+  max-height: 300px;
   display: block;
   padding: 0 12px;
+  margin: auto 0;
 }
 .uh-chart text {
   font-size: 11px;
@@ -208,13 +227,31 @@
   color: var(--muted-foreground);
 }
 .ut-home .ut-summary > a {
-  padding: 14px 16px;
-  min-height: 75px;
+  padding: 16px 18px;
+  border-radius: 10px;
 }
 .uh-agenda .ut-agenda-actions[hidden] {
   display: none;
 }
+@media (min-width: 1600px) {
+  .uh-dashboard {
+    grid-template-columns: minmax(760px, 1.65fr) minmax(540px, 1fr);
+    align-items: stretch;
+  }
+  .uh-chart > svg {
+    max-height: 230px;
+  }
+}
+@media (max-width: 1050px) {
+  .ut-home .ut-summary {
+    gap: 12px;
+  }
+}
 @media (max-width: 740px) {
+  .uh-dashboard {
+    gap: 12px;
+    margin-top: 12px;
+  }
   .uh-agenda-body {
     grid-template-columns: 1fr;
   }
@@ -224,22 +261,45 @@
   }
   .uh-chart > svg {
     min-height: 170px;
+    padding-inline: 6px;
   }
   .uh-heading {
     align-items: flex-start;
+    padding: 14px;
+  }
+  .uh-selected {
+    padding: 14px;
+  }
+  .uh-attention {
+    gap: 8px 16px;
+    padding: 11px 14px;
+  }
+  .uh-chart-controls {
+    width: 100%;
+  }
+  .uh-chart-controls .ut-density-switch {
+    flex: 1;
+  }
+  .uh-chart-controls .ut-density-switch button {
+    flex: 1;
   }
 }
 .ut-home .ut-summary > a {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   gap: 4px 12px;
   align-items: center;
-  min-height: 75px;
+  min-height: 82px;
 }
 .ut-home .ut-summary > a > svg {
   grid-column: 1;
   grid-row: 1/3;
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border-radius: 9px;
+  background: var(--accent);
 }
 .ut-home .ut-summary > a > span {
   grid-column: 2;
