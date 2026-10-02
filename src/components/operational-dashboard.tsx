@@ -1,6 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Info, X } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  FileText,
+  Info,
+  Lightbulb,
+  MapPinned,
+  Network,
+  Workflow,
+  X,
+} from "lucide-react";
 import "./operational-dashboard.css";
 
 type Process = {
@@ -241,9 +251,10 @@ export function OperationalDashboard({
     content: ReactNode,
     footer: ReactNode,
     extra?: ReactNode,
+    className = "",
   ) {
     return (
-      <section className="op-panel">
+      <section className={`op-panel ${className}`}>
         <div className="op-panel-head">
           <h2>{title}</h2>
           {extra}
@@ -254,20 +265,41 @@ export function OperationalDashboard({
       </section>
     );
   }
+  const coveragePercent = ps.length ? Math.round((covered / ps.length) * 100) : 0;
+  const maxAreaRecords = Math.max(
+    1,
+    ...compareAreas.map(
+      (name) =>
+        maps.filter((row) => row.area === name).length +
+        docs.filter((row) => row.area === name).length +
+        imps.filter((row) => row.area === name).length,
+    ),
+  );
+  const metricCards = [
+    { title: "Áreas", entries: areaRecords, subtitle: "Cadastros da organização", icon: MapPinned },
+    { title: "Processos", entries: ps, subtitle: "Estrutura cadastrada", icon: Network },
+    { title: "Mapeamentos", entries: maps, subtitle: "Inclui rascunhos", icon: Workflow },
+    { title: "Documentos", entries: docs, subtitle: "Documentação e fluxogramas", icon: FileText },
+    { title: "Melhorias", entries: imps, subtitle: "Oportunidades registradas", icon: Lightbulb },
+  ];
   let offset = 0;
   return (
     <div className="operational-dashboard" aria-busy={loading}>
       <div className="op-heading">
         <div>
+          <span className="op-eyebrow">Painel de processos</span>
           <h1>Visão operacional</h1>
           <p>Processos, mapeamentos, documentos e oportunidades de melhoria da organização.</p>
         </div>
-        <span className="op-scope">{organizationName}</span>
+        <span className="op-scope">
+          <Building2 size={14} />
+          {organizationName}
+        </span>
       </div>
       <div className="op-filters">
         <details>
           <summary>
-            Filtros <span>{area || "Todas as áreas"}</span>
+            Área analisada <span>{area || "Todas as áreas"}</span>
           </summary>
           <div>
             <label>
@@ -280,7 +312,7 @@ export function OperationalDashboard({
               </select>
             </label>
             <button type="button" onClick={() => setArea("")}>
-              Limpar filtros
+              Limpar seleção
             </button>
           </div>
         </details>
@@ -306,34 +338,37 @@ export function OperationalDashboard({
       ) : (
         <>
           <div className="op-metrics">
-            {[
-              ["Áreas", areaRecords, "Cadastros da organização"],
-              ["Processos", ps, "Estrutura cadastrada"],
-              ["Mapeamentos", maps, "Inclui rascunhos"],
-              ["Documentos", docs, "Documentação e fluxogramas"],
-              ["Melhorias", imps, "Oportunidades registradas"],
-            ].map(([title, entries, sub]) => (
-              <button
-                type="button"
-                key={title as string}
-                onClick={() => show(title as string, entries as Entry[])}
-              >
-                <span>{title as string}</span>
-                <strong>{(entries as Entry[]).length}</strong>
-                <small>{sub as string}</small>
+            {metricCards.map(({ title, entries, subtitle, icon: Icon }) => (
+              <button type="button" key={title} onClick={() => show(title, entries)}>
+                <span className="op-metric-icon">
+                  <Icon size={17} />
+                </span>
+                <span className="op-metric-copy">
+                  <span>{title}</span>
+                  <small>{subtitle}</small>
+                </span>
+                <strong>{entries.length}</strong>
+                <ArrowRight className="op-metric-arrow" size={15} />
               </button>
             ))}
           </div>
-          <div className="op-upper">
+          <div className="op-dashboard-grid">
             {panel(
               "Cobertura de mapeamentos",
               "Até 4 áreas com menor cobertura de mapeamentos.",
               <div className="op-coverage">
-                <div>
-                  <strong>
-                    {ps.length ? Math.round((covered / ps.length) * 100) : 0}
-                    <small>%</small>
-                  </strong>
+                <div className="op-coverage-summary">
+                  <div
+                    className="op-progress-ring"
+                    style={{ "--progress": `${coveragePercent * 3.6}deg` } as CSSProperties}
+                    role="img"
+                    aria-label={`${coveragePercent}% dos processos estão mapeados`}
+                  >
+                    <span>
+                      <strong>{coveragePercent}%</strong>
+                      <small>cobertura</small>
+                    </span>
+                  </div>
                   <p>
                     <b>
                       {covered} de {ps.length}
@@ -364,7 +399,10 @@ export function OperationalDashboard({
                               />
                             </span>
                             <b>
-                              {count}/{subset.length}
+                              {subset.length ? Math.round((count / subset.length) * 100) : 0}%
+                              <small>
+                                {count}/{subset.length}
+                              </small>
                             </b>
                           </button>
                         );
@@ -381,53 +419,58 @@ export function OperationalDashboard({
                   ),
                 )}
               </>,
+              undefined,
+              "op-panel--coverage",
             )}
             {panel(
               "Registros por área",
               "As 3 áreas com mais registros nos módulos.",
               <div className="op-compare">
                 {compareAreas.length
-                  ? compareAreas.map((a) => (
-                      <div className="op-compare-row" key={a}>
-                        <span title={a}>{a}</span>
-                        <div>
-                          {[maps, docs, imps].map((rows, i) => {
-                            const subset = rows.filter((r) => r.area === a),
-                              max = Math.max(
-                                1,
-                                ...displayedAreas.flatMap((name) =>
-                                  [maps, docs, imps].map(
-                                    (list) => list.filter((r) => r.area === name).length,
-                                  ),
-                                ),
-                              );
-                            return (
-                              <button
-                                type="button"
-                                key={i}
-                                aria-label={`${a}, ${["Mapeamentos", "Documentos", "Melhorias"][i]}: ${subset.length}`}
-                                onClick={() =>
-                                  show(
-                                    `${["Mapeamentos", "Documentos", "Melhorias"][i]} · ${a}`,
-                                    subset,
-                                  )
-                                }
-                              >
-                                <span>
-                                  <i
+                  ? compareAreas.map((a) => {
+                      const series = [maps, docs, imps].map((rows) =>
+                        rows.filter((row) => row.area === a),
+                      );
+                      const total = series.reduce((sum, rows) => sum + rows.length, 0);
+                      return (
+                        <div className="op-compare-row" key={a}>
+                          <div className="op-compare-label">
+                            <span title={a}>{a}</span>
+                            <b>{total}</b>
+                          </div>
+                          <div className="op-stack-track">
+                            <div style={{ width: `${(total / maxAreaRecords) * 100}%` }}>
+                              {series.map((rows, i) =>
+                                rows.length ? (
+                                  <button
+                                    type="button"
+                                    key={i}
                                     style={{
-                                      width: `${(subset.length / max) * 100}%`,
+                                      width: `${(rows.length / total) * 100}%`,
                                       background: colors[i],
                                     }}
+                                    aria-label={`${a}, ${["Mapeamentos", "Documentos", "Melhorias"][i]}: ${rows.length}`}
+                                    onClick={() =>
+                                      show(
+                                        `${["Mapeamentos", "Documentos", "Melhorias"][i]} · ${a}`,
+                                        rows,
+                                      )
+                                    }
                                   />
-                                </span>
-                                <b>{subset.length}</b>
-                              </button>
-                            );
-                          })}
+                                ) : null,
+                              )}
+                            </div>
+                          </div>
+                          <div className="op-compare-values" aria-hidden="true">
+                            {series.map((rows, i) => (
+                              <span key={i}>
+                                <i style={{ background: colors[i] }} /> {rows.length}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   : blank}
               </div>,
               <>
@@ -441,9 +484,9 @@ export function OperationalDashboard({
                 </div>
                 {link("Ver todas as áreas", () => show("Registros por área", filter(all)))}
               </>,
+              undefined,
+              "op-panel--areas",
             )}
-          </div>
-          <div className="op-lower">
             {panel(
               "Mapeamentos",
               "Situação dos registros do módulo.",
@@ -451,10 +494,19 @@ export function OperationalDashboard({
                 <div className="op-donut-layout">
                   <svg viewBox="0 0 160 160" role="img" aria-label="Mapeamentos por situação">
                     <title>{stats.map(([s, r]) => `${s}: ${r.length}`).join("; ")}</title>
+                    <circle
+                      cx="80"
+                      cy="80"
+                      r="58"
+                      fill="none"
+                      stroke="var(--muted)"
+                      strokeWidth="18"
+                    />
                     {stats.map(([s, rows], i) => {
-                      const len = (rows.length / maps.length) * 364.425,
+                      const rawLength = (rows.length / maps.length) * 364.425,
+                        len = Math.max(0, rawLength - 3),
                         start = offset;
-                      offset += len;
+                      offset += rawLength;
                       return (
                         <circle
                           key={s}
@@ -464,6 +516,7 @@ export function OperationalDashboard({
                           fill="none"
                           stroke={colorFor(s, i)}
                           strokeWidth="18"
+                          strokeLinecap="round"
                           strokeDasharray={`${len} ${364.425 - len}`}
                           strokeDashoffset={-start}
                           transform="rotate(-90 80 80)"
@@ -486,7 +539,10 @@ export function OperationalDashboard({
                       >
                         <i style={{ background: colorFor(s, i) }} />
                         <span>{s}</span>
-                        <b>{rows.length}</b>
+                        <b>
+                          {rows.length}
+                          <small>{Math.round((rows.length / maps.length) * 100)}%</small>
+                        </b>
                       </button>
                     ))}
                   </div>
@@ -498,6 +554,8 @@ export function OperationalDashboard({
                 <span className="op-caption">Inclui rascunhos</span>
                 {link("Consultar", () => show("Mapeamentos", maps))}
               </>,
+              undefined,
+              "op-panel--mappings",
             )}
             {panel(
               "Documentos",
@@ -511,11 +569,13 @@ export function OperationalDashboard({
                       onClick={() => show(`Documentos · ${type}`, rows)}
                     >
                       <b>{rows.length}</b>
-                      <i
-                        style={{
-                          height: `${(rows.length / Math.max(...docTypes.map(([, r]) => r.length))) * 65}%`,
-                        }}
-                      />
+                      <i className="op-column-track">
+                        <span
+                          style={{
+                            height: `${(rows.length / Math.max(...docTypes.map(([, r]) => r.length))) * 100}%`,
+                          }}
+                        />
+                      </i>
                       <span>{type}</span>
                     </button>
                   ))}
@@ -527,6 +587,8 @@ export function OperationalDashboard({
                 <span className="op-caption">Mapeamentos contabilizados à parte</span>
                 {link("Consultar", () => show("Documentos", docs))}
               </>,
+              undefined,
+              "op-panel--documents",
             )}
             {panel(
               "Melhorias",
@@ -549,7 +611,10 @@ export function OperationalDashboard({
                           }}
                         />
                       </span>
-                      <b>{rows.length}</b>
+                      <b>
+                        {rows.length}
+                        <small>{Math.round((rows.length / imps.length) * 100)}%</small>
+                      </b>
                     </button>
                   ))}
                 </div>
@@ -575,6 +640,7 @@ export function OperationalDashboard({
                 <option value="priority">Prioridade</option>
                 <option value="source">Origem</option>
               </select>,
+              "op-panel--improvements",
             )}
           </div>
         </>

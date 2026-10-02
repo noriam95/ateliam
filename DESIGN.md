@@ -90,6 +90,7 @@ Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, 
 - Painel organizacional de cadastros: cobertura, registros por área, situação de mapeamentos, tipos de documentos e melhorias por situação/prioridade/origem. Sem indicadores de tarefas.
 - Gráficos com detalhamento paginado, filtros recolhidos e cores dos tokens existentes. Áreas extensas têm rolagem interna; no celular os painéis empilham.
 - Fonte: getOrganizationDashboard; coleções paginadas integralmente, rascunhos fora da cobertura e registros sem área preservados.
+- Protótipo visual de 02/10/2026: grade responsiva de 12 colunas, cartões de indicadores independentes e painéis com hierarquia por importância. Cobertura usa anel de progresso e percentuais por área; registros por área usam barras empilhadas comparáveis; mapeamentos exibem proporções na legenda; documentos usam colunas com trilho; melhorias apresentam quantidade e percentual. Os gráficos continuam acionáveis e abrem os registros de origem.
 
 - Revisão visual operacional: tipografia de sistema Apple/Segoe, cores suaves azul/teal, resumos sem rolagem. Cobertura mostra até quatro áreas com menor percentual; distribuição mostra as três maiores; demais categorias excedentes agrupadas em Outros, com detalhamento integral. Saídas da cadeia sempre à direita e centralizadas verticalmente.
 
