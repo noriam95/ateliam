@@ -6419,6 +6419,7 @@ function ModuleWorkspacePage() {
   const [openedLocalFile, setOpenedLocalFile] = useState<OpenedLocalFile | null>(null);
   const [activeCloudDocument, setActiveCloudDocument] = useState<ActiveCloudDocument | null>(null);
   const [moduleEditStarted, setModuleEditStarted] = useState(moduleId === "bpmn");
+  const [startDdpWithAssistant, setStartDdpWithAssistant] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [ddpView, setDdpView] = useState<"editor" | "causes">("editor");
@@ -7501,7 +7502,8 @@ function ModuleWorkspacePage() {
     }
   }
 
-  function openNewForModule(targetModule: AteliamModule) {
+  function openNewForModule(targetModule: AteliamModule, withAssistant = false) {
+    setStartDdpWithAssistant(targetModule === "ddp" && withAssistant);
     if (targetModule !== moduleId) {
       navigate({ to: "/m/$module", params: { module: targetModule }, search: { view: "new" } });
       return;
@@ -8232,6 +8234,9 @@ function ModuleWorkspacePage() {
         rows={documentRows}
         loading={cloudDocsQ.isLoading && !isDemo}
         onCreate={() => openNewForModule(moduleId)}
+        onCreateWithAssistant={
+          moduleId === "ddp" ? () => openNewForModule(moduleId, true) : undefined
+        }
         onEdit={editDocumentRow}
         onDelete={deleteDocumentRows}
         onExport={exportDocumentRow}
@@ -8299,6 +8304,7 @@ function ModuleWorkspacePage() {
               rows={documentRows}
               loading={cloudDocsQ.isLoading && !isDemo}
               onCreate={() => openNewForModule(moduleId)}
+              onCreateWithAssistant={() => openNewForModule(moduleId, true)}
               onEdit={editDocumentRow}
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
@@ -8341,6 +8347,7 @@ function ModuleWorkspacePage() {
                   process,
                 ]);
               }}
+              startWithAssistant={startDdpWithAssistant}
             />
           )
         ) : null}
@@ -9280,6 +9287,7 @@ function ModuleDocumentGrid({
   rows,
   loading,
   onCreate,
+  onCreateWithAssistant,
   onEdit,
   onDelete,
   onExport,
@@ -9292,6 +9300,7 @@ function ModuleDocumentGrid({
   rows: ModuleGridRow[];
   loading: boolean;
   onCreate: () => void;
+  onCreateWithAssistant?: () => void;
   onEdit: (row: ModuleGridRow) => void | Promise<void>;
   onDelete: (ids: string[]) => void | Promise<void>;
   onExport: (row: ModuleGridRow, format: ExportFormat) => void | Promise<void>;
@@ -9449,6 +9458,16 @@ function ModuleDocumentGrid({
               : "Consulte e crie os documentos dos processos da sua organização."
           }
         >
+          {onCreateWithAssistant ? (
+            <button
+              type="button"
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted"
+              onClick={onCreateWithAssistant}
+            >
+              <WandSparkles size={16} />
+              Incluir pelo assistente
+            </button>
+          ) : null}
           <button type="button" className="process-library-new" onClick={onCreate}>
             <Plus size={17} />
             {moduleId === "ddp" ? "Novo mapeamento" : "Novo documento"}
@@ -10491,8 +10510,31 @@ function DdpCausesModuleV2({
     processId: string;
     row?: CauseRow;
   };
+  type CauseSortField =
+    | "source"
+    | "opportunity"
+    | "link"
+    | "impact"
+    | "action"
+    | "responsible"
+    | "dueDate"
+    | "priority"
+    | "status";
+  const causeColumns: Array<{ field: CauseSortField; label: string }> = [
+    { field: "source", label: "Origem" },
+    { field: "opportunity", label: "Oportunidade de melhoria" },
+    { field: "link", label: "Vínculo" },
+    { field: "impact", label: "Impacto" },
+    { field: "action", label: "Ação proposta" },
+    { field: "responsible", label: "Responsável" },
+    { field: "dueDate", label: "Prazo" },
+    { field: "priority", label: "Prioridade" },
+    { field: "status", label: "Status" },
+  ];
 
   const [query, setQuery] = useState("");
+  const [sortField, setSortField] = useState<CauseSortField>("opportunity");
+  const [sortDir, setSortDir] = useState<ModuleGridSortDir>("asc");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [draft, setDraft] = useState<CauseDraft | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
@@ -10543,6 +10585,44 @@ function DdpCausesModuleV2({
       ]),
     );
   }, [processesById, query, rows]);
+
+  const displayedRows = useMemo(() => {
+    function sortValue(row: CauseRow) {
+      if (sortField === "source") return row.source === "mapping" ? "Mapeamento" : "Avulsa";
+      if (sortField === "opportunity") return row.gap.causa;
+      if (sortField === "link") {
+        const process = row.standalone?.process_id
+          ? processesById.get(row.standalone.process_id)
+          : undefined;
+        return row.mapping
+          ? `${row.mapping.mappingCode} ${row.mapping.mappingTitle}`
+          : `${process?.code ?? ""} ${process?.name ?? ""}`;
+      }
+      if (sortField === "impact") return row.gap.impacto;
+      if (sortField === "action") return row.gap.acao;
+      if (sortField === "responsible") return row.gap.responsavel;
+      if (sortField === "dueDate") return row.gap.prazo;
+      if (sortField === "priority") return row.gap.prioridade;
+      return normalizeCauseStatus(row.gap.status);
+    }
+    const direction = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort(
+      (a, b) =>
+        String(sortValue(a) ?? "").localeCompare(String(sortValue(b) ?? ""), "pt-BR", {
+          numeric: true,
+          sensitivity: "base",
+        }) * direction,
+    );
+  }, [filtered, processesById, sortDir, sortField]);
+
+  function toggleCauseSort(field: CauseSortField) {
+    if (field === sortField) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortField(field);
+    setSortDir("asc");
+  }
 
   function emptyCause(): GapItem {
     return {
@@ -10733,15 +10813,29 @@ function DdpCausesModuleV2({
             <thead className="bg-muted/80 text-xs font-semibold text-muted-foreground">
               <tr>
                 <th className="w-12 px-4 py-3" />
-                <th className="px-3 py-3">Origem</th>
-                <th className="px-3 py-3">Oportunidade de melhoria</th>
-                <th className="px-3 py-3">Vínculo</th>
-                <th className="px-3 py-3">Impacto</th>
-                <th className="px-3 py-3">Ação proposta</th>
-                <th className="px-3 py-3">Responsável</th>
-                <th className="px-3 py-3">Prazo</th>
-                <th className="px-3 py-3">Prioridade</th>
-                <th className="px-3 py-3">Status</th>
+                {causeColumns.map(({ field, label }) => (
+                  <th
+                    key={field}
+                    className="px-3 py-3"
+                    aria-sort={
+                      sortField === field
+                        ? sortDir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="process-library-sort"
+                      onClick={() => toggleCauseSort(field)}
+                      aria-label={`Ordenar por ${label}`}
+                    >
+                      {label}
+                      <ModuleSortGlyph active={sortField === field} dir={sortDir} />
+                    </button>
+                  </th>
+                ))}
                 <th className="w-[220px] px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
@@ -10752,14 +10846,14 @@ function DdpCausesModuleV2({
                     Carregando oportunidades de melhoria...
                   </td>
                 </tr>
-              ) : !filtered.length ? (
+              ) : !displayedRows.length ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                     Nenhuma oportunidade de melhoria encontrada.
                   </td>
                 </tr>
               ) : null}
-              {filtered.map((row) => (
+              {displayedRows.map((row) => (
                 <tr key={row.id} className="border-t border-border bg-card hover:bg-muted/45">
                   <td className="px-4 py-3">
                     {row.source === "standalone" ? (
@@ -10887,7 +10981,7 @@ function DdpCausesModuleV2({
         </div>
         <footer className="process-library-pagination">
           <span>
-            {filtered.length} registro(s) · {mappingCauses.length} de mapeamentos ·{" "}
+            {displayedRows.length} registro(s) · {mappingCauses.length} de mapeamentos ·{" "}
             {standaloneCauses.length} avulsa(s)
           </span>
         </footer>
@@ -11392,6 +11486,7 @@ function DdpModule({
   onCatalogCreated,
   onProcessCreated,
   onSuggestedProcessPrepared,
+  startWithAssistant = false,
 }: {
   data: DdpState;
   catalogs: OrganizationCatalogs;
@@ -11412,6 +11507,7 @@ function DdpModule({
   // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
   onSuggestedProcessPrepared: (process: CreatedProcess) => Promise<void> | void;
+  startWithAssistant?: boolean;
 }) {
   const saveArea = useServerFn(saveProcessArea);
   const savePosition = useServerFn(savePositionRegistration);
@@ -11434,8 +11530,10 @@ function DdpModule({
     stepId: string;
     query: string;
   } | null>(null);
-  const [mappingAssistantOpen, setMappingAssistantOpen] = useState(false);
-  const [mappingEntryMode, setMappingEntryMode] = useState<"manual" | "assistant">("manual");
+  const [mappingAssistantOpen, setMappingAssistantOpen] = useState(startWithAssistant);
+  const [mappingEntryMode, setMappingEntryMode] = useState<"manual" | "assistant">(
+    startWithAssistant ? "assistant" : "manual",
+  );
   const [mappingAssistantSource, setMappingAssistantSource] = useState<"docx" | "text">("docx");
   const [mappingAssistantText, setMappingAssistantText] = useState("");
   const [mappingAssistantBusy, setMappingAssistantBusy] = useState(false);
