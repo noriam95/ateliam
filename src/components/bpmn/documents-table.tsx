@@ -1,16 +1,37 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Ellipsis, Eye, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowDownUp, ArrowUp, Ellipsis, Eye, Pencil, Trash2 } from "lucide-react";
 import { TaskDialog } from "@/components/task-dialog";
+import type {
+  BpmnLibraryRow,
+  BpmnLibrarySortDirection,
+  BpmnLibrarySortField,
+} from "@/lib/bpmn-library";
 
-type DrawingRow = {
-  id: string;
-  code: string;
-  title: string;
-  current_version: number;
-  updated_at: string;
-  area: string | null;
-  created_at: string;
-};
+type DrawingRow = BpmnLibraryRow;
+
+const drawingColumns: Array<{ field: BpmnLibrarySortField; label: string }> = [
+  { field: "code", label: "Código" },
+  { field: "title", label: "Título" },
+  { field: "current_version", label: "Versão" },
+  { field: "updated_at", label: "Atualizado em" },
+  { field: "area", label: "Área" },
+  { field: "created_at", label: "Data criação" },
+];
+
+function DrawingSortGlyph({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction: BpmnLibrarySortDirection;
+}) {
+  if (!active) return <ArrowDownUp size={13} aria-hidden="true" />;
+  return direction === "asc" ? (
+    <ArrowUp size={13} aria-hidden="true" />
+  ) : (
+    <ArrowDown size={13} aria-hidden="true" />
+  );
+}
 
 function DrawingActions({
   row,
@@ -89,11 +110,17 @@ export function BpmnDocumentsTable({
   onOpen,
   onView = onOpen,
   onDelete,
+  sortField,
+  sortDirection,
+  onSort,
 }: {
   rows: DrawingRow[];
   onOpen: (id: string) => void;
   onView?: (id: string) => void;
   onDelete?: (ids: string[]) => Promise<void>;
+  sortField: BpmnLibrarySortField;
+  sortDirection: BpmnLibrarySortDirection;
+  onSort: (field: BpmnLibrarySortField) => void;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<DrawingRow[]>([]);
@@ -147,7 +174,12 @@ export function BpmnDocumentsTable({
           </button>
         </div>
       )}
-      <div className="bf-bpmn-table-wrap" role="region" aria-label="Desenhos BPMN" tabIndex={0}>
+      <div
+        className="bf-bpmn-table-wrap process-library-table"
+        role="region"
+        aria-label="Desenhos BPMN"
+        tabIndex={0}
+      >
         <table className="bf-bpmn-documents-table">
           <thead>
             <tr>
@@ -164,13 +196,29 @@ export function BpmnDocumentsTable({
                   />
                 </th>
               )}
-              {["Código", "Título", "Versão", "Atualizado em", "Área", "Data criação"].map(
-                (label) => (
-                  <th key={label} scope="col">
+              {drawingColumns.map(({ field, label }) => (
+                <th
+                  key={field}
+                  scope="col"
+                  aria-sort={
+                    sortField === field
+                      ? sortDirection === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  <button
+                    type="button"
+                    className="process-library-sort"
+                    onClick={() => onSort(field)}
+                    aria-label={`Ordenar por ${label}`}
+                  >
                     {label}
-                  </th>
-                ),
-              )}
+                    <DrawingSortGlyph active={sortField === field} direction={sortDirection} />
+                  </button>
+                </th>
+              ))}
               <th scope="col">Ações</th>
             </tr>
           </thead>

@@ -11,7 +11,6 @@ import {
   Pencil,
   Plus,
   Save,
-  Search,
   Trash2,
   UserRound,
   X,
@@ -45,6 +44,7 @@ import {
   previewDemoDocumentCode,
   reserveDemoDocumentCode,
 } from "@/lib/code-generation";
+import { ProcessLibraryHeader, ProcessLibrarySearch } from "@/components/process-library-header";
 
 /** Resolve a sigla da área a partir do nome selecionado no formulário. */
 function areaSiglaByName(areas: Area[], name: string | null | undefined): string {
@@ -1130,35 +1130,29 @@ export function WorkspaceProcessRegistrations({
   }
 
   return (
-    <section className="grid gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
-            processos · cadastros
-          </div>
-          <h1 className="mt-2 font-display text-3xl font-bold">{copy.title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            {copy.description}
-          </p>
-        </div>
-        {view !== "process-types" ? (
-          <button
-            onClick={() => {
-              setDraft(emptyDraft(view, data));
-              setFormOpen(true);
-            }}
-            className={primaryButtonClass}
-          >
-            <Plus className="h-4 w-4" /> Novo
-          </button>
-        ) : null}
-      </header>
+    <section className="process-library">
+      <header>
+        <ProcessLibraryHeader title={copy.title} description={copy.description}>
+          {view !== "process-types" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(emptyDraft(view, data));
+                setFormOpen(true);
+              }}
+              className="process-library-new"
+            >
+              <Plus className="h-4 w-4" /> Novo
+            </button>
+          ) : null}
+        </ProcessLibraryHeader>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-h-9 items-center gap-3">
-          <span className="text-xs text-muted-foreground">
-            {displayRows.length} {displayRows.length === 1 ? "registro" : "registros"}
-          </span>
+        <div className="process-library-controls">
+          <ProcessLibrarySearch
+            value={search}
+            onChange={setSearch}
+            placeholder="Pesquisar em todas as colunas…"
+          />
           {selectedIds.length > 0 && canDeleteRows ? (
             <button
               type="button"
@@ -1170,20 +1164,9 @@ export function WorkspaceProcessRegistrations({
             </button>
           ) : null}
         </div>
-        <div className="relative w-full max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filtrar por qualquer informação..."
-            aria-label={`Filtrar ${copy.title.toLowerCase()}`}
-            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
-          />
-        </div>
-      </div>
+      </header>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="process-library-table" role="region" aria-label={copy.title} tabIndex={0}>
         {query.isLoading && !isDemo ? (
           <div className="p-10 text-center text-sm text-muted-foreground">Carregando...</div>
         ) : (
@@ -1201,18 +1184,29 @@ export function WorkspaceProcessRegistrations({
                         }
                       }}
                       onChange={toggleVisibleSelection}
-                      aria-label="Selecionar todos os registros filtrados"
+                      aria-label="Selecionar todos os registros exibidos"
                       className="h-4 w-4 cursor-pointer accent-[var(--gold)]"
                     />
                   </th>
                 ) : null}
                 <th className="w-12 px-4 py-3 font-semibold">#</th>
                 {copy.columns.map((column, colIndex) => (
-                  <th key={column} className="px-4 py-3 font-semibold">
+                  <th
+                    key={column}
+                    className="px-4 py-3 font-semibold"
+                    aria-sort={
+                      sortCol === colIndex
+                        ? sortDir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                  >
                     <button
                       type="button"
                       onClick={() => toggleSort(colIndex)}
-                      className="inline-flex items-center gap-1 hover:text-foreground"
+                      className="process-library-sort"
+                      aria-label={`Ordenar por ${column}`}
                     >
                       {column}
                       <SortIcon active={sortCol === colIndex} dir={sortDir} />
@@ -1279,7 +1273,7 @@ export function WorkspaceProcessRegistrations({
                     <div className="grid justify-items-center gap-3">
                       <div>
                         {search
-                          ? "Nenhum registro corresponde ao filtro informado."
+                          ? "Nenhum registro corresponde à pesquisa informada."
                           : "Nenhum registro cadastrado."}
                       </div>
                       {!search && view !== "process-types" ? (
@@ -1303,6 +1297,13 @@ export function WorkspaceProcessRegistrations({
           </table>
         )}
       </div>
+
+      <footer className="process-library-pagination">
+        <span>
+          {displayRows.length} {displayRows.length === 1 ? "registro" : "registros"}
+          {selectedIds.length ? ` · ${selectedIds.length} selecionado(s)` : ""}
+        </span>
+      </footer>
 
       {formOpen ? (
         <div

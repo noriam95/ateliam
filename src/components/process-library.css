@@ -96,23 +96,77 @@
 .process-library > header {
   margin-bottom: 20px;
 }
+.process-library-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.process-library > header .process-library-controls {
+  margin-bottom: 0;
+}
 .process-library-table {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--card);
 }
+.process-library-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
 .process-library-table th {
   background: var(--muted);
+  color: var(--muted-foreground);
   font-size: 11px;
   font-weight: 500;
 }
 .process-library-table th,
 .process-library-table td {
   padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
 }
 .process-library-table td {
   font-size: 13px;
+}
+.process-library-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.process-library-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.process-library-sort,
+.bf-bpmn-root .process-library-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.process-library-sort:hover,
+.process-library-sort[aria-current="true"] {
+  color: var(--foreground);
+}
+.process-library-sort svg {
+  flex: 0 0 auto;
+  opacity: 0.55;
+}
+th[aria-sort="ascending"] .process-library-sort svg,
+th[aria-sort="descending"] .process-library-sort svg {
+  color: var(--gold);
+  opacity: 1;
 }
 .process-library-table:focus-visible {
   outline: 2px solid var(--gold);
@@ -123,10 +177,26 @@
   font-size: 12px;
   color: var(--muted-foreground);
 }
+.process-library-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.process-library-pagination > :first-child {
+  margin-right: auto;
+}
 @media (max-width: 640px) {
   .process-library-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 16px;
+  }
+  .process-library-search {
+    max-width: none;
   }
 }

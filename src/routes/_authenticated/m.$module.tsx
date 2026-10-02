@@ -366,10 +366,7 @@ type DdpFlowStep = {
   substeps: DdpFlowSubstep[];
 };
 type FlowExecutionType =
-  | "Automática"
-  | "Manual no sistema"
-  | "Manual fora do sistema"
-  | "Híbrida (manual/automática)";
+  "Automática" | "Manual no sistema" | "Manual fora do sistema" | "Híbrida (manual/automática)";
 const FLOW_EXECUTION_TYPE_OPTIONS: FlowExecutionType[] = [
   "Automática",
   "Manual no sistema",
@@ -470,14 +467,7 @@ type RevisionItem = {
 type ChangeItem = { id: string; versao: string; local: string; descricao: string };
 type BpmnNodeType = "start" | "task" | "gateway" | "end" | "annotation";
 type BpmnTaskType =
-  | "none"
-  | "user"
-  | "service"
-  | "manual"
-  | "script"
-  | "business-rule"
-  | "send"
-  | "receive";
+  "none" | "user" | "service" | "manual" | "script" | "business-rule" | "send" | "receive";
 type BpmnGatewayType = "exclusive" | "parallel" | "inclusive" | "event-based" | "complex";
 type BpmnNode = {
   id: string;
@@ -2364,6 +2354,13 @@ function normalizeLabel(value: string) {
     .toLowerCase();
 }
 
+function matchesSearchTerms(query: string, values: unknown[]) {
+  const terms = normalizeLabel(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = normalizeLabel(values.map((value) => String(value ?? "")).join(" "));
+  return terms.every((term) => haystack.includes(term));
+}
+
 function fillMissingActivityActors(steps: DdpFlowStep[]) {
   let changed = false;
   const nextSteps = steps.map((step) => {
@@ -2892,8 +2889,7 @@ function parseWorkspace(raw?: string | null): WorkspaceState {
 
   try {
     const parsed = JSON.parse(raw) as
-      | Partial<WorkspaceState>
-      | { modules?: Partial<WorkspaceState> };
+      Partial<WorkspaceState> | { modules?: Partial<WorkspaceState> };
     const source = "modules" in parsed && parsed.modules ? parsed.modules : parsed;
     return {
       ddp: normalizeDdp(source.ddp, fallback.ddp),
@@ -9199,11 +9195,7 @@ function buildModuleGridRows(
 }
 
 type ExportFormat =
-  | "ddp-html"
-  | "ddp-docx"
-  | "ddp-presentation-doc"
-  | "pop-docx"
-  | "pop-presentation-doc";
+  "ddp-html" | "ddp-docx" | "ddp-presentation-doc" | "pop-docx" | "pop-presentation-doc";
 
 const MODULE_STATUS_OPTIONS = ["Rascunho", "Em andamento", "Em revisão", "Aprovado", "Concluído"];
 type ModuleGridSortDir = "asc" | "desc";
@@ -9336,7 +9328,6 @@ function ModuleDocumentGrid({
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem(`${tablePreferenceKey}-query`) ?? "";
   });
-  const [areaFilter, setAreaFilter] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [sortField, setSortField] = useState<ModuleGridColumn>(() => {
     if (typeof window === "undefined") return "updatedAt";
@@ -9380,13 +9371,8 @@ function ModuleDocumentGrid({
     );
   }, [compact, query, sortDir, sortField, tablePreferenceKey]);
   const filtered = useMemo(() => {
-    const normalized = normalizeLabel(query);
-    return rows.filter(
-      (row) =>
-        (!areaFilter || row.area === areaFilter) &&
-        (!normalized || normalizeLabel(Object.values(row).join(" ")).includes(normalized)),
-    );
-  }, [query, rows, areaFilter]);
+    return rows.filter((row) => matchesSearchTerms(query, Object.values(row)));
+  }, [query, rows]);
   const columns =
     moduleId === "ddp"
       ? [
@@ -9509,11 +9495,11 @@ function ModuleDocumentGrid({
             </button>
           ) : null}
         </ProcessLibraryHeader>
-        <div className="mt-4 flex max-w-xl items-center gap-2">
+        <div className="process-library-controls">
           <ProcessLibrarySearch
             value={query}
             onChange={setQuery}
-            placeholder="Pesquisar registros…"
+            placeholder="Pesquisar em todas as colunas…"
           />
           <button
             type="button"
@@ -9526,24 +9512,6 @@ function ModuleDocumentGrid({
             <Rows3 className="h-4 w-4" />
           </button>
         </div>
-        {moduleId === "ddp" && (
-          <label className="mt-3 flex items-center gap-2 text-sm">
-            Área
-            <select
-              className="rounded-md border border-input bg-background p-2"
-              value={areaFilter}
-              onChange={(e) => setAreaFilter(e.target.value)}
-            >
-              <option value="">Todas as áreas</option>
-              {Array.from(new Set(rows.map((r) => r.area)))
-                .filter((a) => a && a !== "-")
-                .sort()
-                .map((a) => (
-                  <option key={a}>{a}</option>
-                ))}
-            </select>
-          </label>
-        )}
         {moduleId === "ddp" ? (
           <div className="mt-4">
             <ModuleStatusSummary rows={rows} />
@@ -9574,11 +9542,18 @@ function ModuleDocumentGrid({
                 />
               </th>
               {columns.map(([key, label]) => (
-                <th key={label} className="px-3 py-3 font-semibold">
+                <th
+                  key={label}
+                  className="px-3 py-3 font-semibold"
+                  aria-sort={
+                    sortField === key ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+                  }
+                >
                   <button
                     type="button"
                     onClick={() => toggleSort(key as ModuleGridColumn)}
-                    className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
+                    className="process-library-sort"
+                    aria-label={`Ordenar por ${label}`}
                   >
                     {label}
                     <ModuleSortGlyph active={sortField === key} dir={sortDir} />
@@ -9611,7 +9586,9 @@ function ModuleDocumentGrid({
                     <FileSearch className="h-7 w-7 text-muted-foreground/70" />
                     <div>
                       <div className="font-semibold text-foreground">
-                        {query ? "Nenhum resultado para este filtro" : "Nenhum registro cadastrado"}
+                        {query
+                          ? "Nenhum resultado para esta pesquisa"
+                          : "Nenhum registro cadastrado"}
                       </div>
                       <div className="mt-1 text-xs">
                         {query
@@ -9625,7 +9602,7 @@ function ModuleDocumentGrid({
                         onClick={() => setQuery("")}
                         className="text-xs font-semibold text-primary hover:underline"
                       >
-                        Limpar filtro
+                        Limpar pesquisa
                       </button>
                     ) : (
                       <button
@@ -9710,8 +9687,10 @@ function ModuleDocumentGrid({
           </tbody>
         </table>
       </div>
-      <footer>
-        {sortedRows.length} registro(s) exibido(s) · {selected.length} selecionado(s)
+      <footer className="process-library-pagination">
+        <span>
+          {sortedRows.length} registro(s) exibido(s) · {selected.length} selecionado(s)
+        </span>
       </footer>
       {pendingStatus ? (
         <Modal
@@ -9961,22 +9940,18 @@ function DdpCausesModuleLegacy({
   const [deleteSaving, setDeleteSaving] = useState(false);
   const initializedNew = useRef(false);
   const filtered = useMemo(() => {
-    const normalized = normalizeLabel(query);
     return data.gaps.filter((gap) =>
-      !normalized
-        ? true
-        : normalizeLabel(
-            [
-              gap.causa,
-              gap.descricao,
-              gap.impacto,
-              gap.acao,
-              gap.responsavel,
-              gap.prioridade,
-              gap.status,
-              gap.prazo,
-            ].join(" "),
-          ).includes(normalized),
+      matchesSearchTerms(query, [
+        gap.sharedCauseId ? "Biblioteca Sim" : "Mapeamento Não",
+        gap.causa,
+        gap.descricao,
+        gap.impacto,
+        gap.acao,
+        gap.responsavel,
+        gap.prioridade,
+        gap.status,
+        gap.prazo,
+      ]),
     );
   }, [data.gaps, query]);
 
@@ -10606,23 +10581,21 @@ function DdpCausesModuleV2({
   }, [mappingCauses, standaloneCauses]);
 
   const filtered = useMemo(() => {
-    const normalized = normalizeLabel(query);
-    if (!normalized) return rows;
     return rows.filter((row) =>
-      normalizeLabel(
-        [
-          row.gap.causa,
-          row.gap.descricao,
-          row.gap.impacto,
-          row.gap.acao,
-          row.gap.responsavel,
-          row.gap.status,
-          row.mapping?.mappingCode,
-          row.mapping?.mappingTitle,
-          row.standalone?.process_id ? processesById.get(row.standalone.process_id)?.name : "",
-          row.source === "mapping" ? "Mapeamento" : "Avulsa",
-        ].join(" "),
-      ).includes(normalized),
+      matchesSearchTerms(query, [
+        row.gap.causa,
+        row.gap.descricao,
+        row.gap.impacto,
+        row.gap.acao,
+        row.gap.responsavel,
+        row.gap.prazo,
+        row.gap.prioridade,
+        row.gap.status,
+        row.mapping?.mappingCode,
+        row.mapping?.mappingTitle,
+        row.standalone?.process_id ? processesById.get(row.standalone.process_id)?.name : "",
+        row.source === "mapping" ? "Mapeamento" : "Avulsa",
+      ]),
     );
   }, [processesById, query, rows]);
 
@@ -10796,11 +10769,13 @@ function DdpCausesModuleV2({
               <Plus className="h-4 w-4" /> Nova oportunidade
             </button>
           </ProcessLibraryHeader>
-          <ProcessLibrarySearch
-            value={query}
-            onChange={setQuery}
-            placeholder="Pesquisar oportunidade, mapeamento ou responsável…"
-          />
+          <div className="process-library-controls">
+            <ProcessLibrarySearch
+              value={query}
+              onChange={setQuery}
+              placeholder="Pesquisar em todas as colunas…"
+            />
+          </div>
         </header>
 
         <div
@@ -10965,9 +10940,11 @@ function DdpCausesModuleV2({
             </tbody>
           </table>
         </div>
-        <footer>
-          {filtered.length} registro(s) · {mappingCauses.length} de mapeamentos ·{" "}
-          {standaloneCauses.length} avulsa(s)
+        <footer className="process-library-pagination">
+          <span>
+            {filtered.length} registro(s) · {mappingCauses.length} de mapeamentos ·{" "}
+            {standaloneCauses.length} avulsa(s)
+          </span>
         </footer>
       </section>
 

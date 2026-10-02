@@ -1,5 +1,10 @@
 import { documentTitle } from "./document-label";
 import { bpmnListMetadata } from "./bpmn-list-metadata";
+import {
+  filterAndSortBpmnRows,
+  type BpmnLibrarySortDirection,
+  type BpmnLibrarySortField,
+} from "./bpmn-library";
 import { prepareMappingIdentity } from "./mapping-identity";
 import { reserveOrganizationCode } from "./code-reservation";
 import { dashboardRows } from "./dashboard-pagination";
@@ -1606,31 +1611,48 @@ export const saveBpmnDocument = createServerFn({ method: "POST" })
     });
   });
 
+type BpmnListSourceRow = {
+  id: string;
+  name: string;
+  current_version: number;
+  updated_at: string;
+  created_at: string;
+  primary_process_id: string | null;
+  content_inline: string | null;
+};
+
 export const listBpmnDocuments = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { organizationId: string; page?: number; search?: string }) =>
-    z
-      .object({
-        organizationId: z.string().uuid(),
-        page: z.number().int().nonnegative().default(0),
-        search: z.string().max(120).default(""),
-      })
-      .parse(data),
+  .validator(
+    (data: {
+      organizationId: string;
+      page?: number;
+      search?: string;
+      sortField?: BpmnLibrarySortField;
+      sortDirection?: BpmnLibrarySortDirection;
+    }) =>
+      z
+        .object({
+          organizationId: z.string().uuid(),
+          page: z.number().int().nonnegative().default(0),
+          search: z.string().max(120).default(""),
+          sortField: z
+            .enum(["code", "title", "current_version", "updated_at", "area", "created_at"])
+            .default("updated_at"),
+          sortDirection: z.enum(["asc", "desc"]).default("desc"),
+        })
+        .parse(data),
   )
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
-    let query = context.supabase
+    const query = context.supabase
       .from("documents")
-      .select("id,name,current_version,updated_at,created_at,primary_process_id,content_inline", {
-        count: "exact",
-      })
+      .select("id,name,current_version,updated_at,created_at,primary_process_id,content_inline")
       .eq("organization_id", access.organizationId)
-      .eq("module", "bpmn");
-    if (data.search.trim()) query = query.ilike("name", `%${data.search.replace(/[%_]/g, "")}%`);
-    const result = await query
+      .eq("module", "bpmn")
       .order("updated_at", { ascending: false })
-      .order("id")
-      .range(data.page * 20, data.page * 20 + 19);
+      .order("id");
+    const result = await dashboardRows<BpmnListSourceRow>(query);
     if (result.error) throw new Error(result.error.message);
     const rows = (result.data || []).map(({ content_inline, ...row }) => ({
       ...row,
@@ -1649,12 +1671,19 @@ export const listBpmnDocuments = createServerFn({ method: "POST" })
       if (processes.error) throw new Error(processes.error.message);
       for (const process of processes.data || []) areas.set(process.id, process.department);
     }
+    const visibleRows = rows.map(({ processId, primary_process_id, ...row }) => ({
+      ...row,
+      area: areas.get(primary_process_id || processId) || null,
+    }));
+    const orderedRows = filterAndSortBpmnRows(
+      visibleRows,
+      data.search,
+      data.sortField,
+      data.sortDirection,
+    );
     return {
-      rows: rows.map(({ processId, primary_process_id, ...row }) => ({
-        ...row,
-        area: areas.get(primary_process_id || processId) || null,
-      })),
-      count: result.count || 0,
+      rows: orderedRows.slice(data.page * 20, data.page * 20 + 20),
+      count: orderedRows.length,
     };
   });
 

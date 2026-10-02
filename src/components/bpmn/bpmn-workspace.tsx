@@ -1,7 +1,7 @@
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { ProcessLibraryHeader, ProcessLibrarySearch } from "@/components/process-library-header";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useNavigate } from "@tanstack/react-router";
@@ -31,6 +31,7 @@ import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./cata
 import { BpmnEditor, type SavedBpmn } from "./bpmn-editor";
 import { BpmnImportWizard } from "./import-wizard";
 import { BpmnDocumentsTable } from "./documents-table";
+import type { BpmnLibrarySortDirection, BpmnLibrarySortField } from "@/lib/bpmn-library";
 import "./bpmn.css";
 
 export function BpmnWorkspace({
@@ -77,7 +78,10 @@ export function BpmnWorkspace({
   const [modal, setModal] = useState<"new" | "import" | null>(null);
   const [newProcess, setNewProcess] = useState("");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(0);
+  const [sortField, setSortField] = useState<BpmnLibrarySortField>("updated_at");
+  const [sortDirection, setSortDirection] = useState<BpmnLibrarySortDirection>("desc");
   const [expandedNavigation, setExpandedNavigation] = useState<Record<string, boolean>>({});
   const opened = useRef("");
   const loadToken = useRef(0);
@@ -118,9 +122,18 @@ export function BpmnWorkspace({
       });
   }, [catalogQuery.data]);
   const docs = useQuery({
-    queryKey: ["bpmn-documents", organizationId, page, search],
+    queryKey: ["bpmn-documents", organizationId, page, deferredSearch, sortField, sortDirection],
     enabled: !!organizationId,
-    queryFn: () => getDocuments({ data: { organizationId, page, search } }),
+    queryFn: () =>
+      getDocuments({
+        data: {
+          organizationId,
+          page,
+          search: deferredSearch,
+          sortField,
+          sortDirection,
+        },
+      }),
   });
   const loadDocument = useCallback(
     async (id: string) => {
@@ -364,7 +377,7 @@ export function BpmnWorkspace({
           }}
         />
       ) : (
-        <div className="bf-bpmn-library">
+        <div className="bf-bpmn-library process-library">
           <ProcessLibraryHeader
             title="Desenhos BPMN"
             description="Modele processos e aproveite os desenhos que sua equipe já possui."
@@ -388,14 +401,14 @@ export function BpmnWorkspace({
               </div>
             )}
           </ProcessLibraryHeader>
-          <div className="mb-5">
+          <div className="process-library-controls">
             <ProcessLibrarySearch
               value={search}
               onChange={(value) => {
                 setSearch(value);
                 setPage(0);
               }}
-              placeholder="Pesquisar por processo…"
+              placeholder="Pesquisar em todas as colunas…"
             />
           </div>
           {docs.isPending ? (
@@ -426,8 +439,21 @@ export function BpmnWorkspace({
           ) : (
             <>
               <BpmnDocumentsTable
-                key={`${organizationId}:${page}:${search}`}
+                key={`${organizationId}:${page}:${deferredSearch}`}
                 rows={docs.data.rows}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={(field) => {
+                  setPage(0);
+                  if (field === sortField) {
+                    setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+                    return;
+                  }
+                  setSortField(field);
+                  setSortDirection(
+                    field === "updated_at" || field === "created_at" ? "desc" : "asc",
+                  );
+                }}
                 onOpen={(id) => {
                   setViewOnly(false);
                   void loadDocument(id);
@@ -469,7 +495,7 @@ export function BpmnWorkspace({
                     : undefined
                 }
               />
-              <div className="bf-bpmn-pagination">
+              <div className="bf-bpmn-pagination process-library-pagination">
                 <span>
                   {docs.data.count} desenhos · página {page + 1}
                 </span>

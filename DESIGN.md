@@ -50,7 +50,6 @@ Checklist agrupa entregas por item, com contagem concluída/total e ações expl
 
 Referência aprovada: seletor de aplicativos do vídeo fornecido pelo usuário. WorkspaceLauncher substitui a barra lateral fixa por um botão de grade no canto superior esquerdo e um popover com ícones, nomes e descrições dos módulos. As opções internas reutilizam WorkspaceModulesTree e os mesmos destinos existentes. O conteúdo ocupa a largura disponível. Paleta, tipografia e formulários permanecem sob os tokens existentes.
 
-
 ## Tarefas e reuniões — setembro de 2026
 
 - Código imutável por organização e ano de criação: TAR.0001.2026, gerado no banco com contador atômico.
@@ -63,10 +62,9 @@ Referência aprovada: seletor de aplicativos do vídeo fornecido pelo usuário. 
 
 Agenda: filtros de tarefas recolhíveis no calendário; barra com navegação de datas e formato; segunda linha para visibilidade de atividades e agendamento. Usa tokens existentes e controles nativos.
 
-
 Card de tarefa: encaminhamento único por etapa, com descrição obrigatória preservada para o destinatário e no histórico. Administrador usa o mesmo formulário; demais usuários continuam restritos à responsabilidade. Dados editáveis no cabeçalho conforme as permissões e etapas existentes. Abas seguem navegação por sublinhado de Home/Minhas tarefas. Comentários aceitam até cinco anexos privados de 20 MB; upload com repetição sem reenviar arquivos já carregados. Troca de abas mantém o formulário de dados montado.
 
-Próximas melhorias: Área na criação de tarefas reutiliza cadastro organizacional e exige seleção, com cadastro rápido por nome e sigla. Consulta de mapeamentos mantém coluna Área e inclui filtro. Notificações têm abas Usuário e Atualizações do sistema, com leitura por usuário/organização. Entregas mostram código e título; os códigos de rascunhos e documentos salvos são lidos diretamente dos módulos de origem, sem gerar códigos no card. Movimentações apresenta orientação e tarefa, sem duplicar histórico dos comentários. Anexos usam botão com clipe e indicadores do Kanban são circulares.
+Próximas melhorias: Área na criação de tarefas reutiliza cadastro organizacional e exige seleção, com cadastro rápido por nome e sigla. Consulta de mapeamentos mantém a coluna Área e permite pesquisá-la pelo campo global. Notificações têm abas Usuário e Atualizações do sistema, com leitura por usuário/organização. Entregas mostram código e título; os códigos de rascunhos e documentos salvos são lidos diretamente dos módulos de origem, sem gerar códigos no card. Movimentações apresenta orientação e tarefa, sem duplicar histórico dos comentários. Anexos usam botão com clipe e indicadores do Kanban são circulares.
 
 Card de tarefa: TaskProcessFlow usa eventos de início/fim e gateways exclusivos; TaskChecklist permite editar e remover o vínculo do documento via TaskDialog, preservando o original. TaskComment reúne clipe e envio na mesma barra. Kanban utiliza foto do responsável com fallback para iniciais. Movimentações mostra formulário seguido de atividade e descrição original do usuário em ordem decrescente, sem misturar eventos de checklist/comentários.
 
@@ -81,12 +79,14 @@ Entregas: tarefa concluída oferece ZIP único com anexos originais e POP/Mapeam
 Home: resumo por tipo, agenda mensal com seleção do dia e reuniões pessoais, indicadores com filtros exatos e gráfico de conclusões por semana/mês/ano. Próximas entregas removida. Datas de conclusão são persistidas na transição final; reabertura limpa a data; registros históricos sem data comprovável são informados e não entram no gráfico. Tendência usa regressão linear até hoje.
 
 ## Consistência de navegação e formulários
+
 - Tema persistido exclusivamente por lib/theme; menu de perfil e controles compartilham a preferência.
 - Cabeçalhos de módulos expandem/recolhem; Novo e Consultar navegam.
 - Cadeia de valor reorganiza blocos em linhas, mantendo largura legível.
 - Mapeamento e documentos usam visualização por ícone e menu único de salvamento.
 
 ## Visão operacional
+
 - Painel organizacional de cadastros: cobertura, registros por área, situação de mapeamentos, tipos de documentos e melhorias por situação/prioridade/origem. Sem indicadores de tarefas.
 - Gráficos com detalhamento paginado, filtros recolhidos e cores dos tokens existentes. Áreas extensas têm rolagem interna; no celular os painéis empilham.
 - Fonte: getOrganizationDashboard; coleções paginadas integralmente, rascunhos fora da cobertura e registros sem área preservados.
@@ -97,13 +97,11 @@ Tarefas: botão direito (ou Shift+F10) abre ações permitidas com motivo obriga
 
 Revisão de tarefas aprovada: Kanban inicial e cards Compactos por padrão; ordem Kanban, Lista, Calendário. Filtros e checklist iniciam recolhidos. Cabeçalho unifica busca, filtros e seletores; detalhe traz metadados no cabeçalho, edição por lápis, solicitação e anexos na coluna principal, comentários/reuniões à direita. Exclusão lógica apenas para administrador, com confirmação e Desfazer; tarefas excluídas consultáveis no filtro Excluídas; dados, documentos e histórico preservados. Ações e restauração validadas no servidor por organização e revisão.
 
-
 ## Identificação e edição da tarefa — 24/09/2026
 
 Códigos aparecem uma única vez nas entregas, seleção de documentos e nomes exportados, inclusive quando o nome legado já contém o código. Mapeamentos salvos como rascunho usam MAP.ÁREA.NNN.TEMP; a finalização remove .TEMP e preserva a sequência reservada. A área é necessária para a primeira reserva. Documentos antigos recebem a identificação temporária no próximo salvamento como rascunho. A reserva usa comparação atômica do contador organizacional e considera códigos já existentes.
 
 TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e modalidade separadamente. Editar dados abre TaskManagement no TaskDialog compartilhado, com grupos Pessoas, Período e Classificação, salvar/cancelar explícitos e confirmação de descarte. Falhas preservam os campos; sucesso fecha a edição e atualiza o resumo. As permissões e restrições de modalidade permanecem no servidor. Tokens de src/styles.css continuam canônicos.
-
 
 ## Desenho BPMN — reformulação de 25/09/2026
 
@@ -144,7 +142,7 @@ Pedido explícito do usuário: Novo e Consultar na mesma linha do nome e menu at
 
 Consulta de desenhos — 30/09/2026: seis colunas conforme pedido do usuário, código em fonte de dados, título clicável e datas em pt-BR. BpmnDocumentsTable reutiliza os tokens de src/styles.css e a superfície de tabela de bpmn.css, com rolagem horizontal interna em telas estreitas.
 
-Bibliotecas de Processos — 30/09/2026: Mapeamento, Documentação e Oportunidades de melhoria adotam o cabeçalho e a busca compartilhados ProcessLibraryHeader/ProcessLibrarySearch, alinhados à biblioteca BPMN. O botão de criação fica na consulta; o menu contém um único acesso por módulo, sem Novo/Consultar. Preservar colunas, filtros, densidade, status, exportações e ações específicas. Desenhos remove os textos redundantes de módulo/organização do cabeçalho global; seleção de organização permanece quando há mais de uma disponível. Não altera dados ou permissões do servidor.
+Bibliotecas de Processos — 30/09/2026: Mapeamento, Documentação e Oportunidades de melhoria adotam o cabeçalho e a pesquisa compartilhados ProcessLibraryHeader/ProcessLibrarySearch, alinhados à biblioteca BPMN. O botão de criação fica na consulta; o menu contém um único acesso por módulo, sem Novo/Consultar. Preservar colunas, densidade, status, exportações e ações específicas. Não exibir filtros separados: o campo de pesquisa consulta todas as colunas visíveis. Desenhos remove os textos redundantes de módulo/organização do cabeçalho global; seleção de organização permanece quando há mais de uma disponível. Não altera dados ou permissões do servidor.
 
 Ações de desenhos — 30/09/2026: menu de três pontos na consulta, conforme referência do usuário; comandos com ícones, Excluir em tom destrutivo separado por divisor. Menu em popover nativo fora do recorte da tabela; confirmação no TaskDialog canônico. Seleção e exclusão em lote no padrão das demais consultas.
 
@@ -162,3 +160,4 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 - Controles de espaço: o recolhimento da barra superior fica isolado e discreto na extremidade direita. A paleta de elementos pode ser recolhida pelo próprio cabeçalho; os controles transparentes de restauração permanecem sobrepostos nos cantos superiores do canvas, com contorno sutil e ícones direcionais claros.
 - Formatação compacta: tamanho de fonte usa o conjunto horizontal `– | valor | +`; a grade reserva posições fixas e reduz a largura mínima para evitar sobreposição. O pincel copia fonte, tamanho, estilos, alinhamento, preenchimento e borda para o próximo elemento selecionado.
 - Paleta BPMN padrão: atividade `#EEF4FA/#2563A6`, início `#EDF7ED/#4E8A48`, fim `#FBEDEE/#B64C57`, gateway `#FFF5DE/#B8862D`, conectores `#343A40` e pools/raias `#FFFFFF/#606770`. Cores explicitamente definidas no arquivo BPMN continuam prevalecendo.
+- Consultas dos módulos: cabeçalho, pesquisa, tabela, seleção, ordenação, ações e rodapé seguem o padrão visual da biblioteca de Desenhos. Não há filtros separados; a pesquisa usa palavras-chave em todas as colunas visíveis. Em Desenhos, pesquisa e ordenação consideram o conjunto completo antes da paginação.
