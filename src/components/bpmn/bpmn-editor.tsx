@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import {
-  ArrowLeft,
   Circle,
   Square,
   Diamond,
@@ -45,6 +45,7 @@ import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./cata
 import { captureBpmnSaveAttempt } from "@/lib/bpmn-save-attempt";
 import { inspectBpmn, type BpmnDocument, type BpmnTextStyle } from "@/lib/bpmn-document";
 import { defaultBpmnColors } from "@/lib/bpmn-colors";
+import { BFFlowMark } from "@/components/bf-flow-mark";
 import "@/components/user-tasks.css";
 
 const elementLabels: Record<string, string> = {
@@ -534,17 +535,30 @@ export function BpmnEditor({
       {taskContext && <div hidden={readOnly}>{taskContext}</div>}
       {!readOnly && !toolbarCollapsed && (
         <div className="bf-bpmn-toolbar" aria-label="Ferramentas de edição">
+          <nav className="bf-bpmn-toolbar-navigation" aria-label="Navegação do desenho">
+            <Link
+              className="bf-bpmn-toolbar-home"
+              to="/"
+              title="Ir para a página inicial"
+              aria-label="Ir para a página inicial"
+            >
+              <BFFlowMark className="bf-bpmn-toolbar-brand" />
+            </Link>
+            <button
+              className="bf-bpmn-toolbar-back"
+              aria-label="Voltar para a consulta de desenhos"
+              title="Voltar para a consulta de desenhos"
+              disabled={busy}
+              onClick={() => (dirty ? setExit(true) : onBack())}
+            >
+              <ChevronLeft size={15} aria-hidden="true" />
+              <span>Desenhos</span>
+            </button>
+          </nav>
+
           <div className="bf-bpmn-tool-group">
             <span>Arquivo</span>
             <div className="bf-bpmn-tool-grid">
-              <button
-                aria-label="Voltar aos desenhos"
-                title="Voltar aos desenhos"
-                disabled={busy}
-                onClick={() => (dirty ? setExit(true) : onBack())}
-              >
-                <ArrowLeft size={16} />
-              </button>
               <button
                 aria-label="Importar BPMN"
                 title="Importar BPMN"
