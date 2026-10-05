@@ -166,3 +166,14 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 - Consultas dos módulos: cabeçalho, pesquisa, tabela, seleção, ordenação, ações e rodapé seguem o padrão visual da biblioteca de Desenhos. Não há filtros separados; a pesquisa usa palavras-chave em todas as colunas visíveis. Em Desenhos, pesquisa e ordenação consideram o conjunto completo antes da paginação.
 - A consulta de Mapeamentos oferece criação manual e inclusão pelo assistente; a segunda ação inicia um novo mapeamento e abre diretamente a importação por DOCX ou texto estruturado. Todas as tabelas de consulta permitem ordenar as colunas de dados pelo próprio cabeçalho.
 - Navegação do editor — 05/10/2026: a barra começa com o logotipo compartilhado `BFFlowMark`, alternando automaticamente entre os temas claro e escuro e levando à Home. O retorno à consulta de desenhos fica em um controle separado, com chevron e rótulo visível “Desenhos”; o grupo Arquivo contém somente ações sobre o arquivo. Ambas as saídas preservam a proteção contra alterações não salvas.
+
+## Portal de Documentos — 05/10/2026
+
+- North Star: permitir que qualquer pessoa encontre e consulte rapidamente o procedimento vigente, sem entrar nos módulos usados para produzi-lo.
+- O portal é uma camada corporativa somente leitura. Reúne Mapeamentos, documentos POP e Fluxogramas BPMN, preserva a fonte original e abre cada item no visualizador próprio do módulo.
+- Somente estados vigentes são publicados: Vigente, Publicado, Aprovado, Concluído ou Ativo. Rascunhos, revisões, obsoletos, arquivados e cancelados ficam fora da listagem e também são bloqueados no acesso direto ao visualizador.
+- A pesquisa principal é o elemento dominante da tela e combina termos de título, código, tipo, área, macroprocesso, processo, subprocesso, descrição, tags, responsável e módulo. A comparação ignora caixa e acentos e aceita termos parciais.
+- A descoberta usa seções compactas para recentes, mais acessados, favoritos, atualizados e navegação por área, processo e tipo. Favoritos, histórico recente e contagem de acessos permanecem pessoais e isolados por usuário e organização no navegador.
+- Filtros de área, processo e tipo e ordenações por relevância, inclusão, acesso, título, vigência e atualização trabalham sobre o mesmo conjunto pesquisado. O estado vazio oferece limpeza direta dos critérios.
+- Busca, filtros contextuais e ordenação são refletidos na URL. A página de leitura mantém breadcrumb, metadados, palavras-chave e documentos relacionados ao lado do visualizador nativo incorporado; em telas estreitas, informações passam para baixo do conteúdo.
+- Visual: tema claro/escuro herdado dos tokens globais, superfícies sóbrias, acento dourado reservado a foco e ação, cartões de documento com metadados essenciais e grade fluida que passa de quatro para uma coluna sem rolagem horizontal da página.

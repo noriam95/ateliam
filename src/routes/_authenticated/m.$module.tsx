@@ -111,6 +111,7 @@ import {
   deleteModuleDocument,
   deleteOrganizationCause,
   getModuleDocumentContent,
+  getPortalDocumentContent,
   getModuleDocumentVersionContent,
   getMe,
   listAccessibleOrganizations,
@@ -147,7 +148,7 @@ import {
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
 import { toast } from "sonner";
 
-type ModuleRouteView = "new" | "consult" | "cause-new" | "cause-consult" | "cause-edit";
+type ModuleRouteView = "new" | "consult" | "preview" | "cause-new" | "cause-consult" | "cause-edit";
 
 // Tipo de documento (modalidade) associado a cada módulo. O módulo POP é
 // resolvido por subtipo (POP/IT/Norma) em documentDocType().
@@ -216,6 +217,7 @@ function readActiveDemoOrganization(): {
 const MODULE_ROUTE_VIEWS = new Set<ModuleRouteView>([
   "new",
   "consult",
+  "preview",
   "cause-new",
   "cause-consult",
   "cause-edit",
@@ -242,6 +244,7 @@ export const Route = createFileRoute("/_authenticated/m/$module")({
         : undefined,
     item: typeof search.item === "string" ? search.item.slice(0, 80) : undefined,
     filter: typeof search.filter === "string" ? search.filter.slice(0, 120) : undefined,
+    embedded: search.embedded === true || search.embedded === "1" ? true : undefined,
   }),
   beforeLoad: ({ params }) => {
     if (!MODULES.some((m) => m.id === params.module)) throw notFound();
@@ -6353,6 +6356,8 @@ function ModuleEntry() {
           documentId={search.document}
           requestedOrganization={search.taskOrg}
           newDrawing={search.view === "new"}
+          portalPreview={search.view === "preview"}
+          embedded={search.embedded}
           taskId={search.task}
           itemKey={search.item}
         />
@@ -6441,6 +6446,7 @@ function ModuleWorkspacePage() {
   const createSharedCause = useServerFn(createOrganizationCause);
   const listCloudDocuments = useServerFn(listModuleDocuments);
   const getCloudDocument = useServerFn(getModuleDocumentContent);
+  const getPortalDocument = useServerFn(getPortalDocumentContent);
   const listCloudDocumentVersions = useServerFn(listModuleDocumentVersions);
   const getCloudDocumentVersion = useServerFn(getModuleDocumentVersionContent);
   const saveCloudDocument = useServerFn(saveModuleDocument);
@@ -6879,7 +6885,8 @@ function ModuleWorkspacePage() {
     let cancelled = false;
     setLoaded(false);
     setTaskDocumentError("");
-    void getCloudDocument({ data: { id: search.document } })
+    const loadRequestedDocument = search.view === "preview" ? getPortalDocument : getCloudDocument;
+    void loadRequestedDocument({ data: { id: search.document } })
       .then((row) => {
         if (cancelled) return;
         if (row.module !== moduleId || !row.content_inline)
@@ -6903,7 +6910,7 @@ function ModuleWorkspacePage() {
     return () => {
       cancelled = true;
     };
-  }, [search.document, isDemo, moduleId, getCloudDocument]);
+  }, [search.document, search.view, isDemo, moduleId, getCloudDocument, getPortalDocument]);
 
   async function saveOpenedDocument() {
     if (!openedLocalFile || openedLocalFile.moduleId !== moduleId) return;
@@ -7460,6 +7467,10 @@ function ModuleWorkspacePage() {
   function selectRailArea(area: RailArea) {
     if (area === "home") {
       navigate({ to: "/" });
+      return;
+    }
+    if (area === "portal") {
+      navigate({ to: "/portal" });
       return;
     }
     if (area === "reports") {
@@ -8217,6 +8228,31 @@ function ModuleWorkspacePage() {
     );
   }
 
+  function portalPreviewHtml() {
+    if (search.view !== "preview" || !search.document || !loaded) return "";
+    const row = documentRows.find((item) => item.id === search.document);
+    const snapshot = row ? resolveRowSnapshot(row) : workspace;
+    if (!snapshot) return "";
+    if (moduleId === "ddp") {
+      const ddp = reconcileDdpWithCatalog(
+        normalizeDdp(snapshot.ddp, defaultWorkspace().ddp),
+        organizationCatalogs.systems,
+      );
+      return preparePresentationHtml(
+        buildDdpPresentationHtml(
+          ddp,
+          brandForDocumentModel("ddp-html"),
+          organizationCatalogs.processes,
+        ),
+      );
+    }
+    return preparePresentationHtml(
+      buildPopPresentationHtml(snapshot.pop, brandForDocumentPresentation()),
+    );
+  }
+
+  const portalReaderHtml = portalPreviewHtml();
+
   const moduleMainContent =
     contentMode === "registrations" ? (
       <WorkspaceProcessRegistrations
@@ -8228,6 +8264,66 @@ function ModuleWorkspacePage() {
       />
     ) : contentMode === "settings" ? (
       <ModuleSettingsPanel view={settingsView} organizationName={organizationBrand.name} />
+    ) : search.view === "preview" && search.document ? (
+      <section
+        className={cn(
+          "grid overflow-hidden bg-card",
+          search.embedded
+            ? "min-h-screen grid-rows-[minmax(0,1fr)]"
+            : "min-h-[calc(100dvh-6.5rem)] grid-rows-[auto_minmax(0,1fr)] rounded-xl border border-border",
+        )}
+      >
+        {!search.embedded ? (
+          <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5 sm:px-4">
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/portal" })}
+              className="inline-flex min-h-9 items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-semibold text-foreground hover:bg-muted"
+            >
+              <ChevronLeft className="h-4 w-4" /> Portal de Documentos
+            </button>
+            <span className="text-xs text-muted-foreground">/</span>
+            <strong className="min-w-0 truncate text-xs text-foreground">
+              {activeCloudDocument?.name ||
+                documentRows.find((item) => item.id === search.document)?.name ||
+                "Visualização"}
+            </strong>
+            <span className="ml-auto rounded-full border border-border bg-muted/55 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+              Somente leitura
+            </span>
+          </header>
+        ) : null}
+        {taskDocumentError ? (
+          <div className="grid min-h-[480px] place-items-center p-6 text-center" role="alert">
+            <div className="grid max-w-md gap-3">
+              <strong>Não foi possível abrir este documento.</strong>
+              <span className="text-sm text-muted-foreground">{taskDocumentError}</span>
+              <button
+                type="button"
+                onClick={() => navigate({ to: "/portal" })}
+                className="mx-auto inline-flex min-h-9 items-center rounded-md border border-border bg-background px-3 text-xs font-semibold text-foreground hover:bg-muted"
+              >
+                Voltar ao Portal
+              </button>
+            </div>
+          </div>
+        ) : portalReaderHtml ? (
+          <iframe
+            title={`Visualização de ${activeCloudDocument?.name || "documento"}`}
+            srcDoc={portalReaderHtml}
+            sandbox="allow-scripts"
+            allow="fullscreen"
+            className="h-full min-h-[680px] w-full border-0 bg-white"
+          />
+        ) : (
+          <div
+            className="grid min-h-[480px] place-items-center text-sm text-muted-foreground"
+            role="status"
+          >
+            Preparando visualização somente leitura…
+          </div>
+        )}
+      </section>
     ) : moduleSurface === "consult" ? (
       <ModuleDocumentGrid
         moduleId={moduleId}
@@ -8402,6 +8498,14 @@ function ModuleWorkspacePage() {
         ) : null}
       </>
     );
+
+  if (search.view === "preview" && search.embedded) {
+    return (
+      <div className="min-h-screen bg-background text-foreground" style={moduleGrayVars}>
+        {moduleMainContent}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground" style={moduleGrayVars}>

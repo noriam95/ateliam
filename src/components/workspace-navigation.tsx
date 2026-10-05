@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import "./workspace-launcher.css";
 import {
   CheckCircle2,
+  BookOpen,
   ChevronDown,
   ChevronRight,
   BriefcaseBusiness,
@@ -21,7 +22,8 @@ import {
   Workflow,
 } from "lucide-react";
 
-export type WorkspaceRailArea = "home" | "modules" | "value-chain" | "reports" | "settings";
+export type WorkspaceRailArea =
+  "home" | "portal" | "modules" | "value-chain" | "reports" | "settings";
 
 export function WorkspaceLauncher({
   activeArea,
@@ -47,6 +49,12 @@ export function WorkspaceLauncher({
       label: "Página inicial",
       description: "Resumo das suas atividades",
       icon: Home,
+    },
+    {
+      area: "portal" as const,
+      label: "Portal de Documentos",
+      description: "Consulte o conhecimento vigente",
+      icon: BookOpen,
     },
     {
       area: "modules" as const,
@@ -93,6 +101,7 @@ export function WorkspaceLauncher({
             .filter(
               (entry) =>
                 entry.area === "home" ||
+                entry.area === "portal" ||
                 (entry.area === "value-chain"
                   ? visibleModules.includes("value-chain")
                   : ["ddp", "pop", "bpmn", "improvements", "registrations"].some((id) =>
@@ -108,7 +117,7 @@ export function WorkspaceLauncher({
                   onClick={() => {
                     if (area === "modules") setModulesOpen((value) => !value);
                     onSelect(area);
-                    if (area === "home" || area === "value-chain") close();
+                    if (area === "home" || area === "portal" || area === "value-chain") close();
                   }}
                 >
                   <span className="workspace-launcher-icon">
@@ -290,13 +299,7 @@ export function ModuleBranch({
 export type ModulesTreeModuleId = "ddp" | "pop" | "bpmn";
 export type ModulesTreeTask = "new" | "consult" | "cause-new" | "cause-consult";
 export type ModulesTreeRegistration =
-  | "processes"
-  | "areas"
-  | "positions"
-  | "owners"
-  | "owner-users"
-  | "systems"
-  | "process-types";
+  "processes" | "areas" | "positions" | "owners" | "owner-users" | "systems" | "process-types";
 
 export type ModulesTreeTarget =
   | { kind: "module-root"; moduleId: ModulesTreeModuleId }

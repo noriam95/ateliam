@@ -1,0 +1,998 @@
+.document-portal {
+  --portal-ink: var(--foreground);
+  --portal-accent: var(--gold);
+  min-width: 0;
+}
+
+.document-portal-global-header {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: flex;
+  height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--background) 92%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.document-portal-home {
+  display: inline-flex;
+  height: 100%;
+  align-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.document-portal-home:hover {
+  opacity: 0.78;
+}
+
+.document-portal-organization {
+  display: flex;
+  height: 36px;
+  max-width: 240px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+}
+
+.document-portal-organization select {
+  min-width: 0;
+  max-width: 190px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.document-portal-content {
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 24px clamp(14px, 2.5vw, 36px) 48px;
+}
+
+.document-portal-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(26px, 4vw, 52px);
+  border: 1px solid color-mix(in oklab, var(--portal-accent) 30%, var(--border));
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      circle at 88% 8%,
+      color-mix(in oklab, var(--portal-accent) 21%, transparent),
+      transparent 33%
+    ),
+    linear-gradient(145deg, color-mix(in oklab, var(--card) 94%, var(--sage)), var(--card));
+}
+
+.document-portal-hero-copy {
+  max-width: 760px;
+}
+
+.document-portal-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.document-portal-hero h1 {
+  margin: 10px 0 7px;
+  color: var(--portal-ink);
+  font-size: clamp(30px, 4.5vw, 54px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.document-portal-hero-copy > p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: clamp(14px, 1.4vw, 17px);
+  line-height: 1.55;
+}
+
+.document-portal-search-shell {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  width: min(900px, 100%);
+  min-height: 58px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding: 0 15px 0 18px;
+  border: 1px solid color-mix(in oklab, var(--portal-accent) 36%, var(--input));
+  border-radius: 12px;
+  background: var(--background);
+  box-shadow: 0 16px 38px color-mix(in oklab, var(--foreground) 8%, transparent);
+  color: var(--muted-foreground);
+}
+
+.document-portal-search-shell:focus-within {
+  border-color: var(--portal-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--portal-accent) 18%, transparent);
+}
+
+.document-portal-search-shell input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 15px;
+}
+
+.document-portal-search-shell input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.document-portal-search-shell button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.document-portal-search-shell button:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.document-portal-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 20px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.document-portal-stats strong {
+  margin-right: 4px;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.document-portal-discovery-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.document-portal-discovery-bar select,
+.document-portal-discovery-bar button {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.document-portal-discovery-bar select {
+  min-width: 150px;
+  flex: 1 1 160px;
+}
+
+.document-portal-discovery-bar button {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.document-portal-discovery-bar button:hover {
+  background: var(--muted);
+}
+
+.document-portal-more-filters {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.document-portal-more-filters summary {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.document-portal-more-filters summary::-webkit-details-marker {
+  display: none;
+}
+
+.document-portal-more-filters summary::after {
+  margin-left: 8px;
+  color: var(--muted-foreground);
+  content: "+";
+}
+
+.document-portal-more-filters[open] summary::after {
+  content: "−";
+}
+
+.document-portal-more-filters > div {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  right: 0;
+  display: grid;
+  width: min(560px, calc(100vw - 28px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--popover);
+  box-shadow: 0 14px 34px color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+
+.document-portal-more-filters > div select {
+  width: 100%;
+  min-width: 0;
+}
+
+.document-portal-section {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.document-portal-section > header {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 16px;
+}
+
+.document-portal-section-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--portal-accent) 15%, var(--card));
+  color: color-mix(in oklab, var(--portal-accent) 76%, var(--foreground));
+}
+
+.document-portal-section h2 {
+  margin: 0;
+  color: var(--portal-ink);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.document-portal-section header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.document-portal-feature-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.85fr);
+  gap: 16px;
+}
+
+.document-portal-personal-grid,
+.document-portal-browse-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.document-portal-card-list,
+.document-portal-results {
+  display: grid;
+  gap: 10px;
+}
+
+.document-portal-results {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.document-portal-card {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--background) 54%, var(--card));
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.document-portal-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--portal-accent) 46%, var(--border));
+}
+
+.document-portal-card-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--portal-accent) 13%, var(--muted));
+  color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
+}
+
+.document-portal-card-body {
+  min-width: 0;
+}
+
+.document-portal-card-meta,
+.document-portal-card-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.document-portal-card-meta span:first-child {
+  color: color-mix(in oklab, var(--portal-accent) 70%, var(--foreground));
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.document-portal-card-meta .document-portal-status {
+  color: var(--accent-foreground);
+  font-weight: 700;
+}
+
+.document-portal-card-title {
+  display: block;
+  max-width: 100%;
+  margin: 5px 0 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.document-portal-card-title:hover {
+  color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
+}
+
+.document-portal-card-body > p {
+  display: -webkit-box;
+  margin: 7px 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.document-portal-card-context {
+  margin-top: 7px;
+}
+
+.document-portal-card-context span:not(:last-child)::after {
+  margin-left: 10px;
+  content: "·";
+}
+
+.document-portal-card-actions {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
+.document-portal-favorite {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.document-portal-favorite[aria-pressed="true"] {
+  color: var(--portal-accent);
+}
+
+.document-portal-favorite:hover {
+  background: var(--muted);
+}
+
+.document-portal-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.document-portal-open:hover {
+  background: color-mix(in oklab, var(--portal-accent) 12%, transparent);
+}
+
+.document-portal-ranked-list,
+.document-portal-mini-list,
+.document-portal-taxonomy {
+  display: grid;
+  gap: 3px;
+}
+
+.document-portal-ranked-list button,
+.document-portal-mini-list button,
+.document-portal-taxonomy button {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 7px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  text-align: left;
+}
+
+.document-portal-ranked-list button {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+}
+
+.document-portal-mini-list button {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.document-portal-taxonomy button {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  color: color-mix(in oklab, var(--portal-accent) 70%, var(--foreground));
+}
+
+.document-portal-ranked-list button:hover,
+.document-portal-mini-list button:hover,
+.document-portal-taxonomy button:hover {
+  border-radius: 7px;
+  background: var(--muted);
+}
+
+.document-portal-ranked-list button > span:first-child {
+  color: var(--portal-accent);
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.document-portal-ranked-list strong,
+.document-portal-mini-list strong,
+.document-portal-taxonomy strong {
+  display: block;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-portal-ranked-list small,
+.document-portal-mini-list small,
+.document-portal-taxonomy small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-portal-section-empty {
+  min-height: 100px;
+  margin: 0;
+  padding: 26px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 9px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.document-portal-state,
+.document-portal-empty {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 13px;
+  text-align: center;
+}
+
+.document-portal-state.is-error {
+  border-color: color-mix(in oklab, var(--destructive) 42%, var(--border));
+  color: var(--foreground);
+}
+
+.document-portal-state button {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.document-portal-empty {
+  margin: 0;
+}
+
+.document-portal-empty strong {
+  color: var(--foreground);
+}
+
+.document-portal :focus-visible {
+  outline: 2px solid var(--portal-accent);
+  outline-offset: 2px;
+}
+
+.document-portal-reader-content {
+  width: min(1680px, 100%);
+  margin: 0 auto;
+  padding: 14px clamp(12px, 2vw, 28px) 28px;
+}
+
+.document-portal-breadcrumb {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.document-portal-breadcrumb button {
+  padding: 3px 4px;
+  border: 0;
+  background: transparent;
+  color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
+  cursor: pointer;
+  font: inherit;
+}
+
+.document-portal-breadcrumb span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-portal-reader-titlebar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.document-portal-reader-titlebar > button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.document-portal-reader-titlebar > button:hover {
+  background: var(--muted);
+}
+
+.document-portal-reader-titlebar > div {
+  min-width: 0;
+}
+
+.document-portal-reader-titlebar > div > span {
+  color: var(--muted-foreground);
+  font-family: var(--font-data);
+  font-size: 10px;
+}
+
+.document-portal-reader-titlebar h1 {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: clamp(16px, 2vw, 23px);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-portal-current-badge {
+  padding: 5px 9px;
+  border: 1px solid color-mix(in oklab, var(--sage) 54%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--sage) 44%, var(--card));
+  color: var(--accent-foreground);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.document-portal-reader-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-height: calc(100dvh - 152px);
+  gap: 12px;
+}
+
+.document-portal-viewer,
+.document-portal-information {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.document-portal-viewer iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 720px;
+  border: 0;
+  background: var(--background);
+}
+
+.document-portal-information {
+  align-self: start;
+  max-height: calc(100dvh - 152px);
+  padding: 16px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.document-portal-information-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
+}
+
+.document-portal-information h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 13px;
+}
+
+.document-portal-information dl {
+  display: grid;
+  margin: 0;
+}
+
+.document-portal-information dl > div {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  font-size: 10px;
+}
+
+.document-portal-information dt {
+  color: var(--muted-foreground);
+}
+
+.document-portal-information dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font-weight: 650;
+}
+
+.document-portal-information > p {
+  margin: 14px 0 0;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.document-portal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.document-portal-tags span {
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 9px;
+}
+
+.document-portal-origin-link {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.document-portal-origin-link:hover {
+  border-color: color-mix(in oklab, var(--portal-accent) 40%, var(--border));
+  background: var(--muted);
+}
+
+.document-portal-related {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.document-portal-related > h2 {
+  margin-bottom: 8px;
+}
+
+.document-portal-related > button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  text-align: left;
+}
+
+.document-portal-related > button:hover {
+  background: var(--muted);
+}
+
+.document-portal-related strong,
+.document-portal-related small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-portal-related strong {
+  font-size: 10px;
+}
+
+.document-portal-related small,
+.document-portal-related > p {
+  margin-top: 3px;
+  color: var(--muted-foreground);
+  font-size: 9px;
+}
+
+.document-portal-reader-state {
+  display: grid;
+  min-height: calc(100dvh - 56px);
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.document-portal-reader-state strong {
+  color: var(--foreground);
+}
+
+.document-portal-reader-state button {
+  min-height: 36px;
+  margin-top: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+@media (max-width: 1080px) {
+  .document-portal-feature-grid,
+  .document-portal-browse-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .document-portal-personal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .document-portal-personal-grid > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .document-portal-reader-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .document-portal-information {
+    max-height: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .document-portal-global-header {
+    padding-inline: 10px;
+  }
+
+  .document-portal-organization {
+    display: none;
+  }
+
+  .document-portal-content {
+    padding-inline: 10px;
+  }
+
+  .document-portal-hero {
+    padding: 24px 18px;
+    border-radius: 13px;
+  }
+
+  .document-portal-search-shell {
+    min-height: 52px;
+    margin-top: 22px;
+  }
+
+  .document-portal-search-shell input {
+    font-size: 13px;
+  }
+
+  .document-portal-personal-grid,
+  .document-portal-results {
+    grid-template-columns: 1fr;
+  }
+
+  .document-portal-personal-grid > :last-child {
+    grid-column: auto;
+  }
+
+  .document-portal-section {
+    padding: 15px;
+  }
+
+  .document-portal-more-filters {
+    flex: 1 1 100%;
+  }
+
+  .document-portal-more-filters summary {
+    justify-content: space-between;
+  }
+
+  .document-portal-more-filters > div {
+    right: auto;
+    left: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .document-portal-card {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .document-portal-card-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .document-portal-card-actions {
+    grid-column: 2;
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    justify-items: start;
+    width: 100%;
+  }
+
+  .document-portal-reader-content {
+    padding-inline: 8px;
+  }
+
+  .document-portal-reader-titlebar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .document-portal-current-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .document-portal-reader-titlebar h1 {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .document-portal-viewer iframe {
+    min-height: 620px;
+  }
+}

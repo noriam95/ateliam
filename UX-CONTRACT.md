@@ -2,15 +2,15 @@
 
 Fonte de negócio: requisitos explícitos do usuário nesta tarefa em 09/09/2026. Fonte de autorização: autenticação Supabase existente e user_tasks_command na migração 20260909190000_user_tasks.sql.
 
-| Capacidade     | Responsável canônico           | Regra                                                           |
-| -------------- | ------------------------------ | --------------------------------------------------------------- |
-| Navegação      | WorkspaceHome / WorkspaceLauncher  | Seletor de módulos no cabeçalho, sem barra lateral fixa                   |
-| Select/Listbox | native                         | Popup da plataforma, rótulo associado                           |
-| Date           | native                         | Datas de formulário nativas; calendário de atividades em pt-BR  |
-| Form           | UserTasks / TaskRoutingActions | noValidate, erro visível, salvamento com bloqueio de duplicação |
-| Toast          | sonner                         | Sucesso apenas depois da persistência                           |
-| Modal          | TaskDialog                     | Foco, Escape, fundo inerte e confirmação de descarte            |
-| CRUD           | user_tasks_command             | Autorização no banco, revisão concorrente, criação idempotente  |
+| Capacidade     | Responsável canônico              | Regra                                                           |
+| -------------- | --------------------------------- | --------------------------------------------------------------- |
+| Navegação      | WorkspaceHome / WorkspaceLauncher | Seletor de módulos no cabeçalho, sem barra lateral fixa         |
+| Select/Listbox | native                            | Popup da plataforma, rótulo associado                           |
+| Date           | native                            | Datas de formulário nativas; calendário de atividades em pt-BR  |
+| Form           | UserTasks / TaskRoutingActions    | noValidate, erro visível, salvamento com bloqueio de duplicação |
+| Toast          | sonner                            | Sucesso apenas depois da persistência                           |
+| Modal          | TaskDialog                        | Foco, Escape, fundo inerte e confirmação de descarte            |
+| CRUD           | user_tasks_command                | Autorização no banco, revisão concorrente, criação idempotente  |
 
 ## Fluxo
 
@@ -60,7 +60,6 @@ Revisão de 10/09/2026: Página inicial precede Minhas tarefas no seletor. Confi
 
 Visibilidade por usuário: Configurações aparece apenas para o perfil admin vigente. profiles.visible_modules armazena os módulos selecionados pelo administrador; usuários sem configuração recebem todos habilitados. Administradores mantêm todos visíveis. A configuração controla a navegação; as autorizações de dados existentes continuam sendo aplicadas pelo servidor.
 
-
 ## Tarefas e reuniões — setembro de 2026
 
 - Código imutável por organização e ano de criação: TAR.0001.2026, gerado no banco com contador atômico.
@@ -72,7 +71,6 @@ Visibilidade por usuário: Configurações aparece apenas para o perfil admin vi
 - Formulário de mapeamento usa visão por ícone e menu de salvamento com Rascunho/Salvar. POP mantém seus controles.
 
 Limpar filtros preserva data, período e formato da agenda. Filtros de tarefas são distintos das opções de visibilidade de tarefas/reuniões.
-
 
 Card de tarefa: encaminhamento único por etapa, com descrição obrigatória preservada para o destinatário e no histórico. Administrador usa o mesmo formulário; demais usuários continuam restritos à responsabilidade. Dados editáveis no cabeçalho conforme as permissões e etapas existentes. Abas seguem navegação por sublinhado de Home/Minhas tarefas. Comentários aceitam até cinco anexos privados de 20 MB; upload com repetição sem reenviar arquivos já carregados. Troca de abas mantém o formulário de dados montado.
 
@@ -106,25 +104,23 @@ Reuniões: exclusão lógica permitida ao organizador e administrador, com lixei
 
 Seleção de área em tarefas reutiliza DropdownTextField do mapeamento: pesquisa e seleção em um único campo, cadastro disponível apenas sem resultados, com nome pesquisado preenchido e ID da área enviado no formulário.
 
-
 ## Identificação e edição da tarefa — 24/09/2026
 
 Códigos aparecem uma única vez nas entregas, seleção de documentos e nomes exportados, inclusive quando o nome legado já contém o código. Mapeamentos salvos como rascunho usam MAP.ÁREA.NNN.TEMP; a finalização remove .TEMP e preserva a sequência reservada. A área é necessária para a primeira reserva. Documentos antigos recebem a identificação temporária no próximo salvamento como rascunho. A reserva usa comparação atômica do contador organizacional e considera códigos já existentes.
 
 TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e modalidade separadamente. Editar dados abre TaskManagement no TaskDialog compartilhado, com grupos Pessoas, Período e Classificação, salvar/cancelar explícitos e confirmação de descarte. Falhas preservam os campos; sucesso fecha a edição e atualiza o resumo. As permissões e restrições de modalidade permanecem no servidor. Tokens de src/styles.css continuam canônicos.
 
-
 ## Contrato BPMN — 25/09/2026
 
-| Capacidade | Dono canônico | Comportamento |
-| --- | --- | --- |
-| Navegação global | WorkspaceLauncher | Mesmos destinos e permissões de módulos |
-| Pesquisa e cadastro | DropdownTextField + TaskDialog + CatalogPicker | Exige seleção de ID; cadastrar usa serviços centrais e seleciona o retorno |
-| Modelagem | BpmnCanvas / bpmn-js | Paleta, contexto, seleção múltipla, conexões, redimensionamento e desfazer/refazer |
-| Importação | BpmnImportWizard | Arquivo → prévia → vínculos → confirmação; erros não substituem o desenho aberto |
-| Persistência | saveBpmnDocument / persistBpmnDocument | Valida organização, processo e responsáveis; grava versão e XML juntos, com comparação de versão e data |
-| Recuperação | BpmnEditor | Cópia local por usuário/organização/documento; recuperação depende de escolha explícita |
-| Tarefa vinculada | TaskEditorContext | Rascunhos mantêm a entrega em andamento; publicação usa confirmação existente do checklist |
+| Capacidade          | Dono canônico                                  | Comportamento                                                                                           |
+| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Navegação global    | WorkspaceLauncher                              | Mesmos destinos e permissões de módulos                                                                 |
+| Pesquisa e cadastro | DropdownTextField + TaskDialog + CatalogPicker | Exige seleção de ID; cadastrar usa serviços centrais e seleciona o retorno                              |
+| Modelagem           | BpmnCanvas / bpmn-js                           | Paleta, contexto, seleção múltipla, conexões, redimensionamento e desfazer/refazer                      |
+| Importação          | BpmnImportWizard                               | Arquivo → prévia → vínculos → confirmação; erros não substituem o desenho aberto                        |
+| Persistência        | saveBpmnDocument / persistBpmnDocument         | Valida organização, processo e responsáveis; grava versão e XML juntos, com comparação de versão e data |
+| Recuperação         | BpmnEditor                                     | Cópia local por usuário/organização/documento; recuperação depende de escolha explícita                 |
+| Tarefa vinculada    | TaskEditorContext                              | Rascunhos mantêm a entrega em andamento; publicação usa confirmação existente do checklist              |
 
 - O estado do cliente não concede permissão: toda gravação exige autenticação e papel de editor no servidor; IDs de processos/áreas/cargos são conferidos na organização ativa.
 - Cada tentativa de salvar mantém um identificador de mutação para tolerar respostas perdidas sem duplicar documentos. Conflitos preservam o desenho local e oferecem exportação.
@@ -170,3 +166,19 @@ Exclusão de desenhos — 30/09/2026: menu de três pontos com Visualizar, Edita
 Cabeçalho da consulta BPMN — 30/09/2026: reutiliza UserProfileMenu e WorkspaceLauncher. Organização segue o mesmo seletor dos módulos, visível no desktop, com seleção persistida e consultas recarregadas; perfil reutiliza atualização, tema e permissões existentes. Sair utiliza Supabase e encaminha à autenticação após sucesso. Logotipo abre a página inicial. Editor permanece sem cabeçalho global.
 
 Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reutiliza o logotipo temático BF Flow como acesso à Home. O retorno à consulta é uma ação de navegação própria, identificada por chevron e pelo rótulo “Desenhos”, fora do grupo Arquivo. Navegações continuam sujeitas à confirmação quando houver alterações não salvas.
+
+## Portal de Documentos — contrato de consulta
+
+| Capacidade     | Regra                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entrada        | “Portal de Documentos” fica disponível no lançador global e abre `/portal`.                                                                                                     |
+| Escopo         | Toda consulta exige usuário autenticado e organização acessível; os dados continuam sujeitos às políticas de acesso da organização.                                             |
+| Publicação     | Apenas documentos com estado atual reconhecido entram na coleção. A função de conteúdo repete essa validação antes de devolver o arquivo ao leitor.                             |
+| Pesquisa       | Todos os termos informados devem existir em algum metadado pesquisável; a comparação é parcial, sem distinção de maiúsculas ou acentos.                                         |
+| Filtros        | Área, processo e tipo são cumulativos. “Limpar filtros” restaura consulta e ordenação iniciais.                                                                                 |
+| Abertura       | O título e a ação “Visualizar” levam à página de leitura, que incorpora o leitor original em modo somente leitura; não expor criar, editar, excluir, aprovar ou alterar versão. |
+| Personalização | Favoritos, recentes e popularidade pessoal usam chave por usuário e organização; não podem vazar entre organizações no mesmo navegador.                                         |
+| Estados        | Carregamento apresenta indicador em área estável; falha preserva contexto e oferece nova tentativa; vazio explica o resultado e permite limpar a busca.                         |
+| Responsividade | Busca, filtros, cartões e seções reorganizam sem sobreposição entre 320 px e telas amplas; alvos interativos conservam foco visível e nome acessível.                           |
+
+Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresentação existente. Fluxogramas reutilizam o `NavigatedViewer` do workspace BPMN, sem instanciar edição. A página de leitura mantém metadados, caminho organizacional e relações ao lado do conteúdo, sem reconstruí-lo. Alterar parâmetros da URL não pode contornar a verificação de vigência executada no servidor.

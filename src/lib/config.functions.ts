@@ -8,6 +8,7 @@ import {
 import { prepareMappingIdentity } from "./mapping-identity";
 import { reserveOrganizationCode } from "./code-reservation";
 import { dashboardRows } from "./dashboard-pagination";
+import { isPortalCurrentStatus, normalizePortalText, type PortalDocument } from "./document-portal";
 import { MODULE_IDS } from "@/lib/module-visibility";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -1454,6 +1455,234 @@ export const listModuleDocuments = createServerFn({ method: "POST" })
     return rows ?? [];
   });
 
+function portalMetadataStrings(value: unknown, target: string[] = [], depth = 0): string[] {
+  if (target.length >= 120 || depth > 5 || value == null) return target;
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (text && text.length <= 1000 && !text.startsWith("data:") && !text.startsWith("<svg")) {
+      target.push(text);
+    }
+    return target;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0, 40)) portalMetadataStrings(item, target, depth + 1);
+    return target;
+  }
+  if (typeof value !== "object") return target;
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    if (/^(xml|src|image|logo|content|content_inline)$/i.test(key)) continue;
+    portalMetadataStrings(nested, target, depth + 1);
+    if (target.length >= 120) break;
+  }
+  return target;
+}
+
+function portalStatusFromContent(module: string, contentInline: string | null) {
+  try {
+    const parsed = JSON.parse(contentInline ?? "{}") as Record<string, unknown>;
+    const source =
+      parsed.modules && typeof parsed.modules === "object"
+        ? (parsed.modules as Record<string, unknown>)
+        : parsed;
+    if (module === "ddp") return readString(objectAt(objectAt(source, "ddp"), "meta").status, "");
+    if (module === "pop") return readString(objectAt(objectAt(source, "pop"), "meta").status, "");
+    const nestedBpmn = objectAt(source, "bpmn");
+    const bpmn = Object.keys(nestedBpmn).length ? nestedBpmn : parsed;
+    return readString(bpmn.status, "");
+  } catch {
+    return "";
+  }
+}
+
+export const listPortalDocuments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { organizationId?: string | null }) => organizationScopeSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const access = await permissionContext(context, data.organizationId);
+    const [documentResult, processResult] = await Promise.all([
+      dashboardRows(
+        context.supabase
+          .from("documents")
+          .select(
+            "id,name,description,module,current_version,updated_at,created_at,primary_process_id,content_inline",
+          )
+          .eq("organization_id", access.organizationId)
+          .in("module", ["ddp", "pop", "bpmn"])
+          .order("updated_at", { ascending: false }),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("organization_processes")
+          .select("id,parent_process_id,name,type,department,owner,description,status")
+          .eq("organization_id", access.organizationId),
+      ),
+    ]);
+    if (documentResult.error) throw new Error(documentResult.error.message);
+    if (processResult.error) throw new Error(processResult.error.message);
+
+    const processById = new Map(
+      (processResult.data ?? []).map((process) => [process.id, process] as const),
+    );
+    const hierarchyFor = (processId: string | null) => {
+      const hierarchy: Array<(typeof processResult.data)[number]> = [];
+      const visited = new Set<string>();
+      let current = processId ? processById.get(processId) : undefined;
+      while (current && !visited.has(current.id) && hierarchy.length < 8) {
+        hierarchy.unshift(current);
+        visited.add(current.id);
+        current = current.parent_process_id
+          ? processById.get(current.parent_process_id)
+          : undefined;
+      }
+      return hierarchy;
+    };
+
+    const documents: PortalDocument[] = [];
+    for (const document of documentResult.data ?? []) {
+      if (document.module !== "ddp" && document.module !== "pop" && document.module !== "bpmn") {
+        continue;
+      }
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(document.content_inline ?? "{}") as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+      const source =
+        parsed.modules && typeof parsed.modules === "object"
+          ? (parsed.modules as Record<string, unknown>)
+          : parsed;
+      const ddp = objectAt(source, "ddp");
+      const pop = objectAt(source, "pop");
+      const nestedBpmn = objectAt(source, "bpmn");
+      const bpmn = Object.keys(nestedBpmn).length ? nestedBpmn : parsed;
+      const ddpMeta = objectAt(ddp, "meta");
+      const ddpMacro = objectAt(ddp, "macroprocess");
+      const ddpLegacy = objectAt(ddp, "legacy");
+      const ddpOverview = objectAt(ddp, "overview");
+      const popMeta = objectAt(pop, "meta");
+      const popPurpose = objectAt(pop, "purpose");
+      const hierarchy = hierarchyFor(document.primary_process_id);
+      const registeredMacro = hierarchy.find((item) => item.type === "macroprocess");
+      const registeredProcess = hierarchy.find((item) => item.type === "process");
+      const registeredSubprocess = [...hierarchy]
+        .reverse()
+        .find((item) => item.type === "subprocess");
+      const registeredLeaf = hierarchy.at(-1);
+
+      const status = portalStatusFromContent(document.module, document.content_inline);
+      if (!isPortalCurrentStatus(status)) continue;
+
+      const title =
+        document.module === "ddp"
+          ? readString(ddpMeta.titulo, document.name)
+          : document.module === "pop"
+            ? readString(popMeta.titulo, document.name)
+            : readString(bpmn.processName, readString(bpmn.poolName, document.name));
+      const code =
+        document.module === "ddp"
+          ? readString(ddpMeta.codigo, "")
+          : document.module === "pop"
+            ? readString(popMeta.codigo, "")
+            : readString(bpmn.codigo, "");
+      const type =
+        document.module === "ddp"
+          ? "Mapeamento de processo"
+          : document.module === "bpmn"
+            ? "Fluxograma BPMN"
+            : readString(popMeta.tipo, "Documento");
+      const area = readString(
+        registeredLeaf?.department,
+        document.module === "ddp"
+          ? readString(ddpLegacy.processArea, readString(ddpMeta.area, ""))
+          : document.module === "pop"
+            ? readString(popMeta.area, "")
+            : readString(bpmn.area, ""),
+      );
+      const process = readString(
+        registeredProcess?.name,
+        document.module === "ddp"
+          ? readString(ddpMacro.titulo, readString(ddpLegacy.processName, ""))
+          : document.module === "pop"
+            ? readString(popMeta.processo, "")
+            : readString(bpmn.processName, readString(bpmn.poolName, "")),
+      );
+      const description = readString(
+        document.description,
+        document.module === "ddp"
+          ? readString(ddpOverview.objetivo, "")
+          : document.module === "pop"
+            ? readString(popPurpose.objetivo, "")
+            : "",
+      );
+      const responsible = readString(
+        registeredLeaf?.owner,
+        document.module === "ddp"
+          ? readString(ddpMeta.elaborador, readString(ddpOverview.donoProcesso, ""))
+          : document.module === "pop"
+            ? readString(popMeta.elaboracao, readString(popMeta.aprovacao, ""))
+            : "",
+      );
+      const revision = readString(
+        document.module === "ddp"
+          ? ddpMeta.versao
+          : document.module === "pop"
+            ? popMeta.versao
+            : document.current_version,
+        document.current_version ? String(document.current_version) : "1",
+      );
+      const effectiveAt = readString(
+        document.module === "pop"
+          ? popMeta.vigencia || popMeta.publicacao
+          : document.module === "ddp"
+            ? ddpMeta.data || ddpMeta.dataRelatorio
+            : document.updated_at,
+        document.updated_at,
+      );
+      const metadata = portalMetadataStrings(source);
+      const explicitTags = [
+        ...(Array.isArray(ddpMeta.tags) ? ddpMeta.tags : []),
+        ...(Array.isArray(popMeta.tags) ? popMeta.tags : []),
+        readString(ddpMeta.palavrasChave, ""),
+        readString(popMeta.palavrasChave, ""),
+      ]
+        .flatMap((value) => String(value ?? "").split(/[,;]+/))
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const tags = Array.from(
+        new Set([...explicitTags, area, process, type].filter(Boolean)),
+      ).slice(0, 12);
+
+      documents.push({
+        id: document.id,
+        module: document.module,
+        moduleLabel:
+          document.module === "ddp"
+            ? "Mapeamento"
+            : document.module === "pop"
+              ? "Documentação"
+              : "Fluxograma",
+        title,
+        code,
+        type,
+        area,
+        macroprocess: readString(registeredMacro?.name, ""),
+        process,
+        subprocess: readString(registeredSubprocess?.name, ""),
+        description,
+        tags,
+        responsible,
+        status,
+        revision,
+        effectiveAt,
+        updatedAt: document.updated_at,
+        createdAt: document.created_at,
+        searchText: normalizePortalText(metadata.join(" ")).slice(0, 8000),
+      });
+    }
+    return documents;
+  });
+
 export const deleteModuleDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: { organizationId?: string | null; id: string }) =>
@@ -1482,6 +1711,24 @@ export const getModuleDocumentContent = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .single();
     if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const getPortalDocumentContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("documents")
+      .select(
+        "id, name, module, content_inline, current_version, primary_process_id, primary_process_version, organization_id, updated_at, created_at, owner_id",
+      )
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+    if (!isPortalCurrentStatus(portalStatusFromContent(row.module, row.content_inline))) {
+      throw new Error("Este documento não está vigente e não pode ser exibido no Portal.");
+    }
     return row;
   });
 

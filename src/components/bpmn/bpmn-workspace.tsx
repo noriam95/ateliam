@@ -5,7 +5,7 @@ import { useCallback, useDeferredValue, useEffect, useRef, useState } from "reac
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useNavigate } from "@tanstack/react-router";
-import { Plus, Upload, Workflow } from "lucide-react";
+import { ArrowLeft, Plus, Upload, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { WorkspaceLauncher, WorkspaceModulesTree } from "@/components/workspace-navigation";
@@ -17,6 +17,7 @@ import {
   listOrganizationCatalogs,
   listBpmnDocuments,
   getModuleDocumentContent,
+  getPortalDocumentContent,
   saveBpmnDocument,
   deleteModuleDocument,
   saveProcessArea,
@@ -38,12 +39,16 @@ export function BpmnWorkspace({
   documentId,
   requestedOrganization,
   newDrawing = false,
+  portalPreview = false,
+  embedded = false,
   taskId,
   itemKey,
 }: {
   documentId?: string;
   requestedOrganization?: string;
   newDrawing?: boolean;
+  portalPreview?: boolean;
+  embedded?: boolean;
   taskId?: string;
   itemKey?: string;
 }) {
@@ -53,6 +58,7 @@ export function BpmnWorkspace({
   const getCatalogs = useServerFn(listOrganizationCatalogs);
   const getDocuments = useServerFn(listBpmnDocuments);
   const getDocument = useServerFn(getModuleDocumentContent);
+  const getPortalDocument = useServerFn(getPortalDocumentContent);
   const saveDocument = useServerFn(saveBpmnDocument);
   const deleteDocument = useServerFn(deleteModuleDocument);
   const createArea = useServerFn(saveProcessArea);
@@ -72,7 +78,7 @@ export function BpmnWorkspace({
     key: string;
   } | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [viewOnly, setViewOnly] = useState(false);
+  const [viewOnly, setViewOnly] = useState(portalPreview);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [modal, setModal] = useState<"new" | "import" | null>(null);
@@ -141,7 +147,7 @@ export function BpmnWorkspace({
       setLoading(true);
       setError("");
       try {
-        const row = await getDocument({ data: { id } });
+        const row = await (portalPreview ? getPortalDocument : getDocument)({ data: { id } });
         if (token !== loadToken.current) return;
         if (row.organization_id !== organizationId || row.module !== "bpmn")
           throw new Error("O desenho não pertence ao módulo e à organização ativos.");
@@ -156,7 +162,7 @@ export function BpmnWorkspace({
         if (token === loadToken.current) setLoading(false);
       }
     },
-    [getDocument, organizationId],
+    [getDocument, getPortalDocument, organizationId, portalPreview],
   );
   useEffect(() => {
     if (organizationId && documentId && opened.current !== `${organizationId}:${documentId}`) {
@@ -164,6 +170,9 @@ export function BpmnWorkspace({
       void loadDocument(documentId);
     }
   }, [organizationId, documentId, loadDocument]);
+  useEffect(() => {
+    if (portalPreview) setViewOnly(true);
+  }, [portalPreview]);
   useEffect(() => {
     if (newDrawing && canEdit && !documentId) setModal("new");
   }, [newDrawing, canEdit, documentId]);
@@ -218,13 +227,25 @@ export function BpmnWorkspace({
     error || me.error?.message || organizations.error?.message || catalogQuery.error?.message;
   return (
     <main className="bf-bpmn-root">
+      {active && portalPreview && !embedded ? (
+        <header className="bf-bpmn-portal-reader-header">
+          <button type="button" onClick={() => void navigate({ to: "/portal" })}>
+            <ArrowLeft size={16} aria-hidden="true" />
+            Portal de Documentos
+          </button>
+          <span aria-hidden="true">/</span>
+          <strong>{active.record?.code || active.document.processName || "Fluxograma"}</strong>
+          <small>Somente leitura</small>
+        </header>
+      ) : null}
       {!active && (
         <header className="bf-bpmn-workspace-header sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/92 px-4 backdrop-blur-xl">
           <WorkspaceLauncher
             activeArea="modules"
             visibleModules={visibleModulesFor(me.data?.profile, !!me.data?.roles.includes("admin"))}
             onSelect={(area) => {
-              if (area !== "modules") void navigate({ to: "/", search: { area } as any });
+              if (area === "portal") void navigate({ to: "/portal" });
+              else if (area !== "modules") void navigate({ to: "/", search: { area } as any });
             }}
           >
             <WorkspaceModulesTree

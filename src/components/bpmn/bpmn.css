@@ -6,6 +6,55 @@
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+.bf-bpmn-portal-reader-header {
+  z-index: 28;
+  display: flex;
+  min-height: 48px;
+  flex: 0 0 48px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+}
+.bf-bpmn-portal-reader-header button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+.bf-bpmn-portal-reader-header button:hover {
+  background: var(--muted);
+}
+.bf-bpmn-portal-reader-header > span,
+.bf-bpmn-portal-reader-header > small {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.bf-bpmn-portal-reader-header > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bf-bpmn-portal-reader-header > small {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--muted);
+  white-space: nowrap;
+}
 .bf-bpmn-root button:not(:where(.workspace-launcher *, .bf-bpmn-workspace-header *)),
 .bf-bpmn-editor button,
 .bf-bpmn-form button,

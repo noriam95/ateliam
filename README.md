@@ -44,6 +44,7 @@ O isolamento entre organizações usa `organization_id`, políticas de Row Level
 - **Mapeamento:** diagnóstico e registro estruturado de processos.
 - **Documentação:** procedimentos e documentos operacionais com versões.
 - **Fluxogramas:** biblioteca e editor BPMN 2.0, importação/exportação, raias, imagens e formatação.
+- **Portal de Documentos:** consulta corporativa unificada e somente leitura dos documentos vigentes de Mapeamento, Documentação e Fluxogramas, com pesquisa por metadados, descoberta por contexto e abertura no visualizador de origem.
 - **Oportunidades de melhoria:** causas, impactos, ações e prioridades.
 - **Cadastros:** processos, áreas, cargos, responsáveis, sistemas, tipos e demais catálogos organizacionais.
 - **Cadeia de valor:** estrutura e relacionamento entre processos.

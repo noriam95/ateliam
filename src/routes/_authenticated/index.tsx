@@ -168,7 +168,7 @@ type WorkspaceView =
   | `module:${AteliamModule}`;
 
 type ModuleTask = "home" | "consult" | "cause-new" | "cause-consult" | "cause-edit" | "library";
-type WorkspaceArea = "home" | "modules" | "value-chain" | "reports" | "settings";
+type WorkspaceArea = "home" | "portal" | "modules" | "value-chain" | "reports" | "settings";
 type DashboardTotals = {
   processes: number;
   activeProcesses: number;
@@ -870,6 +870,10 @@ function WorkspaceHome() {
       void navigate({ to: "/", search: {} });
       setView("overview");
 
+      return;
+    }
+    if (area === "portal") {
+      void navigate({ to: "/portal" });
       return;
     }
 

@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedPortalRouteImport } from './routes/_authenticated/portal'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedMModuleRouteImport } from './routes/_authenticated/m.$module'
+import { Route as AuthenticatedPortalDocumentIdRouteImport } from './routes/_authenticated/portal.$documentId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -29,6 +31,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPortalRoute = AuthenticatedPortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -39,39 +46,65 @@ const AuthenticatedMModuleRoute = AuthenticatedMModuleRouteImport.update({
   path: '/m/$module',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPortalDocumentIdRoute =
+  AuthenticatedPortalDocumentIdRouteImport.update({
+    id: '/$documentId',
+    path: '/$documentId',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/portal': typeof AuthenticatedPortalRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/m/$module': typeof AuthenticatedMModuleRoute
+  '/portal/$documentId': typeof AuthenticatedPortalDocumentIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/portal': typeof AuthenticatedPortalRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
   '/m/$module': typeof AuthenticatedMModuleRoute
+  '/portal/$documentId': typeof AuthenticatedPortalDocumentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/portal': typeof AuthenticatedPortalRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/m/$module': typeof AuthenticatedMModuleRoute
+  '/_authenticated/portal/$documentId': typeof AuthenticatedPortalDocumentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/settings' | '/m/$module'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/portal'
+    | '/settings'
+    | '/m/$module'
+    | '/portal/$documentId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/settings' | '/' | '/m/$module'
+  to:
+    | '/auth'
+    | '/portal'
+    | '/settings'
+    | '/'
+    | '/m/$module'
+    | '/portal/$documentId'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/portal'
     | '/_authenticated/settings'
     | '/_authenticated/'
     | '/_authenticated/m/$module'
+    | '/_authenticated/portal/$documentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -102,6 +135,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/portal': {
+      id: '/_authenticated/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof AuthenticatedPortalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -116,16 +156,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMModuleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/portal/$documentId': {
+      id: '/_authenticated/portal/$documentId'
+      path: '/$documentId'
+      fullPath: '/portal/$documentId'
+      preLoaderRoute: typeof AuthenticatedPortalDocumentIdRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
   }
 }
 
+interface AuthenticatedPortalRouteChildren {
+  AuthenticatedPortalDocumentIdRoute: typeof AuthenticatedPortalDocumentIdRoute
+}
+
+const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
+  AuthenticatedPortalDocumentIdRoute: AuthenticatedPortalDocumentIdRoute,
+}
+
+const AuthenticatedPortalRouteWithChildren =
+  AuthenticatedPortalRoute._addFileChildren(AuthenticatedPortalRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedPortalRoute: typeof AuthenticatedPortalRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedMModuleRoute: typeof AuthenticatedMModuleRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedPortalRoute: AuthenticatedPortalRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedMModuleRoute: AuthenticatedMModuleRoute,
