@@ -181,4 +181,12 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 | Estados        | Carregamento apresenta indicador em área estável; falha preserva contexto e oferece nova tentativa; vazio explica o resultado e permite limpar a busca.                         |
 | Responsividade | Busca, filtros, cartões e seções reorganizam sem sobreposição entre 320 px e telas amplas; alvos interativos conservam foco visível e nome acessível.                           |
 
+### Comportamento responsivo do Portal — 05/10/2026
+
+- A composição deve continuar utilizável entre 320 px e telas amplas, sem reduzir a tipografia para compensar falta de espaço e sem rolagem horizontal no documento.
+- O bloco de pesquisa empilha abaixo da apresentação até 900 px. Os filtros mudam de quatro para duas e uma coluna; rótulos permanecem visíveis em todas as larguras.
+- “Mais filtros” pode sobrepor a página somente em telas amplas. Em notebook estreito, tablet e celular, o painel deve ocupar espaço no fluxo para não encobrir resultados.
+- Grades secundárias mantêm a ordem Últimos, Mais acessados, Favoritos, Recentes, Atualizados e Navegação. Ao empilhar, a ordem visual e a ordem do DOM permanecem iguais.
+- No leitor, os metadados ficam ao lado apenas quando houver largura segura para documento e painel; abaixo de 1180 px, aparecem depois do visualizador.
+
 Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresentação existente. Fluxogramas reutilizam o `NavigatedViewer` do workspace BPMN, sem instanciar edição. A página de leitura mantém metadados, caminho organizacional e relações ao lado do conteúdo, sem reconstruí-lo. Alterar parâmetros da URL não pode contornar a verificação de vigência executada no servidor.

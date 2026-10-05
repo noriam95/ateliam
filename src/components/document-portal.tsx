@@ -400,39 +400,43 @@ export function DocumentPortal({
             <h1>Portal de Documentos</h1>
             <p>Encontre e consulte os documentos vigentes da organização em um único lugar.</p>
           </div>
-          <div className="document-portal-search-shell">
-            <Search size={22} aria-hidden="true" />
-            <input
-              ref={searchRef}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Pesquisar documentos, processos, áreas ou palavras-chave..."
-              aria-label="Pesquisar no Portal de Documentos"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  searchRef.current?.focus();
-                }}
-                aria-label="Limpar pesquisa"
-              >
-                <X size={17} />
-              </button>
-            ) : null}
-          </div>
-          <div className="document-portal-stats" aria-label="Resumo do acervo vigente">
-            <span>
-              <strong>{documents.length}</strong> documentos vigentes
-            </span>
-            <span>
-              <strong>{areas.length}</strong> áreas
-            </span>
-            <span>
-              <strong>{updatedInThirtyDays}</strong> atualizados em 30 dias
-            </span>
+          <div className="document-portal-hero-search">
+            <label htmlFor="document-portal-search">O que você procura?</label>
+            <div className="document-portal-search-shell">
+              <Search size={21} aria-hidden="true" />
+              <input
+                id="document-portal-search"
+                ref={searchRef}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Título, código, processo, área ou palavra-chave"
+                aria-label="Pesquisar no Portal de Documentos"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    searchRef.current?.focus();
+                  }}
+                  aria-label="Limpar pesquisa"
+                >
+                  <X size={17} />
+                </button>
+              ) : null}
+            </div>
+            <div className="document-portal-stats" aria-label="Resumo do acervo vigente">
+              <span>
+                <strong>{documents.length}</strong> documentos
+              </span>
+              <span>
+                <strong>{areas.length}</strong> áreas
+              </span>
+              <span>
+                <strong>{updatedInThirtyDays}</strong> atualizados em 30 dias
+              </span>
+            </div>
           </div>
         </section>
 
@@ -451,122 +455,141 @@ export function DocumentPortal({
         ) : (
           <>
             <section className="document-portal-discovery-bar" aria-label="Refinar pesquisa">
-              <select
-                aria-label="Filtrar por área"
-                value={filters.area || ""}
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, area: event.target.value || undefined }))
-                }
-              >
-                <option value="">Todas as áreas</option>
-                {areas.map((area) => (
-                  <option key={area}>{area}</option>
-                ))}
-              </select>
+              <label className="document-portal-filter">
+                <span>Área</span>
+                <select
+                  value={filters.area || ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      area: event.target.value || undefined,
+                    }))
+                  }
+                >
+                  <option value="">Todas as áreas</option>
+                  {areas.map((area) => (
+                    <option key={area}>{area}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="document-portal-filter">
+                <span>Processo</span>
+                <select
+                  value={filters.process || ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      process: event.target.value || undefined,
+                    }))
+                  }
+                >
+                  <option value="">Todos os processos</option>
+                  {processes.map((process) => (
+                    <option key={process}>{process}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="document-portal-filter">
+                <span>Tipo</span>
+                <select
+                  value={filters.type || ""}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, type: event.target.value || undefined }))
+                  }
+                >
+                  <option value="">Todos os tipos</option>
+                  {types.map((type) => (
+                    <option key={type}>{type}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="document-portal-filter document-portal-sort">
+                <span>Ordenar por</span>
+                <select
+                  value={sort}
+                  onChange={(event) => setSort(event.target.value as PortalDocumentSort)}
+                >
+                  <option value="relevance">Relevância</option>
+                  <option value="recent">Mais recentes</option>
+                  <option value="popular">Mais acessados</option>
+                  <option value="alphabetical">Ordem alfabética</option>
+                  <option value="effective">Data de vigência</option>
+                  <option value="updated">Última atualização</option>
+                </select>
+              </label>
               <details className="document-portal-more-filters">
                 <summary>Mais filtros</summary>
                 <div>
-                  <select
-                    aria-label="Filtrar por macroprocesso"
-                    value={filters.macroprocess || ""}
-                    onChange={(event) =>
-                      setFilters((current) => ({
-                        ...current,
-                        macroprocess: event.target.value || undefined,
-                      }))
-                    }
-                  >
-                    <option value="">Todos os macroprocessos</option>
-                    {macroprocesses.map((macroprocess) => (
-                      <option key={macroprocess}>{macroprocess}</option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filtrar por subprocesso"
-                    value={filters.subprocess || ""}
-                    onChange={(event) =>
-                      setFilters((current) => ({
-                        ...current,
-                        subprocess: event.target.value || undefined,
-                      }))
-                    }
-                  >
-                    <option value="">Todos os subprocessos</option>
-                    {subprocesses.map((subprocess) => (
-                      <option key={subprocess}>{subprocess}</option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filtrar por responsável"
-                    value={filters.responsible || ""}
-                    onChange={(event) =>
-                      setFilters((current) => ({
-                        ...current,
-                        responsible: event.target.value || undefined,
-                      }))
-                    }
-                  >
-                    <option value="">Todos os responsáveis</option>
-                    {responsibles.map((responsible) => (
-                      <option key={responsible}>{responsible}</option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filtrar por módulo de origem"
-                    value={filters.module || ""}
-                    onChange={(event) =>
-                      setFilters((current) => ({
-                        ...current,
-                        module: event.target.value || undefined,
-                      }))
-                    }
-                  >
-                    <option value="">Todos os módulos</option>
-                    <option value="ddp">Mapeamento</option>
-                    <option value="pop">Documentação</option>
-                    <option value="bpmn">Fluxograma</option>
-                  </select>
+                  <label className="document-portal-filter">
+                    <span>Macroprocesso</span>
+                    <select
+                      value={filters.macroprocess || ""}
+                      onChange={(event) =>
+                        setFilters((current) => ({
+                          ...current,
+                          macroprocess: event.target.value || undefined,
+                        }))
+                      }
+                    >
+                      <option value="">Todos os macroprocessos</option>
+                      {macroprocesses.map((macroprocess) => (
+                        <option key={macroprocess}>{macroprocess}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="document-portal-filter">
+                    <span>Subprocesso</span>
+                    <select
+                      value={filters.subprocess || ""}
+                      onChange={(event) =>
+                        setFilters((current) => ({
+                          ...current,
+                          subprocess: event.target.value || undefined,
+                        }))
+                      }
+                    >
+                      <option value="">Todos os subprocessos</option>
+                      {subprocesses.map((subprocess) => (
+                        <option key={subprocess}>{subprocess}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="document-portal-filter">
+                    <span>Responsável</span>
+                    <select
+                      value={filters.responsible || ""}
+                      onChange={(event) =>
+                        setFilters((current) => ({
+                          ...current,
+                          responsible: event.target.value || undefined,
+                        }))
+                      }
+                    >
+                      <option value="">Todos os responsáveis</option>
+                      {responsibles.map((responsible) => (
+                        <option key={responsible}>{responsible}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="document-portal-filter">
+                    <span>Origem</span>
+                    <select
+                      value={filters.module || ""}
+                      onChange={(event) =>
+                        setFilters((current) => ({
+                          ...current,
+                          module: event.target.value || undefined,
+                        }))
+                      }
+                    >
+                      <option value="">Todos os módulos</option>
+                      <option value="ddp">Mapeamento</option>
+                      <option value="pop">Documentação</option>
+                      <option value="bpmn">Fluxograma</option>
+                    </select>
+                  </label>
                 </div>
               </details>
-              <select
-                aria-label="Filtrar por processo"
-                value={filters.process || ""}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    process: event.target.value || undefined,
-                  }))
-                }
-              >
-                <option value="">Todos os processos</option>
-                {processes.map((process) => (
-                  <option key={process}>{process}</option>
-                ))}
-              </select>
-              <select
-                aria-label="Filtrar por tipo de documento"
-                value={filters.type || ""}
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, type: event.target.value || undefined }))
-                }
-              >
-                <option value="">Todos os tipos</option>
-                {types.map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </select>
-              <select
-                aria-label="Ordenar resultados"
-                value={sort}
-                onChange={(event) => setSort(event.target.value as PortalDocumentSort)}
-              >
-                <option value="relevance">Relevância</option>
-                <option value="recent">Mais recentes</option>
-                <option value="popular">Mais acessados</option>
-                <option value="alphabetical">Ordem alfabética</option>
-                <option value="effective">Data de vigência</option>
-                <option value="updated">Última atualização</option>
-              </select>
               {activeDiscovery ? (
                 <button
                   type="button"

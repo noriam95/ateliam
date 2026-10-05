@@ -57,28 +57,33 @@
 }
 
 .document-portal-content {
-  width: min(1480px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
-  padding: 24px clamp(14px, 2.5vw, 36px) 48px;
+  padding: clamp(16px, 2vw, 28px) clamp(16px, 3vw, 40px) 48px;
 }
 
 .document-portal-hero {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(440px, 1.2fr);
+  align-items: center;
+  gap: clamp(28px, 4vw, 64px);
   overflow: hidden;
-  padding: clamp(26px, 4vw, 52px);
+  padding: clamp(28px, 3.5vw, 46px);
   border: 1px solid color-mix(in oklab, var(--portal-accent) 30%, var(--border));
-  border-radius: 18px;
+  border-radius: 20px;
   background:
     radial-gradient(
       circle at 88% 8%,
-      color-mix(in oklab, var(--portal-accent) 21%, transparent),
-      transparent 33%
+      color-mix(in oklab, var(--portal-accent) 16%, transparent),
+      transparent 35%
     ),
-    linear-gradient(145deg, color-mix(in oklab, var(--card) 94%, var(--sage)), var(--card));
+    linear-gradient(145deg, color-mix(in oklab, var(--card) 97%, var(--sage)), var(--card));
 }
 
 .document-portal-hero-copy {
-  max-width: 760px;
+  min-width: 0;
+  max-width: 560px;
 }
 
 .document-portal-eyebrow {
@@ -93,33 +98,49 @@
 }
 
 .document-portal-hero h1 {
-  margin: 10px 0 7px;
+  margin: 10px 0 10px;
   color: var(--portal-ink);
-  font-size: clamp(30px, 4.5vw, 54px);
-  line-height: 1;
-  letter-spacing: -0.04em;
+  font-size: clamp(32px, 3.3vw, 48px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
 }
 
 .document-portal-hero-copy > p {
   margin: 0;
   color: var(--muted-foreground);
-  font-size: clamp(14px, 1.4vw, 17px);
-  line-height: 1.55;
+  font-size: clamp(15px, 1.25vw, 17px);
+  line-height: 1.6;
+}
+
+.document-portal-hero-search {
+  min-width: 0;
+  padding: clamp(18px, 2vw, 24px);
+  border: 1px solid color-mix(in oklab, var(--portal-accent) 20%, var(--border));
+  border-radius: 15px;
+  background: color-mix(in oklab, var(--background) 88%, transparent);
+  box-shadow: 0 18px 42px color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+.document-portal-hero-search > label {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .document-portal-search-shell {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  width: min(900px, 100%);
-  min-height: 58px;
+  width: 100%;
+  min-height: 54px;
   align-items: center;
   gap: 12px;
-  margin-top: 28px;
   padding: 0 15px 0 18px;
   border: 1px solid color-mix(in oklab, var(--portal-accent) 36%, var(--input));
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--background);
-  box-shadow: 0 16px 38px color-mix(in oklab, var(--foreground) 8%, transparent);
+  box-shadow: 0 8px 22px color-mix(in oklab, var(--foreground) 6%, transparent);
   color: var(--muted-foreground);
 }
 
@@ -160,48 +181,71 @@
 }
 
 .document-portal-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 22px;
-  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 11px;
+}
+
+.document-portal-stats span {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--muted) 68%, transparent);
+  line-height: 1.25;
 }
 
 .document-portal-stats strong {
-  margin-right: 4px;
+  display: block;
+  margin-bottom: 2px;
   color: var(--foreground);
-  font-size: 14px;
+  font-size: 17px;
+  line-height: 1;
 }
 
 .document-portal-discovery-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 18px 0;
-  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto auto;
+  align-items: end;
+  gap: 10px;
+  margin: 18px 0 20px;
+  padding: 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--card);
 }
 
-.document-portal-discovery-bar select,
-.document-portal-discovery-bar button {
-  min-height: 36px;
-  padding: 0 11px;
+.document-portal-filter {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.document-portal-filter > span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.document-portal-filter select,
+.document-portal-discovery-bar > button {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--background);
   color: var(--foreground);
-  font-size: 12px;
+  font-size: 13px;
 }
 
-.document-portal-discovery-bar select {
-  min-width: 150px;
-  flex: 1 1 160px;
-}
-
-.document-portal-discovery-bar button {
+.document-portal-discovery-bar > button {
+  width: auto;
   cursor: pointer;
   font-weight: 700;
 }
@@ -212,12 +256,12 @@
 
 .document-portal-more-filters {
   position: relative;
-  flex: 0 0 auto;
+  align-self: end;
 }
 
 .document-portal-more-filters summary {
   display: flex;
-  min-height: 36px;
+  min-height: 40px;
   align-items: center;
   padding: 0 11px;
   border: 1px solid var(--border);
@@ -225,7 +269,7 @@
   background: var(--background);
   color: var(--foreground);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   list-style: none;
 }
@@ -250,41 +294,37 @@
   top: calc(100% + 7px);
   right: 0;
   display: grid;
-  width: min(560px, calc(100vw - 28px));
+  width: min(680px, calc(100vw - 32px));
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--popover);
   box-shadow: 0 14px 34px color-mix(in oklab, var(--foreground) 14%, transparent);
 }
 
-.document-portal-more-filters > div select {
-  width: 100%;
-  min-width: 0;
-}
-
 .document-portal-section {
   min-width: 0;
-  padding: 20px;
+  padding: clamp(16px, 1.7vw, 22px);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 15px;
   background: var(--card);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent);
 }
 
 .document-portal-section > header {
   display: flex;
   align-items: flex-start;
   gap: 11px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .document-portal-section-icon {
   display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   place-items: center;
   border-radius: 9px;
   background: color-mix(in oklab, var(--portal-accent) 15%, var(--card));
@@ -294,35 +334,35 @@
 .document-portal-section h2 {
   margin: 0;
   color: var(--portal-ink);
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.25;
 }
 
 .document-portal-section header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .document-portal-feature-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.85fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
+  gap: 18px;
 }
 
 .document-portal-personal-grid,
 .document-portal-browse-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 16px;
+  gap: 18px;
+  margin-top: 18px;
 }
 
 .document-portal-card-list,
 .document-portal-results {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .document-portal-results {
@@ -331,27 +371,29 @@
 
 .document-portal-card {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: start;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: color-mix(in oklab, var(--background) 54%, var(--card));
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--background) 70%, var(--card));
   transition:
     border-color 150ms ease,
-    transform 150ms ease;
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .document-portal-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   border-color: color-mix(in oklab, var(--portal-accent) 46%, var(--border));
+  box-shadow: 0 10px 24px color-mix(in oklab, var(--foreground) 7%, transparent);
 }
 
 .document-portal-card-icon {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border-radius: 9px;
   background: color-mix(in oklab, var(--portal-accent) 13%, var(--muted));
@@ -368,7 +410,7 @@
   flex-wrap: wrap;
   gap: 5px 10px;
   color: var(--muted-foreground);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .document-portal-card-meta span:first-child {
@@ -386,7 +428,7 @@
 .document-portal-card-title {
   display: block;
   max-width: 100%;
-  margin: 5px 0 0;
+  margin: 6px 0 0;
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -394,7 +436,7 @@
   color: var(--foreground);
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 750;
   line-height: 1.35;
   text-align: left;
@@ -407,11 +449,11 @@
 
 .document-portal-card-body > p {
   display: -webkit-box;
-  margin: 7px 0;
+  margin: 8px 0;
   overflow: hidden;
   color: var(--muted-foreground);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -433,8 +475,8 @@
 
 .document-portal-favorite {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   place-items: center;
   border: 0;
   border-radius: 7px;
@@ -455,13 +497,14 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 6px 8px;
+  min-height: 32px;
+  padding: 6px 9px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
 }
 
@@ -483,7 +526,8 @@
   width: 100%;
   align-items: center;
   gap: 10px;
-  padding: 9px 7px;
+  min-height: 52px;
+  padding: 10px 8px;
   border: 0;
   border-bottom: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
   background: transparent;
@@ -525,7 +569,7 @@
   display: block;
   overflow: hidden;
   color: var(--foreground);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -538,7 +582,7 @@
   margin-top: 3px;
   overflow: hidden;
   color: var(--muted-foreground);
-  font-size: 9px;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -550,7 +594,7 @@
   border: 1px dashed var(--border);
   border-radius: 9px;
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   text-align: center;
 }
@@ -600,9 +644,9 @@
 }
 
 .document-portal-reader-content {
-  width: min(1680px, 100%);
+  width: min(1600px, 100%);
   margin: 0 auto;
-  padding: 14px clamp(12px, 2vw, 28px) 28px;
+  padding: 16px clamp(14px, 2.5vw, 32px) 32px;
 }
 
 .document-portal-breadcrumb {
@@ -613,7 +657,7 @@
   margin-bottom: 10px;
   overflow: hidden;
   color: var(--muted-foreground);
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -635,13 +679,13 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .document-portal-reader-titlebar > button {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 40px;
   align-items: center;
   gap: 5px;
   padding: 0 10px;
@@ -650,7 +694,7 @@
   background: var(--card);
   color: var(--foreground);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -665,14 +709,14 @@
 .document-portal-reader-titlebar > div > span {
   color: var(--muted-foreground);
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .document-portal-reader-titlebar h1 {
   margin: 2px 0 0;
   overflow: hidden;
   color: var(--foreground);
-  font-size: clamp(16px, 2vw, 23px);
+  font-size: clamp(19px, 2vw, 26px);
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -684,15 +728,15 @@
   border-radius: 999px;
   background: color-mix(in oklab, var(--sage) 44%, var(--card));
   color: var(--accent-foreground);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
 }
 
 .document-portal-reader-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 24vw, 380px);
   min-height: calc(100dvh - 152px);
-  gap: 12px;
+  gap: 16px;
 }
 
 .document-portal-viewer,
@@ -707,7 +751,7 @@
 .document-portal-viewer iframe {
   width: 100%;
   height: 100%;
-  min-height: 720px;
+  min-height: clamp(600px, calc(100dvh - 168px), 920px);
   border: 0;
   background: var(--background);
 }
@@ -715,7 +759,7 @@
 .document-portal-information {
   align-self: start;
   max-height: calc(100dvh - 152px);
-  padding: 16px;
+  padding: 20px;
   overflow: auto;
   scrollbar-gutter: stable;
 }
@@ -731,7 +775,7 @@
 .document-portal-information h2 {
   margin: 0;
   color: var(--foreground);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .document-portal-information dl {
@@ -741,11 +785,11 @@
 
 .document-portal-information dl > div {
   display: grid;
-  grid-template-columns: 94px minmax(0, 1fr);
+  grid-template-columns: 104px minmax(0, 1fr);
   gap: 8px;
-  padding: 7px 0;
+  padding: 9px 0;
   border-bottom: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .document-portal-information dt {
@@ -763,7 +807,7 @@
 .document-portal-information > p {
   margin: 14px 0 0;
   color: var(--muted-foreground);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.55;
 }
 
@@ -780,13 +824,13 @@
   border-radius: 999px;
   background: var(--muted);
   color: var(--muted-foreground);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .document-portal-origin-link {
   display: flex;
   width: 100%;
-  min-height: 36px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -796,7 +840,7 @@
   background: var(--background);
   color: var(--foreground);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -843,14 +887,14 @@
 }
 
 .document-portal-related strong {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .document-portal-related small,
 .document-portal-related > p {
   margin-top: 3px;
   color: var(--muted-foreground);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .document-portal-reader-state {
@@ -880,17 +924,39 @@
   font-weight: 700;
 }
 
-@media (max-width: 1080px) {
-  .document-portal-feature-grid,
-  .document-portal-browse-grid {
-    grid-template-columns: 1fr;
+@media (min-width: 1500px) {
+  .document-portal-results {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
 
-  .document-portal-personal-grid {
+@media (max-width: 1180px) {
+  .document-portal-discovery-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .document-portal-personal-grid > :last-child {
+  .document-portal-more-filters[open] {
+    grid-column: 1 / -1;
+  }
+
+  .document-portal-more-filters[open] > div {
+    position: static;
+    width: 100%;
+    margin-top: 10px;
+    box-shadow: none;
+  }
+
+  .document-portal-feature-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  }
+
+  .document-portal-personal-grid,
+  .document-portal-browse-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .document-portal-personal-grid > :last-child,
+  .document-portal-browse-grid > :last-child {
     grid-column: 1 / -1;
   }
 
@@ -900,6 +966,21 @@
 
   .document-portal-information {
     max-height: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .document-portal-hero {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .document-portal-hero-copy {
+    max-width: 680px;
+  }
+
+  .document-portal-feature-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -913,29 +994,55 @@
   }
 
   .document-portal-content {
-    padding-inline: 10px;
+    padding: 12px 10px 32px;
   }
 
   .document-portal-hero {
-    padding: 24px 18px;
-    border-radius: 13px;
+    gap: 20px;
+    padding: 24px 18px 18px;
+    border-radius: 14px;
+  }
+
+  .document-portal-hero h1 {
+    font-size: clamp(29px, 9vw, 38px);
+  }
+
+  .document-portal-hero-search {
+    padding: 14px;
   }
 
   .document-portal-search-shell {
-    min-height: 52px;
-    margin-top: 22px;
+    min-height: 50px;
   }
 
   .document-portal-search-shell input {
     font-size: 13px;
   }
 
+  .document-portal-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .document-portal-stats span {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .document-portal-stats strong {
+    display: inline;
+    margin: 0;
+  }
+
+  .document-portal-discovery-bar,
   .document-portal-personal-grid,
+  .document-portal-browse-grid,
   .document-portal-results {
     grid-template-columns: 1fr;
   }
 
-  .document-portal-personal-grid > :last-child {
+  .document-portal-personal-grid > :last-child,
+  .document-portal-browse-grid > :last-child {
     grid-column: auto;
   }
 
@@ -943,27 +1050,27 @@
     padding: 15px;
   }
 
-  .document-portal-more-filters {
-    flex: 1 1 100%;
-  }
-
   .document-portal-more-filters summary {
     justify-content: space-between;
   }
 
   .document-portal-more-filters > div {
-    right: auto;
-    left: 0;
+    position: static;
+    width: 100%;
     grid-template-columns: 1fr;
+    margin-top: 10px;
+    box-shadow: none;
   }
 
   .document-portal-card {
-    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
   }
 
   .document-portal-card-icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
   }
 
   .document-portal-card-actions {
@@ -993,6 +1100,34 @@
   }
 
   .document-portal-viewer iframe {
-    min-height: 620px;
+    min-height: min(620px, 72dvh);
+  }
+}
+
+@media (max-width: 430px) {
+  .document-portal-global-header {
+    height: 52px;
+  }
+
+  .document-portal-hero {
+    padding-inline: 14px;
+  }
+
+  .document-portal-search-shell {
+    gap: 9px;
+    padding-inline: 13px 10px;
+  }
+
+  .document-portal-section {
+    padding: 14px;
+  }
+
+  .document-portal-reader-titlebar > button span {
+    display: none;
+  }
+
+  .document-portal-information dl > div {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 }
