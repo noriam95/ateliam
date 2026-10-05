@@ -9,7 +9,9 @@ import {
   type BpmnDocument,
   type BpmnInspection,
   type LaneBinding,
+  type TemporaryBpmnArea,
 } from "@/lib/bpmn-document";
+import { normalizeAreaName, prepareBpmnTemporaryAreas } from "@/lib/mapping-temporary-areas";
 
 export function BpmnImportWizard({
   catalogs,
@@ -34,6 +36,7 @@ export function BpmnImportWizard({
   const [previewReady, setPreviewReady] = useState(false);
   const [processId, setProcessId] = useState("");
   const [bindings, setBindings] = useState<Record<string, LaneBinding>>({});
+  const [draftAreas, setDraftAreas] = useState<TemporaryBpmnArea[]>([]);
   const [kinds, setKinds] = useState<Record<string, "area" | "position">>({});
   const [confirmed, setConfirmed] = useState(false);
   const token = useRef(0);
@@ -54,7 +57,9 @@ export function BpmnImportWizard({
       if (attempt !== token.current) return;
       setSource({ xml, name: file.name, inspection });
       setStep(1);
-      setBindings({});
+      const preparedAreas = prepareBpmnTemporaryAreas(inspection.lanes, catalogs.area);
+      setDraftAreas(preparedAreas.areas);
+      setBindings(preparedAreas.bindings);
       setProcessId("");
       setConfirmed(false);
     } catch (error) {
@@ -65,6 +70,18 @@ export function BpmnImportWizard({
     }
   }
   const process = catalogs.process.find((p) => p.id === processId);
+  const effectiveCatalogs: BpmnCatalogs = {
+    ...catalogs,
+    area: [
+      ...catalogs.area,
+      ...draftAreas.filter(
+        (area) =>
+          !catalogs.area.some(
+            (registered) => normalizeAreaName(registered.name) === normalizeAreaName(area.name),
+          ),
+      ),
+    ],
+  };
   const suggestion =
     source &&
     catalogs.process.filter(
@@ -176,7 +193,7 @@ export function BpmnImportWizard({
             <h3>Processo do cadastro central</h3>
             <CatalogPicker
               kind="process"
-              catalogs={catalogs}
+              catalogs={effectiveCatalogs}
               value={processId}
               onChange={(p) => setProcessId(p?.id || "")}
               create={create}
@@ -193,7 +210,7 @@ export function BpmnImportWizard({
             </p>
             {source.inspection.lanes.map((lane, index) => {
               const kind = kinds[lane.id] || "area";
-              const matches = catalogs[kind].filter(
+              const matches = effectiveCatalogs[kind].filter(
                 (item) => normalizedBpmnName(item.name) === normalizedBpmnName(lane.name),
               );
               return (
@@ -221,7 +238,7 @@ export function BpmnImportWizard({
                   </label>
                   <CatalogPicker
                     kind={kind}
-                    catalogs={catalogs}
+                    catalogs={effectiveCatalogs}
                     value={bindings[lane.id]?.id || ""}
                     onChange={(item) =>
                       setBindings((current) => {
@@ -323,6 +340,9 @@ export function BpmnImportWizard({
                   processId: process.id,
                   processName: process.name,
                   laneBindings: bindings,
+                  draftAreas: draftAreas.filter((area) =>
+                    Object.values(bindings).some((binding) => binding.id === area.id),
+                  ),
                   status: "Rascunho",
                 });
               } catch (error) {

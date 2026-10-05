@@ -185,3 +185,11 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 - Textos, metadados e alvos interativos usam escala legível. Cartões e seções preservam densidade de informação com espaçamento constante; grades de descoberta passam de três para duas e uma coluna conforme o espaço disponível.
 - O leitor limita a coluna de metadados em telas amplas e a move para baixo do documento até 1180 px. A altura do visualizador considera a janela disponível e evita dimensões rígidas em telas baixas.
 - A experiência foi verificada em 1366 × 768, 1024 × 768 e 390 × 844, nos temas claro e escuro, sem rolagem horizontal da página.
+
+## Cenário e entregas da tarefa de mapeamento — 05/10/2026
+
+- `AS IS` e `TO BE` identificam o cenário do mapeamento e não substituem a modalidade da demanda. A escolha é obrigatória na criação da tarefa e acompanha o cabeçalho e o novo relatório.
+- Fluxograma é uma entrega estruturada do checklist: permite selecionar um desenho BPMN existente ou iniciar um novo no editor, com a mesma regra de rascunho e conclusão usada pelo relatório de mapeamento.
+- O assistente do relatório extrai áreas mencionadas em etapas, responsáveis e atividades. O importador BPMN associa automaticamente raias com mesmo nome e prepara as demais como áreas temporárias. Enquanto houver apenas rascunho, elas ficam no próprio documento (`draftCatalogs.areas` no relatório e `draftAreas` no BPMN) e não aparecem no cadastro organizacional.
+- No salvamento definitivo, as áreas referenciadas são criadas de forma idempotente no cadastro da organização antes dos processos sugeridos. Nome normalizado evita duplicidade e a sigla é gerada automaticamente, preservando siglas já existentes.
+- Documentos iniciados pela tarefa herdam o cenário: o relatório recebe `meta.modalidade` e o desenho novo identifica o cenário no nome inicial da piscina. Desenhos e relatórios existentes preservam seu conteúdo ao serem vinculados.

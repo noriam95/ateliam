@@ -5,6 +5,7 @@ export const TASK_MODALITIES = [
   "Dados / BI",
   "Outros",
 ] as const;
+export const MAPPING_SCENARIOS = ["AS IS", "TO BE"] as const;
 export const TASK_STATUSES = [
   "pending",
   "in_progress",
@@ -28,7 +29,7 @@ export const TASK_KINDS = {
 };
 export type TaskItem = {
   group_key?: string;
-  entry_type?: "mapping" | "pop" | "file" | "note";
+  entry_type?: "mapping" | "pop" | "flowchart" | "file" | "note";
   optional?: boolean;
   attachment?: { path: string; name: string; size: number };
   key: string;
@@ -67,6 +68,7 @@ export type UserTask = {
   title: string;
   kind: keyof typeof TASK_KINDS;
   modality: string | null;
+  mapping_scenario?: (typeof MAPPING_SCENARIOS)[number] | null;
   assigned_to: string;
   requested_by: string;
   starts_on: string;
@@ -122,7 +124,7 @@ export type TaskFilters = {
   offset?: number;
   id?: string;
   documentQuery?: string;
-  documentModule?: "ddp" | "pop";
+  documentModule?: "ddp" | "pop" | "bpmn";
 };
 export function taskDate(value: string) {
   return value ? value.slice(0, 10).split("-").reverse().join("/") : "—";

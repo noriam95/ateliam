@@ -115,7 +115,9 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                       ? "pop"
                       : item.entry_type === "mapping"
                         ? "ddp"
-                        : item.document_module || task.document_module;
+                        : item.entry_type === "flowchart"
+                          ? "bpmn"
+                          : item.document_module || task.document_module;
                   return (
                     <div className="ut-delivery-entry" key={item.key}>
                       <div>
@@ -232,14 +234,15 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                             </button>
                           )}
                         </div>
-                      ) : item.entry_type === "mapping" || item.entry_type === "pop" ? (
+                      ) : ["mapping", "pop", "flowchart"].includes(item.entry_type || "") ? (
                         canEdit && (
                           <div className="ut-inline">
                             <button
                               disabled={busy}
                               onClick={() => void write("begin_document", { key: item.key })}
                             >
-                              <Pencil size={16} /> Preencher novo
+                              <Pencil size={16} />
+                              {item.entry_type === "flowchart" ? "Desenhar novo" : "Preencher novo"}
                             </button>
                             <button disabled={busy} onClick={() => edit(item)}>
                               Selecionar existente
@@ -413,6 +416,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                   <option value="file">Anexo</option>
                   <option value="mapping">Preenchimento de mapeamento</option>
                   <option value="pop">Preenchimento de POP</option>
+                  <option value="flowchart">Fluxograma BPMN</option>
                   <option value="note">Registro em texto</option>
                 </select>
               </label>

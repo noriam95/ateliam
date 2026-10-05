@@ -94,6 +94,12 @@ import type { DocxDocumentImport } from "@/lib/docx-document-import";
 import type { MappingDocumentImport } from "@/lib/docx-mapping-import";
 import { inferExplicitActivityArea } from "@/lib/mapping-actor-inference";
 import {
+  mappingAreaNamesFromImport,
+  normalizeAreaName,
+  suggestAreaSigla,
+  type TemporaryMappingArea,
+} from "@/lib/mapping-temporary-areas";
+import {
   ProcessRegistrationDialog,
   SystemRegistrationDialog,
   WorkspaceProcessRegistrations,
@@ -122,6 +128,7 @@ import {
   listOrganizationDocumentModels,
   reserveCode,
   saveProcessArea,
+  saveSuggestedProcessArea,
   saveProcessRegistration,
   saveSystemRegistration,
   savePositionRegistration,
@@ -654,6 +661,7 @@ type ActiveCloudDocument = {
 type ModuleSaveMode = "draft" | "final";
 type DraftCatalogSnapshot = {
   processes?: CreatedProcess[];
+  areas?: TemporaryMappingArea[];
 };
 
 function withModuleSaveStatus(
@@ -2842,7 +2850,21 @@ function readDraftCatalogSnapshot(content: string | null | undefined): DraftCata
           Boolean(process && typeof process.id === "string" && typeof process.name === "string"),
         )
       : undefined;
-    return processes?.length ? { processes } : {};
+    const areas = Array.isArray(parsed.draftCatalogs?.areas)
+      ? parsed.draftCatalogs.areas.filter((area): area is TemporaryMappingArea =>
+          Boolean(
+            area &&
+            typeof area.id === "string" &&
+            typeof area.name === "string" &&
+            typeof area.sigla === "string" &&
+            area.status === "temporary",
+          ),
+        )
+      : undefined;
+    return {
+      ...(processes?.length ? { processes } : {}),
+      ...(areas?.length ? { areas } : {}),
+    };
   } catch {
     return {};
   }
@@ -6405,6 +6427,7 @@ function ModuleWorkspacePage() {
 
   const [showSave, setShowSave] = useState(false);
   const [pendingMappingProcesses, setPendingMappingProcesses] = useState<CreatedProcess[]>([]);
+  const [pendingMappingAreas, setPendingMappingAreas] = useState<TemporaryMappingArea[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [comment, setComment] = useState("");
   // Incrementa a cada salvamento concluído — informa ao formulário de mapeamento
@@ -6454,6 +6477,7 @@ function ModuleWorkspacePage() {
   const updateSharedCause = useServerFn(updateOrganizationCause);
   const removeSharedCause = useServerFn(deleteOrganizationCause);
   const saveSuggestedProcess = useServerFn(saveProcessRegistration);
+  const saveSuggestedArea = useServerFn(saveSuggestedProcessArea);
   const saveSuggestedSystem = useServerFn(saveSystemRegistration);
   const [demoCatalogs, setDemoCatalogs] = useState<OrganizationCatalogs>(DEMO_CATALOGS);
   // Alteração de status do documento na tela de consulta (Em andamento, etc.).
@@ -6696,6 +6720,8 @@ function ModuleWorkspacePage() {
       );
       setOpenedLocalFile(null);
       setActiveCloudDocument(null);
+      setPendingMappingProcesses([]);
+      setPendingMappingAreas([]);
       setLoaded(true);
       return;
     }
@@ -6782,6 +6808,10 @@ function ModuleWorkspacePage() {
     });
     if (openedLocalFile?.moduleId === moduleId) setOpenedLocalFile(null);
     if (activeCloudDocument?.moduleId === moduleId) setActiveCloudDocument(null);
+    if (moduleId === "ddp") {
+      setPendingMappingProcesses([]);
+      setPendingMappingAreas([]);
+    }
     setModuleEditStarted(true);
     toast.success(`Novo ${moduleDocLabel} iniciado.`);
   }
@@ -6859,6 +6889,9 @@ function ModuleWorkspacePage() {
       setPendingMappingProcesses(
         result.moduleId === "ddp" && draftCatalogs.processes?.length ? draftCatalogs.processes : [],
       );
+      setPendingMappingAreas(
+        result.moduleId === "ddp" && draftCatalogs.areas?.length ? draftCatalogs.areas : [],
+      );
       setOpenedLocalFile(null);
       setActiveCloudDocument({
         id: row.id,
@@ -6895,7 +6928,9 @@ function ModuleWorkspacePage() {
         setWorkspace(result.workspace);
         setOpenedLocalFile(null);
         setActiveCloudDocument({ id: row.id, moduleId: result.moduleId, name: row.name });
-        setPendingMappingProcesses([]);
+        const draftCatalogs = readDraftCatalogSnapshot(row.content_inline);
+        setPendingMappingProcesses(draftCatalogs.processes ?? []);
+        setPendingMappingAreas(draftCatalogs.areas ?? []);
         setModuleSurface("editor");
         setModuleEditStarted(true);
         setDdpView("editor");
@@ -7022,7 +7057,10 @@ function ModuleWorkspacePage() {
     }
   }
 
-  async function persistSuggestedMappingProcesses(ws: WorkspaceState) {
+  async function persistSuggestedMappingProcesses(
+    ws: WorkspaceState,
+    finalizedAreaSiglas = new Map<string, string>(),
+  ) {
     if (moduleId !== "ddp" || !pendingMappingProcesses.length) {
       return ws;
     }
@@ -7045,7 +7083,12 @@ function ModuleWorkspacePage() {
       const department = organizationCatalogs.departments.find(
         (item) => normalizeLabel(item.name) === normalizeLabel(process.department ?? ""),
       );
-      const areaSigla = normalizeSigla(department?.sigla ?? process.department ?? "");
+      const areaSigla = normalizeSigla(
+        department?.sigla ??
+          finalizedAreaSiglas.get(normalizeAreaName(process.department)) ??
+          process.department ??
+          "",
+      );
       if (processRule.mode === "auto" && !code && areaSigla) {
         code = (
           await reserveCodeFn({
@@ -7094,6 +7137,66 @@ function ModuleWorkspacePage() {
         })),
       },
     };
+  }
+
+  async function persistSuggestedMappingAreas(ws: WorkspaceState) {
+    const finalized = new Map<string, string>();
+    if (moduleId !== "ddp" || !pendingMappingAreas.length) return finalized;
+    const referencedNames = new Set(
+      [
+        ws.ddp.meta.area,
+        ws.ddp.legacy?.processArea?.toString() ?? "",
+        ...pendingMappingProcesses.map((process) => process.department ?? ""),
+        ...ws.ddp.steps.flatMap((step) =>
+          step.substeps.flatMap((substep) => [
+            substep.actorType === "area" ? substep.actorName : "",
+            ...substep.activities.map((activity) =>
+              activity.actorType === "area" ? activity.actorName : "",
+            ),
+          ]),
+        ),
+      ]
+        .map(normalizeAreaName)
+        .filter(Boolean),
+    );
+    const pending = pendingMappingAreas.filter((area) =>
+      referencedNames.has(normalizeAreaName(area.name)),
+    );
+    if (!pending.length) return finalized;
+    if (isDemo) {
+      setDemoCatalogs((current) => ({
+        ...current,
+        departments: [
+          ...current.departments,
+          ...pending
+            .filter(
+              (area) =>
+                !current.departments.some(
+                  (department) =>
+                    normalizeAreaName(department.name) === normalizeAreaName(area.name),
+                ),
+            )
+            .map((area) => ({
+              id: `demo-area-${crypto.randomUUID()}`,
+              name: area.name,
+              sigla: area.sigla,
+            })),
+        ],
+      }));
+      pending.forEach((area) => finalized.set(normalizeAreaName(area.name), area.sigla));
+      return finalized;
+    }
+    for (const area of pending) {
+      const saved = await saveSuggestedArea({
+        data: {
+          organizationId: codeOrganizationId,
+          name: area.name,
+          preferredSigla: area.sigla,
+        },
+      });
+      finalized.set(normalizeAreaName(saved.name), saved.sigla ?? area.sigla);
+    }
+    return finalized;
   }
 
   async function persistMappingSystems(ws: WorkspaceState) {
@@ -7205,7 +7308,11 @@ function ModuleWorkspacePage() {
       // o documento ainda não tem código.
       let workspaceToSave = withUppercaseModuleTitle(moduleId, workspace);
       if (!isDraftSave && moduleId === "ddp") {
-        workspaceToSave = await persistSuggestedMappingProcesses(workspaceToSave);
+        const finalizedAreaSiglas = await persistSuggestedMappingAreas(workspaceToSave);
+        workspaceToSave = await persistSuggestedMappingProcesses(
+          workspaceToSave,
+          finalizedAreaSiglas,
+        );
         workspaceToSave = await persistMappingSystems(workspaceToSave);
         workspaceToSave = await syncDdpGapsToCatalog(workspaceToSave);
         if (!persistedProcessId(workspaceToSave.ddp.macroprocess.processId)) {
@@ -7241,8 +7348,13 @@ function ModuleWorkspacePage() {
           : "Documento salvo";
       const fullComment = `[${moduleInfo.title}] ${comment || defaultComment}`;
       const draftCatalogs =
-        isDraftSave && moduleId === "ddp" && pendingMappingProcesses.length
-          ? { processes: pendingMappingProcesses }
+        isDraftSave &&
+        moduleId === "ddp" &&
+        (pendingMappingProcesses.length || pendingMappingAreas.length)
+          ? {
+              ...(pendingMappingProcesses.length ? { processes: pendingMappingProcesses } : {}),
+              ...(pendingMappingAreas.length ? { areas: pendingMappingAreas } : {}),
+            }
           : undefined;
       const content = buildModuleJson(moduleId, workspaceToSave, {
         saveMode: mode,
@@ -7307,6 +7419,7 @@ function ModuleWorkspacePage() {
       if (moduleId === "ddp") {
         if (!isDraftSave) {
           setPendingMappingProcesses([]);
+          setPendingMappingAreas([]);
           if (!isDemo) catalogsQ.refetch();
         }
         if (!isDemo && "document" in result) {
@@ -8442,6 +8555,36 @@ function ModuleWorkspacePage() {
                   ...current.filter((item) => item.id !== process.id),
                   process,
                 ]);
+              }}
+              onSuggestedAreasPrepared={(names) => {
+                setPendingMappingAreas((current) => {
+                  const knownNames = new Set(
+                    organizationCatalogs.departments.map((area) => normalizeAreaName(area.name)),
+                  );
+                  const existingByName = new Map(
+                    current.map((area) => [normalizeAreaName(area.name), area]),
+                  );
+                  const usedSiglas = new Set([
+                    ...organizationCatalogs.departments.map((area) => area.sigla).filter(Boolean),
+                    ...current.map((area) => area.sigla),
+                  ] as string[]);
+                  return names.flatMap((name) => {
+                    const normalized = normalizeAreaName(name);
+                    if (!normalized || knownNames.has(normalized)) return [];
+                    const existing = existingByName.get(normalized);
+                    if (existing) return [existing];
+                    const sigla = suggestAreaSigla(name, usedSiglas);
+                    usedSiglas.add(sigla);
+                    return [
+                      {
+                        id: `pending-area:${crypto.randomUUID()}`,
+                        name: name.trim(),
+                        sigla,
+                        status: "temporary" as const,
+                      },
+                    ];
+                  });
+                });
               }}
               startWithAssistant={startDdpWithAssistant}
             />
@@ -11590,6 +11733,7 @@ function DdpModule({
   onCatalogCreated,
   onProcessCreated,
   onSuggestedProcessPrepared,
+  onSuggestedAreasPrepared,
   startWithAssistant = false,
 }: {
   data: DdpState;
@@ -11611,6 +11755,7 @@ function DdpModule({
   // Persiste (nuvem: refetch; demo: adiciona ao catálogo) o processo recém-criado.
   onProcessCreated: (process: CreatedProcess) => Promise<void> | void;
   onSuggestedProcessPrepared: (process: CreatedProcess) => Promise<void> | void;
+  onSuggestedAreasPrepared: (names: string[]) => Promise<void> | void;
   startWithAssistant?: boolean;
 }) {
   const saveArea = useServerFn(saveProcessArea);
@@ -12288,6 +12433,7 @@ function DdpModule({
 
   function applyMappingImport(importResult: MappingDocumentImport | null = mappingImport) {
     if (!importResult) return;
+    void onSuggestedAreasPrepared(mappingAreaNamesFromImport(importResult));
     const preparedProcesses: Record<string, CreatedProcess> = {};
     const nowIso = new Date().toISOString();
     const recognizedPrimaryProcessTitle = importResult.mappedProcess.trim();

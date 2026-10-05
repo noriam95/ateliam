@@ -25,7 +25,7 @@ export const loadUserTasks = createServerFn({ method: "POST" })
             team: z.boolean().optional(),
             offset: z.number().int().min(0).optional(),
             id: z.string().uuid().optional(),
-            documentModule: z.enum(["ddp", "pop"]).optional(),
+            documentModule: z.enum(["ddp", "pop", "bpmn"]).optional(),
             documentQuery: z.string().max(160).optional(),
           })
           .default({}),

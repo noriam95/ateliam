@@ -2,6 +2,12 @@ import { validateBpmnRules } from "./bpmn-validation";
 import { BpmnModdle } from "bpmn-moddle";
 
 export type LaneBinding = { kind: "area" | "position"; id: string; name: string };
+export type TemporaryBpmnArea = {
+  id: string;
+  name: string;
+  sigla: string;
+  status: "temporary";
+};
 export type BpmnTextStyle = {
   fontFamily?: string;
   fontSize?: number;
@@ -18,6 +24,7 @@ export type BpmnDocument = {
   processId: string;
   processName: string;
   laneBindings: Record<string, LaneBinding>;
+  draftAreas?: TemporaryBpmnArea[];
   elementStyles?: Record<string, BpmnTextStyle>;
   status: "Rascunho" | "Em revisão" | "Publicado";
   origin: "created" | "imported" | "legacy";

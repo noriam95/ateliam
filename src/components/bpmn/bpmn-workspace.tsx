@@ -28,6 +28,7 @@ import {
 import { normalizeCodeSettings } from "@/lib/code-generation";
 import { visibleModulesFor } from "@/lib/module-visibility";
 import { blankBpmn, readBpmnDocument, type BpmnDocument } from "@/lib/bpmn-document";
+import { normalizeAreaName } from "@/lib/mapping-temporary-areas";
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
 import { BpmnEditor, type SavedBpmn } from "./bpmn-editor";
 import { BpmnImportWizard } from "./import-wizard";
@@ -361,7 +362,19 @@ export function BpmnWorkspace({
           initial={active.document}
           saved={active.record}
           storageKey={`bf-flow:bpmn:${me.data?.userId}:${organizationId}:${active.key}`}
-          catalogs={catalogs}
+          catalogs={{
+            ...catalogs,
+            area: [
+              ...catalogs.area,
+              ...(active.document.draftAreas ?? []).filter(
+                (area) =>
+                  !catalogs.area.some(
+                    (registered) =>
+                      normalizeAreaName(registered.name) === normalizeAreaName(area.name),
+                  ),
+              ),
+            ],
+          }}
           create={create}
           canEdit={canEdit && !viewOnly}
           onDirty={setDirty}

@@ -51,6 +51,7 @@ import { loadUserTasks, updateUserTask } from "@/lib/user-tasks.functions";
 import {
   TASK_KINDS,
   TASK_MODALITIES,
+  MAPPING_SCENARIOS,
   TASK_STATUSES,
   TASK_STATUS_LABELS,
   documentTaskUrl,
@@ -818,7 +819,7 @@ function DocumentPicker({
   onChange,
   module,
 }: {
-  module?: "ddp" | "pop";
+  module?: "ddp" | "pop" | "bpmn";
   organizationId: string;
   value: string;
   onChange: (doc: TaskDocument) => void;
@@ -948,6 +949,7 @@ function CreateTask({
                   title,
                   kind,
                   modality: kind === "mapping" ? f.get("modality") : null,
+                  mappingScenario: kind === "mapping" ? f.get("mappingScenario") : null,
                   assignedTo: f.get("assignedTo"),
                   startsOn: f.get("startsOn"),
                   dueOn: f.get("dueOn"),
@@ -1014,14 +1016,25 @@ function CreateTask({
               </select>
             </label>
             {kind === "mapping" && (
-              <label>
-                Modalidade
-                <select name="modality">
-                  {TASK_MODALITIES.map((m) => (
-                    <option key={m}>{m}</option>
-                  ))}
-                </select>
-              </label>
+              <>
+                <label>
+                  Cenário do mapeamento
+                  <select name="mappingScenario" defaultValue="AS IS" required>
+                    {MAPPING_SCENARIOS.map((scenario) => (
+                      <option key={scenario}>{scenario}</option>
+                    ))}
+                  </select>
+                  <small>AS IS registra o processo atual; TO BE registra o processo futuro.</small>
+                </label>
+                <label>
+                  Modalidade da demanda
+                  <select name="modality">
+                    {TASK_MODALITIES.map((m) => (
+                      <option key={m}>{m}</option>
+                    ))}
+                  </select>
+                </label>
+              </>
             )}
           </div>
           <div className="ut-form-row ut-task-people-row">
@@ -1181,10 +1194,12 @@ function TaskDetails({
       toast.success(action === "comment" ? "Comentário registrado." : "Tarefa atualizada.");
       if (action === "begin_document" && result.documentId) {
         const item = t.checklist.find((i) => i.key === payload.key)!;
+        const module =
+          item.entry_type === "pop" ? "pop" : item.entry_type === "flowchart" ? "bpmn" : "ddp";
         window.location.assign(
           documentTaskUrl(t, item, {
             id: result.documentId,
-            module: item.entry_type === "pop" ? "pop" : "ddp",
+            module,
             name: item.label,
             code: "",
             current_version: 0,
@@ -1494,7 +1509,7 @@ function ItemEditor({
   const [baseline, setBaseline] = useState({ content: item.content, documentId: item.document_id });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const systemRecord = item.entry_type === "mapping" || item.entry_type === "pop";
+  const systemRecord = ["mapping", "pop", "flowchart"].includes(item.entry_type || "");
   const persist = async (completed: boolean, finish = true) => {
     if (systemRecord && !doc?.id && !item.document_id) {
       setError("Selecione um registro para vincular ao checklist.");
@@ -1549,7 +1564,13 @@ function ItemEditor({
             organizationId={organizationId}
             value={doc?.id || item.document_id || ""}
             module={
-              item.entry_type === "mapping" ? "ddp" : item.entry_type === "pop" ? "pop" : undefined
+              item.entry_type === "mapping"
+                ? "ddp"
+                : item.entry_type === "pop"
+                  ? "pop"
+                  : item.entry_type === "flowchart"
+                    ? "bpmn"
+                    : undefined
             }
             onChange={setDoc}
           />

@@ -123,6 +123,19 @@ TaskHeaderSummary apresenta responsável, solicitante, início, prazo, tipo e mo
 | Tarefa vinculada    | TaskEditorContext                              | Rascunhos mantêm a entrega em andamento; publicação usa confirmação existente do checklist              |
 
 - O estado do cliente não concede permissão: toda gravação exige autenticação e papel de editor no servidor; IDs de processos/áreas/cargos são conferidos na organização ativa.
+
+## Tarefa de mapeamento: AS IS, TO BE e áreas temporárias — 05/10/2026
+
+| Capacidade           | Regra                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cenário              | Criar tarefa de mapeamento exige `AS IS` ou `TO BE`, separado da modalidade da demanda.                                                     |
+| Relatório            | Novo relatório criado pela tarefa recebe o cenário em `ddp.meta.modalidade`.                                                                |
+| Fluxograma           | A entrega aceita selecionar BPMN existente ou desenhar novo; o novo desenho abre como rascunho no módulo BPMN.                              |
+| Assistentes          | Relatório e importação BPMN detectam áreas desconhecidas sem interromper o preenchimento e geram uma sigla disponível automaticamente.      |
+| Rascunho             | Área sugerida permanece somente no documento (`draftCatalogs.areas` ou `draftAreas`); nenhum cadastro organizacional é criado.              |
+| Salvamento final     | Somente as áreas efetivamente referenciadas são gravadas no cadastro, antes dos processos sugeridos, com deduplicação por nome normalizado. |
+| Conclusão da entrega | Documento com `persistence.saveMode = draft` não pode concluir o item da tarefa.                                                            |
+
 - Cada tentativa de salvar mantém um identificador de mutação para tolerar respostas perdidas sem duplicar documentos. Conflitos preservam o desenho local e oferecem exportação.
 - Campos obrigatórios: processo cadastrado e XML BPMN 2.0 com DI. Raia não vinculada é aviso A DEFINIR, não bloqueio. Fonte externa não cria registros silenciosamente.
 - O XML original é imutável na experiência de edição e pode ser baixado separado. Avisos de elementos/extensões não suportados são apresentados antes de confirmar importação.

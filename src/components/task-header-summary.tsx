@@ -71,6 +71,12 @@ export function TaskHeaderSummary({
           <dt>Modalidade</dt>
           <dd>{task.modality || "Não se aplica"}</dd>
         </div>
+        {task.kind === "mapping" && (
+          <div>
+            <dt>Cenário</dt>
+            <dd>{task.mapping_scenario || "Não informado"}</dd>
+          </div>
+        )}
       </dl>
     </section>
   );

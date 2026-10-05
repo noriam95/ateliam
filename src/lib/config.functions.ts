@@ -21,6 +21,7 @@ import {
   normalizeCodeSettings,
   normalizeSigla,
 } from "@/lib/code-generation";
+import { suggestAreaSigla } from "@/lib/mapping-temporary-areas";
 
 type AppRole = "admin" | "editor" | "viewer";
 type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
@@ -853,6 +854,58 @@ export const saveProcessArea = createServerFn({ method: "POST" })
     const { data: row, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+export const saveSuggestedProcessArea = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: unknown) =>
+    organizationScopeSchema
+      .extend({
+        name: z.string().trim().min(2).max(120),
+        preferredSigla: z.string().trim().max(3).optional().nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
+    const { data: departments, error: listError } = await context.supabase
+      .from("organization_departments")
+      .select("id,name,sigla")
+      .eq("organization_id", access.organizationId);
+    if (listError) throw new Error(listError.message);
+    const existing = (departments ?? []).find(
+      (area) => normalizePortalText(area.name) === normalizePortalText(data.name),
+    );
+    if (existing) return existing;
+    const used = (departments ?? []).map((area) => area.sigla).filter(Boolean) as string[];
+    const preferred = normalizeSigla(data.preferredSigla);
+    const sigla =
+      preferred.length === 3 && !used.includes(preferred)
+        ? preferred
+        : suggestAreaSigla(data.name, used);
+    const { data: row, error } = await context.supabase
+      .from("organization_departments")
+      .insert({
+        organization_id: access.organizationId,
+        name: data.name.trim(),
+        sigla,
+        created_by: context.userId,
+      })
+      .select("id,name,sigla")
+      .single();
+    if (!error) return row;
+    if (error.code === "23505") {
+      const { data: concurrent, error: concurrentError } = await context.supabase
+        .from("organization_departments")
+        .select("id,name,sigla")
+        .eq("organization_id", access.organizationId);
+      if (concurrentError) throw new Error(concurrentError.message);
+      const match = (concurrent ?? []).find(
+        (area) => normalizePortalText(area.name) === normalizePortalText(data.name),
+      );
+      if (match) return match;
+    }
+    throw new Error(error.message);
   });
 
 export const saveProcessOwnerRegistration = createServerFn({ method: "POST" })
@@ -1754,10 +1807,21 @@ const bpmnSaveSchema = z.object({
     laneBindings: z.record(
       z.object({
         kind: z.enum(["area", "position"]),
-        id: z.string().uuid(),
+        id: z.string().min(1).max(200),
         name: z.string().max(500),
       }),
     ),
+    draftAreas: z
+      .array(
+        z.object({
+          id: z.string().regex(/^temporary-area:[0-9a-f-]{36}$/i),
+          name: z.string().trim().min(2).max(120),
+          sigla: z.string().regex(/^[A-Z]{3}$/),
+          status: z.literal("temporary"),
+        }),
+      )
+      .max(100)
+      .optional(),
     elementStyles: z
       .record(
         z.object({
@@ -1795,8 +1859,74 @@ export const saveBpmnDocument = createServerFn({ method: "POST" })
     if (processError || !process)
       throw new Error("Selecione um processo válido da organização ativa.");
     const bindings: typeof data.document.laneBindings = {};
+    const temporaryAreas = new Map((data.document.draftAreas ?? []).map((area) => [area.id, area]));
+    let registeredAreas: Array<{ id: string; name: string; sigla: string | null }> | undefined;
+    const resolveTemporaryArea = async (temporaryId: string) => {
+      const temporary = temporaryAreas.get(temporaryId);
+      if (!temporary) throw new Error("A área temporária do fluxograma não foi encontrada.");
+      if (!registeredAreas) {
+        const { data: areas, error } = await context.supabase
+          .from("organization_departments")
+          .select("id,name,sigla")
+          .eq("organization_id", access.organizationId);
+        if (error) throw new Error(error.message);
+        registeredAreas = areas ?? [];
+      }
+      const normalized = normalizePortalText(temporary.name);
+      const existing = registeredAreas.find(
+        (area) => normalizePortalText(area.name) === normalized,
+      );
+      if (existing) return existing;
+      const used = registeredAreas.map((area) => area.sigla).filter(Boolean) as string[];
+      const preferred = normalizeSigla(temporary.sigla);
+      const sigla =
+        preferred.length === 3 && !used.includes(preferred)
+          ? preferred
+          : suggestAreaSigla(temporary.name, used);
+      const { data: created, error } = await context.supabase
+        .from("organization_departments")
+        .insert({
+          organization_id: access.organizationId,
+          name: temporary.name,
+          sigla,
+          created_by: context.userId,
+        })
+        .select("id,name,sigla")
+        .single();
+      if (error) {
+        if (error.code === "23505") {
+          const { data: concurrent, error: concurrentError } = await context.supabase
+            .from("organization_departments")
+            .select("id,name,sigla")
+            .eq("organization_id", access.organizationId);
+          if (concurrentError) throw new Error(concurrentError.message);
+          const match = (concurrent ?? []).find(
+            (area) => normalizePortalText(area.name) === normalized,
+          );
+          if (match) {
+            registeredAreas = concurrent ?? [];
+            return match;
+          }
+        }
+        throw new Error(error.message);
+      }
+      registeredAreas.push(created);
+      return created;
+    };
     for (const [laneId, binding] of Object.entries(data.document.laneBindings)) {
       if (!inspection.lanes.some((l) => l.id === laneId)) continue;
+      const temporaryArea = binding.kind === "area" && temporaryAreas.has(binding.id);
+      if (temporaryArea && data.saveMode === "draft") {
+        bindings[laneId] = binding;
+        continue;
+      }
+      if (temporaryArea) {
+        const area = await resolveTemporaryArea(binding.id);
+        bindings[laneId] = { kind: "area", id: area.id, name: area.name };
+        continue;
+      }
+      if (!z.string().uuid().safeParse(binding.id).success)
+        throw new Error(`O responsável da raia ${laneId} é inválido. Selecione novamente.`);
       const table = binding.kind === "area" ? "organization_departments" : "organization_positions";
       const column = binding.kind === "area" ? "name" : "title";
       const result = await (context.supabase as any)
@@ -1811,7 +1941,13 @@ export const saveBpmnDocument = createServerFn({ method: "POST" })
         );
       bindings[laneId] = { ...binding, name: result.data[column] };
     }
-    const document = { ...data.document, processName: process.name, laneBindings: bindings };
+    const { draftAreas, ...documentWithoutTemporaryAreas } = data.document;
+    const document = {
+      ...documentWithoutTemporaryAreas,
+      ...(data.saveMode === "draft" && draftAreas?.length ? { draftAreas } : {}),
+      processName: process.name,
+      laneBindings: bindings,
+    };
     const { persistBpmnDocument } = await import("./bpmn-persistence.server");
     const { supabaseAdmin: versionStore } = await import("@/integrations/supabase/client.server");
     return persistBpmnDocument({
