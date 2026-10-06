@@ -12,14 +12,60 @@ export function AnnotationRenderer(eventBus: any, bpmnRenderer: any) {
     // The built-in annotation carries inline `fill: none; stroke: none` styles.
     // Override those styles so the colors remain visible and survive SVG export.
     rect.style.fill = di?.get("bioc:fill") || di?.get("color:background-color") || defaults.fill;
-    rect.style.stroke =
-      di?.get("bioc:stroke") || di?.get("color:border-color") || defaults.stroke;
+    rect.style.stroke = di?.get("bioc:stroke") || di?.get("color:border-color") || defaults.stroke;
     rect.style.strokeWidth = "2px";
     gfx.querySelector("path")?.remove();
     return rect;
   });
 }
 AnnotationRenderer.$inject = ["eventBus", "bpmnRenderer"];
+
+/** A pool owns the outer frame; its lanes draw only the dividers between bands. */
+export function LaneRenderer(eventBus: any, bpmnRenderer: any) {
+  eventBus.on("render.shape", 1500, (_event: any, context: any) => {
+    const { element, gfx, attrs } = context;
+    if (element.type !== "bpmn:Lane") return;
+
+    const rect = bpmnRenderer.drawShape(gfx, element, attrs);
+    let ancestor = element.parent;
+    while (ancestor && ancestor.type !== "bpmn:Participant") ancestor = ancestor.parent;
+    if (!ancestor) return rect;
+
+    const di = element.di || element.businessObject?.di;
+    const stroke =
+      di?.get("bioc:stroke") || di?.get("color:border-color") || BPMN_DEFAULT_COLORS.lane.stroke;
+    rect.style.setProperty("stroke", "none", "important");
+    const horizontal = element.di?.isHorizontal !== false;
+    const axis = horizontal ? "y" : "x";
+    const siblings = element.parent.children.filter(
+      (other: any) =>
+        other.type === "bpmn:Lane" &&
+        other.businessObject.$parent === element.businessObject.$parent,
+    );
+    if (!siblings.some((other: any) => other !== element && other[axis] < element[axis]))
+      return rect;
+
+    const parent = element.parent;
+    const divider = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    if (horizontal) {
+      divider.setAttribute("x1", String(parent.x + 30 - element.x));
+      divider.setAttribute("x2", String(parent.x + parent.width - element.x));
+      divider.setAttribute("y1", "0");
+      divider.setAttribute("y2", "0");
+    } else {
+      divider.setAttribute("x1", "0");
+      divider.setAttribute("x2", "0");
+      divider.setAttribute("y1", String(parent.y + 30 - element.y));
+      divider.setAttribute("y2", String(parent.y + parent.height - element.y));
+    }
+    divider.style.stroke = stroke;
+    divider.style.strokeWidth = "1.5px";
+    divider.style.pointerEvents = "none";
+    gfx.appendChild(divider);
+    return rect;
+  });
+}
+LaneRenderer.$inject = ["eventBus", "bpmnRenderer"];
 
 /** Importing must not round DI coordinates or resize existing external labels. */
 function PreserveDiagramGeometry(eventBus: any, elementRegistry: any, graphicsFactory: any) {
@@ -153,8 +199,9 @@ function translate(template: string, replacements: Record<string, string> = {}) 
 }
 export const bpmnEngineModules = [
   {
-    __init__: ["preserveDiagramGeometry", "annotationRenderer"],
+    __init__: ["preserveDiagramGeometry", "annotationRenderer", "laneRenderer"],
     annotationRenderer: ["type", AnnotationRenderer],
+    laneRenderer: ["type", LaneRenderer],
     preserveDiagramGeometry: ["type", PreserveDiagramGeometry],
     // The upstream compatibility importer moves collapsed subprocess DI to (180,160).
     // Existing BPMN planes must remain untouched; users can explicitly expand a subprocess.

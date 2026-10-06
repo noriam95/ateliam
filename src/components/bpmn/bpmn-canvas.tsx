@@ -666,9 +666,9 @@ export const BpmnCanvas = forwardRef<
               selection.find((e: any) => e.type === "bpmn:Lane" || e.type === "bpmn:Participant") ||
               m.get("elementRegistry").find((e: any) => e.type === "bpmn:Participant");
             if (!target) throw new Error("Adicione ou selecione um pool antes de criar raias.");
-            const lane = m.get("modeling").addLane(target, "bottom");
-            m.get("modeling").updateProperties(lane, { name: "A DEFINIR" });
-            m.get("selection").select(lane);
+            const insertion: any = { target, after: true };
+            m.get("commandStack").execute("bf.lane.insert", insertion);
+            m.get("selection").select(insertion.lane);
           }
         },
       }),

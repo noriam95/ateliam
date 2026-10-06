@@ -9,6 +9,55 @@ function poolOf(element: any): any {
   return element;
 }
 
+const containsPoint = (shape: any, x: number, y: number) =>
+  x >= shape.x && x <= shape.x + shape.width && y >= shape.y && y <= shape.y + shape.height;
+
+/** Pick a lane within the pool under the pointer, including its uncovered margins. */
+export function resolveLaneDrop(registry: any, root: any, event: any) {
+  const movingLane = event.context?.lane;
+  const pools = registry
+    .filter(
+      (shape: any) =>
+        shape.type === "bpmn:Participant" &&
+        shape.parent === root &&
+        !shape.hidden &&
+        containsPoint(shape, event.x, event.y),
+    )
+    .sort((a: any, b: any) => a.width * a.height - b.width * b.height);
+  const hoveredPool = poolOf(event.hover);
+  const pool = pools.includes(hoveredPool) ? hoveredPool : pools[0];
+  if (!pool || (movingLane && poolOf(movingLane) !== pool)) return null;
+  if (movingLane && containsPoint(movingLane, event.x, event.y)) return null;
+
+  const lanes = registry.filter(
+    (shape: any) =>
+      isLane(shape) &&
+      !shape.hidden &&
+      poolOf(shape) === pool &&
+      (movingLane
+        ? shape !== movingLane &&
+          shape.parent === movingLane.parent &&
+          shape.businessObject.$parent === movingLane.businessObject.$parent
+        : shape.parent === pool),
+  );
+  const containing = lanes
+    .filter((shape: any) => containsPoint(shape, event.x, event.y))
+    .sort((a: any, b: any) => a.width * a.height - b.width * b.height);
+  const nearest = lanes.sort((a: any, b: any) => {
+    const distance = (shape: any) => {
+      const axis = horizontal(shape) ? "y" : "x";
+      const size = axis === "y" ? "height" : "width";
+      return Math.max(shape[axis] - event[axis], 0, event[axis] - shape[axis] - shape[size]);
+    };
+    return distance(a) - distance(b);
+  });
+  const target = containing[0] || nearest[0] || (!movingLane ? pool : null);
+  if (!target) return null;
+  const axis = horizontal(target) ? "y" : "x";
+  const size = axis === "y" ? "height" : "width";
+  return { target, after: event[axis] > target[axis] + target[size] / 2 };
+}
+
 /** Reorders complete lane bands as one undoable command. Semantic membership is unchanged. */
 class ReorderLaneHandler {
   static $inject = ["elementRegistry", "modeling"];
@@ -125,12 +174,29 @@ class ReorderLaneHandler {
 }
 
 class InsertLaneHandler {
-  static $inject = ["modeling"];
-  constructor(private modeling: any) {}
+  static $inject = ["modeling", "bpmnFactory", "bpmnjs"];
+  constructor(
+    private modeling: any,
+    private bpmnFactory: any,
+    private bpmnjs: any,
+  ) {}
   preExecute(context: any) {
     if (!poolOf(context.target))
       throw new Error("A raia só pode ser inserida dentro de uma piscina.");
-    context.lane = this.modeling.addLane(context.target, context.after ? "bottom" : "top");
+    if (context.target.type === "bpmn:Participant" && !context.target.businessObject.processRef) {
+      const definitions = this.bpmnjs.getDefinitions();
+      const process = this.bpmnFactory.create("bpmn:Process", { isExecutable: false });
+      this.modeling.updateModdleProperties(context.target, definitions, {
+        rootElements: [...definitions.rootElements, process],
+      });
+      this.modeling.updateProperties(context.target, { processRef: process });
+    }
+    if (context.target.type === "bpmn:Participant" && !context.target.children.some(isLane)) {
+      this.modeling.splitLane(context.target, 1);
+      context.lane = context.target.children.find(isLane);
+    } else {
+      context.lane = this.modeling.addLane(context.target, context.after ? "bottom" : "top");
+    }
     this.modeling.updateProperties(context.lane, { name: "A DEFINIR" });
   }
   execute() {
@@ -166,36 +232,7 @@ export class LaneDrag {
     indicator.className = "bf-bpmn-lane-drop";
     indicator.style.display = "none";
     canvas.getContainer().append(indicator);
-    const destination = (event: any) => {
-      const root = canvas.getRootElement();
-      const candidates = registry.filter(
-        (e: any) =>
-          (isLane(e) || e.type === "bpmn:Participant") &&
-          !e.hidden &&
-          poolOf(e)?.parent === root &&
-          event.x >= e.x &&
-          event.x <= e.x + e.width &&
-          event.y >= e.y &&
-          event.y <= e.y + e.height,
-      );
-      const target =
-        candidates
-          .filter(isLane)
-          .sort((a: any, b: any) => a.width * a.height - b.width * b.height)[0] || candidates[0];
-      const lane = event.context.lane;
-      if (
-        !target ||
-        (lane &&
-          (!isLane(target) ||
-            target.parent !== lane.parent ||
-            target.businessObject.$parent !== lane.businessObject.$parent ||
-            target === lane))
-      )
-        return null;
-      const axis = horizontal(target) ? "y" : "x";
-      const size = axis === "y" ? "height" : "width";
-      return { target, after: event[axis] > target[axis] + target[size] / 2 };
-    };
+    const destination = (event: any) => resolveLaneDrop(registry, canvas.getRootElement(), event);
     eventBus.on("element.mousedown", 2500, (event: any) => {
       const lane = event.element;
       if (!isLane(lane) || event.originalEvent.button !== 0 || dragging.context()) return;
