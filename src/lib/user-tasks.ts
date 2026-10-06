@@ -143,6 +143,9 @@ export function monthDays(month: string) {
 export function documentTaskUrl(task: UserTask, item: TaskItem, document: TaskDocument) {
   return `/m/${document.module}?document=${document.id}&task=${task.id}&item=${encodeURIComponent(item.key)}&taskOrg=${task.organization_id}`;
 }
+export function documentTaskPreviewUrl(task: UserTask, item: TaskItem, document: TaskDocument) {
+  return `${documentTaskUrl(task, item, document)}&view=task-preview`;
+}
 
 export const TASK_STAGE_LABELS = {
   registration: "Preencher solicitação",

@@ -1,8 +1,11 @@
-import { Paperclip, Send, FileText, Download, LoaderCircle } from "lucide-react";
+import { Paperclip, Send, FileText } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { UserTask, TaskAction } from "@/lib/user-tasks";
-type Attachment = { path: string; name: string; size: number };
+import {
+  TaskAttachmentActions,
+  type TaskAttachment as Attachment,
+} from "./task-attachment-actions";
 export function TaskComment({
   task,
   userId,
@@ -147,7 +150,6 @@ export function TaskComment({
   );
 }
 export function CommentAttachment({ attachment }: { attachment: Attachment }) {
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
     <div className="ut-attachment-download">
@@ -161,46 +163,12 @@ export function CommentAttachment({ attachment }: { attachment: Attachment }) {
               : `${(attachment.size / 1048576).toFixed(1)} MB`}
           </small>
         </span>
-        <button
+        <TaskAttachmentActions
+          attachment={attachment}
           className="ut-icon-action"
-          disabled={busy}
-          aria-label={`Baixar ${attachment.name}`}
-          title={`Baixar ${attachment.name}`}
-          onClick={async () => {
-            setBusy(true);
-            setError("");
-            try {
-              const result = await supabase.storage
-                .from("user-task-files")
-                .download(attachment.path);
-              if (result.error) throw result.error;
-              const url = URL.createObjectURL(result.data);
-              const anchor = document.createElement("a");
-              anchor.href = url;
-              anchor.download = attachment.name;
-              document.body.append(anchor);
-              anchor.click();
-              anchor.remove();
-              window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-            } catch (cause) {
-              setError(
-                cause instanceof Error
-                  ? cause.message
-                  : "Não foi possível baixar o arquivo. Tente novamente.",
-              );
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          {busy ? <LoaderCircle size={16} /> : <Download size={16} />}
-        </button>
+          onError={setError}
+        />
       </div>
-      {busy && (
-        <span className="ut-sr-only" role="status">
-          Preparando arquivo…
-        </span>
-      )}
       {error && (
         <p className="ut-error" role="alert">
           {error}

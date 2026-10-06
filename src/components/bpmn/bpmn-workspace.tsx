@@ -41,6 +41,7 @@ export function BpmnWorkspace({
   requestedOrganization,
   newDrawing = false,
   portalPreview = false,
+  taskPreview = false,
   embedded = false,
   taskId,
   itemKey,
@@ -49,6 +50,7 @@ export function BpmnWorkspace({
   requestedOrganization?: string;
   newDrawing?: boolean;
   portalPreview?: boolean;
+  taskPreview?: boolean;
   embedded?: boolean;
   taskId?: string;
   itemKey?: string;
@@ -79,7 +81,7 @@ export function BpmnWorkspace({
     key: string;
   } | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [viewOnly, setViewOnly] = useState(portalPreview);
+  const [viewOnly, setViewOnly] = useState(portalPreview || taskPreview);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [modal, setModal] = useState<"new" | "import" | null>(null);
@@ -172,8 +174,8 @@ export function BpmnWorkspace({
     }
   }, [organizationId, documentId, loadDocument]);
   useEffect(() => {
-    if (portalPreview) setViewOnly(true);
-  }, [portalPreview]);
+    if (portalPreview || taskPreview) setViewOnly(true);
+  }, [portalPreview, taskPreview]);
   useEffect(() => {
     if (newDrawing && canEdit && !documentId) setModal("new");
   }, [newDrawing, canEdit, documentId]);

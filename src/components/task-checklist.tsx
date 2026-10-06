@@ -1,11 +1,18 @@
 import { documentLabel } from "@/lib/document-label";
 import { TaskDocumentPreview } from "./task-delivery-export";
-import { Pencil, Trash2, Eye, Paperclip, Plus, Download } from "lucide-react";
+import { Pencil, Trash2, Eye, Paperclip, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { documentTaskUrl, type TaskAction, type TaskItem, type UserTask } from "@/lib/user-tasks";
+import {
+  documentTaskPreviewUrl,
+  documentTaskUrl,
+  type TaskAction,
+  type TaskItem,
+  type UserTask,
+} from "@/lib/user-tasks";
 import { DEFAULT_MAPPING_SECTIONS } from "@/lib/user-tasks";
 import { TaskDialog } from "./task-dialog";
+import { TaskAttachmentActions } from "./task-attachment-actions";
 
 type Props = {
   task: UserTask;
@@ -24,7 +31,6 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
   const [type, setType] = useState("file");
   const [optional, setOptional] = useState(false);
   const [error, setError] = useState("");
-  const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
   const [entryId, setEntryId] = useState(() => crypto.randomUUID());
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploadKey, setUploadKey] = useState("");
@@ -139,29 +145,11 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                       {item.entry_type === "file" ? (
                         item.attachment ? (
                           <div className="ut-entry-actions">
-                            <button
-                              className="ut-icon-button"
-                              aria-label="Baixar anexo"
-                              title="Baixar anexo"
+                            <TaskAttachmentActions
+                              attachment={item.attachment}
                               disabled={busy}
-                              onClick={async () => {
-                                setError("");
-                                setDownload(null);
-                                try {
-                                  const { data, error: err } = await supabase.storage
-                                    .from("user-task-files")
-                                    .createSignedUrl(item.attachment!.path, 60, {
-                                      download: item.attachment!.name,
-                                    });
-                                  if (err) throw err;
-                                  setDownload({ url: data.signedUrl, name: item.attachment!.name });
-                                } catch (err) {
-                                  setError((err as Error).message);
-                                }
-                              }}
-                            >
-                              <Download size={16} />
-                            </button>
+                              onError={setError}
+                            />
                             {canEdit && (
                               <>
                                 <button
@@ -203,13 +191,31 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                         )
                       ) : item.document_id ? (
                         <div className="ut-entry-actions">
-                          {!canEdit ? (
-                            <TaskDocumentPreview task={task} documentId={item.document_id} />
-                          ) : (
+                          {module === "bpmn" ? (
                             <a
                               className="ut-button ut-icon-button"
-                              aria-label={canEdit ? "Editar documento" : "Visualizar documento"}
-                              title={canEdit ? "Editar documento" : "Visualizar documento"}
+                              aria-label="Visualizar fluxograma"
+                              title="Visualizar fluxograma"
+                              target="_blank"
+                              rel="noreferrer"
+                              href={documentTaskPreviewUrl(task, item, {
+                                id: item.document_id,
+                                module,
+                                name: item.label,
+                                code: "",
+                                current_version: 0,
+                              })}
+                            >
+                              <Eye size={16} />
+                            </a>
+                          ) : (
+                            <TaskDocumentPreview task={task} documentId={item.document_id} />
+                          )}
+                          {canEdit && (
+                            <a
+                              className="ut-button ut-icon-button"
+                              aria-label="Editar documento"
+                              title="Editar documento"
                               href={documentTaskUrl(task, item, {
                                 id: item.document_id,
                                 module,
@@ -287,14 +293,6 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
           </details>
         );
       })}
-      {download && (
-        <p>
-          <a className="ut-button" href={download.url} download={download.name}>
-            Salvar {download.name}
-          </a>
-          <small>Link disponível por 1 minuto.</small>
-        </p>
-      )}
       {error && (
         <p className="ut-error" role="alert">
           {error}

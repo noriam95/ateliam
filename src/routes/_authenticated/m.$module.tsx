@@ -156,7 +156,8 @@ import {
 import { MODULES, type AteliamModule } from "@/lib/workspace-bridge";
 import { toast } from "sonner";
 
-type ModuleRouteView = "new" | "consult" | "preview" | "cause-new" | "cause-consult" | "cause-edit";
+type ModuleRouteView =
+  "new" | "consult" | "preview" | "task-preview" | "cause-new" | "cause-consult" | "cause-edit";
 
 // Tipo de documento (modalidade) associado a cada módulo. O módulo POP é
 // resolvido por subtipo (POP/IT/Norma) em documentDocType().
@@ -226,6 +227,7 @@ const MODULE_ROUTE_VIEWS = new Set<ModuleRouteView>([
   "new",
   "consult",
   "preview",
+  "task-preview",
   "cause-new",
   "cause-consult",
   "cause-edit",
@@ -6380,6 +6382,7 @@ function ModuleEntry() {
           requestedOrganization={search.taskOrg}
           newDrawing={search.view === "new"}
           portalPreview={search.view === "preview"}
+          taskPreview={search.view === "task-preview"}
           embedded={search.embedded}
           taskId={search.task}
           itemKey={search.item}
