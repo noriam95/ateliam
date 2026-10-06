@@ -166,7 +166,6 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 - Consultas dos módulos: cabeçalho, pesquisa, tabela, seleção, ordenação, ações e rodapé seguem o padrão visual da biblioteca de Desenhos. Não há filtros separados; a pesquisa usa palavras-chave em todas as colunas visíveis. Em Desenhos, pesquisa e ordenação consideram o conjunto completo antes da paginação.
 - A consulta de Mapeamentos oferece criação manual e inclusão pelo assistente; a segunda ação inicia um novo mapeamento e abre diretamente a importação por DOCX ou texto estruturado. Todas as tabelas de consulta permitem ordenar as colunas de dados pelo próprio cabeçalho.
 - Navegação do editor — 05/10/2026: a barra começa com o logotipo compartilhado `BFFlowMark`, alternando automaticamente entre os temas claro e escuro e levando à Home. O retorno à consulta de desenhos fica em um controle separado, com chevron e rótulo visível “Desenhos”; o grupo Arquivo contém somente ações sobre o arquivo. Ambas as saídas preservam a proteção contra alterações não salvas.
-- Importação no editor — 06/10/2026: o grupo Arquivo apresenta “Importar” com rótulo visível e abre o mesmo assistente de quatro etapas da biblioteca. A substituição do desenho aberto exige confirmação e mantém o salvamento como uma ação posterior e explícita.
 
 ## Portal de Documentos — 05/10/2026
 

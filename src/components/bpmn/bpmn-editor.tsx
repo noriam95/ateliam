@@ -560,14 +560,12 @@ export function BpmnEditor({
             <span>Arquivo</span>
             <div className="bf-bpmn-tool-grid">
               <button
-                className="bf-bpmn-import-action"
                 aria-label="Importar BPMN"
-                title="Importar arquivo BPMN"
+                title="Importar BPMN"
                 disabled={busy || !ready}
                 onClick={() => setImporting(true)}
               >
                 <Upload size={16} />
-                <span>Importar</span>
               </button>
               <button
                 aria-label="Exportar"
