@@ -56,12 +56,16 @@ export type BpmnCanvasHandle = {
 const svgNamespace = "http://www.w3.org/2000/svg";
 const annotationTextPadding = 12;
 
-function wrapAnnotationText(
+function wrapBpmnText(
   text: SVGTextElement,
   content: string,
   width: number,
+  height: number,
   fontSize: number,
   style: BpmnTextStyle | undefined,
+  defaultAlign: "left" | "center",
+  verticalAlign: "top" | "middle",
+  padding: number,
 ) {
   const measureSurface = document.createElement("canvas");
   const context = measureSurface.getContext("2d");
@@ -71,7 +75,7 @@ function wrapAnnotationText(
   const fontWeight = style?.bold ? "700" : getComputedStyle(text).fontWeight || "400";
   const fontStyle = style?.italic ? "italic" : getComputedStyle(text).fontStyle || "normal";
   context.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-  const maxWidth = Math.max(1, width - annotationTextPadding * 2);
+  const maxWidth = Math.max(1, width - padding * 2);
   const lines: string[] = [];
   const addWord = (line: string, word: string) => {
     const candidate = line ? `${line} ${word}` : word;
@@ -103,15 +107,20 @@ function wrapAnnotationText(
     lines.push(line);
   }
 
-  const anchor = style?.align === "right" ? "end" : style?.align === "center" ? "middle" : "start";
-  const x = anchor === "end" ? width - annotationTextPadding : anchor === "middle" ? width / 2 : annotationTextPadding;
+  const align = style?.align || defaultAlign;
+  const anchor = align === "right" ? "end" : align === "center" ? "middle" : "start";
+  const x = anchor === "end" ? width - padding : anchor === "middle" ? width / 2 : padding;
   const lineHeight = fontSize * 1.2;
+  const firstBaseline =
+    verticalAlign === "middle"
+      ? Math.max(fontSize, (height - lines.length * lineHeight) / 2 + fontSize)
+      : padding + fontSize;
   text.setAttribute("text-anchor", anchor);
   text.replaceChildren(
     ...lines.map((line, index) => {
       const span = document.createElementNS(svgNamespace, "tspan");
       span.setAttribute("x", String(x));
-      span.setAttribute("y", String(annotationTextPadding + fontSize + index * lineHeight));
+      span.setAttribute("y", String(firstBaseline + index * lineHeight));
       span.textContent = line;
       return span;
     }),
@@ -139,17 +148,25 @@ function paintCanvasExtensions(instance: any, styles: Record<string, BpmnTextSty
         style?.align === "left" ? "start" : style?.align === "right" ? "end" : "";
     });
 
-    if (element.type === "bpmn:TextAnnotation") {
+    const isAnnotation = element.type === "bpmn:TextAnnotation";
+    const isActivity = Boolean(element.businessObject?.$instanceOf?.("bpmn:Activity"));
+    if (isAnnotation || isActivity) {
       const text = graphics.querySelector<SVGTextElement>(".djs-label");
       if (text) {
-        const textStyle = styles[element.id];
+        const textStyle = styles[element.labelTarget?.id || element.id];
         const fontSize = textStyle?.fontSize || Number.parseFloat(getComputedStyle(text).fontSize) || 12;
-        wrapAnnotationText(
+        wrapBpmnText(
           text,
-          element.businessObject?.text || text.textContent || "",
+          (isAnnotation ? element.businessObject?.text : element.businessObject?.name) ||
+            text.textContent ||
+            "",
           element.width,
+          element.height,
           fontSize,
           textStyle,
+          isAnnotation ? "left" : "center",
+          isAnnotation ? "top" : "middle",
+          isAnnotation ? annotationTextPadding : 10,
         );
       }
     }
