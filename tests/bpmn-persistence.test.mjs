@@ -51,6 +51,9 @@ function client(failVersionInsert = () => false) {
       async function execute() {
         if (table === "document_versions" && mutation === "insert" && failVersionInsert())
           return { data: null, error: { message: "simulated history outage" } };
+        // Simulate PostgreSQL JSONB normalization performed by production triggers.
+        if (table === "document_versions" && mutation === "insert")
+          payload.content_snapshot = JSON.stringify(JSON.parse(payload.content_snapshot), null, 2);
         const values = [];
         const param = (value) => {
           values.push(value);

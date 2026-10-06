@@ -3,6 +3,27 @@ import type { Database } from "@/integrations/supabase/types";
 import type { BpmnDocument } from "./bpmn-document";
 import { mappingCodeForMode } from "./document-label";
 
+function canonicalJson(value: unknown): string {
+  const parsed = typeof value === "string" ? JSON.parse(value) : value;
+  const sortKeys = (item: unknown): unknown => {
+    if (Array.isArray(item)) return item.map(sortKeys);
+    if (item && typeof item === "object")
+      return Object.fromEntries(
+        Object.entries(item).sort(([left], [right]) => left.localeCompare(right)),
+      );
+    return item;
+  };
+  return JSON.stringify(sortKeys(parsed));
+}
+
+function snapshotsMatch(stored: string, expected: string): boolean {
+  try {
+    return canonicalJson(stored) === canonicalJson(expected);
+  } catch {
+    return stored === expected;
+  }
+}
+
 /** Authorization and catalog validation happen in saveBpmnDocument before this repository call. */
 export async function persistBpmnDocument({
   supabase,
@@ -56,7 +77,7 @@ export async function persistBpmnDocument({
     const before = await find();
     if (before.error) throw new Error(before.error.message);
     if (before.data) {
-      if (before.data.content_snapshot !== snapshotContent)
+      if (!snapshotsMatch(before.data.content_snapshot, snapshotContent))
         throw new Error("CONFLICT: Histórico de versões inconsistente.");
       return;
     }
@@ -73,7 +94,7 @@ export async function persistBpmnDocument({
       .single();
     if (inserted.error) {
       const raced = await find();
-      if (raced.data?.content_snapshot !== snapshotContent)
+      if (!raced.data || !snapshotsMatch(raced.data.content_snapshot, snapshotContent))
         throw new Error(
           "Não foi possível concluir o histórico. Tente salvar novamente: " +
             inserted.error.message,
