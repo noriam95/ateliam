@@ -5,7 +5,24 @@ export function RectangleSelection(
   elementRegistry: any,
   lassoTool: any,
   dragging: any,
+  selection: any,
 ) {
+  eventBus.on("element.click", 2000, (event: any) => {
+    const original = event.originalEvent;
+    const element = event.element;
+    if (
+      original.button !== 0 ||
+      !(original.ctrlKey || original.metaKey) ||
+      !element?.parent
+    )
+      return;
+
+    if (selection.isSelected(element)) selection.deselect(element);
+    else selection.select(element, true);
+    original.preventDefault();
+    return false;
+  });
+
   eventBus.on("element.mousedown", 2000, (event: any) => {
     const original = event.originalEvent,
       element = event.element;
@@ -41,7 +58,14 @@ export function RectangleSelection(
     context.marked = next;
   });
 }
-RectangleSelection.$inject = ["eventBus", "canvas", "elementRegistry", "lassoTool", "dragging"];
+RectangleSelection.$inject = [
+  "eventBus",
+  "canvas",
+  "elementRegistry",
+  "lassoTool",
+  "dragging",
+  "selection",
+];
 export const bpmnSelectionModule = {
   __init__: ["rectangleSelection"],
   rectangleSelection: ["type", RectangleSelection],
