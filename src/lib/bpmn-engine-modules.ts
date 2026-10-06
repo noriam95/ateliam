@@ -1,16 +1,17 @@
 import { BPMN_DEFAULT_COLORS } from "./bpmn-colors";
-import BpmnRules from "bpmn-js/lib/features/rules/BpmnRules";
+import RuleProvider from "diagram-js/lib/features/rules/RuleProvider";
 
-/** Enables all resize directions for BF Flow's rectangular text annotations. */
-export function BfBpmnRules(eventBus: any) {
-  BpmnRules.call(this, eventBus);
+/** Allows the note shape to use the same resize directions as activities. */
+export function AnnotationResizeRules(eventBus: any) {
+  RuleProvider.call(this, eventBus);
 }
-BfBpmnRules.prototype = Object.create(BpmnRules.prototype);
-BfBpmnRules.prototype.constructor = BfBpmnRules;
-BfBpmnRules.$inject = ["eventBus"];
-BfBpmnRules.prototype.canResize = function (shape: any, newBounds?: any, direction?: string) {
-  if (shape?.type === "bpmn:TextAnnotation") return true;
-  return BpmnRules.prototype.canResize.call(this, shape, newBounds, direction);
+AnnotationResizeRules.prototype = Object.create(RuleProvider.prototype);
+AnnotationResizeRules.prototype.constructor = AnnotationResizeRules;
+AnnotationResizeRules.$inject = ["eventBus"];
+AnnotationResizeRules.prototype.init = function () {
+  this.addRule("shape.resize", 2000, (context: any) => {
+    if (context.shape?.type === "bpmn:TextAnnotation") return true;
+  });
 };
 
 /** Keep native BPMN text editing and semantics, but draw annotations as filled notes. */
@@ -40,6 +41,11 @@ export function LaneRenderer(eventBus: any, bpmnRenderer: any) {
     if (element.type !== "bpmn:Lane") return;
 
     const rect = bpmnRenderer.drawShape(gfx, element, attrs);
+    const label = gfx.querySelector(".djs-label");
+    if (label) {
+      const offset = element.di?.isHorizontal === false ? "translate(0 30)" : "translate(30 0)";
+      label.setAttribute("transform", `${offset} ${label.getAttribute("transform") || ""}`.trim());
+    }
     let ancestor = element.parent;
     while (ancestor && ancestor.type !== "bpmn:Participant") ancestor = ancestor.parent;
     if (!ancestor) return rect;
@@ -212,11 +218,16 @@ function translate(template: string, replacements: Record<string, string> = {}) 
 }
 export const bpmnEngineModules = [
   {
-    __init__: ["preserveDiagramGeometry", "annotationRenderer", "laneRenderer"],
+    __init__: [
+      "preserveDiagramGeometry",
+      "annotationRenderer",
+      "annotationResizeRules",
+      "laneRenderer",
+    ],
     annotationRenderer: ["type", AnnotationRenderer],
     laneRenderer: ["type", LaneRenderer],
     preserveDiagramGeometry: ["type", PreserveDiagramGeometry],
-    bpmnRules: ["type", BfBpmnRules],
+    annotationResizeRules: ["type", AnnotationResizeRules],
     // The upstream compatibility importer moves collapsed subprocess DI to (180,160).
     // Existing BPMN planes must remain untouched; users can explicitly expand a subprocess.
     subprocessCompatibility: ["value", {}],
