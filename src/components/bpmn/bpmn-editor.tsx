@@ -162,6 +162,7 @@ export function BpmnEditor({
   const [propertySection, setPropertySection] = useState<"element" | "document">("document");
   const [exportMenu, setExportMenu] = useState(false);
   const [selection, setSelection] = useState<CanvasSelection>(null);
+  const [fontSizeDraft, setFontSizeDraft] = useState("12");
   const [elementName, setElementName] = useState("");
   const [laneKind, setLaneKind] = useState<"area" | "position">("area");
   const [error, setError] = useState("");
@@ -212,6 +213,9 @@ export function BpmnEditor({
   const activeTextStyle = selection
     ? document.elementStyles?.[selection.id] || {}
     : ({} as BpmnTextStyle);
+  useEffect(() => {
+    setFontSizeDraft(String(activeTextStyle.fontSize || 12));
+  }, [selection?.id, activeTextStyle.fontSize]);
   const canFormat = Boolean(selection && !selection.isImage);
   const applyTextStyle = (patch: Partial<BpmnTextStyle>) => {
     const ids = canvas.current?.formatText(patch) || [];
@@ -221,6 +225,25 @@ export function BpmnEditor({
       next[id] = { ...(next[id] || {}), ...patch };
     });
     update({ elementStyles: next });
+  };
+  const commitFontSize = () => {
+    const requested = Number(fontSizeDraft);
+    if (!fontSizeDraft.trim() || !Number.isFinite(requested)) {
+      setFontSizeDraft(String(activeTextStyle.fontSize || 12));
+      return;
+    }
+    const fontSize = Math.max(8, Math.min(72, Math.round(requested)));
+    setFontSizeDraft(String(fontSize));
+    applyTextStyle({ fontSize });
+  };
+  const adjustFontSize = (difference: number) => {
+    const draft = Number(fontSizeDraft);
+    const current = Number.isFinite(draft) && fontSizeDraft.trim()
+      ? draft
+      : activeTextStyle.fontSize || 12;
+    const fontSize = Math.max(8, Math.min(72, current + difference));
+    setFontSizeDraft(String(fontSize));
+    applyTextStyle({ fontSize });
   };
   const copyFormatting = () => {
     if (!selection || selection.isImage) return;
@@ -650,33 +673,32 @@ export function BpmnEditor({
                   aria-label="Diminuir tamanho da fonte"
                   title="Diminuir tamanho da fonte"
                   disabled={!canFormat}
-                  onClick={() =>
-                    applyTextStyle({ fontSize: Math.max(8, (activeTextStyle.fontSize || 12) - 1) })
-                  }
+                  onClick={() => adjustFontSize(-1)}
                 >
                   <Minus size={15} strokeWidth={2.2} />
                 </button>
                 <input
                   aria-label="Tamanho da fonte em pontos"
                   title="Tamanho da fonte em pontos"
-                  type="number"
-                  min="8"
-                  max="72"
+                  type="text"
+                  inputMode="numeric"
                   disabled={!canFormat}
-                  value={activeTextStyle.fontSize || 12}
-                  onChange={(e) =>
-                    applyTextStyle({
-                      fontSize: Math.max(8, Math.min(72, Number(e.target.value) || 12)),
-                    })
-                  }
+                  value={fontSizeDraft}
+                  onChange={(e) => setFontSizeDraft(e.target.value.replace(/\D/g, ""))}
+                  onBlur={commitFontSize}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitFontSize();
+                      e.currentTarget.blur();
+                    }
+                  }}
                 />
                 <button
                   aria-label="Aumentar tamanho da fonte"
                   title="Aumentar tamanho da fonte"
                   disabled={!canFormat}
-                  onClick={() =>
-                    applyTextStyle({ fontSize: Math.min(72, (activeTextStyle.fontSize || 12) + 1) })
-                  }
+                  onClick={() => adjustFontSize(1)}
                 >
                   <Plus size={15} strokeWidth={2.2} />
                 </button>

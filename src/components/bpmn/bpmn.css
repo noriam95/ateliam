@@ -1819,7 +1819,7 @@ dialog.bf-bpmn-import {
   gap: 2px;
   width: 108px;
 }
-.bf-bpmn-font-size-control > input[type="number"] {
+.bf-bpmn-font-size-control > input {
   width: 46px;
   height: 26px;
   padding: 2px 4px;
@@ -1830,11 +1830,6 @@ dialog.bf-bpmn-import {
   font-size: 11px;
   text-align: center;
   appearance: textfield;
-}
-.bf-bpmn-font-size-control > input[type="number"]::-webkit-inner-spin-button,
-.bf-bpmn-font-size-control > input[type="number"]::-webkit-outer-spin-button {
-  margin: 0;
-  appearance: none;
 }
 .bf-bpmn-color-tool {
   position: relative;
