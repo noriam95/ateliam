@@ -46,20 +46,25 @@ export function LaneRenderer(eventBus: any, bpmnRenderer: any) {
     if (element.type !== "bpmn:Lane") return;
 
     const rect = bpmnRenderer.drawShape(gfx, element, attrs);
-    const label = gfx.querySelector(".djs-label");
-    if (label) {
-      const offset = element.di?.isHorizontal === false ? "translate(0 30)" : "translate(30 0)";
-      label.setAttribute("transform", `${offset} ${label.getAttribute("transform") || ""}`.trim());
-    }
     let ancestor = element.parent;
     while (ancestor && ancestor.type !== "bpmn:Participant") ancestor = ancestor.parent;
     if (!ancestor) return rect;
+
+    const horizontal = element.di?.isHorizontal !== false;
+    const label = gfx.querySelector(".djs-label");
+    if (label) {
+      // Center lane names in the 30 px band after the participant title band,
+      // even when imported lane bounds do not start at the participant edge.
+      const offset = horizontal
+        ? `translate(${ancestor.x + 30 - element.x} 0)`
+        : `translate(0 ${ancestor.y + 30 - element.y})`;
+      label.setAttribute("transform", `${offset} ${label.getAttribute("transform") || ""}`.trim());
+    }
 
     const di = element.di || element.businessObject?.di;
     const stroke =
       di?.get("bioc:stroke") || di?.get("color:border-color") || BPMN_DEFAULT_COLORS.lane.stroke;
     rect.style.setProperty("stroke", "none", "important");
-    const horizontal = element.di?.isHorizontal !== false;
     const axis = horizontal ? "y" : "x";
     const siblings = element.parent.children.filter(
       (other: any) =>
