@@ -53,11 +53,19 @@ export async function exportBpmnPng(modeler: any): Promise<Blob> {
     height = Number(root.getAttribute("height"));
   if (!(width > 0 && height > 0))
     throw new Error("O desenho está vazio ou possui dimensões inválidas.");
+  // Reserve a small footer so the brand mark never covers a BPMN element.
+  const footerHeight = 48;
+  const exportHeight = height + footerHeight;
   // Two pixels per diagram unit, bounded to avoid browser canvas allocation failures.
-  const scale = Math.min(2, 8192 / width, 8192 / height, Math.sqrt(32_000_000 / (width * height)));
+  const scale = Math.min(
+    2,
+    8192 / width,
+    8192 / exportHeight,
+    Math.sqrt(32_000_000 / (width * exportHeight)),
+  );
   const surface = document.createElement("canvas");
   surface.width = Math.max(1, Math.ceil(width * scale));
-  surface.height = Math.max(1, Math.ceil(height * scale));
+  surface.height = Math.max(1, Math.ceil(exportHeight * scale));
   const context = surface.getContext("2d");
   if (!context) throw new Error("Seu navegador não conseguiu gerar a imagem PNG.");
   const url = URL.createObjectURL(
@@ -71,7 +79,24 @@ export async function exportBpmnPng(modeler: any): Promise<Blob> {
     await image.decode();
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, surface.width, surface.height);
-    context.drawImage(image, 0, 0, surface.width, surface.height);
+    context.drawImage(image, 0, 0, surface.width, Math.ceil(height * scale));
+
+    const brand = new Image();
+    brand.src = "/brand/bom-futuro-watermark.png";
+    await brand.decode();
+    const watermarkWidth = Math.min(120, width * 0.22) * scale;
+    const watermarkHeight = (watermarkWidth * brand.naturalHeight) / brand.naturalWidth;
+    const inset = 12 * scale;
+    context.save();
+    context.globalAlpha = 0.88;
+    context.drawImage(
+      brand,
+      Math.max(0, surface.width - watermarkWidth - inset),
+      Math.ceil(height * scale) + (footerHeight * scale - watermarkHeight) / 2,
+      watermarkWidth,
+      watermarkHeight,
+    );
+    context.restore();
     return await new Promise<Blob>((resolve, reject) =>
       surface.toBlob(
         (blob) =>
