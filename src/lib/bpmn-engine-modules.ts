@@ -4,6 +4,11 @@ import RuleProvider from "diagram-js/lib/features/rules/RuleProvider";
 /** Allows the note shape to use the same resize directions as activities. */
 export function AnnotationResizeRules(eventBus: any) {
   RuleProvider.call(this, eventBus);
+  eventBus.on("commandStack.shape.resize.preExecute", 500, ({ context }: any) => {
+    if (context.shape?.type !== "bpmn:TextAnnotation") return;
+    // Preserve the user-sized box; the native renderer wraps its text in that box.
+    context.hints = { ...context.hints, autoResize: true };
+  });
 }
 AnnotationResizeRules.prototype = Object.create(RuleProvider.prototype);
 AnnotationResizeRules.prototype.constructor = AnnotationResizeRules;
@@ -61,10 +66,29 @@ export function LaneRenderer(eventBus: any, bpmnRenderer: any) {
         other.type === "bpmn:Lane" &&
         other.businessObject.$parent === element.businessObject.$parent,
     );
-    if (!siblings.some((other: any) => other !== element && other[axis] < element[axis]))
-      return rect;
+    const firstLane = !siblings.some((other: any) => other !== element && other[axis] < element[axis]);
 
     const parent = element.parent;
+    if (firstLane) {
+      const contentDivider = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      if (horizontal) {
+        contentDivider.setAttribute("x1", String(parent.x + 60 - element.x));
+        contentDivider.setAttribute("x2", String(parent.x + 60 - element.x));
+        contentDivider.setAttribute("y1", String(parent.y - element.y));
+        contentDivider.setAttribute("y2", String(parent.y + parent.height - element.y));
+      } else {
+        contentDivider.setAttribute("x1", String(parent.x - element.x));
+        contentDivider.setAttribute("x2", String(parent.x + parent.width - element.x));
+        contentDivider.setAttribute("y1", String(parent.y + 60 - element.y));
+        contentDivider.setAttribute("y2", String(parent.y + 60 - element.y));
+      }
+      contentDivider.style.stroke = stroke;
+      contentDivider.style.strokeWidth = "1px";
+      contentDivider.style.pointerEvents = "none";
+      gfx.appendChild(contentDivider);
+    }
+    if (firstLane) return rect;
+
     const divider = document.createElementNS("http://www.w3.org/2000/svg", "line");
     if (horizontal) {
       divider.setAttribute("x1", String(parent.x + 30 - element.x));
