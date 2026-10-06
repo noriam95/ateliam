@@ -556,10 +556,20 @@ export function BpmnEditor({
             </button>
           </nav>
 
-          <div className="bf-bpmn-tool-group">
+          <div className="bf-bpmn-tool-group bf-bpmn-file-group">
             <span>Arquivo</span>
-            <div className="bf-bpmn-tool-grid">
+            <div className="bf-bpmn-tool-grid bf-bpmn-file-grid">
               <button
+                aria-label={busy ? "Salvando" : "Salvar"}
+                title="Salvar desenho"
+                className="bf-bpmn-primary bf-bpmn-file-save"
+                disabled={busy || !ready}
+                onClick={() => setSaveMenu(true)}
+              >
+                <Save size={17} />
+              </button>
+              <button
+                className="bf-bpmn-file-import"
                 aria-label="Importar BPMN"
                 title="Importar BPMN"
                 disabled={busy || !ready}
@@ -568,6 +578,7 @@ export function BpmnEditor({
                 <Upload size={16} />
               </button>
               <button
+                className="bf-bpmn-file-export"
                 aria-label="Exportar"
                 title="Exportar desenho"
                 disabled={!ready || exporting}
@@ -575,18 +586,6 @@ export function BpmnEditor({
               >
                 <Download size={16} />
               </button>
-              <button
-                aria-label={busy ? "Salvando" : "Salvar"}
-                title="Salvar"
-                className="bf-bpmn-primary"
-                disabled={busy || !ready}
-                onClick={() => setSaveMenu(true)}
-              >
-                <Save size={16} />
-              </button>
-              <output className="bf-bpmn-toolbar-status" title={localStatus || notice || undefined}>
-                {busy ? "Salvando…" : dirty ? "Não salvo" : "Salvo"}
-              </output>
             </div>
           </div>
 
@@ -894,6 +893,15 @@ export function BpmnEditor({
       <div
         className={`bf-bpmn-workarea ${readOnly || paletteCollapsed ? "is-palette-collapsed" : ""}`}
       >
+        {!readOnly && (
+          <output
+            className="bf-bpmn-save-status"
+            data-state={busy ? "saving" : dirty ? "unsaved" : "saved"}
+            aria-live="polite"
+          >
+            {busy ? "Salvando…" : dirty ? "Não salvo" : "Salvo"}
+          </output>
+        )}
         {!readOnly && toolbarCollapsed && (
           <button
             className="bf-bpmn-toolbar-restore"

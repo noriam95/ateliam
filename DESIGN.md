@@ -153,7 +153,7 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 
 ## Editor BPMN compacto — 01/10/2026
 
-- O canvas ocupa toda a altura restante; o rodapé de identificação/status foi removido. O estado de salvamento fica no grupo Arquivo da barra superior.
+- O canvas ocupa toda a altura restante; o rodapé de identificação/status foi removido. O estado de salvamento aparece em um indicador pequeno e translúcido no canto superior direito da área de desenho, inclusive com a barra recolhida. No grupo Arquivo, o ícone Salvar fica à esquerda; Importar e Exportar são empilhados à direita.
 - A barra superior usa grupos Arquivo, Edição, Formatação, Visualização e Configurações, com controles compactos em duas linhas e separadores discretos. Ações contextualmente indisponíveis permanecem visíveis e desabilitadas. A barra pode ser recolhida sem alterar coordenadas BPMN DI.
 - Zoom, centralização, apresentação e ajuste à tela formam um controle flutuante translúcido no centro inferior do canvas. O painel de configurações abre sobre o desenho e não reduz sua largura.
 - Nomes de piscinas ficam ocultos somente na renderização. Nomes e vínculos das raias permanecem visíveis e os dados semânticos do processo continuam no XML.
