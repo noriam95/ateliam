@@ -339,10 +339,40 @@ async function regression() {
     ]);
     check(a.waypoints[1].x === 660, "editar pontos de conexão");
     stack.undo();
+    const annotation = engine.get("elementFactory").createShape({ type: "bpmn:TextAnnotation" });
+    modeling.createShape(annotation, { x: 320, y: 650 }, engine.get("canvas").getRootElement());
+    const noteRect = registry.getGraphics(annotation).querySelector(".djs-visual > rect");
+    check(
+      getComputedStyle(noteRect).fill === "rgb(255, 242, 179)" &&
+        !registry.getGraphics(annotation).querySelector(".djs-visual > path"),
+      "anotação criada como retângulo amarelo",
+    );
+    modeling.updateProperties(annotation, { text: "Observação editável" });
+    check(annotation.businessObject.text === "Observação editável", "editar texto da anotação");
+    modeling.resizeShape(annotation, {
+      x: annotation.x,
+      y: annotation.y,
+      width: 220,
+      height: annotation.height,
+    });
+    check(annotation.width === 220, "redimensionar anotação");
+    modeling.moveShape(annotation, { x: 20, y: 10 });
+    check(annotation.x > 220, "mover anotação");
+    modeling.removeShape(annotation);
+    check(!registry.get(annotation.id), "excluir anotação");
+    stack.undo();
     const finalXml = (await engine.saveXML({ format: true })).xml;
     engine.destroy();
     engine = new NavigatedViewer({ container: host, additionalModules: bpmnEngineModules });
     await engine.importXML(finalXml);
+    check(
+      engine
+        .get("elementRegistry")
+        .getGraphics(engine.get("elementRegistry").get(annotation.id))
+        .querySelector(".djs-visual > rect")
+        .style.fill === "#FFF2B3",
+      "anotação amarela ao reabrir desenho",
+    );
     check(!engine.get("modeling", false), "apresentação sem modelagem");
     check(!engine.get("commandStack", false), "apresentação sem comandos de edição");
     engine.get("canvas").zoom(0.7);

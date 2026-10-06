@@ -1,3 +1,26 @@
+import { BPMN_DEFAULT_COLORS } from "./bpmn-colors";
+
+/** Keep native BPMN text editing and semantics, but draw annotations as filled notes. */
+export function AnnotationRenderer(eventBus: any, bpmnRenderer: any) {
+  eventBus.on("render.shape", 1500, (_event: any, context: any) => {
+    const { element, gfx, attrs } = context;
+    if (element.type !== "bpmn:TextAnnotation") return;
+
+    const rect = bpmnRenderer.drawShape(gfx, element, attrs);
+    const di = element.di || element.businessObject?.di;
+    const defaults = BPMN_DEFAULT_COLORS.annotation;
+    // The built-in annotation carries inline `fill: none; stroke: none` styles.
+    // Override those styles so the colors remain visible and survive SVG export.
+    rect.style.fill = di?.get("bioc:fill") || di?.get("color:background-color") || defaults.fill;
+    rect.style.stroke =
+      di?.get("bioc:stroke") || di?.get("color:border-color") || defaults.stroke;
+    rect.style.strokeWidth = "2px";
+    gfx.querySelector("path")?.remove();
+    return rect;
+  });
+}
+AnnotationRenderer.$inject = ["eventBus", "bpmnRenderer"];
+
 /** Importing must not round DI coordinates or resize existing external labels. */
 function PreserveDiagramGeometry(eventBus: any, elementRegistry: any, graphicsFactory: any) {
   eventBus.on("commandStack.shape.resize.canExecute", 2000, ({ context }: any) => {
@@ -130,7 +153,8 @@ function translate(template: string, replacements: Record<string, string> = {}) 
 }
 export const bpmnEngineModules = [
   {
-    __init__: ["preserveDiagramGeometry"],
+    __init__: ["preserveDiagramGeometry", "annotationRenderer"],
+    annotationRenderer: ["type", AnnotationRenderer],
     preserveDiagramGeometry: ["type", PreserveDiagramGeometry],
     // The upstream compatibility importer moves collapsed subprocess DI to (180,160).
     // Existing BPMN planes must remain untouched; users can explicitly expand a subprocess.

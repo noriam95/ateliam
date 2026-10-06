@@ -3,6 +3,7 @@ export const BPMN_DEFAULT_COLORS = {
   startEvent: { fill: "#EDF7ED", stroke: "#4E8A48" },
   endEvent: { fill: "#FBEDEE", stroke: "#B64C57" },
   gateway: { fill: "#FFF5DE", stroke: "#B8862D" },
+  annotation: { fill: "#FFF2B3", stroke: "#B8862D" },
   connector: { stroke: "#343A40" },
   lane: { fill: "#FFFFFF", stroke: "#606770" },
 } as const;
@@ -14,6 +15,7 @@ export function defaultBpmnColors(type: string): BpmnElementColors {
   if (type === "bpmn:StartEvent") return BPMN_DEFAULT_COLORS.startEvent;
   if (type === "bpmn:EndEvent") return BPMN_DEFAULT_COLORS.endEvent;
   if (type.endsWith("Gateway")) return BPMN_DEFAULT_COLORS.gateway;
+  if (type === "bpmn:TextAnnotation") return BPMN_DEFAULT_COLORS.annotation;
   if (type === "bpmn:Participant" || type === "bpmn:Lane") return BPMN_DEFAULT_COLORS.lane;
   if (type.endsWith("Flow") || type === "bpmn:Association") {
     return BPMN_DEFAULT_COLORS.connector;

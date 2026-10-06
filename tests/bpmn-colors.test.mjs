@@ -32,6 +32,10 @@ test("defines the BF Flow palette for every requested BPMN element", () => {
     fill: "#FFF5DE",
     stroke: "#B8862D",
   });
+  assert.deepEqual(defaultBpmnColors("bpmn:TextAnnotation"), {
+    fill: "#FFF2B3",
+    stroke: "#B8862D",
+  });
   assert.deepEqual(defaultBpmnColors("bpmn:SequenceFlow"), { stroke: "#343A40" });
   assert.deepEqual(defaultBpmnColors("bpmn:Lane"), {
     fill: "#FFFFFF",
