@@ -1733,6 +1733,30 @@ dialog.bf-bpmn-import {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.bf-bpmn-toolbar button.bf-bpmn-import-action {
+  grid-row: 1;
+  grid-column: 1 / span 2;
+  width: 60px;
+  min-width: 60px;
+  padding-inline: 5px;
+  gap: 4px;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--primary) 8%, var(--card));
+  border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+  font-size: 9px;
+  font-weight: 650;
+}
+.bf-bpmn-toolbar button.bf-bpmn-import-action:hover {
+  background: color-mix(in srgb, var(--primary) 14%, var(--muted));
+}
+.bf-bpmn-toolbar button.bf-bpmn-import-action + button {
+  grid-row: 2;
+  grid-column: 1;
+}
+.bf-bpmn-toolbar button.bf-bpmn-import-action + button + button {
+  grid-row: 2;
+  grid-column: 2;
+}
 .bf-bpmn-format-group {
   min-width: 300px;
 }
