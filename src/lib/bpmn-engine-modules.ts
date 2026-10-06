@@ -1,4 +1,17 @@
 import { BPMN_DEFAULT_COLORS } from "./bpmn-colors";
+import BpmnRules from "bpmn-js/lib/features/rules/BpmnRules";
+
+/** Enables all resize directions for BF Flow's rectangular text annotations. */
+export function BfBpmnRules(eventBus: any) {
+  BpmnRules.call(this, eventBus);
+}
+BfBpmnRules.prototype = Object.create(BpmnRules.prototype);
+BfBpmnRules.prototype.constructor = BfBpmnRules;
+BfBpmnRules.$inject = ["eventBus"];
+BfBpmnRules.prototype.canResize = function (shape: any, newBounds?: any, direction?: string) {
+  if (shape?.type === "bpmn:TextAnnotation") return true;
+  return BpmnRules.prototype.canResize.call(this, shape, newBounds, direction);
+};
 
 /** Keep native BPMN text editing and semantics, but draw annotations as filled notes. */
 export function AnnotationRenderer(eventBus: any, bpmnRenderer: any) {
@@ -203,6 +216,7 @@ export const bpmnEngineModules = [
     annotationRenderer: ["type", AnnotationRenderer],
     laneRenderer: ["type", LaneRenderer],
     preserveDiagramGeometry: ["type", PreserveDiagramGeometry],
+    bpmnRules: ["type", BfBpmnRules],
     // The upstream compatibility importer moves collapsed subprocess DI to (180,160).
     // Existing BPMN planes must remain untouched; users can explicitly expand a subprocess.
     subprocessCompatibility: ["value", {}],
