@@ -54,6 +54,69 @@ export type BpmnCanvasHandle = {
 };
 
 const svgNamespace = "http://www.w3.org/2000/svg";
+const annotationTextPadding = 12;
+
+function wrapAnnotationText(
+  text: SVGTextElement,
+  content: string,
+  width: number,
+  fontSize: number,
+  style: BpmnTextStyle | undefined,
+) {
+  const measureSurface = document.createElement("canvas");
+  const context = measureSurface.getContext("2d");
+  if (!context) return;
+
+  const fontFamily = style?.fontFamily || getComputedStyle(text).fontFamily || "Arial, sans-serif";
+  const fontWeight = style?.bold ? "700" : getComputedStyle(text).fontWeight || "400";
+  const fontStyle = style?.italic ? "italic" : getComputedStyle(text).fontStyle || "normal";
+  context.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+  const maxWidth = Math.max(1, width - annotationTextPadding * 2);
+  const lines: string[] = [];
+  const addWord = (line: string, word: string) => {
+    const candidate = line ? `${line} ${word}` : word;
+    if (!line || context.measureText(candidate).width <= maxWidth) return candidate;
+    lines.push(line);
+    return word;
+  };
+
+  for (const paragraph of content.replace(/\r\n?/g, "\n").split("\n")) {
+    let line = "";
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      if (context.measureText(word).width <= maxWidth) {
+        line = addWord(line, word);
+        continue;
+      }
+      if (line) lines.push(line);
+      line = "";
+      let chunk = "";
+      for (const character of word) {
+        if (chunk && context.measureText(`${chunk}${character}`).width > maxWidth) {
+          lines.push(chunk);
+          chunk = character;
+        } else {
+          chunk += character;
+        }
+      }
+      line = chunk;
+    }
+    lines.push(line);
+  }
+
+  const anchor = style?.align === "right" ? "end" : style?.align === "center" ? "middle" : "start";
+  const x = anchor === "end" ? width - annotationTextPadding : anchor === "middle" ? width / 2 : annotationTextPadding;
+  const lineHeight = fontSize * 1.2;
+  text.setAttribute("text-anchor", anchor);
+  text.replaceChildren(
+    ...lines.map((line, index) => {
+      const span = document.createElementNS(svgNamespace, "tspan");
+      span.setAttribute("x", String(x));
+      span.setAttribute("y", String(annotationTextPadding + fontSize + index * lineHeight));
+      span.textContent = line;
+      return span;
+    }),
+  );
+}
 
 function paintCanvasExtensions(instance: any, styles: Record<string, BpmnTextStyle>) {
   if (!instance?.getDefinitions?.()) return;
@@ -75,6 +138,21 @@ function paintCanvasExtensions(instance: any, styles: Record<string, BpmnTextSty
       text.style.textAnchor =
         style?.align === "left" ? "start" : style?.align === "right" ? "end" : "";
     });
+
+    if (element.type === "bpmn:TextAnnotation") {
+      const text = graphics.querySelector<SVGTextElement>(".djs-label");
+      if (text) {
+        const textStyle = styles[element.id];
+        const fontSize = textStyle?.fontSize || Number.parseFloat(getComputedStyle(text).fontSize) || 12;
+        wrapAnnotationText(
+          text,
+          element.businessObject?.text || text.textContent || "",
+          element.width,
+          fontSize,
+          textStyle,
+        );
+      }
+    }
 
     const visual = graphics.querySelector<SVGGElement>(".djs-visual");
     const image = readBpmnImageElement(element);
