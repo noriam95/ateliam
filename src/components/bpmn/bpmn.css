@@ -956,6 +956,9 @@
   z-index: 3;
   overflow: hidden;
 }
+.bf-bpmn-canvas.has-frozen-lanes .djs-element[data-bf-clipped-label] .djs-label {
+  visibility: hidden;
+}
 .bf-bpmn-edge-label {
   position: absolute;
   display: flex;
@@ -978,6 +981,20 @@
 .bf-bpmn-edge-label > small {
   font-size: 9px;
   color: #647083;
+}
+.bf-bpmn-canvas.is-presentation .bf-bpmn-edge-label.is-lane {
+  padding: 9px 12px;
+  border-color: #d6dde5;
+  border-left: 3px solid #c38b25;
+  border-radius: 8px;
+  background: #fffffff5;
+  box-shadow: 0 3px 12px #18233220;
+  color: #1f2a37;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.bf-bpmn-canvas.is-presentation .bf-bpmn-edge-label.is-lane > span {
+  font-weight: 700;
 }
 .bf-bpmn-canvas .djs-lasso-overlay {
   fill: #d1a24a20;
@@ -2016,12 +2033,6 @@ dialog.bf-bpmn-import {
   min-height: 0;
   border-left: 1px solid var(--border);
   box-shadow: -12px 0 30px #0000001f;
-}
-.bf-bpmn-canvas .djs-element[data-bf-pool] .djs-label {
-  display: none !important;
-}
-.bf-bpmn-canvas .djs-element[data-bf-pool] text {
-  display: none !important;
 }
 .bf-bpmn-canvas .djs-element[data-bf-image] .djs-visual > :not(.bf-bpmn-image-render) {
   display: none;

@@ -80,4 +80,12 @@ test("edge identifiers appear only for clipped names of visible regions, and dis
     null,
   );
   assert.ok(edgeIdentification(region, { x: 10, y: -40, width: 20, height: 80 }, viewport));
+  const presentation = edgeIdentification(
+    region,
+    { x: -190, y: viewport.height - 20, width: 20, height: 80 },
+    viewport,
+    { width: 240, height: 38 },
+  );
+  assert.equal(presentation.maxWidth, 240);
+  assert.ok(presentation.top + 38 <= viewport.height - 8);
 });

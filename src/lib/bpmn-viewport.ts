@@ -44,13 +44,22 @@ export function selectedByRectangle(element: any, box: Rect) {
   return intersects(box, element);
 }
 /** No overlay when its original label is visible, or when the owning region is offscreen. */
-export function edgeIdentification(region: Rect, label: Rect, viewport: Rect) {
+export function edgeIdentification(
+  region: Rect,
+  label: Rect,
+  viewport: Rect,
+  options: { width?: number; height?: number } = {},
+) {
   if (!intersects(region, viewport) || contains(viewport, label)) return null;
-  const width = Math.min(180, viewport.width - 16);
+  const width = Math.min(options.width ?? 180, viewport.width - 16);
+  const height = options.height ?? 28;
   const x = Math.max(
     8,
     Math.min(label.x + label.width / 2 - width / 2, viewport.width - width - 8),
   );
-  const y = Math.max(8, Math.min(label.y + label.height / 2 - 14, viewport.height - 36));
+  const y = Math.max(
+    8,
+    Math.min(label.y + label.height / 2 - height / 2, viewport.height - height - 8),
+  );
   return { left: x, top: y, maxWidth: width };
 }

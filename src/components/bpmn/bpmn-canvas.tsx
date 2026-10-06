@@ -323,7 +323,9 @@ export const BpmnCanvas = forwardRef<
                   height: bounds.height,
                 },
                 viewport,
+                readOnly ? { width: 240, height: 38 } : undefined,
               );
+              graphics.toggleAttribute("data-bf-clipped-label", Boolean(position));
               return position
                 ? [
                     {
@@ -803,7 +805,7 @@ export const BpmnCanvas = forwardRef<
                 }}
                 title={label.name}
               >
-                <small>Raia</small>
+                {!readOnly && <small>Raia</small>}
                 <span>{bindings[label.id]?.name || label.name}</span>
               </div>
             ))}
