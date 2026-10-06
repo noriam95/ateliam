@@ -94,6 +94,7 @@ import type { DocxDocumentImport } from "@/lib/docx-document-import";
 import type { MappingDocumentImport } from "@/lib/docx-mapping-import";
 import { inferExplicitActivityArea } from "@/lib/mapping-actor-inference";
 import {
+  inferPrimaryMappingArea,
   mappingAreaNamesFromImport,
   normalizeAreaName,
   suggestAreaSigla,
@@ -7078,15 +7079,19 @@ function ModuleWorkspacePage() {
 
     const replacements = new Map<string, CreatedProcess>();
     for (const process of pending) {
+      const departmentName =
+        process.department ||
+        (process.id === ws.ddp.macroprocess.processId ? ws.ddp.meta.area : "") ||
+        null;
       let code = process.code;
       const processRule = normalizeRule(codeSettings?.processo);
       const department = organizationCatalogs.departments.find(
-        (item) => normalizeLabel(item.name) === normalizeLabel(process.department ?? ""),
+        (item) => normalizeLabel(item.name) === normalizeLabel(departmentName ?? ""),
       );
       const areaSigla = normalizeSigla(
         department?.sigla ??
-          finalizedAreaSiglas.get(normalizeAreaName(process.department)) ??
-          process.department ??
+          finalizedAreaSiglas.get(normalizeAreaName(departmentName)) ??
+          departmentName ??
           "",
       );
       if (processRule.mode === "auto" && !code && areaSigla) {
@@ -7108,7 +7113,7 @@ function ModuleWorkspacePage() {
               parentProcessId:
                 replacements.get(process.parent_process_id ?? "")?.id ??
                 persistedProcessId(process.parent_process_id),
-              department: process.department,
+              department: departmentName,
               owner: process.owner,
               description: process.description,
               status: "Ativo",
@@ -7197,6 +7202,27 @@ function ModuleWorkspacePage() {
       finalized.set(normalizeAreaName(saved.name), saved.sigla ?? area.sigla);
     }
     return finalized;
+  }
+
+  function withInferredMappingArea(ws: WorkspaceState) {
+    if (moduleId !== "ddp" || ws.ddp.meta.area.trim()) return ws;
+    const primaryProcess = [...organizationCatalogs.processes, ...pendingMappingProcesses].find(
+      (process) => process.id === ws.ddp.macroprocess.processId,
+    );
+    const area = inferPrimaryMappingArea(
+      ws.ddp.meta.area,
+      primaryProcess?.department,
+      pendingMappingAreas,
+    );
+    if (!area) return ws;
+    return {
+      ...ws,
+      ddp: {
+        ...ws.ddp,
+        meta: { ...ws.ddp.meta, area },
+        legacy: { ...(ws.ddp.legacy ?? {}), processArea: ws.ddp.legacy?.processArea || area },
+      },
+    };
   }
 
   async function persistMappingSystems(ws: WorkspaceState) {
@@ -7307,6 +7333,7 @@ function ModuleWorkspacePage() {
       // Geração automática de código: reserva a sequência quando configurado e
       // o documento ainda não tem código.
       let workspaceToSave = withUppercaseModuleTitle(moduleId, workspace);
+      if (moduleId === "ddp") workspaceToSave = withInferredMappingArea(workspaceToSave);
       if (!isDraftSave && moduleId === "ddp") {
         const finalizedAreaSiglas = await persistSuggestedMappingAreas(workspaceToSave);
         workspaceToSave = await persistSuggestedMappingProcesses(
@@ -12433,7 +12460,13 @@ function DdpModule({
 
   function applyMappingImport(importResult: MappingDocumentImport | null = mappingImport) {
     if (!importResult) return;
-    void onSuggestedAreasPrepared(mappingAreaNamesFromImport(importResult));
+    const importedAreaNames = mappingAreaNamesFromImport(importResult);
+    const inferredArea = inferPrimaryMappingArea(
+      data.meta.area,
+      selectedProcess?.department,
+      importedAreaNames.map((name) => ({ name })),
+    );
+    void onSuggestedAreasPrepared(importedAreaNames);
     const preparedProcesses: Record<string, CreatedProcess> = {};
     const nowIso = new Date().toISOString();
     const recognizedPrimaryProcessTitle = importResult.mappedProcess.trim();
@@ -12456,7 +12489,7 @@ function DdpModule({
         type: "process",
         value_chain_id: selectedProcess?.value_chain_id ?? null,
         parent_process_id: null,
-        department: selectedProcess?.department ?? null,
+        department: selectedProcess?.department || inferredArea || null,
         owner: selectedProcess?.owner ?? null,
         description: importResult.objective || importResult.scope || null,
         status: "Ativo",
@@ -12613,6 +12646,7 @@ function DdpModule({
         ...(primaryProcessPatch ? primaryProcessPatch.meta : data.meta),
         titulo: importResult.title || data.meta.titulo,
         modalidade: importResult.modality || data.meta.modalidade,
+        area: assistantPrimaryProcess?.department || inferredArea || data.meta.area,
         data: dateInputValue(importResult.date) || data.meta.data,
         elaborador: importResult.author || data.meta.elaborador,
         revisor: importResult.reviewer || data.meta.revisor,

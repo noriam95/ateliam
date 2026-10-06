@@ -59,6 +59,24 @@ export function mappingAreaNamesFromImport(importResult: MappingDocumentImport) 
   });
 }
 
+export function inferPrimaryMappingArea(
+  explicitArea: string | null | undefined,
+  processArea: string | null | undefined,
+  suggestedAreas: Array<Pick<TemporaryMappingArea, "name">>,
+) {
+  return (
+    explicitArea?.trim() ||
+    processArea?.trim() ||
+    suggestedAreas
+      .find((area) => {
+        const normalized = normalizeAreaName(area.name);
+        return normalized && normalized !== "A DEFINIR";
+      })
+      ?.name.trim() ||
+    ""
+  );
+}
+
 export function prepareBpmnTemporaryAreas(
   lanes: Array<{ id: string; name: string }>,
   registeredAreas: Array<{ id: string; name: string; sigla?: string | null }>,

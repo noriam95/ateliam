@@ -10,6 +10,7 @@ const bundle = await build({
   write: false,
 });
 const {
+  inferPrimaryMappingArea,
   mappingAreaNamesFromImport,
   normalizeAreaName,
   prepareBpmnTemporaryAreas,
@@ -65,4 +66,16 @@ test("associa raias conhecidas e mantém áreas novas temporárias no assistente
   assert.equal(prepared.bindings.Lane_2.id, prepared.bindings.Lane_3.id);
   assert.equal(prepared.bindings.Lane_4, undefined);
   assert.equal(prepared.areas[0].status, "temporary");
+});
+
+test("infere a área principal sem exigir intervenção em rascunhos do assistente", () => {
+  assert.equal(
+    inferPrimaryMappingArea("", null, [{ name: "Financeiro" }, { name: "Comercial" }]),
+    "Financeiro",
+  );
+  assert.equal(inferPrimaryMappingArea("", "Operações", [{ name: "Financeiro" }]), "Operações");
+  assert.equal(
+    inferPrimaryMappingArea("Jurídico", "Operações", [{ name: "Financeiro" }]),
+    "Jurídico",
+  );
 });
