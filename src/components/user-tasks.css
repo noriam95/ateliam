@@ -210,6 +210,31 @@
   color: var(--muted-foreground);
   font-weight: 600;
 }
+.ut-root th .ut-table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin: -5px -8px;
+  padding: 5px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+}
+.ut-root th .ut-table-sort:hover {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  color: var(--foreground);
+}
+.ut-root th[aria-sort="ascending"] .ut-table-sort svg,
+.ut-root th[aria-sort="descending"] .ut-table-sort svg {
+  color: var(--gold);
+}
+.ut-root th .ut-table-sort svg {
+  flex: 0 0 auto;
+  opacity: 0.65;
+}
 .ut-root td,
 .ut-root th {
   padding: 14px 16px;

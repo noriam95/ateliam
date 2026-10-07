@@ -43,6 +43,9 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   SquareKanban,
   TrendingUp,
   X,
@@ -77,6 +80,8 @@ type ViewState = TaskFilters & {
   period?: TaskPeriod;
   calendarView?: "month" | "gantt";
 };
+type TaskTableSortField = "code" | "assignee" | "requester" | "due" | "status";
+type TaskTableSort = { field: TaskTableSortField; direction: "asc" | "desc" } | null;
 function parseState(raw?: string): ViewState {
   try {
     const value = raw ? JSON.parse(raw) : {};
@@ -129,6 +134,7 @@ export function UserTasks({
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [contextTask, setContextTask] = useState<UserTask | null>(null);
+  const [taskTableSort, setTaskTableSort] = useState<TaskTableSort>(null);
   const state = parseState(raw);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState(state.q || "");
@@ -604,7 +610,13 @@ export function UserTasks({
                     />
                   </>
                 ) : (
-                  renderTable(data.tasks, open, data.isAdmin, refresh)
+                  renderTable(data.tasks, open, data.isAdmin, refresh, taskTableSort, (field) =>
+                    setTaskTableSort((current) =>
+                      current?.field === field
+                        ? { field, direction: current.direction === "asc" ? "desc" : "asc" }
+                        : { field, direction: "asc" },
+                    ),
+                  )
                 )}
                 {!data.tasks.length && state.layout !== "list" && (
                   <p className="ut-empty">
@@ -757,23 +769,80 @@ function renderTable(
   open: (id: string) => void,
   isAdmin: boolean,
   refresh: () => Promise<void>,
+  sort: TaskTableSort,
+  onSort: (field: TaskTableSortField) => void,
 ) {
+  const columns: { label: string; field: TaskTableSortField }[] = [
+    { label: "Código / título", field: "code" },
+    { label: "Responsável", field: "assignee" },
+    { label: "Solicitante", field: "requester" },
+    { label: "Prazo", field: "due" },
+    { label: "Situação", field: "status" },
+  ];
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (!sort) return 0;
+    const value = (task: UserTask) => {
+      switch (sort.field) {
+        case "code":
+          return `${task.code || ""} ${task.title}`;
+        case "assignee":
+          return task.assignee_name;
+        case "requester":
+          return task.requester_name;
+        case "due":
+          return task.due_on;
+        case "status":
+          return TASK_STATUS_LABELS[task.status];
+      }
+    };
+    return (
+      String(value(a) || "").localeCompare(String(value(b) || ""), "pt-BR", {
+        numeric: true,
+        sensitivity: "base",
+      }) * (sort.direction === "asc" ? 1 : -1)
+    );
+  });
   return (
     <div className="ut-table-wrap">
       <table>
         <thead>
           <tr>
-            {["Código / título", "Responsável", "Solicitante", "Prazo", "Situação", ""].map(
-              (label, i) => (
-                <th key={i} scope="col">
+            {columns.map(({ label, field }) => (
+              <th
+                key={field}
+                scope="col"
+                aria-sort={
+                  sort?.field === field
+                    ? sort.direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+              >
+                <button
+                  type="button"
+                  className="ut-table-sort"
+                  onClick={() => onSort(field)}
+                  aria-label={`Ordenar por ${label}`}
+                >
                   {label}
-                </th>
-              ),
-            )}
+                  {sort?.field === field ? (
+                    sort.direction === "asc" ? (
+                      <ArrowUp size={14} aria-hidden="true" />
+                    ) : (
+                      <ArrowDown size={14} aria-hidden="true" />
+                    )
+                  ) : (
+                    <ArrowUpDown size={14} aria-hidden="true" />
+                  )}
+                </button>
+              </th>
+            ))}
+            <th scope="col">Ações</th>
           </tr>
         </thead>
         <tbody>
-          {tasks.map((t) => (
+          {sortedTasks.map((t) => (
             <tr key={t.id} data-task-id={t.id}>
               <td>
                 <small>
