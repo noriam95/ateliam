@@ -82,6 +82,9 @@ type ViewState = TaskFilters & {
 };
 type TaskTableSortField = "code" | "assignee" | "requester" | "due" | "status";
 type TaskTableSort = { field: TaskTableSortField; direction: "asc" | "desc" } | null;
+function itemStillNeedsMigration(item: TaskItem, task: UserTask) {
+  return task.kind === "mapping" && item.key === "premises" && item.entry_type === "file";
+}
 function parseState(raw?: string): ViewState {
   try {
     const value = raw ? JSON.parse(raw) : {};
@@ -1269,7 +1272,11 @@ function TaskDetails({
     (t?.kind !== "mapping" || t?.stage === "documentation" || data?.isAdmin);
   const canFillChecklist = canEdit && t?.stage === "documentation";
   const remainder = t ? pending(t) : [];
-  async function write(action: TaskAction, payload: Record<string, unknown>) {
+  async function write(
+    action: TaskAction,
+    payload: Record<string, unknown>,
+    onFailure?: (message: string) => void,
+  ) {
     if (!t) return false;
     setBusy(true);
     setError("");
@@ -1297,7 +1304,9 @@ function TaskDetails({
       }
       return true;
     } catch (err) {
-      setError((err as Error).message);
+      const message = (err as Error).message;
+      setError(message);
+      onFailure?.(message);
       await query.refetch();
       return false;
     } finally {
@@ -1570,7 +1579,17 @@ function TaskDetails({
           organizationId={organizationId}
           readOnly={!canEdit || (t.kind === "mapping" && editing.key === "validation")}
           close={() => setEditing(null)}
-          save={async (payload) => !!(await write("item", payload))}
+          save={async (payload) => {
+            let message = "";
+            const saved = await write("item", payload, (reason) => {
+              message = reason;
+            });
+            if (saved) return true;
+            if (itemStillNeedsMigration(editing, t)) {
+              return "O Supabase ainda trata Premissas como anexo. Execute a migração 20261007152000_task_premises_rich_text.sql e tente salvar novamente.";
+            }
+            return message || false;
+          }}
         />
       )}
     </TaskDialog>
@@ -1590,7 +1609,7 @@ function ItemEditor({
   organizationId: string;
   readOnly: boolean;
   close: () => void;
-  save: (payload: Record<string, unknown>) => Promise<boolean>;
+  save: (payload: Record<string, unknown>) => Promise<boolean | string>;
 }) {
   const [content, setContent] = useState(item.content);
   const [doc, setDoc] = useState<TaskDocument | null>(null);
@@ -1607,13 +1626,18 @@ function ItemEditor({
     setBusy(true);
     setError("");
     try {
-      const ok = await save({
+      const result = await save({
         key: item.key,
         content,
         documentId: doc?.id || item.document_id,
         completed,
       });
-      if (!ok) setError("Não foi possível salvar. Confira o aviso nos detalhes da tarefa.");
+      if (result !== true)
+        setError(
+          typeof result === "string"
+            ? result
+            : "Não foi possível salvar. Confira o aviso nos detalhes da tarefa.",
+        );
       else {
         setBaseline({ content, documentId: doc?.id || item.document_id });
         if (finish) close();

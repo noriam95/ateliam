@@ -979,6 +979,20 @@
 .task-rich-readonly ul,
 .task-rich-readonly ol {
   padding-left: 1.5rem;
+  list-style-position: outside;
+}
+.task-rich-editor ul,
+.task-rich-readonly ul {
+  list-style-type: disc;
+}
+.task-rich-editor ol,
+.task-rich-readonly ol {
+  list-style-type: decimal;
+}
+.task-rich-editor li,
+.task-rich-readonly li {
+  display: list-item;
+  margin: 0.2em 0;
 }
 .task-rich-editor a,
 .task-rich-readonly a {

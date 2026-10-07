@@ -93,6 +93,12 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
       {[...groups].map(([key, items]) => {
         if (hideDone && items.every((i) => i.completed)) return null;
         const first = items[0];
+        const isPremisesGroup =
+          key === "premises" ||
+          items.some(
+            (item) =>
+              item.key === "premises" || item.label.toLocaleLowerCase("pt-BR") === "premissas",
+          );
         const completed = items.filter((item) => item.completed).length;
         const started = items.some(
           (item) =>
@@ -309,7 +315,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                     </div>
                   );
                 })}
-              {canEdit && (
+              {canEdit && (!isPremisesGroup || first.entry_type === "note") && (
                 <div className="ut-delivery-toolbar">
                   <button
                     disabled={busy}
@@ -318,7 +324,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                     }
                   >
                     <Plus size={16} />{" "}
-                    {first.entry_type === "file"
+                    {first.entry_type === "file" && !isPremisesGroup
                       ? "Adicionar outro anexo"
                       : "Adicionar outro preenchimento"}
                   </button>
