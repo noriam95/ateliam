@@ -95,7 +95,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
             item.content.trim(),
         );
         const status =
-          completed === items.length ? "Concluído" : started ? "Em andamento" : "Não iniciado";
+          completed === items.length ? "Concluído" : started ? "Em andamento" : "Pendente";
         const checklistStatus =
           completed === items.length ? "completed" : started ? "in-progress" : "pending";
         return (
