@@ -96,8 +96,14 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
         );
         const status =
           completed === items.length ? "Concluído" : started ? "Em andamento" : "Não iniciado";
+        const checklistStatus =
+          completed === items.length ? "completed" : started ? "in-progress" : "pending";
         return (
-          <details className="ut-delivery-group ut-delivery-disclosure" key={key}>
+          <details
+            className="ut-delivery-group ut-delivery-disclosure"
+            data-checklist-status={checklistStatus}
+            key={key}
+          >
             <summary className="ut-delivery-summary">
               <span className="ut-delivery-name">
                 {first.label}
@@ -116,6 +122,19 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                 .filter((i) => !hideDone || !i.completed)
                 .map((item) => {
                   const index = items.indexOf(item);
+                  const itemStarted = Boolean(
+                    item.stale ||
+                    item.saved_version != null ||
+                    item.saved_at ||
+                    item.document_id ||
+                    item.attachment ||
+                    item.content.trim(),
+                  );
+                  const itemStatus = item.completed
+                    ? "completed"
+                    : itemStarted
+                      ? "in-progress"
+                      : "pending";
                   const module =
                     item.entry_type === "pop"
                       ? "pop"
@@ -125,7 +144,11 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                           ? "bpmn"
                           : item.document_module || task.document_module;
                   return (
-                    <div className="ut-delivery-entry" key={item.key}>
+                    <div
+                      className="ut-delivery-entry"
+                      data-checklist-status={itemStatus}
+                      key={item.key}
+                    >
                       <div>
                         <strong>
                           {item.entry_type === "file"
@@ -135,11 +158,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                               : `Preenchimento ${index + 1}`}
                         </strong>
                         <small>
-                          {item.completed
-                            ? "Concluído"
-                            : item.stale || item.saved_version !== null || item.content
-                              ? "Em andamento"
-                              : "A fazer"}
+                          {item.completed ? "Concluído" : itemStarted ? "Em andamento" : "Pendente"}
                         </small>
                       </div>
                       {item.entry_type === "file" ? (

@@ -931,6 +931,37 @@
 .ut-delivery-disclosure[open] > .ut-delivery-summary::before {
   transform: rotate(90deg);
 }
+.ut-delivery-disclosure[data-checklist-status="completed"] {
+  --checklist-accent: #4e8a48;
+}
+.ut-delivery-disclosure[data-checklist-status="in-progress"] {
+  --checklist-accent: #b8862d;
+}
+.ut-delivery-disclosure[data-checklist-status="pending"] {
+  --checklist-accent: #2563a6;
+}
+.ut-delivery-disclosure[data-checklist-status] {
+  border-color: color-mix(in srgb, var(--checklist-accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--checklist-accent) 6%, var(--card));
+}
+.ut-delivery-disclosure[data-checklist-status] > .ut-delivery-summary::before {
+  color: color-mix(in srgb, var(--checklist-accent) 72%, var(--foreground));
+}
+.ut-delivery-disclosure[data-checklist-status] .ut-delivery-status {
+  color: color-mix(in srgb, var(--checklist-accent) 68%, var(--foreground));
+}
+.ut-delivery-entry[data-checklist-status] small {
+  color: color-mix(in srgb, var(--checklist-accent, #2563a6) 68%, var(--foreground));
+}
+.ut-delivery-entry[data-checklist-status="completed"] {
+  --checklist-accent: #4e8a48;
+}
+.ut-delivery-entry[data-checklist-status="in-progress"] {
+  --checklist-accent: #b8862d;
+}
+.ut-delivery-entry[data-checklist-status="pending"] {
+  --checklist-accent: #2563a6;
+}
 .ut-delivery-summary:hover {
   background: var(--muted);
 }
