@@ -32,6 +32,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      task_reminder_settings: {
+        Row: {
+          id: number;
+          enabled: boolean;
+          reminder_days: number[];
+          send_time: string;
+          timezone: string;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          enabled?: boolean;
+          reminder_days?: number[];
+          send_time?: string;
+          timezone?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          enabled?: boolean;
+          reminder_days?: number[];
+          send_time?: string;
+          timezone?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       document_versions: {
         Row: {
           author_id: string;

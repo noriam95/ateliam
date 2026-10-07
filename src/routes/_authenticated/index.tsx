@@ -83,6 +83,11 @@ const WorkspaceReports = lazy(() =>
     default: module.WorkspaceReports,
   })),
 );
+const TaskReminderSettings = lazy(() =>
+  import("@/components/task-reminder-settings").then((module) => ({
+    default: module.TaskReminderSettings,
+  })),
+);
 
 const NAVIGATION_STATE_KEY = "bf-flow-navigation-expanded";
 
@@ -160,6 +165,7 @@ type WorkspaceView =
   | "access-profiles"
   | "document-types"
   | "document-models"
+  | "task-reminders"
   | "visual-identity"
   | "integrations"
   | "version-history"
@@ -919,6 +925,7 @@ function WorkspaceHome() {
           "local-environment",
           "users",
           "organizations",
+          "task-reminders",
         ].includes(view)
       ) {
         setView("users");
@@ -1043,6 +1050,17 @@ function WorkspaceHome() {
                     onClick={() => setView("organizations")}
                   >
                     <Building2 className="h-4 w-4" /> Organizações
+                  </TreeButton>
+                  <TreeButton
+                    active={view === "task-reminders"}
+                    onClick={() =>
+                      void navigate({
+                        to: "/",
+                        search: { area: "settings", view: "task-reminders" },
+                      })
+                    }
+                  >
+                    <Bell className="h-4 w-4" /> Lembretes de tarefas
                   </TreeButton>
                 </>
               ) : (
@@ -2609,6 +2627,27 @@ function WorkspaceContent({
           <DocumentTable documents={recentDocuments} />
         </div>
       </section>
+    );
+  }
+
+  if (view === "task-reminders") {
+    if (!isAdmin) {
+      return (
+        <section className="rounded-lg border border-border bg-card p-6" role="alert">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+            configurações
+          </div>
+          <h1 className="mt-3 font-display text-3xl font-bold text-foreground">Acesso restrito</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            As configurações de lembretes estão disponíveis somente para o administrador do sistema.
+          </p>
+        </section>
+      );
+    }
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <TaskReminderSettings />
+      </Suspense>
     );
   }
 

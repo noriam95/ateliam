@@ -203,3 +203,10 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 - No leitor, os metadados ficam ao lado apenas quando houver largura segura para documento e painel; abaixo de 1180 px, aparecem depois do visualizador.
 
 Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresentação existente. Fluxogramas reutilizam o `NavigatedViewer` do workspace BPMN, sem instanciar edição. A página de leitura mantém metadados, caminho organizacional e relações ao lado do conteúdo, sem reconstruí-lo. Alterar parâmetros da URL não pode contornar a verificação de vigência executada no servidor.
+
+## Lembretes de tarefas — preparação para integração
+
+- A seção fica em Configurações e é visível somente para usuários com papel global `admin`; leitura e gravação são validadas no servidor e por RLS.
+- O administrador pode salvar antecedências e horário local antes da integração. A política permanece desativada até que o serviço de envio e o agendamento estejam configurados pela empresa.
+- Credenciais de provedores são mantidas em segredos do ambiente quando houver integração; nunca são armazenadas nesta configuração.
+- A interface informa que nenhum envio está ativo enquanto o transporte não estiver conectado. Preferências salvas não representam envio agendado.
