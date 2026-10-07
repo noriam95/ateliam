@@ -40,7 +40,7 @@ Fonte de negócio: requisitos explícitos do usuário nesta tarefa em 09/09/2026
 
 ## Entregas por modalidade — revisão de 09/09/2026
 
-Fonte: tabela e instruções explícitas do usuário. Operacional: Mapeamento (módulo ddp), Fluxograma (arquivo), POP (módulo pop), Comunicado opcional (arquivo). Sistemas, Automação & IA e Dados / BI: Mapeamento (ddp), Fluxograma (arquivo), Premissas (arquivo).
+Fonte: tabela e instruções explícitas do usuário. Operacional: Relatório (módulo ddp), Fluxograma (arquivo), POP (módulo pop), Comunicado opcional (arquivo). Sistemas, Automação & IA e Dados / BI: Relatório (ddp), Fluxograma (arquivo), Premissas (preenchimento formatado dentro do sistema, com fonte, tamanho, ênfase, cor, listas, alinhamento e links). O item Premissas não aceita novos anexos; arquivos já anexados ficam disponíveis somente como histórico, sem opção de edição ou exclusão.
 
 TaskChecklist é o componente canônico para grupos de entregas. Cada grupo aceita novos preenchimentos/anexos independentes; novos itens permitem escolher formulário, arquivo ou texto. Cada formulário cria um documento separado no módulo existente. Rascunhos não concluem entregas. Arquivos privados de até 20 MB ficam vinculados à tarefa e respeitam participantes e organização. Não se sobrescrevem arquivos: adicionar outro anexo preserva o anterior. O download usa link temporário. Itens opcionais não entram nas pendências de encaminhamento. Tarefas concluídas mantêm o histórico; nas demais, entregas antigas preenchidas são preservadas como itens adicionais durante a migração.
 

@@ -14,6 +14,16 @@ import { DEFAULT_MAPPING_SECTIONS } from "@/lib/user-tasks";
 import { TaskDialog } from "./task-dialog";
 import { TaskAttachmentActions } from "./task-attachment-actions";
 
+function hasTaskContent(content: string) {
+  return (
+    content
+      .replace(/<br\s*\/?\s*>/gi, "")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;|&#160;/gi, " ")
+      .trim().length > 0
+  );
+}
+
 type Props = {
   task: UserTask;
   canEdit: boolean;
@@ -92,7 +102,8 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
             item.saved_at ||
             item.document_id ||
             item.attachment ||
-            item.content.trim(),
+            item.legacy_attachment ||
+            hasTaskContent(item.content),
         );
         const status =
           completed === items.length ? "Concluído" : started ? "Em andamento" : "Pendente";
@@ -106,7 +117,7 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
           >
             <summary className="ut-delivery-summary">
               <span className="ut-delivery-name">
-                {first.label}
+                {first.key === "mapping" ? "Relatório" : first.label}
                 {first.optional ? " · Opcional" : ""}
               </span>
               <span className="ut-delivery-status">{status}</span>
@@ -122,13 +133,17 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                 .filter((i) => !hideDone || !i.completed)
                 .map((item) => {
                   const index = items.indexOf(item);
+                  const historicalAttachment =
+                    item.legacy_attachment ||
+                    (item.key === "premises" ? item.attachment : undefined);
                   const itemStarted = Boolean(
                     item.stale ||
                     item.saved_version != null ||
                     item.saved_at ||
                     item.document_id ||
                     item.attachment ||
-                    item.content.trim(),
+                    item.legacy_attachment ||
+                    hasTaskContent(item.content),
                   );
                   const itemStatus = item.completed
                     ? "completed"
@@ -151,17 +166,29 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                     >
                       <div>
                         <strong>
-                          {item.entry_type === "file"
+                          {item.entry_type === "file" && item.key !== "premises"
                             ? item.attachment?.name || `Anexo ${index + 1}`
                             : item.document_id
                               ? documentLabel(item.document_code, item.document_name || item.label)
-                              : `Preenchimento ${index + 1}`}
+                              : item.key === "premises"
+                                ? "Registro de premissas"
+                                : `Preenchimento ${index + 1}`}
                         </strong>
                         <small>
                           {item.completed ? "Concluído" : itemStarted ? "Em andamento" : "Pendente"}
                         </small>
                       </div>
-                      {item.entry_type === "file" ? (
+                      {historicalAttachment && (
+                        <div className="ut-legacy-delivery-attachment">
+                          <span>Arquivo anterior</span>
+                          <TaskAttachmentActions
+                            attachment={historicalAttachment}
+                            disabled={busy}
+                            onError={setError}
+                          />
+                        </div>
+                      )}
+                      {item.key !== "premises" && item.entry_type === "file" ? (
                         item.attachment ? (
                           <div className="ut-entry-actions">
                             <TaskAttachmentActions

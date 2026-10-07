@@ -32,6 +32,7 @@ export type TaskItem = {
   entry_type?: "mapping" | "pop" | "flowchart" | "file" | "note";
   optional?: boolean;
   attachment?: { path: string; name: string; size: number };
+  legacy_attachment?: { path: string; name: string; size: number };
   key: string;
   label: string;
   completed: boolean;

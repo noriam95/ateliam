@@ -23,6 +23,7 @@ import {
   type TaskPeriod,
 } from "@/lib/task-period";
 import { TaskChecklist } from "./task-checklist";
+import { TaskRichTextField } from "./task-rich-text-field";
 import { TaskRoutingActions } from "./task-routing-actions";
 import { TASK_STAGE_LABELS, type TaskAction } from "@/lib/user-tasks";
 import { useEffect, useState, useRef } from "react";
@@ -1561,7 +1562,15 @@ function ItemEditor({
       dirty={content !== baseline.content || (doc?.id || item.document_id) !== baseline.documentId}
     >
       <div className="ut-form">
-        {!systemRecord && (
+        {!systemRecord && item.key === "premises" && (
+          <TaskRichTextField
+            value={content}
+            onChange={setContent}
+            readOnly={readOnly}
+            label="Premissas do processo"
+          />
+        )}
+        {!systemRecord && item.key !== "premises" && (
           <label>
             Conteúdo / registro da entrega
             <textarea
@@ -1578,7 +1587,7 @@ function ItemEditor({
             Selecione um registro do módulo de origem. O vínculo preserva seu conteúdo e código.
           </p>
         )}
-        {!readOnly && (
+        {!readOnly && item.key !== "premises" && (
           <DocumentPicker
             organizationId={organizationId}
             value={doc?.id || item.document_id || ""}
