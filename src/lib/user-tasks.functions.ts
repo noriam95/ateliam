@@ -45,6 +45,20 @@ export const loadUserTasks = createServerFn({ method: "POST" })
           : error.message,
       );
     const feed = result as TaskFeed;
+    const { data: flowRows } = await db
+      .from("task_flow_settings")
+      .select("task_kind,default_assignee_id")
+      .eq("organization_id", data.organizationId);
+    if (flowRows?.length) {
+      feed.flowAssignees = Object.fromEntries(
+        flowRows
+          .filter((row: { default_assignee_id: string | null }) => row.default_assignee_id)
+          .map((row: { task_kind: string; default_assignee_id: string }) => [
+            row.task_kind,
+            row.default_assignee_id,
+          ]),
+      );
+    }
     if (data.filters.id && feed.tasks.some((task) => task.id === data.filters.id)) {
       const history = await dashboardRows(
         db
@@ -157,7 +171,7 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
     const db = context.supabase as unknown as SupabaseClient;
     const { data: tasks, error } = await db
       .from("user_tasks")
-      .select("id,title,task_code")
+      .select("id,title,task_code,kind")
       .eq("organization_id", data.organizationId)
       .or(
         ["assigned_to", "requested_by", "created_by", "documenter_id", "reviewer_id"]
@@ -166,6 +180,20 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
       );
     if (error) throw new Error(error.message);
     if (!tasks?.length) return [];
+    const { data: flowSettings, error: settingsError } = await db
+      .from("task_flow_settings")
+      .select("task_kind,system_notifications")
+      .eq("organization_id", data.organizationId);
+    // Preserve existing in-app notifications until the optional settings migration is applied.
+    const settingsAvailable = !settingsError;
+    const systemPreferences = new Map(
+      (flowSettings || []).map(
+        (row: { task_kind: string; system_notifications: Record<string, boolean> }) => [
+          row.task_kind,
+          row.system_notifications,
+        ],
+      ),
+    );
     const { data: events, error: eventError } = await db
       .from("user_task_events")
       .select("id,task_id,action,note,created_at")
@@ -177,14 +205,40 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(50);
     if (eventError) throw new Error(eventError.message);
-    return (events || []).map((e) => ({
-      id: e.id,
-      title: `${tasks.find((t) => t.id === e.task_id)?.task_code || ""} · ${tasks.find((t) => t.id === e.task_id)?.title || "Tarefa"}`,
-      description: e.note || e.action,
-      tag: e.action,
-      updatedAt: e.created_at,
-      taskId: e.task_id,
-    }));
+    const categoryForAction = (action: string) => {
+      if (action === "Tarefa criada") return "task_created";
+      if (action === "Responsável alterado") return "assignment";
+      if (action === "Comentário") return "comment";
+      if (
+        [
+          "Checklist atualizado",
+          "Item adicionado",
+          "Entrega adicionada",
+          "Preenchimento iniciado",
+          "Arquivo anexado",
+          "Entrega removida",
+          "Vínculo de documento excluído",
+          "Seção adicional excluída",
+        ].includes(action)
+      )
+        return "checklist";
+      return "stage_changed";
+    };
+    return (events || [])
+      .filter((event) => {
+        if (!settingsAvailable) return true;
+        const task = tasks.find((row) => row.id === event.task_id);
+        const preferences = task && systemPreferences.get(task.kind);
+        return !preferences || preferences[categoryForAction(event.action)] !== false;
+      })
+      .map((e) => ({
+        id: e.id,
+        title: `${tasks.find((t) => t.id === e.task_id)?.task_code || ""} · ${tasks.find((t) => t.id === e.task_id)?.title || "Tarefa"}`,
+        description: e.note || e.action,
+        tag: e.action,
+        updatedAt: e.created_at,
+        taskId: e.task_id,
+      }));
   });
 
 export const loadTaskExportDocuments = createServerFn({ method: "POST" })

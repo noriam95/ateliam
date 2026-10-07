@@ -88,6 +88,11 @@ const TaskReminderSettings = lazy(() =>
     default: module.TaskReminderSettings,
   })),
 );
+const TaskFlowSettings = lazy(() =>
+  import("@/components/task-flow-settings").then((module) => ({
+    default: module.TaskFlowSettings,
+  })),
+);
 
 const NAVIGATION_STATE_KEY = "bf-flow-navigation-expanded";
 
@@ -166,6 +171,7 @@ type WorkspaceView =
   | "document-types"
   | "document-models"
   | "task-reminders"
+  | "task-flows"
   | "visual-identity"
   | "integrations"
   | "version-history"
@@ -1061,6 +1067,17 @@ function WorkspaceHome() {
                     }
                   >
                     <Bell className="h-4 w-4" /> Lembretes de tarefas
+                  </TreeButton>
+                  <TreeButton
+                    active={view === "task-flows"}
+                    onClick={() =>
+                      void navigate({
+                        to: "/",
+                        search: { area: "settings", view: "task-flows" },
+                      })
+                    }
+                  >
+                    <Users className="h-4 w-4" /> Fluxos e notificações
                   </TreeButton>
                 </>
               ) : (
@@ -2647,6 +2664,25 @@ function WorkspaceContent({
     return (
       <Suspense fallback={<LoadingSkeleton />}>
         <TaskReminderSettings />
+      </Suspense>
+    );
+  }
+
+  if (view === "task-flows") {
+    if (!isAdmin) {
+      return (
+        <section className="rounded-lg border border-border bg-card p-6" role="alert">
+          <h1 className="font-display text-2xl font-bold text-foreground">Acesso restrito</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            A configuração de responsáveis e notificações está disponível somente para o
+            administrador do sistema.
+          </p>
+        </section>
+      );
+    }
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <TaskFlowSettings organizationId={organizationId} />
       </Suspense>
     );
   }

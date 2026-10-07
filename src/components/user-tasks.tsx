@@ -910,6 +910,7 @@ function CreateTask({
   const [dirty, setDirty] = useState(false);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<"mapping" | "improvement" | "document">("mapping");
+  const [assignedTo, setAssignedTo] = useState(data.flowAssignees?.mapping || data.userId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
@@ -1007,7 +1008,14 @@ function CreateTask({
           <div className="ut-form-row">
             <label>
               Tipo
-              <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+              <select
+                value={kind}
+                onChange={(e) => {
+                  const nextKind = e.target.value as typeof kind;
+                  setKind(nextKind);
+                  setAssignedTo(data.flowAssignees?.[nextKind] || data.userId);
+                }}
+              >
                 {Object.entries(TASK_KINDS).map(([k, v]) => (
                   <option value={k} key={k}>
                     {v}
@@ -1040,7 +1048,12 @@ function CreateTask({
           <div className="ut-form-row ut-task-people-row">
             <label>
               Responsável
-              <select name="assignedTo" defaultValue={data.userId}>
+              <select
+                name="assignedTo"
+                value={assignedTo}
+                disabled={!!data.flowAssignees?.[kind]}
+                onChange={(event) => setAssignedTo(event.target.value)}
+              >
                 {data.people
                   .filter((p) => p.can_edit)
                   .map((p) => (
@@ -1049,6 +1062,11 @@ function CreateTask({
                     </option>
                   ))}
               </select>
+              {data.flowAssignees?.[kind] && (
+                <small>
+                  Atendente padrão definido nas configurações administrativas deste fluxo.
+                </small>
+              )}
             </label>
             <label>
               Solicitante
@@ -1179,6 +1197,7 @@ function TaskDetails({
     t?.status !== "cancelled" &&
     t?.status !== "paused" &&
     (t?.kind !== "mapping" || t?.stage === "documentation" || data?.isAdmin);
+  const canFillChecklist = canEdit && t?.stage === "documentation";
   const remainder = t ? pending(t) : [];
   async function write(action: TaskAction, payload: Record<string, unknown>) {
     if (!t) return false;
@@ -1369,7 +1388,7 @@ function TaskDetails({
                       {t.status === "completed" && <TaskChecklistDownload task={t} />}
                       <TaskChecklist
                         task={t}
-                        canEdit={!!canEdit}
+                        canEdit={!!canFillChecklist}
                         busy={busy}
                         hideDone={hideDone}
                         edit={setEditing}

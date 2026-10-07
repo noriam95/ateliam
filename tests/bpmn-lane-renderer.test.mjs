@@ -66,21 +66,31 @@ test("imported lanes keep one pool frame and only one divider between lanes", ()
       businessObject: { $parent: laneSet },
     };
     pool.children = [first, second];
-    const gfx = { appendChild: (line) => lines.includes(line) };
+    const gfx = {
+      appendChild: (line) => lines.includes(line),
+      querySelector: () => null,
+    };
     assert.equal(render({}, { element: first, gfx }), rect);
-    assert.equal(lines.length, 0);
+    assert.equal(lines.length, 1);
     assert.equal(render({}, { element: second, gfx }), rect);
+    assert.equal(lines.length, 2);
     assert.deepEqual(strokes, [
       ["stroke", "none", "important"],
       ["stroke", "none", "important"],
     ]);
     assert.deepEqual(lines[0].attributes, {
+      x1: "30",
+      x2: "30",
+      y1: "0",
+      y2: "400",
+    });
+    assert.equal(lines[0].style.stroke, "#606770");
+    assert.deepEqual(lines[1].attributes, {
       x1: "0",
       x2: "570",
       y1: "0",
       y2: "0",
     });
-    assert.equal(lines[0].style.stroke, "#606770");
   } finally {
     globalThis.document = originalDocument;
   }

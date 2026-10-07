@@ -96,6 +96,7 @@ export type TaskFeed = {
   canCreate: boolean;
   summary: { mapping: number; improvement: number; document: number; overdue: number };
   people: { id: string; name: string; can_edit: boolean }[];
+  flowAssignees?: Partial<Record<keyof typeof TASK_KINDS, string>>;
   documents: TaskDocument[];
   events: {
     id: string;
