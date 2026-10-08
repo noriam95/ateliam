@@ -983,9 +983,9 @@ function CreateTask({
   const [dirty, setDirty] = useState(false);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<"mapping" | "improvement" | "document">("mapping");
-  const [assignedTo, setAssignedTo] = useState(data.flowAssignees?.mapping || data.userId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const poolConfigured = data.configuredKinds ? data.configuredKinds.includes(kind) : true;
   return (
     <TaskDialog title="Nova tarefa" onClose={close} busy={busy} dirty={dirty}>
       <form
@@ -1004,7 +1004,7 @@ function CreateTask({
             String(f.get("dueOn")) < String(f.get("startsOn"))
           ) {
             setError(
-              "Preencha título, responsável, solicitante, área e período. O prazo deve ser igual ou posterior ao início.",
+              "Preencha título, solicitante, área e período. O prazo deve ser igual ou posterior ao início.",
             );
             return;
           }
@@ -1086,7 +1086,6 @@ function CreateTask({
                 onChange={(e) => {
                   const nextKind = e.target.value as typeof kind;
                   setKind(nextKind);
-                  setAssignedTo(data.flowAssignees?.[nextKind] || data.userId);
                 }}
               >
                 {Object.entries(TASK_KINDS).map(([k, v]) => (
@@ -1120,26 +1119,12 @@ function CreateTask({
           </div>
           <div className="ut-form-row ut-task-people-row">
             <label>
-              Responsável
-              <select
-                name="assignedTo"
-                value={assignedTo}
-                disabled={!!data.flowAssignees?.[kind]}
-                onChange={(event) => setAssignedTo(event.target.value)}
-              >
-                {data.people
-                  .filter((p) => p.can_edit)
-                  .map((p) => (
-                    <option value={p.id} key={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </select>
-              {data.flowAssignees?.[kind] && (
-                <small>
-                  Atendente padrão definido nas configurações administrativas deste fluxo.
-                </small>
-              )}
+              Atendimento
+              <input type="hidden" name="assignedTo" value={data.userId} />
+              <span className="ut-muted">
+                A solicitação ficará disponível para a pool de {TASK_KINDS[kind]}. Um atendente
+                deverá assumi-la para iniciar o trabalho.
+              </span>
             </label>
             <label>
               Solicitante
@@ -1174,6 +1159,12 @@ function CreateTask({
               placeholder="Descreva a solicitação ou as orientações para esta tarefa."
             />
           </label>
+          {!poolConfigured && (
+            <p className="ut-warning" role="status">
+              Ainda não há atendentes configurados para este fluxo. O administrador deve montar a
+              pool em Configurações → Fluxos e notificações antes de receber novas solicitações.
+            </p>
+          )}
           <input
             ref={fileInput}
             type="file"
@@ -1225,7 +1216,7 @@ function CreateTask({
           <button type="button" disabled={busy} onClick={close}>
             Cancelar
           </button>
-          <button className="ut-primary" disabled={busy}>
+          <button className="ut-primary" disabled={busy || !poolConfigured}>
             {busy ? "Salvando…" : created ? "Concluir comentário e anexos" : "Criar tarefa"}
           </button>
         </footer>
@@ -1263,7 +1254,13 @@ function TaskDetails({
   const data = query.data;
   const t = data?.tasks[0];
   const canAct =
-    !!t && !t.deleted_at && data?.canCreate && (data?.isAdmin || data?.userId === t.assigned_to);
+    !!t &&
+    !t.deleted_at &&
+    data?.canCreate &&
+    (data?.isAdmin ||
+      (data?.claimableKinds === undefined
+        ? data?.userId === t.assigned_to
+        : !!t.claimed_by && data?.userId === t.assigned_to));
   const canEdit =
     canAct &&
     t?.status !== "completed" &&
@@ -1271,6 +1268,12 @@ function TaskDetails({
     t?.status !== "paused" &&
     (t?.kind !== "mapping" || t?.stage === "documentation" || data?.isAdmin);
   const canFillChecklist = canEdit && t?.stage === "documentation";
+  const canClaim =
+    !!t &&
+    !t.deleted_at &&
+    !t.claimed_by &&
+    !!data?.claimableKinds?.includes(t.kind) &&
+    !["completed", "cancelled"].includes(t.status);
   const remainder = t ? pending(t) : [];
   async function write(
     action: TaskAction,
@@ -1358,13 +1361,32 @@ function TaskDetails({
         <p className="ut-empty">Tarefa não encontrada ou sem acesso.</p>
       ) : (
         <div>
+          {canClaim && data && (
+            <section className="ut-routing" aria-label="Demanda disponível para atendimento">
+              <h3>Disponível para a pool de atendimento</h3>
+              <p>
+                Assuma a solicitação para registrar sua análise e dar continuidade ao atendimento.
+              </p>
+              <button
+                className="ut-primary"
+                disabled={busy}
+                onClick={() => void write("claim", {})}
+              >
+                {busy ? "Assumindo…" : "Assumir atendimento"}
+              </button>
+            </section>
+          )}
           <TaskHeaderSummary
             task={t}
             canEdit={
               !!data &&
               !t.deleted_at &&
               !["completed", "cancelled"].includes(t.status) &&
-              (data.isAdmin || (t.assigned_to === data.userId && t.documenter_id === data.userId))
+              (data.isAdmin ||
+                ((data.claimableKinds === undefined
+                  ? t.assigned_to === data.userId
+                  : !!t.claimed_by && t.assigned_to === data.userId) &&
+                  t.documenter_id === data.userId))
             }
             expanded={headerExpanded}
             toggle={() => {

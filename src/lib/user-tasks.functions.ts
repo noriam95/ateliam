@@ -45,20 +45,6 @@ export const loadUserTasks = createServerFn({ method: "POST" })
           : error.message,
       );
     const feed = result as TaskFeed;
-    const { data: flowRows } = await db
-      .from("task_flow_settings")
-      .select("task_kind,default_assignee_id")
-      .eq("organization_id", data.organizationId);
-    if (flowRows?.length) {
-      feed.flowAssignees = Object.fromEntries(
-        flowRows
-          .filter((row: { default_assignee_id: string | null }) => row.default_assignee_id)
-          .map((row: { task_kind: string; default_assignee_id: string }) => [
-            row.task_kind,
-            row.default_assignee_id,
-          ]),
-      );
-    }
     if (data.filters.id && feed.tasks.some((task) => task.id === data.filters.id)) {
       const history = await dashboardRows(
         db
@@ -116,6 +102,7 @@ export const updateUserTask = createServerFn({ method: "POST" })
           "resume",
           "edit_details",
           "start_documentation",
+          "claim",
           "request_complement",
           "resubmit",
           "create",
@@ -143,6 +130,15 @@ export const updateUserTask = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const db = context.supabase as unknown as SupabaseClient;
+    if (data.action === "claim") {
+      const { data: claimed, error: claimError } = await db.rpc("claim_user_task", {
+        p_org: data.organizationId,
+        p_task: data.payload.id,
+        p_revision: data.payload.revision,
+      });
+      if (claimError) throw new Error(claimError.message);
+      return claimed as { id: string; revision?: number };
+    }
     const { data: result, error } = await db.rpc("user_tasks_command", {
       p_org: data.organizationId,
       p_action: data.action,
@@ -179,7 +175,22 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
           .join(","),
       );
     if (error) throw new Error(error.message);
-    if (!tasks?.length) return [];
+    const { data: poolFeed, error: poolError } = await db.rpc("user_tasks_feed", {
+      p_org: data.organizationId,
+      p_filters: { status: "open" },
+    });
+    if (poolError) throw new Error(poolError.message);
+    const poolTasks = ((poolFeed as TaskFeed | null)?.tasks || [])
+      .filter((task) => !task.claimed_by)
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        task_code: task.task_code,
+        kind: task.kind,
+      }));
+    const taskMap = new Map([...(tasks || []), ...poolTasks].map((task) => [task.id, task]));
+    const visibleTasks = [...taskMap.values()];
+    if (!visibleTasks.length) return [];
     const { data: flowSettings, error: settingsError } = await db
       .from("task_flow_settings")
       .select("task_kind,system_notifications")
@@ -199,7 +210,7 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
       .select("id,task_id,action,note,created_at")
       .in(
         "task_id",
-        tasks.map((t) => t.id),
+        visibleTasks.map((t) => t.id),
       )
       .eq("organization_id", data.organizationId)
       .order("created_at", { ascending: false })
@@ -227,13 +238,13 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
     return (events || [])
       .filter((event) => {
         if (!settingsAvailable) return true;
-        const task = tasks.find((row) => row.id === event.task_id);
+        const task = visibleTasks.find((row) => row.id === event.task_id);
         const preferences = task && systemPreferences.get(task.kind);
         return !preferences || preferences[categoryForAction(event.action)] !== false;
       })
       .map((e) => ({
         id: e.id,
-        title: `${tasks.find((t) => t.id === e.task_id)?.task_code || ""} · ${tasks.find((t) => t.id === e.task_id)?.title || "Tarefa"}`,
+        title: `${visibleTasks.find((t) => t.id === e.task_id)?.task_code || ""} · ${visibleTasks.find((t) => t.id === e.task_id)?.title || "Tarefa"}`,
         description: e.note || e.action,
         tag: e.action,
         updatedAt: e.created_at,

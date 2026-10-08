@@ -29,18 +29,18 @@ export const getTaskFlowSettings = createServerFn({ method: "POST" })
     const [settingsResult, feedResult] = await Promise.all([
       db
         .from("task_flow_settings")
-        .select("task_kind,default_assignee_id,system_notifications,email_notifications,updated_at")
+        .select("task_kind,attendant_ids,system_notifications,email_notifications,updated_at")
         .eq("organization_id", data.organizationId),
       db.rpc("user_tasks_feed", { p_org: data.organizationId, p_filters: {} }),
     ]);
     if (settingsResult.error) throw new Error(settingsResult.error.message);
     if (feedResult.error) throw new Error(feedResult.error.message);
     const feed = feedResult.data as {
-      people?: { id: string; name: string; can_edit: boolean }[];
+      people?: { id: string; name: string; can_edit: boolean; is_member?: boolean }[];
     };
     return {
       settings: settingsResult.data || [],
-      people: (feed.people || []).filter((person) => person.can_edit),
+      people: (feed.people || []).filter((person) => person.can_edit && person.is_member),
       emailConfigured: false,
     };
   });
@@ -51,7 +51,7 @@ export const saveTaskFlowSettings = createServerFn({ method: "POST" })
     scope
       .extend({
         kind: z.enum(kinds),
-        defaultAssigneeId: z.string().uuid().nullable(),
+        attendantIds: z.array(z.string().uuid()).max(100),
         systemNotifications: channelPrefs,
         emailNotifications: channelPrefs,
       })
@@ -60,15 +60,20 @@ export const saveTaskFlowSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase as unknown as SupabaseClient;
     await assertSystemAdmin(db, context.userId);
-    if (data.defaultAssigneeId) {
+    if (data.attendantIds.length) {
       const { data: feed, error: feedError } = await db.rpc("user_tasks_feed", {
         p_org: data.organizationId,
         p_filters: {},
       });
       if (feedError) throw new Error(feedError.message);
-      const people = (feed as { people?: { id: string; can_edit: boolean }[] }).people || [];
-      if (!people.some((person) => person.id === data.defaultAssigneeId && person.can_edit))
-        throw new Error("Selecione um usuário com acesso de edição nesta organização.");
+      const people =
+        (feed as { people?: { id: string; can_edit: boolean; is_member?: boolean }[] }).people ||
+        [];
+      const eligible = new Set(
+        people.filter((person) => person.can_edit && person.is_member).map((person) => person.id),
+      );
+      if (data.attendantIds.some((id) => !eligible.has(id)))
+        throw new Error("Selecione atendentes com acesso de edição nesta organização.");
     }
     const { data: saved, error } = await db
       .from("task_flow_settings")
@@ -76,7 +81,7 @@ export const saveTaskFlowSettings = createServerFn({ method: "POST" })
         {
           organization_id: data.organizationId,
           task_kind: data.kind,
-          default_assignee_id: data.defaultAssigneeId,
+          attendant_ids: data.attendantIds,
           system_notifications: data.systemNotifications,
           email_notifications: data.emailNotifications,
           updated_by: context.userId,
@@ -84,7 +89,7 @@ export const saveTaskFlowSettings = createServerFn({ method: "POST" })
         },
         { onConflict: "organization_id,task_kind" },
       )
-      .select("task_kind,default_assignee_id,system_notifications,email_notifications,updated_at")
+      .select("task_kind,attendant_ids,system_notifications,email_notifications,updated_at")
       .single();
     if (error) throw new Error(error.message);
     return saved;

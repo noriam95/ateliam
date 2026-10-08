@@ -88,6 +88,9 @@ export type UserTask = {
   assignee_photo?: string | null;
   requester_name: string;
   pending_at_transition: string[];
+  claimed_by?: string | null;
+  claimed_at?: string | null;
+  claimable?: boolean;
 };
 export type TaskFeed = {
   tasks: UserTask[];
@@ -97,7 +100,8 @@ export type TaskFeed = {
   canCreate: boolean;
   summary: { mapping: number; improvement: number; document: number; overdue: number };
   people: { id: string; name: string; can_edit: boolean }[];
-  flowAssignees?: Partial<Record<keyof typeof TASK_KINDS, string>>;
+  claimableKinds?: (keyof typeof TASK_KINDS)[];
+  configuredKinds?: (keyof typeof TASK_KINDS)[];
   documents: TaskDocument[];
   events: {
     id: string;
@@ -166,6 +170,7 @@ export type TaskAction =
   | "resume"
   | "edit_details"
   | "start_documentation"
+  | "claim"
   | "request_complement"
   | "resubmit"
   | "add_item"
@@ -216,7 +221,10 @@ export function taskQuickActions(
     task.deleted_at ||
     !data.canCreate ||
     ["completed", "cancelled"].includes(task.status) ||
-    (!data.isAdmin && task.assigned_to !== data.userId)
+    (!data.isAdmin &&
+      (data.claimableKinds === undefined
+        ? task.assigned_to !== data.userId
+        : !task.claimed_by || task.assigned_to !== data.userId))
   )
     return [];
   const responsibleStage = ["intake", "documentation", "owner_approval"].includes(task.stage);

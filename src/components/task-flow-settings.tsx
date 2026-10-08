@@ -21,7 +21,7 @@ type EventKey = (typeof EVENTS)[number]["key"];
 type Preferences = Record<EventKey, boolean>;
 type FlowRow = {
   task_kind: string;
-  default_assignee_id: string | null;
+  attendant_ids: string[];
   system_notifications: Preferences;
   email_notifications: Preferences;
 };
@@ -50,7 +50,7 @@ export function TaskFlowSettings({ organizationId }: { organizationId: string | 
   const load = useServerFn(getTaskFlowSettings);
   const save = useServerFn(saveTaskFlowSettings);
   const [kind, setKind] = useState<(typeof FLOWS)[number]["kind"]>("mapping");
-  const [assignee, setAssignee] = useState("");
+  const [attendants, setAttendants] = useState<string[]>([]);
   const [system, setSystem] = useState<Preferences>(defaultSystem);
   const [email, setEmail] = useState<Preferences>(defaultEmail);
   const query = useQuery({
@@ -64,13 +64,14 @@ export function TaskFlowSettings({ organizationId }: { organizationId: string | 
   );
 
   useEffect(() => {
-    setAssignee(current?.default_assignee_id || "");
+    setAttendants(current?.attendant_ids || []);
     setSystem({ ...defaultSystem, ...(current?.system_notifications || {}) });
     setEmail({ ...defaultEmail, ...(current?.email_notifications || {}) });
   }, [current]);
 
   const dirty =
-    assignee !== (current?.default_assignee_id || "") ||
+    JSON.stringify([...attendants].sort()) !==
+      JSON.stringify([...(current?.attendant_ids || [])].sort()) ||
     EVENTS.some(({ key }) => system[key] !== (current?.system_notifications?.[key] ?? true)) ||
     EVENTS.some(({ key }) => email[key] !== (current?.email_notifications?.[key] ?? false));
   const mutation = useMutation({
@@ -79,7 +80,7 @@ export function TaskFlowSettings({ organizationId }: { organizationId: string | 
         data: {
           organizationId: organizationId!,
           kind,
-          defaultAssigneeId: assignee || null,
+          attendantIds: attendants,
           systemNotifications: system,
           emailNotifications: email,
         },
@@ -115,7 +116,9 @@ export function TaskFlowSettings({ organizationId }: { organizationId: string | 
           {["PGRST205", "42P01"].includes(errorCode)
             ? "A configuração ainda não existe neste banco. Aplique a migração SQL desta entrega e tente novamente."
             : query.error instanceof Error
-              ? query.error.message
+              ? /attendant_ids|column.*task_flow_settings|schema cache/i.test(query.error.message)
+                ? "A estrutura de pools ainda não foi aplicada neste banco. Execute a migração 20261008120000_task_flow_pools_and_claiming.sql no Supabase e tente novamente."
+                : query.error.message
               : "Tente novamente."}
         </p>
         <button
@@ -136,11 +139,11 @@ export function TaskFlowSettings({ organizationId }: { organizationId: string | 
           sistema
         </div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          Responsáveis e notificações por fluxo
+          Pools de atendimento e notificações
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Defina quem recebe novas tarefas em cada modalidade e quais movimentações aparecem nas
-          notificações desta organização.
+          Defina as pools de atendimento de cada fluxo. As demandas ficam disponíveis até um
+          atendente assumi-las; quem atender poderá encaminhar para revisão.
         </p>
       </header>
 
@@ -165,24 +168,44 @@ export function TaskFlowSettings({ organizationId }: { organizationId: string | 
         <div className="grid gap-6 p-5">
           <div className="max-w-xl">
             <label htmlFor="task-flow-assignee" className="text-sm font-medium">
-              Atendente padrão de {FLOWS.find((flow) => flow.kind === kind)?.label.toLowerCase()}
+              Atendentes da pool de {FLOWS.find((flow) => flow.kind === kind)?.label.toLowerCase()}
             </label>
-            <select
+            <fieldset
               id="task-flow-assignee"
-              value={assignee}
-              onChange={(event) => setAssignee(event.target.value)}
-              className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="mt-2 grid max-h-64 gap-1 overflow-auto rounded-md border border-input p-2"
             >
-              <option value="">Sem atendente padrão</option>
-              {query.data.people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
-            </select>
+              <legend className="sr-only">Atendentes da pool</legend>
+              {query.data.people
+                .filter((person) => person.can_edit)
+                .map((person) => (
+                  <label
+                    key={person.id}
+                    className="flex min-h-9 items-center gap-3 rounded px-2 text-sm hover:bg-muted/50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={attendants.includes(person.id)}
+                      onChange={(event) =>
+                        setAttendants((current) =>
+                          event.target.checked
+                            ? [...current, person.id]
+                            : current.filter((id) => id !== person.id),
+                        )
+                      }
+                      className="h-4 w-4 accent-[var(--gold)]"
+                    />
+                    {person.name}
+                  </label>
+                ))}
+              {!query.data.people.some((person) => person.can_edit) && (
+                <p className="p-2 text-sm text-muted-foreground">
+                  Não há usuários com permissão de edição nesta organização.
+                </p>
+              )}
+            </fieldset>
             <p className="mt-2 text-xs text-muted-foreground">
-              Novas tarefas deste fluxo serão atribuídas a este usuário. A configuração vale para{" "}
-              {query.data.people.length} usuário(s) com acesso de edição.
+              {attendants.length} usuário(s) selecionado(s). Novas solicitações ficam disponíveis
+              para esta pool até alguém assumir o atendimento.
             </p>
           </div>
 
