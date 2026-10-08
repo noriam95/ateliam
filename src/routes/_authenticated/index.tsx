@@ -181,6 +181,36 @@ type WorkspaceView =
 
 type ModuleTask = "home" | "consult" | "cause-new" | "cause-consult" | "cause-edit" | "library";
 type WorkspaceArea = "home" | "portal" | "modules" | "value-chain" | "reports" | "settings";
+function AdminSettingsTabs({ view }: { view: WorkspaceView }) {
+  const tabs: { view: WorkspaceView; label: string }[] = [
+    { view: "organizations", label: "Organizações" },
+    { view: "users", label: "Usuários" },
+    { view: "task-flows", label: "Fluxos e notificações" },
+    { view: "task-reminders", label: "Lembretes de tarefas" },
+  ];
+  return (
+    <nav
+      aria-label="Seções de configurações"
+      className="mb-5 flex flex-wrap gap-2 border-b border-border pb-3"
+    >
+      {tabs.map((tab) => (
+        <Link
+          key={tab.view}
+          to="/"
+          search={{ area: "settings", view: tab.view }}
+          aria-current={
+            view === tab.view || (view === "document-models" && tab.view === "organizations")
+              ? "page"
+              : undefined
+          }
+          className="rounded-md px-3 py-2 text-sm hover:bg-muted aria-[current=page]:bg-accent"
+        >
+          {tab.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 type DashboardTotals = {
   processes: number;
   activeProcesses: number;
@@ -2662,9 +2692,12 @@ function WorkspaceContent({
       );
     }
     return (
-      <Suspense fallback={<LoadingSkeleton />}>
-        <TaskReminderSettings />
-      </Suspense>
+      <div>
+        <AdminSettingsTabs view={view} />
+        <Suspense fallback={<LoadingSkeleton />}>
+          <TaskReminderSettings />
+        </Suspense>
+      </div>
     );
   }
 
@@ -2681,9 +2714,12 @@ function WorkspaceContent({
       );
     }
     return (
-      <Suspense fallback={<LoadingSkeleton />}>
-        <TaskFlowSettings organizationId={organizationId} />
-      </Suspense>
+      <div>
+        <AdminSettingsTabs view={view} />
+        <Suspense fallback={<LoadingSkeleton />}>
+          <TaskFlowSettings organizationId={organizationId} />
+        </Suspense>
+      </div>
     );
   }
 
@@ -2703,27 +2739,7 @@ function WorkspaceContent({
     }
     return (
       <div>
-        <nav
-          aria-label="Seções de configurações"
-          className="mb-5 flex gap-2 border-b border-border pb-3"
-        >
-          <Link
-            to="/"
-            search={{ area: "settings", view: "organizations" }}
-            aria-current={view !== "users" ? "page" : undefined}
-            className="rounded-md px-3 py-2 text-sm hover:bg-muted aria-[current=page]:bg-accent"
-          >
-            Organizações
-          </Link>
-          <Link
-            to="/"
-            search={{ area: "settings", view: "users" }}
-            aria-current={view === "users" ? "page" : undefined}
-            className="rounded-md px-3 py-2 text-sm hover:bg-muted aria-[current=page]:bg-accent"
-          >
-            Usuários
-          </Link>
-        </nav>
+        <AdminSettingsTabs view={view} />
         <Suspense fallback={<LoadingSkeleton />}>
           <WorkspaceSystemSettings
             view={view === "document-models" ? "organizations" : view}
