@@ -2645,12 +2645,13 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
         .slice(0, 5);
     };
 
+    const processesById = new Map((processes ?? []).map((process) => [process.id, process]));
     const ddps = (documents ?? []).filter((document) => document.module === "ddp");
     const pops = (documents ?? []).filter((document) => document.module === "pop");
     const documentCatalogRows = (documents ?? []).map((doc) => {
       const row = dashboardDocumentCatalogRowFromDocument(doc);
       if (!row.area || row.area === "-")
-        row.area = (processes ?? []).find((p) => p.id === doc.primary_process_id)?.department || "";
+        row.area = processesById.get(doc.primary_process_id ?? "")?.department || "";
       return row;
     });
     const activeProcesses = (processes ?? []).filter((process) => process.status === "Ativo");
@@ -2658,7 +2659,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     const dashboardMappingRows = ddps.map((doc) => {
       const row = dashboardMappingRowFromDocument(doc);
       if (!row.area || row.area === "-")
-        row.area = (processes ?? []).find((p) => p.id === doc.primary_process_id)?.department || "";
+        row.area = processesById.get(doc.primary_process_id ?? "")?.department || "";
       return row;
     });
     const mappingStatusCounts = {
@@ -2671,13 +2672,14 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     const processNamesById = new Map(
       (processes ?? []).map((process) => [process.id, process.name]),
     );
+    const mappingRowsById = new Map(dashboardMappingRows.map((mapping) => [mapping.id, mapping]));
     const mappingCauseRows = ddps.flatMap((doc) =>
       dashboardCauseRowsFromDocument(doc).map((row) => ({
         ...row,
         area:
           row.area && row.area !== "-"
             ? row.area
-            : dashboardMappingRows.find((m) => m.id === doc.id)?.area || "",
+            : mappingRowsById.get(doc.id)?.area || "",
       })),
     );
     const sharedCauseIds = new Set(
@@ -2686,7 +2688,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     const standaloneCauseRows: DashboardCauseRow[] = (standaloneCauses ?? [])
       .filter((cause) => !sharedCauseIds.has(cause.id))
       .map((cause) => ({
-        area: (processes ?? []).find((p) => p.id === cause.process_id)?.department || "",
+        area: processesById.get(cause.process_id ?? "")?.department || "",
         id: `standalone:${cause.id}`,
         cause: cause.title,
         source: "Avulsa",
@@ -2809,7 +2811,7 @@ export const listUserAccess = createServerFn({ method: "GET" })
 
     let profilesQuery = supabaseAdmin
       .from("profiles")
-      .select("*")
+      .select("id, organization_id, email, username, display_name, visible_modules")
       .order("created_at", { ascending: true });
     if (!access.isAdmin) {
       const { data: scopedMemberships, error: scopedError } = await supabaseAdmin
