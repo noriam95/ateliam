@@ -137,7 +137,7 @@ export const updateUserTask = createServerFn({ method: "POST" })
         p_revision: data.payload.revision,
       });
       if (claimError) throw new Error(claimError.message);
-      return claimed as { id: string; revision?: number };
+      return claimed as { id: string; documentId?: string; revision?: number };
     }
     const { data: result, error } = await db.rpc("user_tasks_command", {
       p_org: data.organizationId,

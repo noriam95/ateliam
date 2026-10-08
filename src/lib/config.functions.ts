@@ -2842,17 +2842,30 @@ export const listUserAccess = createServerFn({ method: "GET" })
     if (organizationsError) throw new Error(organizationsError.message);
     if (membershipsError) throw new Error(membershipsError.message);
 
+    const organizationById = new Map(
+      (organizations ?? []).map((organization) => [organization.id, organization]),
+    );
+    const rolesByUserId = new Map<string, string[]>();
+    for (const role of roles ?? []) {
+      const userRoles = rolesByUserId.get(role.user_id) ?? [];
+      userRoles.push(role.role);
+      rolesByUserId.set(role.user_id, userRoles);
+    }
+    const membershipsByUserId = new Map<string, typeof memberships>();
+    for (const membership of memberships ?? []) {
+      const userMemberships = membershipsByUserId.get(membership.user_id) ?? [];
+      userMemberships.push(membership);
+      membershipsByUserId.set(membership.user_id, userMemberships);
+    }
+
     return (profiles ?? []).map((profile) => ({
       ...profile,
-      organization: (organizations ?? []).find((org) => org.id === profile.organization_id) ?? null,
-      roles: (roles ?? []).filter((row) => row.user_id === profile.id).map((row) => row.role),
-      organization_access: (memberships ?? [])
-        .filter((row) => row.user_id === profile.id)
-        .map((membership) => ({
-          ...membership,
-          organization:
-            (organizations ?? []).find((org) => org.id === membership.organization_id) ?? null,
-        })),
+      organization: organizationById.get(profile.organization_id) ?? null,
+      roles: rolesByUserId.get(profile.id) ?? [],
+      organization_access: (membershipsByUserId.get(profile.id) ?? []).map((membership) => ({
+        ...membership,
+        organization: organizationById.get(membership.organization_id) ?? null,
+      })),
     }));
   });
 
