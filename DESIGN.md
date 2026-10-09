@@ -201,6 +201,7 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 - O leitor limita a coluna de metadados em telas amplas e a move para baixo do documento até 1180 px. A altura do visualizador considera a janela disponível e evita dimensões rígidas em telas baixas.
 - A pesquisa rápida por tipo reutiliza o filtro canônico e não remove área, processo ou demais critérios. O tema claro/escuro e o dourado usam os tokens globais, sem introduzir uma paleta paralela.
 - Cabeçalho do Portal conserva marca, seletor de organização e perfil até 320 px, com dimensões flexíveis. A tela de login aplica os mesmos tokens semânticos de superfície, borda, texto e foco nos dois temas.
+- A navegação organizacional é alimentada pelos cadastros da organização, sem limitar a dez entradas. Lista todas as áreas cadastradas (não há status de área no modelo atual) e os processos ativos, mostrando documentos vigentes associados ou uma mensagem explícita quando não houver. A cadeia de valor apresenta macroprocessos ativos por categoria, com processos, documentos e relações de saída cadastrados.
 
 ## Cenário e entregas da tarefa de mapeamento — 05/10/2026
 

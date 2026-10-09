@@ -9,10 +9,15 @@ const bundle = await build({
   format: "esm",
   write: false,
 });
-const { filterAndSortPortalDocuments, isPortalCurrentStatus, relatedPortalDocuments } =
-  await import(
-    "data:text/javascript;base64," + Buffer.from(bundle.outputFiles[0].text).toString("base64")
-  );
+const {
+  filterAndSortPortalDocuments,
+  isPortalCurrentStatus,
+  portalDocumentsForArea,
+  portalDocumentsForProcess,
+  relatedPortalDocuments,
+} = await import(
+  "data:text/javascript;base64," + Buffer.from(bundle.outputFiles[0].text).toString("base64")
+);
 
 const base = {
   module: "pop",
@@ -131,5 +136,24 @@ test("prioritizes related documents from the same process and area", () => {
   assert.deepEqual(
     relatedPortalDocuments(documents[0], related).map((document) => document.id),
     ["c"],
+  );
+});
+
+test("catalog associations match areas without accent differences and processes by registered id", () => {
+  const catalogDocuments = [
+    { ...documents[0], id: "area", area: "Logística e Suprimentos", processId: "process-1" },
+    { ...documents[1], id: "other-area", area: "Financeiro", processId: "process-2" },
+    { ...documents[0], id: "unlinked", area: "Logística e Suprimentos", processId: "" },
+  ];
+
+  assert.deepEqual(
+    portalDocumentsForArea(catalogDocuments, "Logistica e Suprimentos").map(
+      (document) => document.id,
+    ),
+    ["area", "unlinked"],
+  );
+  assert.deepEqual(
+    portalDocumentsForProcess(catalogDocuments, "process-1").map((document) => document.id),
+    ["area"],
   );
 });

@@ -1730,12 +1730,75 @@ export const listPortalDocuments = createServerFn({ method: "POST" })
         status,
         revision,
         effectiveAt,
+        processId: document.primary_process_id ?? "",
         updatedAt: document.updated_at,
         createdAt: document.created_at,
         searchText: normalizePortalText(metadata.join(" ")).slice(0, 8000),
       });
     }
     return documents;
+  });
+
+export const listPortalStructure = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { organizationId?: string | null }) => organizationScopeSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const access = await permissionContext(context, data.organizationId);
+    const [areaResult, processResult, chainResult, outputRelationsResult] = await Promise.all([
+      dashboardRows(
+        context.supabase
+          .from("organization_departments")
+          .select("id,name,sigla")
+          .eq("organization_id", access.organizationId)
+          .order("name", { ascending: true }),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("organization_processes")
+          .select(
+            "id,parent_process_id,name,type,value_chain_id,department,owner,description,status",
+          )
+          .eq("organization_id", access.organizationId)
+          .eq("status", "Ativo")
+          .order("name", { ascending: true }),
+      ),
+      dashboardRows(
+        context.supabase
+          .from("organization_value_chains")
+          .select("id,name,category,description,status")
+          .eq("organization_id", access.organizationId)
+          .eq("status", "Ativa")
+          .order("name", { ascending: true }),
+      ),
+      dashboardRows(
+        (context.supabase as any)
+          .from("organization_value_chain_output_relations")
+          .select("output_id,chain_id")
+          .eq("organization_id", access.organizationId),
+      ),
+    ]);
+    if (areaResult.error) throw new Error(areaResult.error.message);
+    if (processResult.error) throw new Error(processResult.error.message);
+    if (chainResult.error) throw new Error(chainResult.error.message);
+    if (outputRelationsResult.error) {
+      console.error(
+        "organization_value_chain_output_relations:",
+        outputRelationsResult.error.message,
+      );
+    }
+
+    return {
+      areas: areaResult.data ?? [],
+      processes: processResult.data ?? [],
+      valueChainRelations: (outputRelationsResult.data ?? []) as Array<{
+        output_id: string;
+        chain_id: string;
+      }>,
+      valueChains: (chainResult.data ?? []).map((chain) => ({
+        ...chain,
+        name: chain.name.trim().toLocaleUpperCase("pt-BR"),
+      })),
+    };
   });
 
 export const deleteModuleDocument = createServerFn({ method: "POST" })

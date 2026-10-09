@@ -182,18 +182,20 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 
 ## Portal de Documentos — contrato de consulta
 
-| Capacidade       | Regra                                                                                                                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Entrada          | “Portal de Documentos” fica disponível no lançador global e abre `/portal`.                                                                                                     |
-| Escopo           | Toda consulta exige usuário autenticado e organização acessível; os dados continuam sujeitos às políticas de acesso da organização.                                             |
-| Publicação       | Apenas documentos com estado atual reconhecido entram na coleção. A função de conteúdo repete essa validação antes de devolver o arquivo ao leitor.                             |
-| Pesquisa         | Todos os termos informados devem existir em algum metadado pesquisável; a comparação é parcial, sem distinção de maiúsculas ou acentos.                                         |
-| Filtros          | Área, processo e tipo são cumulativos. “Limpar filtros” restaura consulta e ordenação iniciais.                                                                                 |
-| Atalhos por tipo | Chips “Todos” e tipos mais usados aplicam o mesmo filtro `type` da consulta; “Todos” remove somente o filtro de tipo e preserva os outros critérios.                            |
-| Abertura         | O título e a ação “Visualizar” levam à página de leitura, que incorpora o leitor original em modo somente leitura; não expor criar, editar, excluir, aprovar ou alterar versão. |
-| Personalização   | Favoritos, recentes e popularidade pessoal usam chave por usuário e organização; não podem vazar entre organizações no mesmo navegador.                                         |
-| Estados          | Carregamento apresenta indicador em área estável; falha preserva contexto e oferece nova tentativa; vazio explica o resultado e permite limpar a busca.                         |
-| Responsividade   | Busca, filtros, cartões e seções reorganizam sem sobreposição entre 320 px e telas amplas; alvos interativos conservam foco visível e nome acessível.                           |
+| Capacidade       | Regra                                                                                                                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entrada          | “Portal de Documentos” fica disponível no lançador global e abre `/portal`.                                                                                                                                            |
+| Escopo           | Toda consulta exige usuário autenticado e organização acessível; os dados continuam sujeitos às políticas de acesso da organização.                                                                                    |
+| Publicação       | Apenas documentos com estado atual reconhecido entram na coleção. A função de conteúdo repete essa validação antes de devolver o arquivo ao leitor.                                                                    |
+| Catálogos        | A navegação lista todas as áreas cadastradas (a tabela não possui status) e todos os processos com status `Ativo`, mesmo sem documentos vigentes. Cada item sem documento informa isso explicitamente.                 |
+| Cadeia de valor  | Exibir cadeias com status `Ativa`, agrupadas por categoria, e os processos ativos associados; os documentos vigentes vinculados a cada processo podem ser abertos no Portal. Saídas mostram suas cadeias relacionadas. |
+| Pesquisa         | Todos os termos informados devem existir em algum metadado pesquisável; a comparação é parcial, sem distinção de maiúsculas ou acentos.                                                                                |
+| Filtros          | Área, processo e tipo são cumulativos. “Limpar filtros” restaura consulta e ordenação iniciais.                                                                                                                        |
+| Atalhos por tipo | Chips “Todos” e tipos mais usados aplicam o mesmo filtro `type` da consulta; “Todos” remove somente o filtro de tipo e preserva os outros critérios.                                                                   |
+| Abertura         | O título e a ação “Visualizar” levam à página de leitura, que incorpora o leitor original em modo somente leitura; não expor criar, editar, excluir, aprovar ou alterar versão.                                        |
+| Personalização   | Favoritos, recentes e popularidade pessoal usam chave por usuário e organização; não podem vazar entre organizações no mesmo navegador.                                                                                |
+| Estados          | Carregamento apresenta indicador em área estável; falha preserva contexto e oferece nova tentativa; vazio explica o resultado e permite limpar a busca.                                                                |
+| Responsividade   | Busca, filtros, cartões e seções reorganizam sem sobreposição entre 320 px e telas amplas; alvos interativos conservam foco visível e nome acessível.                                                                  |
 
 ### Comportamento responsivo do Portal — 05/10/2026
 
@@ -202,6 +204,7 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 - “Mais filtros” pode sobrepor a página somente em telas amplas. Em notebook estreito, tablet e celular, o painel deve ocupar espaço no fluxo para não encobrir resultados.
 - Em monitores, documentos recentes e atualizados ocupam a coluna principal; favoritos, acessados recentemente e mais acessados ficam na coluna de atalhos. Abaixo de 1024 px, o painel de atalhos passa para baixo da coluna principal, preservando a ordem do DOM.
 - O cabeçalho mantém o seletor de organização acessível até 320 px; marca, seletor e perfil usam larguras flexíveis sem criar rolagem horizontal.
+- A navegação por catálogo usa os registros da organização como fonte. Áreas não têm campo de status no modelo atual e são listadas enquanto cadastradas; processos e cadeias de valor são filtrados por status ativo. Cada área, processo ou macroprocesso sem documento vigente exibe a mensagem de ausência.
 - No leitor, os metadados ficam ao lado apenas quando houver largura segura para documento e painel; abaixo de 1180 px, aparecem depois do visualizador.
 - A autenticação usa os mesmos tokens de tema do sistema; campos, superfícies, textos e foco acompanham claro, escuro ou sistema antes do acesso.
 

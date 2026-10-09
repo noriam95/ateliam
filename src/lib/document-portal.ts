@@ -17,6 +17,7 @@ export type PortalDocument = {
   status: string;
   revision: string;
   effectiveAt: string;
+  processId: string;
   updatedAt: string;
   createdAt: string;
   searchText: string;
@@ -43,6 +44,15 @@ export function normalizePortalText(value: unknown) {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function portalDocumentsForArea(documents: PortalDocument[], areaName: string) {
+  const area = normalizePortalText(areaName);
+  return documents.filter((document) => normalizePortalText(document.area) === area);
+}
+
+export function portalDocumentsForProcess(documents: PortalDocument[], processId: string) {
+  return documents.filter((document) => document.processId === processId);
 }
 
 export function isPortalCurrentStatus(status: unknown) {

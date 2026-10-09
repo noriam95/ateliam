@@ -549,6 +549,233 @@
   gap: 3px;
 }
 
+.document-portal-catalog-list,
+.document-portal-value-chain-grid,
+.document-portal-value-chain-list,
+.document-portal-value-chain-processes {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.document-portal-catalog-item {
+  min-width: 0;
+  padding: 4px 0 10px;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+}
+
+.document-portal-catalog-trigger {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  text-align: left;
+}
+
+.document-portal-catalog-trigger:hover {
+  background: var(--muted);
+}
+
+.document-portal-catalog-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--portal-accent) 12%, var(--card));
+  color: color-mix(in oklab, var(--portal-accent) 72%, var(--foreground));
+}
+
+.document-portal-catalog-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.document-portal-catalog-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+.document-portal-catalog-copy small {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-portal-associated-documents {
+  display: grid;
+  gap: 3px;
+  padding: 2px 8px 0 45px;
+}
+
+.document-portal-associated-documents button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-size: 11px;
+  text-align: left;
+}
+
+.document-portal-associated-documents button:hover {
+  color: var(--portal-ink);
+}
+
+.document-portal-associated-documents button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-portal-associated-documents button > svg {
+  flex: 0 0 auto;
+}
+
+.document-portal-associated-more,
+.document-portal-no-associated-documents {
+  margin: 0;
+  padding: 4px 2px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.document-portal-value-chain-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.document-portal-value-chain-category {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 9px;
+}
+
+.document-portal-value-chain-category > h3 {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.document-portal-value-chain-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--background);
+}
+
+.document-portal-value-chain-card > header > strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.document-portal-value-chain-card > header > p {
+  margin: 5px 0 0;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.document-portal-value-chain-processes {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.document-portal-value-chain-process {
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+}
+
+.document-portal-value-chain-process > div:first-child {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--muted-foreground);
+}
+
+.document-portal-value-chain-process > div:first-child > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.document-portal-value-chain-process > div:first-child strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.document-portal-value-chain-process > div:first-child small {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.document-portal-value-chain-process .document-portal-associated-documents {
+  padding-left: 20px;
+}
+
+.document-portal-value-chain-process > .document-portal-no-associated-documents {
+  padding-left: 20px;
+}
+
+.document-portal-output-relations {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+}
+
+.document-portal-output-relations > span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.document-portal-output-relations > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.document-portal-output-relations > div > span {
+  max-width: 100%;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--foreground);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
 .document-portal-ranked-list button,
 .document-portal-mini-list button,
 .document-portal-taxonomy button {
@@ -988,6 +1215,10 @@
     grid-column: 1 / -1;
   }
 
+  .document-portal-value-chain-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .document-portal-reader-layout {
     grid-template-columns: 1fr;
   }
@@ -1071,7 +1302,8 @@
 
   .document-portal-discovery-bar,
   .document-portal-browse-grid,
-  .document-portal-results {
+  .document-portal-results,
+  .document-portal-value-chain-grid {
     grid-template-columns: 1fr;
   }
 

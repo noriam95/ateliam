@@ -20,9 +20,16 @@ import { BFFlowMark } from "@/components/bf-flow-mark";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { WorkspaceLauncher } from "@/components/workspace-navigation";
 import { supabase } from "@/integrations/supabase/client";
-import { getMe, listAccessibleOrganizations, listPortalDocuments } from "@/lib/config.functions";
+import {
+  getMe,
+  listAccessibleOrganizations,
+  listPortalDocuments,
+  listPortalStructure,
+} from "@/lib/config.functions";
 import {
   filterAndSortPortalDocuments,
+  portalDocumentsForArea,
+  portalDocumentsForProcess,
   type PortalDocument,
   type PortalDocumentFilters,
   type PortalDocumentSort,
@@ -36,6 +43,18 @@ type PortalActivity = {
 };
 
 const EMPTY_ACTIVITY: PortalActivity = { favorites: [], recents: [] };
+const VALUE_CHAIN_CATEGORIES = [
+  { id: "primary", label: "Macroprocessos finalísticos" },
+  { id: "management", label: "Macroprocessos de gestão" },
+  { id: "support", label: "Macroprocessos de suporte" },
+  { id: "output", label: "Saídas" },
+] as const;
+
+const PROCESS_TYPE_LABELS: Record<string, string> = {
+  macroprocess: "Macroprocesso",
+  process: "Processo",
+  subprocess: "Subprocesso",
+};
 
 function activityKey(userId: string, organizationId: string) {
   return `bf-flow:document-portal:${userId}:${organizationId}`;
@@ -70,6 +89,61 @@ function documentIcon(document: PortalDocument) {
   if (document.module === "bpmn") return Workflow;
   if (document.module === "ddp") return GitBranch;
   return FileText;
+}
+
+function PortalCatalogItem({
+  icon,
+  title,
+  subtitle,
+  documents,
+  onSelect,
+  onOpenDocument,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  documents: PortalDocument[];
+  onSelect: () => void;
+  onOpenDocument: (document: PortalDocument) => void;
+}) {
+  return (
+    <article className="document-portal-catalog-item">
+      <button type="button" className="document-portal-catalog-trigger" onClick={onSelect}>
+        <span className="document-portal-catalog-icon" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="document-portal-catalog-copy">
+          <strong>{title}</strong>
+          <small>{subtitle}</small>
+        </span>
+        <ChevronRight size={15} aria-hidden="true" />
+      </button>
+      {documents.length ? (
+        <div className="document-portal-associated-documents" aria-label="Documentos vigentes">
+          {documents.slice(0, 4).map((document) => (
+            <button
+              type="button"
+              key={document.id}
+              onClick={() => onOpenDocument(document)}
+              title={document.title}
+            >
+              <FileText size={13} aria-hidden="true" />
+              <span>{document.title}</span>
+            </button>
+          ))}
+          {documents.length > 4 ? (
+            <span className="document-portal-associated-more">
+              +{documents.length - 4} documentos
+            </span>
+          ) : null}
+        </div>
+      ) : (
+        <p className="document-portal-no-associated-documents">
+          Nenhum documento vigente associado.
+        </p>
+      )}
+    </article>
+  );
 }
 
 function PortalDocumentCard({
@@ -167,6 +241,7 @@ export function DocumentPortal({
   const getUser = useServerFn(getMe);
   const getOrganizations = useServerFn(listAccessibleOrganizations);
   const getDocuments = useServerFn(listPortalDocuments);
+  const getStructure = useServerFn(listPortalStructure);
   const me = useQuery({ queryKey: ["document-portal-me"], queryFn: () => getUser() });
   const organizations = useQuery({
     queryKey: ["document-portal-organizations"],
@@ -198,6 +273,11 @@ export function DocumentPortal({
     queryKey: ["document-portal-documents", organizationId],
     enabled: !!organizationId,
     queryFn: () => getDocuments({ data: { organizationId } }),
+  });
+  const structureQuery = useQuery({
+    queryKey: ["document-portal-structure", organizationId],
+    enabled: !!organizationId,
+    queryFn: () => getStructure({ data: { organizationId } }),
   });
   const userId = me.data?.userId || "";
   useEffect(() => {
@@ -254,19 +334,25 @@ export function DocumentPortal({
   const activeDiscovery = Boolean(
     query.trim() || Object.values(filters).some(Boolean) || sort !== "relevance",
   );
-  const unique = (
-    key: keyof Pick<
-      PortalDocument,
-      "area" | "macroprocess" | "process" | "subprocess" | "type" | "responsible" | "module"
-    >,
-  ) =>
+  const unique = (key: keyof Pick<PortalDocument, "type" | "responsible" | "module">) =>
     Array.from(new Set(documents.map((document) => document[key]).filter(Boolean))).sort((a, b) =>
       a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
     );
-  const areas = unique("area");
-  const macroprocesses = unique("macroprocess");
-  const processes = unique("process");
-  const subprocesses = unique("subprocess");
+  const registry = structureQuery.data;
+  const areas = registry?.areas ?? [];
+  const processes = registry?.processes ?? [];
+  const valueChains = registry?.valueChains ?? [];
+  const valueChainRelations = registry?.valueChainRelations ?? [];
+  const macroprocesses = Array.from(
+    new Set(
+      processes.filter((process) => process.type === "macroprocess").map((process) => process.name),
+    ),
+  );
+  const subprocesses = Array.from(
+    new Set(
+      processes.filter((process) => process.type === "subprocess").map((process) => process.name),
+    ),
+  );
   const types = unique("type");
   const responsibles = unique("responsible");
   const latest = filterAndSortPortalDocuments(documents, "", {}, "effective").slice(0, 6);
@@ -285,6 +371,9 @@ export function DocumentPortal({
   const popular = filterAndSortPortalDocuments(documents, "", {}, "popular", accessCounts)
     .filter((document) => (accessCounts[document.id] || 0) > 0)
     .slice(0, 5);
+  const documentsForArea = (areaName: string) => portalDocumentsForArea(documents, areaName);
+  const documentsForProcess = (processId: string) =>
+    portalDocumentsForProcess(documents, processId);
 
   function toggleFavorite(documentId: string) {
     const favorites = favoriteIds.has(documentId)
@@ -307,8 +396,9 @@ export function DocumentPortal({
     requestAnimationFrame(() => searchRef.current?.focus());
   }
 
-  const loading = me.isPending || organizations.isPending || documentsQuery.isLoading;
-  const failure = me.error || organizations.error || documentsQuery.error;
+  const loading =
+    me.isPending || organizations.isPending || documentsQuery.isLoading || structureQuery.isLoading;
+  const failure = me.error || organizations.error || documentsQuery.error || structureQuery.error;
   const organizationName =
     organizations.data?.find((organization) => organization.id === organizationId)?.name ||
     "BF Flow";
@@ -413,7 +503,15 @@ export function DocumentPortal({
           <div className="document-portal-state is-error" role="alert">
             <strong>Não foi possível carregar o Portal.</strong>
             <span>{failure instanceof Error ? failure.message : "Tente novamente."}</span>
-            <button type="button" onClick={() => void documentsQuery.refetch()}>
+            <button
+              type="button"
+              onClick={() => {
+                void me.refetch();
+                void organizations.refetch();
+                void documentsQuery.refetch();
+                void structureQuery.refetch();
+              }}
+            >
               Tentar novamente
             </button>
           </div>
@@ -470,7 +568,13 @@ export function DocumentPortal({
 
             <div className="document-portal-library-summary" aria-label="Resumo do acervo">
               <span>
-                <strong>{loading ? "…" : areas.length}</strong> áreas
+                <strong>{loading ? "…" : areas.length}</strong> áreas cadastradas
+              </span>
+              <span>
+                <strong>{loading ? "…" : processes.length}</strong> processos ativos
+              </span>
+              <span>
+                <strong>{loading ? "…" : valueChains.length}</strong> cadeias ativas
               </span>
               <span>
                 <strong>{loading ? "…" : updatedInThirtyDays}</strong> atualizados nos últimos 30
@@ -491,7 +595,7 @@ export function DocumentPortal({
                 >
                   <option value="">Todas as áreas</option>
                   {areas.map((area) => (
-                    <option key={area}>{area}</option>
+                    <option key={area.id}>{area.name}</option>
                   ))}
                 </select>
               </label>
@@ -508,7 +612,7 @@ export function DocumentPortal({
                 >
                   <option value="">Todos os processos</option>
                   {processes.map((process) => (
-                    <option key={process}>{process}</option>
+                    <option key={process.id}>{process.name}</option>
                   ))}
                 </select>
               </label>
@@ -802,59 +906,59 @@ export function DocumentPortal({
                 <div className="document-portal-browse-grid">
                   <PortalSection
                     title="Navegar por área"
-                    description="Explore o acervo pelo contexto organizacional."
+                    description="Áreas cadastradas na organização e seus documentos vigentes."
                     icon={<Building2 size={18} />}
                   >
-                    <div className="document-portal-taxonomy">
-                      {areas.slice(0, 10).map((area) => {
-                        const count = documents.filter((document) => document.area === area).length;
-                        return (
-                          <button
-                            type="button"
-                            key={area}
-                            onClick={() => applyDiscoveryFilter({ area })}
-                          >
-                            <Building2 size={16} />
-                            <span>
-                              <strong>{area}</strong>
-                              <small>
-                                {count} {count === 1 ? "documento" : "documentos"}
-                              </small>
-                            </span>
-                            <ChevronRight size={14} />
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {areas.length ? (
+                      <div className="document-portal-catalog-list">
+                        {areas.map((area) => {
+                          const linkedDocuments = documentsForArea(area.name);
+                          return (
+                            <PortalCatalogItem
+                              key={area.id}
+                              icon={<Building2 size={16} />}
+                              title={area.name}
+                              subtitle={`${area.sigla || "Área cadastrada"} · ${linkedDocuments.length} ${linkedDocuments.length === 1 ? "documento vigente" : "documentos vigentes"}`}
+                              documents={linkedDocuments}
+                              onSelect={() => applyDiscoveryFilter({ area: area.name })}
+                              onOpenDocument={openDocument}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="document-portal-section-empty">
+                        Nenhuma área foi cadastrada nesta organização.
+                      </p>
+                    )}
                   </PortalSection>
                   <PortalSection
-                    title="Navegar por processo"
-                    description="Acesse documentos pelo processo relacionado."
+                    title="Processos ativos"
+                    description="Processos ativos do cadastro, com seus documentos vigentes."
                     icon={<GitBranch size={18} />}
                   >
-                    <div className="document-portal-taxonomy">
-                      {processes.slice(0, 10).map((process) => {
-                        const count = documents.filter(
-                          (document) => document.process === process,
-                        ).length;
-                        return (
-                          <button
-                            type="button"
-                            key={process}
-                            onClick={() => applyDiscoveryFilter({ process })}
-                          >
-                            <GitBranch size={16} />
-                            <span>
-                              <strong>{process}</strong>
-                              <small>
-                                {count} {count === 1 ? "documento" : "documentos"}
-                              </small>
-                            </span>
-                            <ChevronRight size={14} />
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {processes.length ? (
+                      <div className="document-portal-catalog-list">
+                        {processes.map((process) => {
+                          const linkedDocuments = documentsForProcess(process.id);
+                          return (
+                            <PortalCatalogItem
+                              key={process.id}
+                              icon={<GitBranch size={16} />}
+                              title={process.name}
+                              subtitle={`${PROCESS_TYPE_LABELS[process.type] || "Processo"}${process.department ? ` · ${process.department}` : ""} · ${linkedDocuments.length} ${linkedDocuments.length === 1 ? "documento vigente" : "documentos vigentes"}`}
+                              documents={linkedDocuments}
+                              onSelect={() => applyDiscoveryFilter({ process: process.name })}
+                              onOpenDocument={openDocument}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="document-portal-section-empty">
+                        Nenhum processo ativo foi cadastrado nesta organização.
+                      </p>
+                    )}
                   </PortalSection>
                   <PortalSection
                     title="Tipos de documento"
@@ -884,6 +988,135 @@ export function DocumentPortal({
                     </div>
                   </PortalSection>
                 </div>
+
+                <PortalSection
+                  title="Cadeia de valor"
+                  description="Macroprocessos ativos organizados por sua contribuição à organização."
+                  icon={<Workflow size={18} />}
+                >
+                  {valueChains.length ? (
+                    <div className="document-portal-value-chain-grid">
+                      {VALUE_CHAIN_CATEGORIES.map((category) => {
+                        const chains = valueChains.filter(
+                          (chain) => chain.category === category.id,
+                        );
+                        return (
+                          <section
+                            className="document-portal-value-chain-category"
+                            key={category.id}
+                          >
+                            <h3>{category.label}</h3>
+                            {chains.length ? (
+                              <div className="document-portal-value-chain-list">
+                                {chains.map((chain) => {
+                                  const chainProcesses = processes.filter(
+                                    (process) => process.value_chain_id === chain.id,
+                                  );
+                                  const relatedChains = valueChainRelations
+                                    .filter((relation) => relation.output_id === chain.id)
+                                    .map((relation) =>
+                                      valueChains.find(
+                                        (candidate) => candidate.id === relation.chain_id,
+                                      ),
+                                    )
+                                    .filter(
+                                      (
+                                        relatedChain,
+                                      ): relatedChain is NonNullable<typeof relatedChain> =>
+                                        Boolean(relatedChain),
+                                    );
+                                  return (
+                                    <article
+                                      className="document-portal-value-chain-card"
+                                      key={chain.id}
+                                    >
+                                      <header>
+                                        <strong>{chain.name}</strong>
+                                        {chain.description ? <p>{chain.description}</p> : null}
+                                      </header>
+                                      {chain.category === "output" ? (
+                                        relatedChains.length ? (
+                                          <div className="document-portal-output-relations">
+                                            <span>Relacionada às cadeias</span>
+                                            <div>
+                                              {relatedChains.map((relatedChain) => (
+                                                <span key={relatedChain.id}>
+                                                  {relatedChain.name}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <p className="document-portal-no-associated-documents">
+                                            Nenhuma cadeia de valor relacionada a esta saída.
+                                          </p>
+                                        )
+                                      ) : chainProcesses.length ? (
+                                        <div className="document-portal-value-chain-processes">
+                                          {chainProcesses.map((process) => {
+                                            const linkedDocuments = documentsForProcess(process.id);
+                                            return (
+                                              <div
+                                                className="document-portal-value-chain-process"
+                                                key={process.id}
+                                              >
+                                                <div>
+                                                  <GitBranch size={14} aria-hidden="true" />
+                                                  <span>
+                                                    <strong>{process.name}</strong>
+                                                    <small>
+                                                      {PROCESS_TYPE_LABELS[process.type] ||
+                                                        "Processo"}
+                                                    </small>
+                                                  </span>
+                                                </div>
+                                                {linkedDocuments.length ? (
+                                                  <div className="document-portal-associated-documents">
+                                                    {linkedDocuments.map((document) => (
+                                                      <button
+                                                        type="button"
+                                                        key={document.id}
+                                                        onClick={() => openDocument(document)}
+                                                        title={document.title}
+                                                      >
+                                                        <FileText size={13} aria-hidden="true" />
+                                                        <span>{document.title}</span>
+                                                      </button>
+                                                    ))}
+                                                  </div>
+                                                ) : (
+                                                  <p className="document-portal-no-associated-documents">
+                                                    Nenhum documento vigente associado.
+                                                  </p>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <p className="document-portal-no-associated-documents">
+                                          Nenhum processo ativo associado a esta cadeia.
+                                        </p>
+                                      )}
+                                    </article>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="document-portal-section-empty">
+                                Nenhuma cadeia ativa nesta categoria.
+                              </p>
+                            )}
+                          </section>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="document-portal-section-empty">
+                      Nenhuma cadeia de valor ativa foi cadastrada nesta organização.
+                    </p>
+                  )}
+                </PortalSection>
               </>
             )}
           </>
