@@ -3,7 +3,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
 import { toast } from "sonner";
-import { BFFlowMark } from "@/components/bf-flow-mark";
 import { supabase } from "@/integrations/supabase/client";
 import { clearLegacyDemoData } from "@/lib/demo-session";
 import { resolveLoginIdentifier } from "@/lib/config.functions";
@@ -20,14 +19,8 @@ function AuthPage() {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [flowStep, setFlowStep] = useState(0);
-
   useEffect(() => {
     clearLegacyDemoData();
-    const timer = window.setInterval(() => {
-      setFlowStep((current) => (current + 1) % 3);
-    }, 1800);
-    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -76,66 +69,31 @@ function AuthPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-stretch bg-[#f5f6f6]">
-      <section className="relative hidden w-[58%] overflow-hidden bg-[#151a1b] px-14 py-12 text-white md:flex md:flex-col lg:px-20 lg:py-16">
-        <BFFlowMark className="h-12 self-start" variant="color" />
-
-        <div className="mt-[clamp(5rem,13vh,8rem)] max-w-[44rem]">
-          <span className="mb-7 block h-1 w-14 bg-[#d19a29]" />
-          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#e4af3a]">
+    <main className="flex min-h-screen items-stretch bg-background">
+      <section className="hidden w-[52%] items-center border-r border-border px-12 py-16 md:flex lg:px-20">
+        <div className="mx-auto w-full max-w-[34rem]">
+          <p className="mb-5 text-xs font-semibold tracking-[0.045em] text-[var(--gold-ink)]">
             Gestão de processos
           </p>
-          <h1 className="font-display text-5xl font-bold leading-[1.02] lg:text-7xl">
-            Clareza para
+          <h1 className="font-display text-5xl font-semibold leading-[1.08] tracking-[-0.055em] text-foreground lg:text-[3.6rem]">
+            Processos claros.
             <br />
-            fazer melhor.
+            <span className="text-[var(--gold-ink)]">Trabalho que avança.</span>
           </h1>
-
-          <div
-            className="mt-10 grid max-w-xl grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em]"
-            aria-label="Mapear, documentar e evoluir"
-          >
-            {["Mapear", "Documentar", "Evoluir"].map((label, index) => (
-              <div key={label} className="contents">
-                <span
-                  className={`transition-all duration-500 motion-reduce:transition-none ${
-                    flowStep === index
-                      ? "-translate-y-0.5 text-[#f0b93e]"
-                      : index < flowStep
-                        ? "text-white/72"
-                        : "text-white/38"
-                  }`}
-                >
-                  {label}
-                </span>
-                {index < 2 ? (
-                  <span className="relative h-px overflow-hidden bg-white/15" aria-hidden="true">
-                    <span
-                      className={`absolute inset-y-0 left-0 bg-[#d19a29] transition-[width] duration-700 ease-out motion-reduce:transition-none ${
-                        flowStep > index ? "w-full" : "w-0"
-                      }`}
-                    />
-                    <span
-                      className={`absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 border-r border-t transition-colors duration-500 ${
-                        flowStep > index ? "border-[#d19a29]" : "border-white/20"
-                      }`}
-                    />
-                  </span>
-                ) : null}
-              </div>
-            ))}
-          </div>
+          <p className="mt-5 max-w-[25rem] text-[15px] leading-7 text-muted-foreground">
+            Um espaço para organizar solicitações, documentar processos e acompanhar melhorias da
+            organização.
+          </p>
+          <span className="mt-8 block h-0.5 w-10 bg-[var(--gold)]" aria-hidden="true" />
+          <p className="mt-4 text-xs text-muted-foreground">
+            Solicitações <span className="mx-1.5">·</span> Mapeamentos
+            <span className="mx-1.5">·</span> Fluxos <span className="mx-1.5">·</span> Melhorias
+          </p>
         </div>
-
-        <div className="mt-auto text-[11px] text-white/38">© 2026 BF Flow</div>
       </section>
 
-      <section className="flex flex-1 items-center justify-center border-l border-black/5 bg-[#f5f6f6] px-6 py-12 sm:px-10 lg:px-16">
+      <section className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:px-16">
         <div className="w-full max-w-[420px]">
-          <div className="mb-16 md:hidden">
-            <BFFlowMark className="h-12" variant="color" />
-          </div>
-
           <div className="mb-8 flex items-end justify-between border-b border-foreground/15 pb-5">
             <div>
               <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
