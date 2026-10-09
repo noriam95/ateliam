@@ -1909,7 +1909,7 @@ function DocumentModelsSettings({
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, description: event.target.value }))
                   }
-                  className={`${inputClass} h-auto py-2`}
+                  className={`resize-none ${inputClass} h-auto py-2`}
                 />
               </FormField>
               <FormField label="Cor institucional do modelo">

@@ -5911,7 +5911,7 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
     "</span><strong>" +
     html(title) +
     '</strong></div><nav class="nav">' +
-    nav.map((item) => '<a href="#' + item[0] + '">' + html(item[1]) + "</a>").join("") +
+    nav.map((item) => '<a href="' + '#' + item[0] + '">' + html(item[1]) + "</a>").join("") +
     '</nav><div class="presentation-controls"><div class="theme-toggle"><button type="button" data-theme-choice="light" class="active" title="Tema claro" aria-label="Tema claro">☀</button><button type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">◐</button></div><button type="button" class="fullscreen-button" id="fullscreen-toggle" title="Tela cheia" aria-label="Tela cheia">⛶</button></div></aside><main class="content"><section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">00 · Documento controlado</div><h1>' +
     html(title) +
     '</h1></div><div class="cover-code"><span>Código</span><strong>' +
@@ -8942,7 +8942,7 @@ function ModuleWorkspacePage() {
                 ? "Observação opcional sobre o registro"
                 : "Observação opcional sobre o documento"
             }
-            className="mb-4 w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3f3f46]"
+            className="resize-none mb-4 w-full rounded-lg border border-[#d2d2d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3f3f46]"
           />
           <div className="flex justify-end gap-2">
             <button
@@ -10648,17 +10648,17 @@ function DdpCausesModuleLegacy({
                   value={draft.prazo}
                   onChange={(prazo) => updateDraft({ prazo })}
                 />
-                <TextArea
+                <MultilineField
                   label="Descrição"
                   value={draft.descricao}
                   onChange={(descricao) => updateDraft({ descricao })}
                 />
-                <TextArea
+                <MultilineField
                   label="Impacto"
                   value={draft.impacto}
                   onChange={(impacto) => updateDraft({ impacto })}
                 />
-                <TextArea
+                <MultilineField
                   label="Ação proposta"
                   value={draft.acao}
                   onChange={(acao) => updateDraft({ acao })}
@@ -10675,7 +10675,7 @@ function DdpCausesModuleLegacy({
                   onChange={(event) => setCommentDraft(event.target.value)}
                   rows={4}
                   placeholder="Registre uma atualização, decisão ou pendência da oportunidade."
-                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
                 <button
                   type="button"
@@ -11369,14 +11369,14 @@ function DdpCausesModuleV2({
                       }
                     />
                   ) : null}
-                  <TextArea
+                  <MultilineField
                     label="Descrição"
                     value={draft.gap.descricao}
                     onChange={(descricao) => updateDraft({ descricao })}
                     rows={3}
                     disabled={draft.source === "mapping"}
                   />
-                  <TextArea
+                  <MultilineField
                     label="Impacto"
                     value={draft.gap.impacto}
                     onChange={(impacto) => updateDraft({ impacto })}
@@ -11416,7 +11416,7 @@ function DdpCausesModuleV2({
                     value={draft.gap.prazo}
                     onChange={(prazo) => updateDraft({ prazo })}
                   />
-                  <TextArea
+                  <MultilineField
                     label="Ação proposta"
                     value={draft.gap.acao}
                     onChange={(acao) => updateDraft({ acao })}
@@ -11727,7 +11727,7 @@ function TableTextarea({
       placeholder={placeholder}
       rows={2}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full min-w-[190px] resize-y rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+      className="w-full min-w-[190px] resize-none rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
     />
   );
 }
@@ -12836,7 +12836,7 @@ function DdpModule({
                 }
               />
             ) : (
-              <TextArea
+              <MultilineField
                 label="Descrição"
                 value={actorPositionDescription}
                 rows={3}
@@ -13029,7 +13029,7 @@ function DdpModule({
                     placeholder={
                       "00 Dados do Mapeamento\nTítulo: Recebimento e gestão de demandas\nModalidade: AS IS\n\n01 Visão geral\nObjetivo: Documentar o processo...\nEscopo: Da entrada até a conclusão...\nContexto: Cenário atual...\n\n02 Sistemas/Documentos envolvidos\nSistema: Fluig\nClassificação: Sistemas corporativos\nDescrição: Registro e acompanhamento...\nDocumento: Política de atendimento\nClassificação: Documentos e comunicações\nDescrição: Regras aplicáveis ao processo...\n\n03 Análise SIPOC\nFornecedores | Entradas | Processo | Saídas | Clientes\nÁrea solicitante | Demanda | Tratar demanda | Entrega | Solicitante\n\n04 Etapas do processo\nProcesso: Receber demanda\nÁrea: Atendimento\nResponsável: Analista\nDescrição do processo: Receber e qualificar a solicitação\nAtividade: Registrar solicitação\nForma de execução: Manual no sistema\nÁrea responsável pela atividade: Atendimento\nSistemas/Documentos: Fluig\nDescrição: O Atendimento registra os dados obrigatórios.\nSubprocesso: Validar informações\nDescrição: Conferir a consistência dos dados\nAtividade: Conferir campos\nForma de execução: Manual no sistema\nÁrea responsável pela atividade: Qualidade\nSistemas/Documentos: Fluig, Política de atendimento\nDescrição: A Qualidade verifica os campos e documentos recebidos.\n\n06 Oportunidades de melhoria\nOportunidade: Entrada incompleta\nImpacto: Retrabalho\nAção proposta: Tornar campos obrigatórios\n\n07 Próximos passos\n1. Revisar formulário de entrada\nResponsável: Coordenação\nPrazo: 31/07/2026\n\n08 Glossário\nSLA | Acordo de nível de serviço"
                     }
-                    className={`${fieldInputBase} min-h-72 resize-y p-3 font-data text-xs leading-6`}
+                    className={`${fieldInputBase} min-h-72 resize-none p-3 font-data text-xs leading-6`}
                   />
                   <span className="text-xs text-muted-foreground">
                     Para atribuir a execução, use “Área responsável pela atividade:”. Sem indicação
@@ -13461,20 +13461,20 @@ function DdpModule({
               progress={sectionProgress.overview}
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <TextArea
+                <MultilineField
                   label="Objetivo"
                   value={data.overview.objetivo}
                   onChange={(objetivo) =>
                     update({ ...data, overview: { ...data.overview, objetivo } })
                   }
                 />
-                <TextArea
+                <MultilineField
                   label="Escopo"
                   value={data.overview.escopo}
                   onChange={(escopo) => update({ ...data, overview: { ...data.overview, escopo } })}
                 />
                 <div className="md:col-span-2">
-                  <TextArea
+                  <MultilineField
                     label="Contexto"
                     value={data.overview.kpis}
                     onChange={(kpis) => update({ ...data, overview: { ...data.overview, kpis } })}
@@ -13538,7 +13538,7 @@ function DdpModule({
                       </span>
                     ) : null}
                     <div className="lg:col-span-2">
-                      <TextArea
+                      <MultilineField
                         label="Descrição / uso no processo"
                         value={system.descricao}
                         onChange={(descricao) =>
@@ -13592,7 +13592,7 @@ function DdpModule({
                   >
                     {(["fornecedores", "entradas", "processo", "saidas", "clientes"] as const).map(
                       (field) => (
-                        <TextArea
+                        <MultilineField
                           key={field}
                           label={field === "saidas" ? "Saídas" : field}
                           value={row[field]}
@@ -13952,7 +13952,7 @@ function DdpModule({
                                             </label>
                                           </div>
                                         </div>
-                                        <TextArea
+                                        <MultilineField
                                           label={
                                             substep.tipo === "subprocesso"
                                               ? "Descrição do subprocesso"
@@ -14216,7 +14216,7 @@ function DdpModule({
                                                     </IconButton>
                                                   </div>
                                                   <div className="mt-3">
-                                                    <TextArea
+                                                    <MultilineField
                                                       label="Descrição da atividade"
                                                       value={activity.descricao}
                                                       onChange={(descricao) =>
@@ -15589,7 +15589,7 @@ function PopModule({
                     placeholder={
                       "POP.SEP.001 — Título do documento\n\n1. Objetivo\nTexto do objetivo...\n\n2. Abrangência\nTexto da abrangência...\n\n3. Procedimento Operacional\n3.1 Item\n3.1.1 Subitem\na) Orientação..."
                     }
-                    className={`${fieldInputBase} min-h-64 resize-y p-3 leading-6`}
+                    className={`${fieldInputBase} min-h-64 resize-none p-3 leading-6`}
                   />
                 </label>
                 <div className="flex justify-end gap-2">
@@ -15893,7 +15893,7 @@ function PopModule({
               openSignal={openSignals.objective}
             >
               <div className="grid gap-4">
-                <TextArea
+                <MultilineField
                   label="Objetivo"
                   value={data.purpose.objetivo}
                   onChange={(objetivo) =>
@@ -15910,7 +15910,7 @@ function PopModule({
               openSignal={openSignals.scope}
             >
               <div className="grid gap-4">
-                <TextArea
+                <MultilineField
                   label="Abrangência"
                   value={data.purpose.abrangencia}
                   onChange={(abrangencia) =>
@@ -16031,7 +16031,7 @@ function PopModule({
                         </IconButton>
                       </div>
                       <div className="mb-3 grid gap-3 rounded-lg border border-border bg-card p-3">
-                        <TextArea
+                        <MultilineField
                           label="Texto do item"
                           value={section.body}
                           rows={4}
@@ -16295,7 +16295,7 @@ function PopModule({
                                               ) : null}
                                             </div>
                                             <div className="grid gap-3">
-                                              <TextArea
+                                              <MultilineField
                                                 label="Texto"
                                                 value={block.text}
                                                 rows={3}
@@ -16411,7 +16411,7 @@ function PopModule({
                                                 <Trash2 className="h-4 w-4" />
                                               </IconButton>
                                             </div>
-                                            <TextArea
+                                            <MultilineField
                                               label="Texto da observação"
                                               value={clause.alert}
                                               rows={2}
@@ -16510,7 +16510,7 @@ function PopModule({
                         })
                       }
                     />
-                    <TextArea
+                    <MultilineField
                       label="Responsabilidades"
                       value={row.responsabilidade}
                       onChange={(responsabilidade) =>
@@ -16595,7 +16595,7 @@ function PopModule({
                         }
                       />
                       <div className="md:col-span-2">
-                        <TextArea
+                        <MultilineField
                           label="Aplicabilidade"
                           value={row.aplicabilidade}
                           rows={2}
@@ -16826,7 +16826,7 @@ function PopModule({
                 }
               />
             ) : (
-              <TextArea
+              <MultilineField
                 label="Descrição"
                 value={quickPositionDescription}
                 rows={3}
@@ -17928,7 +17928,7 @@ function SelectField({
   );
 }
 
-function TextArea({
+function MultilineField({
   label,
   value,
   onChange,
@@ -17949,7 +17949,7 @@ function TextArea({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
-        className={`${fieldInputBase} resize-y px-3 py-2.5 leading-relaxed`}
+        className={`${fieldInputBase} resize-none px-3 py-2.5 leading-relaxed`}
       />
     </label>
   );

@@ -73,7 +73,7 @@ export function WorkspaceLauncher({
     <div className="workspace-launcher">
       <button
         type="button"
-        popoverTarget={id}
+        onClick={() => (open ? panel.current?.hidePopover() : panel.current?.showPopover())}
         aria-expanded={open}
         aria-controls={id}
         aria-label="Abrir módulos"

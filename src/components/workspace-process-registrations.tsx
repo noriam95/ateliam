@@ -1642,7 +1642,7 @@ function RegistrationFields({
             value={draft.description}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
             placeholder="Informações pertinentes sobre o sistema"
-            className={`${inputClass} h-auto py-2`}
+            className={`resize-none ${inputClass} h-auto py-2`}
           />
         </Field>
       </>
@@ -1666,7 +1666,7 @@ function RegistrationFields({
             value={draft.description}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
             placeholder="Descreva a finalidade ou escopo do cargo"
-            className={`${inputClass} h-auto py-2`}
+            className={`resize-none ${inputClass} h-auto py-2`}
           />
         </Field>
       </>
@@ -1830,7 +1830,7 @@ function RegistrationFields({
             rows={4}
             value={draft.description}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-            className={`${inputClass} h-auto py-2`}
+            className={`resize-none ${inputClass} h-auto py-2`}
           />
         </Field>
         <Field label="Status">
@@ -1973,7 +1973,7 @@ function RegistrationFields({
           rows={4}
           value={draft.description}
           onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-          className={`${inputClass} h-auto py-2`}
+          className={`resize-none ${inputClass} h-auto py-2`}
         />
       </Field>
     </>
@@ -3044,7 +3044,7 @@ export function SystemRegistrationDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Informações pertinentes sobre o sistema"
-              className={`${inputClass} h-auto py-2`}
+              className={`resize-none ${inputClass} h-auto py-2`}
             />
           </Field>
           <div className="flex items-center justify-end gap-2 border-t border-border pt-4">

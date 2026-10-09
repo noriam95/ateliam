@@ -92,6 +92,7 @@ export function TaskQuickActionDialog({
                 rows={3}
                 maxLength={10000}
                 value={note}
+                className="resize-none"
                 onChange={(e) => setNote(e.target.value)}
                 disabled={busy}
               />
