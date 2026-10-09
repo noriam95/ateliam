@@ -161,7 +161,7 @@
 }
 th[aria-sort="ascending"] .process-library-sort svg,
 th[aria-sort="descending"] .process-library-sort svg {
-  color: var(--gold);
+  color: var(--gold-ink);
   opacity: 1;
 }
 .process-library-table:focus-visible {

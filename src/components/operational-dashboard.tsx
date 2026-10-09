@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { statusColor } from "@/lib/status-color";
 import {
   ArrowRight,
   Building2,
@@ -49,12 +50,12 @@ type Entry = {
   source?: string;
 };
 const colors = [
-  "var(--op-green)",
-  "var(--op-blue)",
-  "var(--gold)",
-  "var(--op-purple)",
-  "var(--op-red)",
-  "var(--muted-foreground)",
+  "var(--chart-blue)",
+  "var(--chart-teal)",
+  "var(--chart-amber)",
+  "var(--chart-purple)",
+  "var(--chart-red)",
+  "var(--chart-neutral)",
 ];
 const areaName = (s?: string | null) => (!s?.trim() || s.trim() === "-" ? "Sem área" : s.trim());
 const normalized = (s: string) =>
@@ -92,20 +93,30 @@ function groups(rows: Entry[], key: "status" | "type" | "priority" | "source") {
   });
   return [...result].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], "pt-BR"));
 }
-const colorFor = (s: string, i: number) =>
-  ({
-    Rascunho: "var(--muted-foreground)",
-    "Em andamento": "var(--gold)",
-    "Em revisão": "var(--op-blue)",
-    Aprovado: "var(--op-green)",
-    Concluído: "#428d98",
-    "Não iniciada": "var(--gold)",
-    Encerrada: "var(--op-green)",
-    Cancelada: "var(--op-red)",
-    Alta: "var(--op-red)",
-    Média: "var(--gold)",
-    Baixa: "var(--op-blue)",
-  })[s] || colors[i % colors.length];
+const colorFor = (label: string, index: number) => {
+  const normalizedLabel = normalized(label);
+  if (
+    [
+      "rascunho",
+      "nao iniciada",
+      "em andamento",
+      "em revisao",
+      "aprovado",
+      "concluido",
+      "encerrada",
+      "cancelada",
+      "alta",
+      "media",
+      "baixa",
+    ].includes(normalizedLabel)
+  ) {
+    if (normalizedLabel === "alta") return "var(--status-cancelled)";
+    if (normalizedLabel === "media") return "var(--status-review)";
+    if (normalizedLabel === "baixa") return "var(--status-neutral)";
+    return statusColor(label);
+  }
+  return colors[index % colors.length];
+};
 
 export function OperationalDashboard({
   error,

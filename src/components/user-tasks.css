@@ -136,7 +136,7 @@
   background: var(--accent);
 }
 .ut-summary svg {
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 .ut-summary a > span {
   grid-row: 2;
@@ -229,7 +229,7 @@
 }
 .ut-root th[aria-sort="ascending"] .ut-table-sort svg,
 .ut-root th[aria-sort="descending"] .ut-table-sort svg {
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 .ut-root th .ut-table-sort svg {
   flex: 0 0 auto;
@@ -269,13 +269,20 @@
   background: var(--muted);
   font-size: 11px;
 }
-.ut-status-in_progress,
+.ut-status-in_progress {
+  background: color-mix(in oklab, var(--status-progress) 12%, var(--card));
+  color: var(--status-progress);
+  border: 1px solid color-mix(in oklab, var(--status-progress) 30%, var(--border));
+}
 .ut-status-review {
-  background: var(--accent);
-  color: var(--accent-foreground);
+  background: color-mix(in oklab, var(--status-review) 12%, var(--card));
+  color: var(--status-review);
+  border: 1px solid color-mix(in oklab, var(--status-review) 30%, var(--border));
 }
 .ut-status-completed {
-  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--status-completed) 12%, var(--card));
+  color: var(--status-completed);
+  border: 1px solid color-mix(in oklab, var(--status-completed) 30%, var(--border));
 }
 .ut-pagination {
   display: flex;
@@ -793,9 +800,9 @@
 .ut-root .ut-gantt-bar {
   z-index: 0;
   margin: 0 2px;
-  background: var(--gold);
-  color: var(--primary-foreground);
-  border-color: var(--gold);
+  background: var(--status-progress);
+  color: var(--status-on-fill);
+  border-color: var(--status-progress);
   min-width: 0;
   justify-content: flex-start;
   min-height: 32px;
@@ -809,9 +816,19 @@
   filter: brightness(0.94);
 }
 .ut-root .ut-gantt-completed {
-  background: var(--muted);
-  color: var(--foreground);
-  border-color: var(--border);
+  background: var(--status-completed);
+  color: var(--status-on-fill);
+  border-color: var(--status-completed);
+}
+.ut-root .ut-gantt-review {
+  background: var(--status-review);
+  color: var(--status-on-fill);
+  border-color: var(--status-review);
+}
+.ut-root .ut-gantt-cancelled {
+  background: var(--status-cancelled);
+  color: var(--status-on-fill);
+  border-color: var(--status-cancelled);
 }
 @media (max-width: 600px) {
   .ut-gantt thead th:first-child,
@@ -1135,35 +1152,35 @@
   transform: rotate(90deg);
 }
 .ut-delivery-disclosure[data-checklist-status="completed"] {
-  --checklist-accent: #4e8a48;
+  --checklist-accent: var(--status-completed);
 }
 .ut-delivery-disclosure[data-checklist-status="in-progress"] {
-  --checklist-accent: #b8862d;
+  --checklist-accent: var(--status-progress);
 }
 .ut-delivery-disclosure[data-checklist-status="pending"] {
-  --checklist-accent: #2563a6;
+  --checklist-accent: var(--status-pending);
 }
 .ut-delivery-disclosure[data-checklist-status] {
-  border-color: color-mix(in srgb, var(--checklist-accent) 38%, var(--border));
-  background: color-mix(in srgb, var(--checklist-accent) 6%, var(--card));
+  border-color: color-mix(in oklab, var(--checklist-accent) 38%, var(--border));
+  background: color-mix(in oklab, var(--checklist-accent) 6%, var(--card));
 }
 .ut-delivery-disclosure[data-checklist-status] > .ut-delivery-summary::before {
-  color: color-mix(in srgb, var(--checklist-accent) 72%, var(--foreground));
+  color: color-mix(in oklab, var(--checklist-accent) 72%, var(--foreground));
 }
 .ut-delivery-disclosure[data-checklist-status] .ut-delivery-status {
-  color: color-mix(in srgb, var(--checklist-accent) 68%, var(--foreground));
+  color: color-mix(in oklab, var(--checklist-accent) 68%, var(--foreground));
 }
 .ut-delivery-entry[data-checklist-status] small {
-  color: color-mix(in srgb, var(--checklist-accent, #2563a6) 68%, var(--foreground));
+  color: color-mix(in oklab, var(--checklist-accent, var(--status-pending)) 68%, var(--foreground));
 }
 .ut-delivery-entry[data-checklist-status="completed"] {
-  --checklist-accent: #4e8a48;
+  --checklist-accent: var(--status-completed);
 }
 .ut-delivery-entry[data-checklist-status="in-progress"] {
-  --checklist-accent: #b8862d;
+  --checklist-accent: var(--status-progress);
 }
 .ut-delivery-entry[data-checklist-status="pending"] {
-  --checklist-accent: #2563a6;
+  --checklist-accent: var(--status-pending);
 }
 .ut-delivery-summary:hover {
   background: var(--muted);
@@ -1376,8 +1393,14 @@
   border-radius: 50%;
 }
 .ut-status-paused {
-  background: #fce6dc;
-  color: #8c3317;
+  background: var(--muted);
+  color: var(--status-neutral);
+  border: 1px solid var(--border);
+}
+.ut-status-cancelled {
+  background: color-mix(in oklab, var(--status-cancelled) 12%, var(--card));
+  color: var(--status-cancelled);
+  border: 1px solid color-mix(in oklab, var(--status-cancelled) 30%, var(--border));
 }
 .ut-management {
   margin-top: 20px;
@@ -1454,15 +1477,15 @@
 }
 .ut-day button.ut-meeting-event,
 .ut-gantt button.ut-meeting-bar {
-  background: #e5effc;
-  color: #184b82;
-  border-left: 3px solid #367bcb;
+  background: color-mix(in oklab, var(--chart-blue) 13%, var(--card));
+  color: color-mix(in oklab, var(--chart-blue) 72%, var(--foreground));
+  border-left: 3px solid var(--chart-blue);
 }
 .ut-day button.ut-task-event {
   border-left: 3px solid var(--gold);
 }
 .ut-mini-grid .ut-has-meetings {
-  box-shadow: inset 0 -3px #367bcb;
+  box-shadow: inset 0 -3px var(--chart-blue);
 }
 .ut-meeting-list {
   display: grid;
@@ -1476,7 +1499,7 @@
   gap: 6px;
   text-align: left;
   padding: 14px;
-  border-left: 3px solid #367bcb;
+  border-left: 3px solid var(--chart-blue);
 }
 
 .ut-process-panel {
@@ -1493,8 +1516,9 @@
   color: var(--muted-foreground);
 }
 .ut-gantt-paused {
-  background: #fce6dc;
-  color: #8c3317;
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: var(--border);
 }
 
 /* Agenda: filtros secundários, navegação e visibilidade em grupos distintos. */
@@ -1583,7 +1607,7 @@
   border-left: 3px solid var(--primary) !important;
 }
 .ut-agenda-meeting {
-  border-left: 3px solid #3b82f6 !important;
+  border-left: 3px solid var(--chart-blue) !important;
 }
 .ut-agenda-toggle input {
   width: 14px;
@@ -1594,7 +1618,7 @@
   accent-color: var(--primary);
 }
 .ut-agenda-meeting input {
-  accent-color: #3b82f6;
+  accent-color: var(--chart-blue);
 }
 @media (max-width: 640px) {
   .ut-calendar-toolbar {

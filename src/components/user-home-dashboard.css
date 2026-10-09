@@ -98,12 +98,12 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--chart-amber);
   display: inline-block;
 }
 .uh-day b.uh-meeting-dot,
 .uh-legend i.uh-meeting-dot {
-  background: #397ec9;
+  background: var(--chart-blue);
 }
 .uh-legend {
   display: flex;
@@ -151,7 +151,7 @@
   justify-content: space-between;
   text-align: left;
   width: 100%;
-  border-left: 3px solid var(--gold);
+  border-left: 3px solid var(--chart-amber);
   padding: 11px 12px;
   margin-bottom: 8px;
 }
@@ -168,7 +168,7 @@
   font-size: 11px;
 }
 .ut-root button.uh-meeting {
-  border-left-color: #397ec9;
+  border-left-color: var(--chart-blue);
 }
 .uh-attention {
   display: flex;

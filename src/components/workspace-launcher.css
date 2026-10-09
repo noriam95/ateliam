@@ -75,7 +75,7 @@
   height: 40px;
   border-radius: 10px;
   background: var(--muted);
-  color: var(--gold);
+  color: var(--gold-ink);
   flex-shrink: 0;
 }
 .workspace-launcher-entry > span:nth-child(2) {

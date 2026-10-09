@@ -64,7 +64,7 @@ export function ThemeControl({ compact = false }: { compact?: boolean }) {
             onClick={() => choose(option.value)}
             className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
               active
-                ? "border-[var(--gold)] bg-accent text-[var(--gold)]"
+                ? "border-[var(--gold)] bg-accent text-[var(--gold-ink)]"
                 : "border-border bg-background text-muted-foreground hover:text-foreground"
             }`}
           >

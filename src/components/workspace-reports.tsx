@@ -365,7 +365,7 @@ function ValueChainReport({
   return (
     <section className="grid gap-4">
       <div className="rounded-lg border border-border bg-card p-6">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
           cadeia de valor · cadastro
         </div>
         <h1 className="mt-3 font-display text-3xl font-bold">Cadeia de Valor</h1>
@@ -1321,7 +1321,7 @@ function ConsultationTable({
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           active
-                            ? "bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]"
+                            ? "bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] text-[var(--gold-ink)]"
                             : "bg-muted text-muted-foreground"
                         }`}
                       >

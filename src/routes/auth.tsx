@@ -138,7 +138,7 @@ function AuthPage() {
 
           <div className="mb-8 flex items-end justify-between border-b border-foreground/15 pb-5">
             <div>
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--gold)]">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--gold-ink)]">
                 BF Flow
               </div>
               <h2 className="font-display text-4xl font-bold leading-none text-foreground">

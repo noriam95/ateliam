@@ -204,6 +204,13 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 
 Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresentação existente. Fluxogramas reutilizam o `NavigatedViewer` do workspace BPMN, sem instanciar edição. A página de leitura mantém metadados, caminho organizacional e relações ao lado do conteúdo, sem reconstruí-lo. Alterar parâmetros da URL não pode contornar a verificação de vigência executada no servidor.
 
+## Paleta semântica global — 09/10/2026
+
+- `src/styles.css` é a fonte de verdade para cores da interface. Ações e foco podem usar `--gold`; textos de marca usam `--gold-ink` para manter contraste nos temas claro e escuro.
+- Situações têm significado estável: neutro = rascunho/pausado; azul = pendente e revisão; âmbar = em andamento; teal = aprovado; verde = concluído/encerrado; vermelho = cancelado/atrasado. Usar os tokens `--status-*` em badges, checklist, gráficos e quadros.
+- Gráficos categóricos usam `--chart-*`; séries preservam distinção em claro/escuro e não redefinem a semântica de situação.
+- A tela BPMN conserva o canvas claro e as cores explícitas do arquivo. Diagramas e exportações de apresentação podem manter cores fixas quando isso for necessário para preservar a leitura e a identidade do material.
+
 ## Lembretes de tarefas — preparação para integração
 
 - A seção fica em Configurações e é visível somente para usuários com papel global `admin`; leitura e gravação são validadas no servidor e por RLS.

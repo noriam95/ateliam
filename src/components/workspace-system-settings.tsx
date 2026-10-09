@@ -368,7 +368,7 @@ export function WorkspaceSystemSettings({
   if (!isAdmin && (view === "users" || view === "organizations")) {
     return (
       <section className="rounded-lg border border-border bg-card p-6">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
           configurações
         </div>
         <h1 className="mt-3 font-display text-3xl font-bold text-foreground">Acesso restrito</h1>
@@ -1196,7 +1196,7 @@ function OrganizationDocumentModelSettings({
               className="grid gap-3 border-t border-border p-3 first:border-t-0 lg:grid-cols-[1fr_190px_170px]"
             >
               <div className="flex min-w-0 items-start gap-3">
-                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
                   {metadata.icon}
                 </span>
                 <div className="min-w-0">
@@ -1450,7 +1450,7 @@ function UsersSettings({
                       {row.roles.map((role) => (
                         <span
                           key={role}
-                          className="rounded-md bg-accent px-2 py-1 text-xs font-semibold text-[var(--gold)]"
+                          className="rounded-md bg-accent px-2 py-1 text-xs font-semibold text-[var(--gold-ink)]"
                         >
                           {roleLabels[role as AppRole] ?? role}
                         </span>
@@ -1497,7 +1497,7 @@ function UsersSettings({
               className="my-auto max-h-[92vh] w-full max-w-lg overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
             >
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold)]">
+              <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
                 <UserRound className="h-5 w-5" />
               </span>
               <div>
@@ -1820,7 +1820,7 @@ function DocumentModelsSettings({
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-[var(--gold)]">
+                        <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
                           {item.icon}
                         </span>
                         <span className="font-semibold">{model.name}</span>
@@ -1863,7 +1863,7 @@ function DocumentModelsSettings({
             >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold)]">
+                <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
                   {metadata.icon}
                 </span>
                 <div>
@@ -2046,7 +2046,7 @@ function SettingsSurface({
     <section className="grid gap-4">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
             {eyebrow}
           </div>
           <h1 className="mt-2 font-display text-3xl font-bold">{title}</h1>
@@ -2118,7 +2118,7 @@ function OrganizationLogo({
     />
   ) : (
     <span
-      className={`grid ${size} shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]`}
+      className={`grid ${size} shrink-0 place-items-center rounded-md bg-accent text-[var(--gold-ink)]`}
     >
       <Building2 className={large ? "h-5 w-5" : "h-4 w-4"} />
     </span>

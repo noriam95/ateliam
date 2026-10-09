@@ -175,7 +175,7 @@ export function TreeButton({
       type="button"
       onClick={onClick}
       data-workspace-destination
-      className={`mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold)] ${
+      className={`mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm animate-in slide-in-from-left-2 fade-in duration-150 [&_svg]:shrink-0 [&_svg]:text-[var(--gold-ink)] ${
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -208,7 +208,7 @@ export function TreeSection({
         className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
+        {icon ? <span className="shrink-0 text-[var(--gold-ink)]">{icon}</span> : null}
         {title}
       </button>
       <div
@@ -260,7 +260,7 @@ export function ModuleBranch({
           data-workspace-destination={destination || undefined}
           className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left"
         >
-          {icon ? <span className="shrink-0 text-[var(--gold)]">{icon}</span> : null}
+          {icon ? <span className="shrink-0 text-[var(--gold-ink)]">{icon}</span> : null}
           <span className="block min-w-0 truncate text-sm font-normal text-foreground">
             {title}
           </span>

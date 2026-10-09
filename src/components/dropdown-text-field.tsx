@@ -149,7 +149,7 @@ export function DropdownTextField({
               >
                 <span className="truncate">{option}</span>
                 {normalizeLabel(option) === normalizedValue ? (
-                  <Check className="h-4 w-4 shrink-0 text-[var(--gold)]" />
+                  <Check className="h-4 w-4 shrink-0 text-[var(--gold-ink)]" />
                 ) : null}
               </button>
             ))
@@ -164,7 +164,7 @@ export function DropdownTextField({
                 onCreate?.(value.trim());
                 setOpen(false);
               }}
-              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] transition hover:bg-muted"
+              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold-ink)] transition hover:bg-muted"
             >
               <Plus className="h-4 w-4" />
               {createLabel}

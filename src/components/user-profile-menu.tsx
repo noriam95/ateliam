@@ -325,7 +325,7 @@ export function UserProfileMenu({
                   onClick={() => applyTheme(key)}
                   className={`flex flex-col items-center gap-2 rounded-lg border px-3 py-4 text-sm font-semibold transition-colors ${
                     activeTheme === key
-                      ? "border-[var(--gold)] bg-accent text-[var(--gold)]"
+                      ? "border-[var(--gold)] bg-accent text-[var(--gold-ink)]"
                       : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >

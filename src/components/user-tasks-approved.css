@@ -125,16 +125,19 @@
   background: var(--gold);
 }
 .ut-column-in_progress > h3::before {
-  background: #7898b5;
+  background: var(--status-progress);
 }
 .ut-column-review > h3::before {
-  background: #a18caf;
+  background: var(--status-review);
 }
 .ut-column-paused > h3::before {
-  background: #a8a4a0;
+  background: var(--status-neutral);
 }
 .ut-column-completed > h3::before {
-  background: #6d9988;
+  background: var(--status-completed);
+}
+.ut-column-cancelled > h3::before {
+  background: var(--status-cancelled);
 }
 .ut-column > h3 > span {
   margin-left: auto;
@@ -190,16 +193,16 @@
 .ut-card-subline .ut-modality {
   font-size: 10px;
   padding: 3px 6px;
-  background: color-mix(in srgb, #967cad 14%, var(--card));
-  color: color-mix(in srgb, #967cad 80%, var(--foreground));
+  background: color-mix(in oklab, var(--chart-purple) 14%, var(--card));
+  color: color-mix(in oklab, var(--chart-purple) 80%, var(--foreground));
 }
 .ut-card-subline .ut-kind-document {
-  background: color-mix(in srgb, #5d85b4 14%, var(--card));
-  color: color-mix(in srgb, #5d85b4 80%, var(--foreground));
+  background: color-mix(in oklab, var(--chart-blue) 14%, var(--card));
+  color: color-mix(in oklab, var(--chart-blue) 80%, var(--foreground));
 }
 .ut-card-subline .ut-kind-improvement {
-  background: color-mix(in srgb, #54896a 14%, var(--card));
-  color: color-mix(in srgb, #54896a 80%, var(--foreground));
+  background: color-mix(in oklab, var(--chart-green) 14%, var(--card));
+  color: color-mix(in oklab, var(--chart-green) 80%, var(--foreground));
 }
 .ut-rich-card .ut-card-checkmark {
   border-radius: 2px;
@@ -253,8 +256,8 @@
   margin-left: auto;
 }
 .ut-icon-action.ut-delete-action:hover {
-  color: #b84143;
-  background: color-mix(in srgb, #b84143 9%, var(--card));
+  color: var(--status-cancelled);
+  background: color-mix(in oklab, var(--status-cancelled) 9%, var(--card));
 }
 .ut-dialog-heading {
   flex: 1;
@@ -496,13 +499,13 @@
   justify-content: center;
   width: 38px;
   height: 38px;
-  background: color-mix(in srgb, #b84143 10%, var(--card));
-  color: #b84143;
+  background: color-mix(in oklab, var(--status-cancelled) 10%, var(--card));
+  color: var(--status-cancelled);
   border-radius: 9px;
 }
 .ut-dialog button.ut-danger-button {
-  background: #b84143;
-  border-color: #b84143;
+  background: var(--status-cancelled);
+  border-color: var(--status-cancelled);
   color: white;
 }
 .ut-root .ut-sr-only {
@@ -614,7 +617,7 @@
   background: transparent;
   border-color: transparent;
   padding-left: 0;
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 .ut-task-detail-dialog .ut-comment {
   background: transparent;

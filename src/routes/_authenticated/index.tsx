@@ -1,6 +1,7 @@
 import { OperationalDashboard } from "@/components/operational-dashboard";
 import { loadTaskNotifications } from "@/lib/user-tasks.functions";
 import { visibleModulesFor } from "@/lib/module-visibility";
+import { statusColor } from "@/lib/status-color";
 import type { SearchSchemaInput } from "@tanstack/react-router";
 import { UserTasks } from "@/components/user-tasks";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -342,10 +343,10 @@ const MAPPING_STATUS_TILES: Array<{
   label: string;
   color: string;
 }> = [
-  { key: "emAndamento", label: "Em andamento", color: "var(--gold)" },
-  { key: "emRevisao", label: "Em revisão", color: "#3b74c4" },
-  { key: "aprovado", label: "Aprovado", color: "#1f9d6b" },
-  { key: "concluido", label: "Concluído", color: "#0e8fa6" },
+  { key: "emAndamento", label: "Em andamento", color: statusColor("Em andamento") },
+  { key: "emRevisao", label: "Em revisão", color: statusColor("Em revisão") },
+  { key: "aprovado", label: "Aprovado", color: statusColor("Aprovado") },
+  { key: "concluido", label: "Concluído", color: statusColor("Concluído") },
 ];
 
 const CAUSE_STATUS_TILES: Array<{
@@ -353,10 +354,10 @@ const CAUSE_STATUS_TILES: Array<{
   label: string;
   color: string;
 }> = [
-  { key: "naoIniciada", label: "Não iniciada", color: "var(--gold)" },
-  { key: "emAndamento", label: "Em andamento", color: "#3b74c4" },
-  { key: "encerrada", label: "Encerrada", color: "#1f9d6b" },
-  { key: "cancelada", label: "Cancelada", color: "#c95151" },
+  { key: "naoIniciada", label: "Não iniciada", color: statusColor("Não iniciada") },
+  { key: "emAndamento", label: "Em andamento", color: statusColor("Em andamento") },
+  { key: "encerrada", label: "Encerrada", color: statusColor("Encerrada") },
+  { key: "cancelada", label: "Cancelada", color: statusColor("Cancelada") },
 ];
 
 function normalizeStatusKey(status: string): keyof DashboardMappingStatusCounts | null {
@@ -400,7 +401,7 @@ const workspaceGrayVars = {
   "--accent-foreground": "var(--foreground)",
   "--brand": "var(--gold)",
   "--brand-foreground": "var(--foreground)",
-  "--blue": "var(--gold)",
+  "--blue": "var(--chart-blue)",
   "--indigo": "var(--muted-foreground)",
 } as CSSProperties;
 
@@ -1555,9 +1556,7 @@ function MappingCoverageTable({ rows }: { rows: MappingRow[] }) {
                 <td className="px-3 py-2 text-muted-foreground">{row.department || "-"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{row.owner || "-"}</td>
                 <td className="px-3 py-2">
-                  <span className="inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] px-2.5 py-0.5 text-xs font-medium text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
-                    {row.status}
-                  </span>
+                  <StatusBadge status={row.status} />
                 </td>
               </tr>
             ))}
@@ -1670,7 +1669,7 @@ function ProcessRecordsTable({
                 <td className="px-3 py-2 text-muted-foreground">{p.department || "-"}</td>
                 <td className="px-3 py-2 text-muted-foreground">{p.owner || "-"}</td>
                 <td className="px-3 py-2">
-                  <span className="inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] px-2.5 py-0.5 text-xs font-medium text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
+                  <span className="inline-flex items-center rounded-full bg-[color-mix(in_oklab,var(--gold)_14%,var(--card))] px-2.5 py-0.5 text-xs font-medium text-[var(--gold-ink)]">
                     {p.status}
                   </span>
                 </td>
@@ -1695,31 +1694,22 @@ type DashboardSortDir = "asc" | "desc";
 function SortGlyph({ active, dir }: { active: boolean; dir: DashboardSortDir }) {
   if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
   return dir === "asc" ? (
-    <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+    <ArrowUp className="h-3 w-3 text-[var(--gold-ink)]" aria-hidden="true" />
   ) : (
-    <ArrowDown className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+    <ArrowDown className="h-3 w-3 text-[var(--gold-ink)]" aria-hidden="true" />
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const normalized = status.trim().toLowerCase();
-  const tone = normalized.includes("conclu")
-    ? { bg: "#DFF5E6", fg: "#147A3A", border: "#A8E5BA" }
-    : normalized.includes("aprov")
-      ? { bg: "#E6F4FF", fg: "#145DA0", border: "#B9DEFF" }
-      : normalized.includes("revis")
-        ? { bg: "#FFF3D8", fg: "#9A5A00", border: "#F3D18A" }
-        : normalized.includes("andamento") || normalized.includes("ativo")
-          ? {
-              bg: "color-mix(in oklab, var(--gold) 15%, var(--card))",
-              fg: "var(--gold)",
-              border: "color-mix(in oklab, var(--gold) 35%, var(--border))",
-            }
-          : { bg: "var(--muted)", fg: "var(--muted-foreground)", border: "var(--border)" };
+  const color = statusColor(status);
   return (
     <span
       className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
-      style={{ backgroundColor: tone.bg, color: tone.fg, borderColor: tone.border }}
+      style={{
+        backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
+        color,
+        borderColor: `color-mix(in oklab, ${color} 30%, var(--border))`,
+      }}
     >
       {status || "-"}
     </span>
@@ -2121,7 +2111,7 @@ function DocumentTypeQuadrant({
         <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {type}
         </div>
-        <span className="rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 font-data text-xs font-semibold text-[var(--gold)]">
+        <span className="rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 font-data text-xs font-semibold text-[var(--gold-ink)]">
           {documentTypeCount(rows, type)}
         </span>
       </div>
@@ -2132,7 +2122,7 @@ function DocumentTypeQuadrant({
               key={area.label}
               className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)_1.25rem] items-center gap-x-2"
             >
-              <span className="row-span-2 text-[10px] font-data font-bold text-[var(--gold)]">
+              <span className="row-span-2 text-[10px] font-data font-bold text-[var(--gold-ink)]">
                 {index + 1}
               </span>
               <span className="min-w-0 truncate text-[11px] text-foreground" title={area.label}>
@@ -2235,7 +2225,7 @@ function DocumentCatalogExpanded({ rows }: { rows: DashboardDocumentCatalogRow[]
               }`}
             >
               {type}
-              <span className="ml-2 font-data text-[var(--gold)]">
+              <span className="ml-2 font-data text-[var(--gold-ink)]">
                 {documentTypeCount(rows, type)}
               </span>
             </button>
@@ -2428,7 +2418,7 @@ function SystemNotificationsMenu({
               <button
                 type="button"
                 onClick={markAllAsRead}
-                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--gold)] transition hover:bg-muted"
+                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--gold-ink)] transition hover:bg-muted"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 Marcar todas
@@ -2473,7 +2463,7 @@ function SystemNotificationsMenu({
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="mt-0.5 inline-flex shrink-0 rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold)]">
+                      <span className="mt-0.5 inline-flex shrink-0 rounded-full bg-[color-mix(in_oklab,var(--gold)_12%,var(--card))] px-2 py-0.5 text-[10px] font-semibold text-[var(--gold-ink)]">
                         {item.tag}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -2503,7 +2493,7 @@ function SystemNotificationsMenu({
                           <button
                             type="button"
                             onClick={() => markAsRead(item)}
-                            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold)] hover:bg-muted"
+                            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold-ink)] hover:bg-muted"
                           >
                             Marcar como lida
                           </button>
@@ -2694,7 +2684,7 @@ function WorkspaceContent({
     if (!isAdmin) {
       return (
         <section className="rounded-lg border border-border bg-card p-6" role="alert">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
             configurações
           </div>
           <h1 className="mt-3 font-display text-3xl font-bold text-foreground">Acesso restrito</h1>
@@ -2740,7 +2730,7 @@ function WorkspaceContent({
     if (!isAdmin) {
       return (
         <section className="rounded-lg border border-border bg-card p-6">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
             configurações
           </div>
           <h1 className="mt-3 font-display text-3xl font-bold text-foreground">Acesso restrito</h1>
@@ -3030,7 +3020,7 @@ function ExportsPanel() {
                 {module.glyph}
               </div>
               <div className="mt-4 font-display text-lg font-bold">{card.title}</div>
-              <div className="mt-2 rounded-md bg-accent px-2 py-1 text-xs font-bold text-[var(--gold)]">
+              <div className="mt-2 rounded-md bg-accent px-2 py-1 text-xs font-bold text-[var(--gold-ink)]">
                 {card.formats}
               </div>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{card.text}</p>
@@ -3212,7 +3202,7 @@ function ModuleWorkspacePanel({
       <section className="rounded-lg border border-border bg-card p-5 shadow-[0_24px_70px_-55px_rgba(0,0,0,.75)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
               processos · {module.title}
             </div>
             <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-4xl">
@@ -3265,7 +3255,7 @@ function ModuleWorkspacePanel({
                       <div className="mt-1 text-xs text-muted-foreground">{document.process}</div>
                     </td>
                     <td className="px-3 py-3">
-                      <span className="rounded-md bg-accent px-2 py-1 text-xs font-semibold text-[var(--gold)]">
+                      <span className="rounded-md bg-accent px-2 py-1 text-xs font-semibold text-[var(--gold-ink)]">
                         {document.status}
                       </span>
                     </td>
@@ -3282,7 +3272,7 @@ function ModuleWorkspacePanel({
                       <Link
                         to="/m/$module"
                         params={{ module: module.id }}
-                        className="text-xs font-bold text-[var(--gold)] hover:underline"
+                        className="text-xs font-bold text-[var(--gold-ink)] hover:underline"
                       >
                         {exportLabel}
                       </Link>
@@ -3301,7 +3291,7 @@ function ModuleWorkspacePanel({
           <div className="mt-4 grid gap-3">
             {getModuleFlow(module.id).map((item, index) => (
               <div key={item} className="flex gap-3">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-accent font-data text-xs font-bold text-[var(--gold)]">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-accent font-data text-xs font-bold text-[var(--gold-ink)]">
                   {index + 1}
                 </span>
                 <p className="pt-1 text-sm leading-relaxed text-muted-foreground">{item}</p>
@@ -3589,7 +3579,7 @@ function DashboardMetric({
   return (
     <div className="rounded-lg border border-border bg-card p-3">
       <div className="mb-3 flex items-center justify-between text-muted-foreground">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-[var(--accent)] text-[var(--gold)]">
+        <span className="grid h-7 w-7 place-items-center rounded-md bg-[var(--accent)] text-[var(--gold-ink)]">
           {icon}
         </span>
         <span className="text-[9px] uppercase tracking-[0.14em]">{label}</span>
@@ -3626,7 +3616,7 @@ function DocumentTable({
           key={document.id}
           className="grid gap-3 border-b border-border bg-background/72 px-3 py-3 last:border-b-0 md:grid-cols-[80px_minmax(0,1fr)_120px_120px]"
         >
-          <span className="w-fit rounded-md bg-accent px-2 py-1 text-[10px] font-bold uppercase text-[var(--gold)]">
+          <span className="w-fit rounded-md bg-accent px-2 py-1 text-[10px] font-bold uppercase text-[var(--gold-ink)]">
             {document.module}
           </span>
           <span className="truncate text-sm font-semibold">{document.name}</span>

@@ -146,9 +146,9 @@ function valueChainCategoryLabel(value: ValueChainCategory) {
 function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
   if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
   return dir === "asc" ? (
-    <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+    <ArrowUp className="h-3 w-3 text-[var(--gold-ink)]" aria-hidden="true" />
   ) : (
-    <ArrowDown className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+    <ArrowDown className="h-3 w-3 text-[var(--gold-ink)]" aria-hidden="true" />
   );
 }
 
@@ -1325,7 +1325,7 @@ export function WorkspaceProcessRegistrations({
             className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
           >
             <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
                 {copy.icon}
               </span>
               <div className="min-w-0">
@@ -1406,7 +1406,7 @@ export function WorkspaceProcessRegistrations({
             className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
           >
             <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
                 {registryCopy(relatedCreate.view).icon}
               </span>
               <div className="min-w-0">
@@ -2499,7 +2499,7 @@ function SearchableCreateSelect({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={createItem}
-                className="mt-1 flex w-full items-center gap-2 rounded border border-dashed border-[var(--gold)] px-2 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-accent disabled:opacity-50"
+                className="mt-1 flex w-full items-center gap-2 rounded border border-dashed border-[var(--gold)] px-2 py-2 text-left text-sm font-semibold text-[var(--gold-ink)] hover:bg-accent disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" /> {createLabel} "{query.trim()}"
               </button>
@@ -2789,7 +2789,7 @@ export function ProcessRegistrationDialog({
         className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
       >
         <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
             {copy.icon}
           </span>
           <div className="min-w-0">
@@ -2867,7 +2867,7 @@ export function ProcessRegistrationDialog({
             className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
           >
             <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold)]">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
                 {registryCopy(relatedCreate.view).icon}
               </span>
               <div className="min-w-0">

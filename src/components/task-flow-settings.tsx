@@ -135,7 +135,7 @@ export function TaskFlowSettings({ organizationId }: { organizationId: string | 
     <div className="mx-auto grid w-full max-w-5xl gap-5">
       <header>
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <Users className="h-4 w-4 text-[var(--gold)]" aria-hidden="true" /> Configurações do
+          <Users className="h-4 w-4 text-[var(--gold-ink)]" aria-hidden="true" /> Configurações do
           sistema
         </div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">

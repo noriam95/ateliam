@@ -2,6 +2,7 @@ import { ProcessLibraryHeader, ProcessLibrarySearch } from "@/components/process
 import { mappingCodeForMode } from "@/lib/document-label";
 import { DropdownTextField } from "@/components/dropdown-text-field";
 import { visibleModulesFor } from "@/lib/module-visibility";
+import { statusColor } from "@/lib/status-color";
 import type { SearchSchemaInput } from "@tanstack/react-router";
 import { TaskEditorContext } from "@/components/task-editor-context";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
@@ -284,7 +285,7 @@ const moduleGrayVars = {
   "--accent-foreground": "var(--foreground)",
   "--brand": "var(--gold)",
   "--brand-foreground": "var(--foreground)",
-  "--blue": "var(--gold)",
+  "--blue": "var(--chart-blue)",
   "--indigo": "var(--muted-foreground)",
 } as CSSProperties;
 
@@ -5911,7 +5912,7 @@ function buildPopPresentationHtml(pop: PopState, brand?: OrganizationBrand) {
     "</span><strong>" +
     html(title) +
     '</strong></div><nav class="nav">' +
-    nav.map((item) => '<a href="' + '#' + item[0] + '">' + html(item[1]) + "</a>").join("") +
+    nav.map((item) => '<a href="' + "#" + item[0] + '">' + html(item[1]) + "</a>").join("") +
     '</nav><div class="presentation-controls"><div class="theme-toggle"><button type="button" data-theme-choice="light" class="active" title="Tema claro" aria-label="Tema claro">☀</button><button type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">◐</button></div><button type="button" class="fullscreen-button" id="fullscreen-toggle" title="Tela cheia" aria-label="Tela cheia">⛶</button></div></aside><main class="content"><section class="slide cover" id="capa"><div class="cover-hero"><div><div class="kicker">00 · Documento controlado</div><h1>' +
     html(title) +
     '</h1></div><div class="cover-code"><span>Código</span><strong>' +
@@ -9103,7 +9104,7 @@ function ModuleSettingsPanel({
   const item = copy[view];
   return (
     <section className="rounded-lg border border-border bg-card p-6">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
         {item.eyebrow}
       </div>
       <h1 className="mt-3 font-display text-3xl font-bold text-foreground">{item.title}</h1>
@@ -9521,9 +9522,9 @@ type ModuleGridColumn = keyof Pick<
 function ModuleSortGlyph({ active, dir }: { active: boolean; dir: ModuleGridSortDir }) {
   if (!active) return <ArrowDownUp className="h-3 w-3 opacity-35" aria-hidden="true" />;
   return dir === "asc" ? (
-    <ArrowUp className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+    <ArrowUp className="h-3 w-3 text-[var(--gold-ink)]" aria-hidden="true" />
   ) : (
-    <ArrowDown className="h-3 w-3 text-[var(--gold)]" aria-hidden="true" />
+    <ArrowDown className="h-3 w-3 text-[var(--gold-ink)]" aria-hidden="true" />
   );
 }
 
@@ -9546,38 +9547,11 @@ function compareModuleGridRows(
 }
 
 function moduleStatusStyle(status: string): CSSProperties {
-  const normalized = normalizeLabel(status);
-  if (normalized.includes("rascunho")) {
-    return {
-      backgroundColor: "color-mix(in oklab, var(--muted) 70%, var(--card))",
-      color: "var(--muted-foreground)",
-      borderColor: "var(--border)",
-    };
-  }
-  if (normalized.includes("concluido")) {
-    return { backgroundColor: "#DFF5E6", color: "#147A3A", borderColor: "#A8E5BA" };
-  }
-  if (normalized.includes("aprovado")) {
-    return { backgroundColor: "#E6F4FF", color: "#145DA0", borderColor: "#B9DEFF" };
-  }
-  if (normalized.includes("revisao")) {
-    return { backgroundColor: "#FFF3D8", color: "#9A5A00", borderColor: "#F3D18A" };
-  }
-  if (
-    normalized.includes("andamento") ||
-    normalized.includes("ativo") ||
-    normalized.includes("salvo")
-  ) {
-    return {
-      backgroundColor: "color-mix(in oklab, var(--gold) 14%, var(--card))",
-      color: "var(--gold)",
-      borderColor: "color-mix(in oklab, var(--gold) 35%, var(--border))",
-    };
-  }
+  const color = statusColor(status);
   return {
-    backgroundColor: "var(--muted)",
-    color: "var(--muted-foreground)",
-    borderColor: "var(--border)",
+    backgroundColor: `color-mix(in oklab, ${color} 12%, var(--card))`,
+    color,
+    borderColor: `color-mix(in oklab, ${color} 30%, var(--border))`,
   };
 }
 
@@ -10400,7 +10374,7 @@ function DdpCausesModuleLegacy({
         <header className="border-b border-border bg-card px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gold-ink)]">
                 processos · mapeamento · oportunidades de melhoria
               </div>
               <h1 className="mt-1 text-xl font-semibold text-foreground">Consultar registros</h1>
@@ -13145,7 +13119,7 @@ function DdpModule({
                       key={`${normalizeLabel(step.title)}-${index}`}
                       className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
                     >
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent font-data text-xs font-bold text-[var(--gold)]">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent font-data text-xs font-bold text-[var(--gold-ink)]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -13325,7 +13299,7 @@ function DdpModule({
       {!mappingReady ? (
         <div className="mt-2 grid place-items-center rounded-lg border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
           <div className="grid max-w-sm gap-2">
-            <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-accent text-[var(--gold)]">
+            <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-accent text-[var(--gold-ink)]">
               <Lock className="h-5 w-5" />
             </span>
             <h2 className="font-display text-lg font-bold text-foreground">
@@ -13365,7 +13339,7 @@ function DdpModule({
                   <div className="md:col-span-3 rounded-xl border border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_10%,var(--card))] px-4 py-3 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[color-mix(in_oklab,var(--gold)_80%,var(--foreground))]">
+                        <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--gold-ink)]">
                           Código gerado do mapeamento
                         </span>
                         <strong className="mt-1 block font-data text-2xl font-black tracking-[0.14em] text-foreground">
@@ -13570,7 +13544,7 @@ function DdpModule({
                       ],
                     })
                   }
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar sistema/documento
@@ -13637,7 +13611,7 @@ function DdpModule({
                       ],
                     })
                   }
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar linha SIPOC
@@ -13747,7 +13721,7 @@ function DdpModule({
                               <ChevronRight className="h-4 w-4" />
                             )}
                           </button>
-                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
+                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold-ink)]">
                             {String(index + 1).padStart(2, "0")}
                           </div>
                           <div className="min-w-0 flex-1">
@@ -14353,7 +14327,7 @@ function DdpModule({
                                                   ],
                                                 })
                                               }
-                                              className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                                              className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                                             >
                                               <Plus className="h-4 w-4" />
                                               Adicionar atividade ao subprocesso
@@ -14388,7 +14362,7 @@ function DdpModule({
                                       ],
                                     })
                                   }
-                                  className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                                  className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                                 >
                                   <Plus className="h-4 w-4" />
                                   Adicionar atividade ou subprocesso
@@ -14423,7 +14397,7 @@ function DdpModule({
                           ]),
                         })
                       }
-                      className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                      className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                     >
                       <Plus className="h-4 w-4" />
                       Adicionar etapa
@@ -14668,7 +14642,7 @@ function DdpModule({
                       ],
                     })
                   }
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar gap
@@ -14744,7 +14718,7 @@ function DdpModule({
                       glossary: [...data.glossary, { id: id("gloss"), termo: "", definicao: "" }],
                     })
                   }
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar termo
@@ -15980,7 +15954,7 @@ function PopModule({
                     className="group overflow-hidden rounded-lg border border-border bg-muted/20"
                   >
                     <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 px-4 py-3 marker:hidden hover:bg-muted/40">
-                      <span className="rounded-full bg-[color-mix(in_oklab,var(--gold)_16%,transparent)] px-3 py-1 text-xs font-bold text-[var(--gold)]">
+                      <span className="rounded-full bg-[color-mix(in_oklab,var(--gold)_16%,transparent)] px-3 py-1 text-xs font-bold text-[var(--gold-ink)]">
                         {section.code}
                       </span>
                       <span className="min-w-0">
@@ -16001,7 +15975,7 @@ function PopModule({
                           event.stopPropagation();
                           addProcedureSubitem(section);
                         }}
-                        className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                        className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold-ink)]"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -16041,7 +16015,7 @@ function PopModule({
                           htmlFor={`procedure-item-images-${section.id}`}
                           title="Adicionar imagem ao item"
                           aria-label="Adicionar imagem ao item"
-                          className="grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                          className="grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold-ink)]"
                         >
                           <ImagePlus className="h-3.5 w-3.5" />
                           <span className="sr-only">Adicionar imagem</span>
@@ -16091,7 +16065,7 @@ function PopModule({
                             }`}
                           >
                             <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2.5 marker:hidden hover:bg-muted/40">
-                              <span className="font-mono text-xs font-bold text-[var(--gold)]">
+                              <span className="font-mono text-xs font-bold text-[var(--gold-ink)]">
                                 {subitem.code}
                               </span>
                               <span className="min-w-0">
@@ -16112,7 +16086,7 @@ function PopModule({
                                   event.stopPropagation();
                                   addProcedureClause(section.id, subitem);
                                 }}
-                                className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                                className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold-ink)]"
                               >
                                 <Plus className="h-3.5 w-3.5" />
                               </button>
@@ -16232,7 +16206,7 @@ function PopModule({
                                         >
                                           <ArrowDownUp className="h-4 w-4" />
                                         </button>
-                                        <span className="font-mono text-sm font-bold text-[var(--gold)]">
+                                        <span className="font-mono text-sm font-bold text-[var(--gold-ink)]">
                                           {clause.letter})
                                         </span>
                                         <span className="min-w-0">
@@ -16341,7 +16315,7 @@ function PopModule({
                                             htmlFor={`procedure-images-${blocks.at(-1)?.id}`}
                                             title="Adicionar imagem ao trecho atual"
                                             aria-label="Adicionar imagem ao trecho atual"
-                                            className="grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                                            className="grid h-8 w-8 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold-ink)]"
                                           >
                                             <ImagePlus className="h-3.5 w-3.5" />
                                             <span className="sr-only">Adicionar imagem</span>
@@ -16361,7 +16335,7 @@ function PopModule({
                                                 ],
                                               )
                                             }
-                                            className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold)]"
+                                            className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-[var(--gold)]/50 hover:bg-[color-mix(in_oklab,var(--gold)_8%,transparent)] hover:text-[var(--gold-ink)]"
                                           >
                                             <Plus className="h-3.5 w-3.5" />
                                           </button>
@@ -16435,7 +16409,7 @@ function PopModule({
                                 <button
                                   type="button"
                                   onClick={() => addProcedureClause(section.id, subitem)}
-                                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                                 >
                                   <Plus className="h-4 w-4" />
                                   Adicionar alínea
@@ -16447,7 +16421,7 @@ function PopModule({
                         <button
                           type="button"
                           onClick={() => addProcedureSubitem(section)}
-                          className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                          className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                         >
                           <Plus className="h-4 w-4" />
                           Adicionar subitem
@@ -16547,7 +16521,7 @@ function PopModule({
                       ],
                     })
                   }
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar responsabilidade
@@ -16633,7 +16607,7 @@ function PopModule({
                       ],
                     })
                   }
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar referência
@@ -16742,7 +16716,7 @@ function PopModule({
                       },
                     ])
                   }
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar histórico
@@ -16871,7 +16845,7 @@ function Hero({
     <section className="border-b border-border pb-5">
       <div className="grid items-end gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
         <div className="min-w-0">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold-ink)]">
             {eyebrow}
           </div>
           <h1 className="font-display text-3xl font-semibold text-foreground">{title}</h1>
@@ -16947,7 +16921,7 @@ function Panel({
                   ? "bg-emerald-500/15 text-emerald-600"
                   : open
                     ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
-                    : "bg-accent text-[var(--gold)]"
+                    : "bg-accent text-[var(--gold-ink)]"
               }`}
             >
               {complete ? <Check className="h-4 w-4" strokeWidth={3} /> : num}
@@ -17059,7 +17033,7 @@ function FlowCommandBar({
     <div className="sticky top-14 z-30 -mx-5 border-b border-border bg-[color-mix(in_oklab,var(--card)_94%,transparent)] px-3 py-3 backdrop-blur-md sm:px-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold)]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--gold-ink)]">
             {eyebrow}
           </div>
           <h1 className="mt-0.5 flex items-baseline gap-2.5 font-display text-lg font-bold text-foreground md:text-xl">
@@ -17111,7 +17085,7 @@ function FlowCommandBar({
           </span>
           {stateLabel ? (
             <div className="hidden text-right sm:block" role="status" aria-live="polite">
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[var(--gold)]">
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[var(--gold-ink)]">
                 {saveState === "dirty" ? (
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />
                 ) : saveState === "saved" ? (
@@ -17252,7 +17226,7 @@ function MappingSectionNav({
                 ].join(" ")}
               >
                 <span
-                  className={`text-center font-data text-[11px] font-semibold ${active ? "text-[var(--gold)]" : "text-muted-foreground/70"}`}
+                  className={`text-center font-data text-[11px] font-semibold ${active ? "text-[var(--gold-ink)]" : "text-muted-foreground/70"}`}
                 >
                   {s.num}
                 </span>
@@ -17464,7 +17438,7 @@ function RegisteredProcessSelect({
                 setOpen(false);
                 onRequestCreate?.(query.trim());
               }}
-              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-muted"
+              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold-ink)] hover:bg-muted"
             >
               <Plus className="h-4 w-4" />
               Cadastrar novo processo{query.trim() ? ` "${query.trim()}"` : ""}
@@ -17637,7 +17611,7 @@ function RegisteredSystemSelect({
                 setOpen(false);
                 onRequestCreate?.(query.trim());
               }}
-              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold)] hover:bg-muted"
+              className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[color-mix(in_oklab,var(--gold)_45%,var(--border))] px-3 py-2 text-left text-sm font-semibold text-[var(--gold-ink)] hover:bg-muted"
             >
               <Plus className="h-4 w-4" />
               Cadastrar novo sistema/documento{query.trim() ? ` "${query.trim()}"` : ""}
@@ -18123,7 +18097,7 @@ function ListEditor({
             key={item.id}
             className="grid gap-2 rounded-lg border border-border bg-card p-2 md:grid-cols-[auto_minmax(0,1fr)_180px_160px_auto]"
           >
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold)]">
+            <div className="grid h-8 w-8 place-items-center rounded-md bg-muted text-xs font-semibold text-[var(--gold-ink)]">
               {String(index + 1).padStart(2, "0")}
             </div>
             <input
@@ -18178,7 +18152,7 @@ function ListEditor({
           onClick={() =>
             onChange([...items, { id: id("item"), text: "", responsavel: "", prazo: "" }])
           }
-          className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[color-mix(in_oklab,var(--gold)_78%,var(--foreground))] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
+          className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg border border-dashed border-[color-mix(in_oklab,var(--gold)_50%,var(--border))] bg-[color-mix(in_oklab,var(--gold)_7%,transparent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--gold-ink)] transition hover:border-[var(--gold)] hover:bg-[color-mix(in_oklab,var(--gold)_14%,transparent)]"
         >
           <Plus className="h-4 w-4" />
           Adicionar

@@ -4,9 +4,17 @@ name: BF Flow
 description: Área pessoal e tarefas integradas aos documentos existentes
 colors:
   primary: "oklch(0.69 0.13 78)"
+  primaryText: "oklch(0.48 0.13 78)"
   background: "oklch(0.975 0.002 265)"
   foreground: "oklch(0.235 0.006 265)"
   card: "oklch(0.995 0.001 265)"
+  status:
+    neutral: "var(--status-neutral)"
+    progress: "var(--status-progress)"
+    review: "var(--status-review)"
+    approved: "var(--status-approved)"
+    completed: "var(--status-completed)"
+    cancelled: "var(--status-cancelled)"
 typography:
   sans:
     fontFamily: "Geist, Aptos, Segoe UI Variable Text, system-ui, sans-serif"
@@ -130,6 +138,13 @@ Com cores e Preto e branco são as únicas aparências. Preenchimentos explícit
 O ícone Salvar oferece Salvar rascunho e Salvar versão. Rascunho usa o mesmo documento com código TEMP e não incrementa a versão; autosave sempre usa essa modalidade. A versão explícita preserva cópia no histórico. Verificar desenho apresenta diagnósticos identificados por nome e ID do elemento, sem bloquear o salvamento.
 
 BPMN — 29/09/2026: exportação principal em arquivo BPMN editável e imagem PNG do diagrama inteiro, independente de zoom/pan, com fundo branco e cores renderizadas (incluindo preto e branco). XML original importado continua identificado separadamente para recuperação. Durante edição, ocultar o cabeçalho global da biblioteca: manter somente a barra de modelagem, Importar junto de Pool, Salvar por ícone junto de Propriedades e Apresentar nos controles de zoom. Voltar aos desenhos mantém acesso à biblioteca e ao menu geral.
+
+## Identidade visual global — 09/10/2026
+
+- `src/styles.css` é a fonte canônica de cores. O dourado de marca fica para preenchimentos, foco e destaque; `--gold-ink` é a variante de texto com contraste adequado no tema claro e se adapta ao tema escuro.
+- Cores semânticas globais são `--status-neutral`, `--status-pending`, `--status-progress`, `--status-review`, `--status-approved`, `--status-completed` e `--status-cancelled`. Home, tarefas, checklist, Kanban, Gantt e indicadores usam o mesmo significado nos dois temas: pendente azul, em andamento âmbar, revisão azul, aprovado teal, concluído verde e cancelado vermelho. Rascunho e pausado são neutros.
+- Gráficos usam a escala categórica `--chart-blue`, `--chart-teal`, `--chart-amber`, `--chart-purple`, `--chart-red`, `--chart-green` e `--chart-neutral`. Séries distintas não devem reaproveitar cores de estado de forma que altere seu significado.
+- Canvas BPMN, cores importadas e desenhos usados como saída/apresentação podem conservar uma paleta própria para preservar a notação e a impressão; não são controles da interface geral.
 
 Ajuste confirmado em 29/09: no grupo de comandos indicado pelo usuário, manter somente Navegar e Importar. Seleção por arraste e conexões contextuais continuam; copiar/recortar/colar/excluir ficam no botão direito. Raia e Pool passam para a paleta. Dados usa ícone nativo de documento BPMN e Armazenamento usa cilindro, iguais às formas do motor. Colar funciona também no fundo do canvas e conserva propriedades.
 
