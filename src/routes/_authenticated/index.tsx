@@ -179,7 +179,15 @@ type WorkspaceView =
   | `module:${AteliamModule}:${ModuleTask}`
   | `module:${AteliamModule}`;
 
-type ModuleTask = "home" | "consult" | "cause-new" | "cause-consult" | "cause-edit" | "library";
+type ModuleTask =
+  | "home"
+  | "consult"
+  | "cause-new"
+  | "cause-consult"
+  | "cause-edit"
+  | "library"
+  | "exports"
+  | "versions";
 type WorkspaceArea = "home" | "portal" | "modules" | "value-chain" | "reports" | "settings";
 function AdminSettingsTabs({ view }: { view: WorkspaceView }) {
   const tabs: { view: WorkspaceView; label: string }[] = [
@@ -2887,21 +2895,17 @@ function WorkspaceContent({
         title={
           view === "appearance"
             ? "Aparência"
-            : view === "theme"
-              ? "Tema"
-              : view === "profile"
-                ? "Perfil e acesso"
-                : view === "preferences"
-                  ? "Preferências"
-                  : view === "visual-identity"
-                    ? "Identidade visual"
-                    : view === "integrations"
-                      ? "Integrações"
-                      : view === "local-environment"
-                        ? "Ambiente de teste/local"
-                        : view === "version-history"
-                          ? "Histórico de versões"
-                          : "Configurações"
+            : view === "preferences"
+              ? "Preferências"
+              : view === "visual-identity"
+                ? "Identidade visual"
+                : view === "integrations"
+                  ? "Integrações"
+                  : view === "local-environment"
+                    ? "Ambiente de teste/local"
+                    : view === "version-history"
+                      ? "Histórico de versões"
+                      : "Configurações"
         }
         text="Ajuste aparência, tema, preferências, identidade visual, integrações, ambiente local e dados de acesso."
       />

@@ -2,7 +2,11 @@ import { BPMN_DEFAULT_COLORS } from "./bpmn-colors";
 import RuleProvider from "diagram-js/lib/features/rules/RuleProvider";
 
 /** Allows the note shape to use the same resize directions as activities. */
-export function AnnotationResizeRules(eventBus: any) {
+type AnnotationResizeRulesInstance = {
+  addRule: (name: string, priority: number, rule: (context: any) => boolean | undefined) => void;
+};
+
+export function AnnotationResizeRules(this: AnnotationResizeRulesInstance, eventBus: any) {
   RuleProvider.call(this, eventBus);
   eventBus.on("commandStack.shape.resize.preExecute", 500, ({ context }: any) => {
     if (context.shape?.type !== "bpmn:TextAnnotation") return;
@@ -13,7 +17,7 @@ export function AnnotationResizeRules(eventBus: any) {
 AnnotationResizeRules.prototype = Object.create(RuleProvider.prototype);
 AnnotationResizeRules.prototype.constructor = AnnotationResizeRules;
 AnnotationResizeRules.$inject = ["eventBus"];
-AnnotationResizeRules.prototype.init = function () {
+AnnotationResizeRules.prototype.init = function (this: AnnotationResizeRulesInstance) {
   this.addRule("shape.resize", 2000, (context: any) => {
     if (context.shape?.type === "bpmn:TextAnnotation") return true;
   });
@@ -71,7 +75,9 @@ export function LaneRenderer(eventBus: any, bpmnRenderer: any) {
         other.type === "bpmn:Lane" &&
         other.businessObject.$parent === element.businessObject.$parent,
     );
-    const firstLane = !siblings.some((other: any) => other !== element && other[axis] < element[axis]);
+    const firstLane = !siblings.some(
+      (other: any) => other !== element && other[axis] < element[axis],
+    );
 
     const parent = element.parent;
     if (firstLane) {

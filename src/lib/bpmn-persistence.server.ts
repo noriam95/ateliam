@@ -16,7 +16,7 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(sortKeys(parsed));
 }
 
-function snapshotsMatch(stored: string, expected: string): boolean {
+function snapshotsMatch(stored: unknown, expected: unknown): boolean {
   try {
     return canonicalJson(stored) === canonicalJson(expected);
   } catch {

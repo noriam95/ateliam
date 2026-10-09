@@ -912,6 +912,9 @@ export function WorkspaceProcessRegistrations({
         });
       }
       if (view === "process-types") {
+        if (draft.type === "macroprocess") {
+          throw new Error("Macroprocessos devem ser cadastrados como cadeias de valor.");
+        }
         return saveType({
           data: {
             id: draft.id || undefined,
@@ -934,7 +937,9 @@ export function WorkspaceProcessRegistrations({
           },
         });
       }
-      const processStatus = draft.id ? draft.status : "Ativo";
+      const processStatus: "Em revisão" | "Ativo" | "Arquivado" = draft.id
+        ? (draft.status as "Em revisão" | "Ativo" | "Arquivado")
+        : "Ativo";
       return saveProcess({
         data: {
           id: draft.id || undefined,
@@ -1083,6 +1088,7 @@ export function WorkspaceProcessRegistrations({
         data: {
           organizationId,
           departmentId: relatedDraft.departmentId,
+          departmentIds: relatedDraft.departmentIds,
           roleTitle: relatedDraft.roleTitle,
         },
       });
@@ -2651,6 +2657,7 @@ export function ProcessRegistrationDialog({
         data: {
           organizationId,
           departmentId: relatedDraft.departmentId,
+          departmentIds: relatedDraft.departmentIds,
           roleTitle: relatedDraft.roleTitle,
         },
       });

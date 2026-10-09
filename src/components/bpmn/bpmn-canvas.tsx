@@ -133,8 +133,9 @@ function paintCanvasExtensions(instance: any, styles: Record<string, BpmnTextSty
   registry.forEach((element: any) => {
     const graphics = registry.getGraphics(element);
     if (!graphics) return;
+    const svgGraphics = graphics as SVGGElement;
     const style = styles[element.labelTarget?.id || element.id];
-    const texts = graphics.querySelectorAll<SVGTextElement>(".djs-label, text");
+    const texts = svgGraphics.querySelectorAll<SVGTextElement>(".djs-label, text");
     texts.forEach((text) => {
       text.style.fontFamily = style?.fontFamily || "";
       text.style.fontSize = style?.fontSize ? `${style.fontSize}px` : "";
@@ -151,10 +152,11 @@ function paintCanvasExtensions(instance: any, styles: Record<string, BpmnTextSty
     const isAnnotation = element.type === "bpmn:TextAnnotation";
     const isActivity = Boolean(element.businessObject?.$instanceOf?.("bpmn:Activity"));
     if (isAnnotation || isActivity) {
-      const text = graphics.querySelector<SVGTextElement>(".djs-label");
+      const text = svgGraphics.querySelector<SVGTextElement>(".djs-label");
       if (text) {
         const textStyle = styles[element.labelTarget?.id || element.id];
-        const fontSize = textStyle?.fontSize || Number.parseFloat(getComputedStyle(text).fontSize) || 12;
+        const fontSize =
+          textStyle?.fontSize || Number.parseFloat(getComputedStyle(text).fontSize) || 12;
         wrapBpmnText(
           text,
           (isAnnotation ? element.businessObject?.text : element.businessObject?.name) ||
@@ -171,9 +173,9 @@ function paintCanvasExtensions(instance: any, styles: Record<string, BpmnTextSty
       }
     }
 
-    const visual = graphics.querySelector<SVGGElement>(".djs-visual");
+    const visual = svgGraphics.querySelector<SVGGElement>(".djs-visual");
     const image = readBpmnImageElement(element);
-    graphics.toggleAttribute("data-bf-image", Boolean(image));
+    svgGraphics.toggleAttribute("data-bf-image", Boolean(image));
     visual?.querySelector(".bf-bpmn-image-render")?.remove();
     if (!visual || !image) return;
     const node = document.createElementNS(svgNamespace, "image");

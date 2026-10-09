@@ -238,9 +238,8 @@ export function BpmnEditor({
   };
   const adjustFontSize = (difference: number) => {
     const draft = Number(fontSizeDraft);
-    const current = Number.isFinite(draft) && fontSizeDraft.trim()
-      ? draft
-      : activeTextStyle.fontSize || 12;
+    const current =
+      Number.isFinite(draft) && fontSizeDraft.trim() ? draft : activeTextStyle.fontSize || 12;
     const fontSize = Math.max(8, Math.min(72, current + difference));
     setFontSizeDraft(String(fontSize));
     applyTextStyle({ fontSize });
@@ -313,11 +312,12 @@ export function BpmnEditor({
       return;
     }
     const reader = new FileReader();
-    reader.onerror = () => {
+    const handleReadError = () => {
       canvas.current?.remove(id);
       pendingImage.current = null;
       setError("Não foi possível ler a imagem selecionada.");
     };
+    reader.onerror = handleReadError;
     reader.onload = () => {
       const src = String(reader.result || "");
       const probe = new window.Image();
@@ -329,11 +329,24 @@ export function BpmnEditor({
         });
         pendingImage.current = null;
       };
-      probe.onerror = reader.onerror;
+      probe.onerror = handleReadError;
       probe.src = src;
     };
     reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+    const input = imageInput.current;
+    if (!input) return;
+    const handleCancel = () => {
+      const id = pendingImage.current;
+      if (!id) return;
+      canvas.current?.remove(id);
+      pendingImage.current = null;
+    };
+    input.addEventListener("cancel", handleCancel);
+    return () => input.removeEventListener("cancel", handleCancel);
+  }, []);
 
   useEffect(() => {
     onDirty?.(dirty);
@@ -553,7 +566,6 @@ export function BpmnEditor({
         accept="image/*"
         tabIndex={-1}
         onChange={(event) => loadImage(event.target.files?.[0])}
-        onCancel={() => loadImage()}
       />
       {taskContext && <div hidden={readOnly}>{taskContext}</div>}
       {!readOnly && !toolbarCollapsed && (

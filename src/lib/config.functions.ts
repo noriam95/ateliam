@@ -192,7 +192,7 @@ const valueChainSchema = organizationScopeSchema.extend({
   category: z.enum(["primary", "support", "management", "output"]),
   description: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["Ativa", "Inativa"]).default("Ativa"),
-  relatedChainIds: z.array(z.string().uuid()).default([]),
+  relatedChainIds: z.array(z.string().uuid()).optional(),
 });
 const systemRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
@@ -240,7 +240,7 @@ const processRegistrationSchema = organizationScopeSchema.extend({
   id: z.string().uuid().optional(),
   code: z.string().trim().max(80).optional().nullable(),
   name: z.string().trim().min(2).max(180),
-  type: z.enum(["process", "subprocess", "atividade", "tarefa"]),
+  type: z.enum(["macroprocess", "process", "subprocess", "atividade", "tarefa"]),
   valueChainId: z.string().uuid().optional().nullable(),
   parentProcessId: z.string().uuid().optional().nullable(),
   department: z.string().trim().max(160).optional().nullable(),
@@ -1040,14 +1040,16 @@ export const saveValueChainRegistration = createServerFn({ method: "POST" })
     const { data: row, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
     const relations = context.supabase as any;
-    const { error: deleteRelationsError } = await relations
-      .from("organization_value_chain_output_relations")
-      .delete()
-      .eq("output_id", row.id)
-      .eq("organization_id", access.organizationId);
-    if (deleteRelationsError) throw new Error(deleteRelationsError.message);
+    if (data.relatedChainIds) {
+      const { error: deleteRelationsError } = await relations
+        .from("organization_value_chain_output_relations")
+        .delete()
+        .eq("output_id", row.id)
+        .eq("organization_id", access.organizationId);
+      if (deleteRelationsError) throw new Error(deleteRelationsError.message);
+    }
 
-    if (data.category === "output" && data.relatedChainIds.length) {
+    if (data.category === "output" && data.relatedChainIds?.length) {
       const uniqueRelatedIds = [...new Set(data.relatedChainIds)];
       const { data: relatedChains, error: relatedChainsError } = await context.supabase
         .from("organization_value_chains")
@@ -2676,10 +2678,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
     const mappingCauseRows = ddps.flatMap((doc) =>
       dashboardCauseRowsFromDocument(doc).map((row) => ({
         ...row,
-        area:
-          row.area && row.area !== "-"
-            ? row.area
-            : mappingRowsById.get(doc.id)?.area || "",
+        area: row.area && row.area !== "-" ? row.area : mappingRowsById.get(doc.id)?.area || "",
       })),
     );
     const sharedCauseIds = new Set(

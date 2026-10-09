@@ -812,6 +812,7 @@ function mapTable(
     dataRows.forEach((row) =>
       result.steps.push({
         title: at(row, stepTitle),
+        area: "",
         responsible: at(row, stepResponsible),
         input: at(row, stepInput),
         activity: at(row, stepActivity),

@@ -2917,11 +2917,13 @@ function parseWorkspace(raw?: string | null): WorkspaceState {
   try {
     const parsed = JSON.parse(raw) as
       Partial<WorkspaceState> | { modules?: Partial<WorkspaceState> };
-    const source = "modules" in parsed && parsed.modules ? parsed.modules : parsed;
+    const source = ("modules" in parsed ? parsed.modules : parsed) as
+      Partial<WorkspaceState> | undefined;
+    const normalizedSource = source ?? {};
     return {
-      ddp: normalizeDdp(source.ddp, fallback.ddp),
-      pop: normalizePop(source.pop, fallback.pop),
-      bpmn: { ...fallback.bpmn, ...(source.bpmn ?? {}) },
+      ddp: normalizeDdp(normalizedSource.ddp, fallback.ddp),
+      pop: normalizePop(normalizedSource.pop, fallback.pop),
+      bpmn: { ...fallback.bpmn, ...(normalizedSource.bpmn ?? {}) },
     };
   } catch {
     return fallback;
@@ -4221,7 +4223,9 @@ async function inflateRaw(bytes: Uint8Array) {
   if (!("DecompressionStream" in globalThis)) {
     throw new Error("Este navegador nao consegue ler XLSX compactado. Use o modelo baixado aqui.");
   }
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const stream = new Blob([bytes.slice().buffer])
+    .stream()
+    .pipeThrough(new DecompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -5608,7 +5612,7 @@ function buildReadonlyPreviewHtml(
 // formulário, seguindo a identidade visual do sistema.
 function buildPopPreviewHtml(pop: PopState, brand?: OrganizationBrand) {
   const accent = docxColor(brand?.word_header_color, "1D1F23");
-  const meta: Array<[string, string]> = [
+  const meta = [
     ["Código", pop.meta.codigo],
     ["Tipo", pop.meta.tipo],
     ["Área", pop.meta.area],
@@ -7137,10 +7141,10 @@ function ModuleWorkspacePage() {
         },
         steps: ws.ddp.steps.map((step) => ({
           ...step,
-          processId: replacements.get(step.processId)?.id ?? step.processId,
+          processId: replacements.get(step.processId ?? "")?.id ?? step.processId,
           substeps: step.substeps.map((substep) => ({
             ...substep,
-            processId: replacements.get(substep.processId)?.id ?? substep.processId,
+            processId: replacements.get(substep.processId ?? "")?.id ?? substep.processId,
           })),
         })),
       },
@@ -7434,13 +7438,14 @@ function ModuleWorkspacePage() {
       setShowSave(false);
       setComment("");
       setSavedNonce((n) => n + 1);
-      if (search.task && search.item && "document" in result) {
+      const savedDocument = "document" in result ? result.document : undefined;
+      if (search.task && search.item && savedDocument) {
         window.dispatchEvent(
           new CustomEvent("bf-task-document-saved", {
             detail: {
-              documentId: result.document.id,
-              version: result.document.current_version,
-              updatedAt: result.document.updated_at,
+              documentId: savedDocument.id,
+              version: savedDocument.current_version,
+              updatedAt: savedDocument.updated_at,
               draft: isDraftSave,
             },
           }),
@@ -7452,11 +7457,11 @@ function ModuleWorkspacePage() {
           setPendingMappingAreas([]);
           if (!isDemo) catalogsQ.refetch();
         }
-        if (!isDemo && "document" in result) {
+        if (!isDemo && savedDocument) {
           setActiveCloudDocument({
-            id: result.document.id,
+            id: savedDocument.id,
             moduleId,
-            name: result.document.name,
+            name: savedDocument.name,
           });
         }
         cloudDocsQ.refetch();
@@ -7464,11 +7469,11 @@ function ModuleWorkspacePage() {
         return;
       }
       if (isDemo) setDemoVersion(result.version);
-      if (!isDemo && "document" in result) {
+      if (!isDemo && savedDocument) {
         setActiveCloudDocument({
-          id: result.document.id,
+          id: savedDocument.id,
           moduleId,
-          name: result.document.name,
+          name: savedDocument.name,
         });
         cloudDocsQ.refetch();
       }
@@ -7539,6 +7544,8 @@ function ModuleWorkspacePage() {
       impact: plain(gap.impacto) || null,
       action: plain(gap.acao) || null,
       priority: gap.prioridade || "Média",
+      status: "Não iniciada" as const,
+      comments: [] as CauseComment[],
     };
     if (isDemo) {
       const row = { id: id("cause"), ...payload };
@@ -7583,7 +7590,7 @@ function ModuleWorkspacePage() {
       },
     });
     await catalogsQ.refetch();
-    return row;
+    return { ...cause, updated_at: row.updated_at, comments: cause.comments ?? [] };
   }
 
   async function deleteCauseCatalog(causeId: string) {
@@ -8401,12 +8408,15 @@ function ModuleWorkspacePage() {
       <WorkspaceProcessRegistrations
         view={registrationView}
         organizationId={selectedOrganizationId}
-        organizationName={organizationBrand.name}
+        organizationName={organizationBrand.name || "Bom Futuro"}
         codeSettings={codeSettings}
         isDemo={isDemo}
       />
     ) : contentMode === "settings" ? (
-      <ModuleSettingsPanel view={settingsView} organizationName={organizationBrand.name} />
+      <ModuleSettingsPanel
+        view={settingsView}
+        organizationName={organizationBrand.name || "Bom Futuro"}
+      />
     ) : search.view === "preview" && search.document ? (
       <section
         className={cn(
@@ -8548,7 +8558,7 @@ function ModuleWorkspacePage() {
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
               onView={viewDocumentRow}
-              onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
+              onDuplicate={undefined}
               onChangeStatus={changeRowStatus}
               initialQuery={search.filter}
             />
@@ -8631,7 +8641,7 @@ function ModuleWorkspacePage() {
               onDelete={deleteDocumentRows}
               onExport={exportDocumentRow}
               onView={viewDocumentRow}
-              onDuplicate={moduleId === "ddp" ? duplicateDocumentRow : undefined}
+              onDuplicate={undefined}
               onChangeStatus={changeRowStatus}
               initialQuery={search.filter}
             />
@@ -12537,7 +12547,7 @@ function DdpModule({
           null)
         : null;
     if (recognizedPrimaryProcessTitle && !assistantPrimaryProcess) {
-      assistantPrimaryProcess = {
+      const pendingProcess: CreatedProcess = {
         id: `pending-process:${crypto.randomUUID()}`,
         organization_id: organizationId ?? "",
         current_version: 1,
@@ -12553,8 +12563,9 @@ function DdpModule({
         created_at: nowIso,
         updated_at: nowIso,
       };
-      preparedProcesses[normalizeLabel(recognizedPrimaryProcessTitle)] = assistantPrimaryProcess;
-      void onSuggestedProcessPrepared(assistantPrimaryProcess);
+      assistantPrimaryProcess = pendingProcess;
+      preparedProcesses[normalizeLabel(recognizedPrimaryProcessTitle)] = pendingProcess;
+      void onSuggestedProcessPrepared(pendingProcess);
     }
     const primaryProcessId =
       assistantPrimaryProcess?.id ?? selectedProcess?.id ?? data.macroprocess.processId ?? null;
@@ -13181,7 +13192,11 @@ function DdpModule({
               >
                 Cancelar
               </button>
-              <button type="button" onClick={applyMappingImport} className={primaryButtonClass}>
+              <button
+                type="button"
+                onClick={() => applyMappingImport()}
+                className={primaryButtonClass}
+              >
                 Aplicar ao formulário
               </button>
             </div>

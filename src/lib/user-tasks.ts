@@ -215,7 +215,7 @@ export function movementActivityTitle(action: string, kind: UserTask["kind"]) {
 /** Only the current participant (or administrator) may act in these workflow stages. */
 export function taskQuickActions(
   task: UserTask,
-  data: Pick<TaskFeed, "userId" | "isAdmin" | "canCreate">,
+  data: Pick<TaskFeed, "userId" | "isAdmin" | "canCreate" | "claimableKinds">,
 ): ("pause" | "cancel")[] {
   if (
     task.deleted_at ||
