@@ -70,56 +70,23 @@ function AuthPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="flex h-[72px] shrink-0 items-center border-b border-border bg-card px-6 sm:px-10 lg:px-[5.4vw]">
-        <div className="flex items-center gap-3.5">
-          <span
-            className="grid h-8 w-8 place-items-center rounded-md border border-[color-mix(in_oklab,var(--gold)_42%,var(--border))] bg-accent text-[var(--gold-ink)]"
-            aria-hidden="true"
-          >
-            <svg viewBox="0 0 20 20" fill="none" className="h-[18px] w-[18px]">
-              <circle cx="4" cy="10" r="2" stroke="currentColor" strokeWidth="1.5" />
-              <rect
-                x="12"
-                y="3"
-                width="5"
-                height="5"
-                rx="1"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-              <rect
-                x="12"
-                y="12"
-                width="5"
-                height="5"
-                rx="1"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M6 10h3V5.5h3M9 10v4.5h3"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
+      <header className="flex h-16 shrink-0 items-center border-b border-border bg-card px-5 sm:h-[72px] sm:px-8 lg:px-[max(2rem,5vw)]">
+        <div className="mx-auto w-full max-w-[1320px]">
           <span className="text-sm font-semibold tracking-[-0.015em] text-foreground">BF Flow</span>
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-[1080px] flex-1 grid-cols-1 items-center gap-9 px-5 py-9 sm:px-8 md:grid-cols-[minmax(0,1fr)_minmax(370px,450px)] md:gap-14 md:py-12 lg:gap-[clamp(56px,9vw,138px)]">
-        <section className="mx-auto w-full max-w-[34rem] md:mx-0" aria-label="Sobre o BF Flow">
+      <main className="mx-auto grid w-full max-w-[1320px] flex-1 grid-cols-1 items-center gap-7 px-5 py-8 sm:gap-9 sm:px-8 sm:py-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] lg:gap-[clamp(3.5rem,8vw,8rem)] lg:px-12 lg:py-12 xl:px-16">
+        <section className="mx-auto w-full max-w-[34rem] lg:mx-0" aria-label="Sobre o BF Flow">
           <p className="mb-3 text-xs font-semibold tracking-[0.045em] text-[var(--gold-ink)]">
             Gestão de processos
           </p>
-          <h1 className="font-display text-[2.3rem] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground sm:text-5xl lg:text-[3.6rem]">
+          <h1 className="font-display text-[clamp(2rem,6vw,3.6rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground">
             Processos claros.
             <br />
             <span className="text-[var(--gold-ink)]">Trabalho que avança.</span>
           </h1>
-          <p className="mt-4 max-w-[25rem] text-[13px] leading-6 text-muted-foreground sm:mt-5 sm:text-[15px] sm:leading-7">
+          <p className="mt-4 max-w-[34rem] text-[13px] leading-6 text-muted-foreground sm:mt-5 sm:text-[15px] sm:leading-7">
             Um espaço para organizar solicitações, documentar processos e acompanhar melhorias da
             organização.
           </p>
@@ -131,7 +98,7 @@ function AuthPage() {
         </section>
 
         <section
-          className="mx-auto w-full max-w-[450px] rounded-xl border border-border bg-card px-5 py-6 shadow-[0_16px_40px_rgb(24_43_34_/_5%),0_2px_8px_rgb(24_43_34_/_3%)] sm:px-9 sm:py-9"
+          className="mx-auto w-full max-w-[460px] rounded-xl border border-border bg-card px-5 py-6 shadow-[0_16px_40px_rgb(24_43_34_/_5%),0_2px_8px_rgb(24_43_34_/_3%)] sm:px-8 sm:py-8 lg:px-9 lg:py-9"
           aria-label="Acesso"
         >
           <div className="w-full">
