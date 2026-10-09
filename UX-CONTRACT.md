@@ -182,24 +182,25 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 
 ## Portal de Documentos — contrato de consulta
 
-| Capacidade     | Regra                                                                                                                                                                           |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Entrada        | “Portal de Documentos” fica disponível no lançador global e abre `/portal`.                                                                                                     |
-| Escopo         | Toda consulta exige usuário autenticado e organização acessível; os dados continuam sujeitos às políticas de acesso da organização.                                             |
-| Publicação     | Apenas documentos com estado atual reconhecido entram na coleção. A função de conteúdo repete essa validação antes de devolver o arquivo ao leitor.                             |
-| Pesquisa       | Todos os termos informados devem existir em algum metadado pesquisável; a comparação é parcial, sem distinção de maiúsculas ou acentos.                                         |
-| Filtros        | Área, processo e tipo são cumulativos. “Limpar filtros” restaura consulta e ordenação iniciais.                                                                                 |
-| Abertura       | O título e a ação “Visualizar” levam à página de leitura, que incorpora o leitor original em modo somente leitura; não expor criar, editar, excluir, aprovar ou alterar versão. |
-| Personalização | Favoritos, recentes e popularidade pessoal usam chave por usuário e organização; não podem vazar entre organizações no mesmo navegador.                                         |
-| Estados        | Carregamento apresenta indicador em área estável; falha preserva contexto e oferece nova tentativa; vazio explica o resultado e permite limpar a busca.                         |
-| Responsividade | Busca, filtros, cartões e seções reorganizam sem sobreposição entre 320 px e telas amplas; alvos interativos conservam foco visível e nome acessível.                           |
+| Capacidade       | Regra                                                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entrada          | “Portal de Documentos” fica disponível no lançador global e abre `/portal`.                                                                                                     |
+| Escopo           | Toda consulta exige usuário autenticado e organização acessível; os dados continuam sujeitos às políticas de acesso da organização.                                             |
+| Publicação       | Apenas documentos com estado atual reconhecido entram na coleção. A função de conteúdo repete essa validação antes de devolver o arquivo ao leitor.                             |
+| Pesquisa         | Todos os termos informados devem existir em algum metadado pesquisável; a comparação é parcial, sem distinção de maiúsculas ou acentos.                                         |
+| Filtros          | Área, processo e tipo são cumulativos. “Limpar filtros” restaura consulta e ordenação iniciais.                                                                                 |
+| Atalhos por tipo | Chips “Todos” e tipos mais usados aplicam o mesmo filtro `type` da consulta; “Todos” remove somente o filtro de tipo e preserva os outros critérios.                            |
+| Abertura         | O título e a ação “Visualizar” levam à página de leitura, que incorpora o leitor original em modo somente leitura; não expor criar, editar, excluir, aprovar ou alterar versão. |
+| Personalização   | Favoritos, recentes e popularidade pessoal usam chave por usuário e organização; não podem vazar entre organizações no mesmo navegador.                                         |
+| Estados          | Carregamento apresenta indicador em área estável; falha preserva contexto e oferece nova tentativa; vazio explica o resultado e permite limpar a busca.                         |
+| Responsividade   | Busca, filtros, cartões e seções reorganizam sem sobreposição entre 320 px e telas amplas; alvos interativos conservam foco visível e nome acessível.                           |
 
 ### Comportamento responsivo do Portal — 05/10/2026
 
 - A composição deve continuar utilizável entre 320 px e telas amplas, sem reduzir a tipografia para compensar falta de espaço e sem rolagem horizontal no documento.
-- O bloco de pesquisa empilha abaixo da apresentação até 900 px. Os filtros mudam de quatro para duas e uma coluna; rótulos permanecem visíveis em todas as larguras.
+- O cabeçalho apresenta o título e total do acervo acima da pesquisa; chips de tipo e filtros usam o mesmo estado persistido na URL. Os campos mudam de quatro para duas e uma coluna, mantendo rótulos visíveis.
 - “Mais filtros” pode sobrepor a página somente em telas amplas. Em notebook estreito, tablet e celular, o painel deve ocupar espaço no fluxo para não encobrir resultados.
-- Grades secundárias mantêm a ordem Últimos, Mais acessados, Favoritos, Recentes, Atualizados e Navegação. Ao empilhar, a ordem visual e a ordem do DOM permanecem iguais.
+- Em monitores, documentos recentes e atualizados ocupam a coluna principal; favoritos, acessados recentemente e mais acessados ficam na coluna de atalhos. Abaixo de 900 px, o painel de atalhos passa para baixo da coluna principal, preservando a ordem do DOM.
 - No leitor, os metadados ficam ao lado apenas quando houver largura segura para documento e painel; abaixo de 1180 px, aparecem depois do visualizador.
 
 Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresentação existente. Fluxogramas reutilizam o `NavigatedViewer` do workspace BPMN, sem instanciar edição. A página de leitura mantém metadados, caminho organizacional e relações ao lado do conteúdo, sem reconstruí-lo. Alterar parâmetros da URL não pode contornar a verificação de vigência executada no servidor.

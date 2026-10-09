@@ -187,19 +187,19 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 - North Star: permitir que qualquer pessoa encontre e consulte rapidamente o procedimento vigente, sem entrar nos módulos usados para produzi-lo.
 - O portal é uma camada corporativa somente leitura. Reúne Mapeamentos, documentos POP e Fluxogramas BPMN, preserva a fonte original e abre cada item no visualizador próprio do módulo.
 - Somente estados vigentes são publicados: Vigente, Publicado, Aprovado, Concluído ou Ativo. Rascunhos, revisões, obsoletos, arquivados e cancelados ficam fora da listagem e também são bloqueados no acesso direto ao visualizador.
-- A pesquisa principal é o elemento dominante da tela e combina termos de título, código, tipo, área, macroprocesso, processo, subprocesso, descrição, tags, responsável e módulo. A comparação ignora caixa e acentos e aceita termos parciais.
-- A descoberta usa seções compactas para recentes, mais acessados, favoritos, atualizados e navegação por área, processo e tipo. Favoritos, histórico recente e contagem de acessos permanecem pessoais e isolados por usuário e organização no navegador.
+- A página abre com título e total do acervo; a pesquisa é o controle dominante, em um painel próprio, seguida por chips de acesso rápido por tipo e filtros completos. A pesquisa combina termos de título, código, tipo, área, macroprocesso, processo, subprocesso, descrição, tags, responsável e módulo. A comparação ignora caixa e acentos e aceita termos parciais.
+- A descoberta organiza documentos recentes e atualizados na coluna principal; favoritos, histórico recente e mais acessados ficam em uma coluna pessoal. A navegação por área, processo e tipo vem abaixo. Favoritos, histórico recente e contagem de acessos permanecem isolados por usuário e organização no navegador.
 - Filtros de área, processo e tipo e ordenações por relevância, inclusão, acesso, título, vigência e atualização trabalham sobre o mesmo conjunto pesquisado. O estado vazio oferece limpeza direta dos critérios.
 - Busca, filtros contextuais e ordenação são refletidos na URL. A página de leitura mantém breadcrumb, metadados, palavras-chave e documentos relacionados ao lado do visualizador nativo incorporado; em telas estreitas, informações passam para baixo do conteúdo.
 - Visual: tema claro/escuro herdado dos tokens globais, superfícies sóbrias, acento dourado reservado a foco e ação, cartões de documento com metadados essenciais e grade fluida que passa de quatro para uma coluna sem rolagem horizontal da página.
 
-### Revisão responsiva do Portal — 05/10/2026
+### Revisão responsiva do Portal — 09/10/2026
 
-- O cabeçalho de apresentação é compacto e usa duas áreas equilibradas em monitores e notebooks: contexto à esquerda e pesquisa com resumo do acervo à direita. Abaixo de 900 px, essas áreas são empilhadas sem alterar a ordem de leitura.
+- A página usa título e total do acervo, um painel de pesquisa e acesso rápido por tipo, depois uma grade principal de documentos com coluna de atalhos pessoais. Abaixo de 900 px, a coluna de atalhos passa para baixo da principal.
 - Filtros possuem rótulos persistentes e uma grade previsível: quatro campos na largura ampla, duas colunas na intermediária e uma coluna no celular. Filtros adicionais abrem dentro do fluxo em telas menores, sem sobrepor conteúdo nem ultrapassar a janela.
 - Textos, metadados e alvos interativos usam escala legível. Cartões e seções preservam densidade de informação com espaçamento constante; grades de descoberta passam de três para duas e uma coluna conforme o espaço disponível.
 - O leitor limita a coluna de metadados em telas amplas e a move para baixo do documento até 1180 px. A altura do visualizador considera a janela disponível e evita dimensões rígidas em telas baixas.
-- A experiência foi verificada em 1366 × 768, 1024 × 768 e 390 × 844, nos temas claro e escuro, sem rolagem horizontal da página.
+- A pesquisa rápida por tipo reutiliza o filtro canônico e não remove área, processo ou demais critérios. O tema claro/escuro e o dourado usam os tokens globais, sem introduzir uma paleta paralela.
 
 ## Cenário e entregas da tarefa de mapeamento — 05/10/2026
 

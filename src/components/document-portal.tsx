@@ -392,52 +392,17 @@ export function DocumentPortal({
       </header>
 
       <main className="document-portal-content">
-        <section className="document-portal-hero">
-          <div className="document-portal-hero-copy">
+        <section className="document-portal-intro">
+          <div>
             <div className="document-portal-eyebrow">
-              <BookOpen size={15} /> Conhecimento oficial
+              <BookOpen size={14} aria-hidden="true" /> Biblioteca de processos
             </div>
-            <h1>Portal de Documentos</h1>
-            <p>Encontre e consulte os documentos vigentes da organização em um único lugar.</p>
+            <h1>Portal de documentos</h1>
+            <p>Encontre procedimentos, fluxos e orientações em um só lugar.</p>
           </div>
-          <div className="document-portal-hero-search">
-            <label htmlFor="document-portal-search">O que você procura?</label>
-            <div className="document-portal-search-shell">
-              <Search size={21} aria-hidden="true" />
-              <input
-                id="document-portal-search"
-                ref={searchRef}
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Título, código, processo, área ou palavra-chave"
-                aria-label="Pesquisar no Portal de Documentos"
-              />
-              {query ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    searchRef.current?.focus();
-                  }}
-                  aria-label="Limpar pesquisa"
-                >
-                  <X size={17} />
-                </button>
-              ) : null}
-            </div>
-            <div className="document-portal-stats" aria-label="Resumo do acervo vigente">
-              <span>
-                <strong>{documents.length}</strong> documentos
-              </span>
-              <span>
-                <strong>{areas.length}</strong> áreas
-              </span>
-              <span>
-                <strong>{updatedInThirtyDays}</strong> atualizados em 30 dias
-              </span>
-            </div>
-          </div>
+          <p className="document-portal-document-count" aria-live="polite">
+            <strong>{loading ? "…" : documents.length}</strong> documentos vigentes
+          </p>
         </section>
 
         {loading ? (
@@ -454,6 +419,64 @@ export function DocumentPortal({
           </div>
         ) : (
           <>
+            <section className="document-portal-search-panel" aria-label="Pesquisar documentos">
+              <div className="document-portal-search-shell">
+                <Search size={21} aria-hidden="true" />
+                <input
+                  id="document-portal-search"
+                  ref={searchRef}
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Título, código, processo, área ou palavra-chave"
+                  aria-label="Pesquisar no Portal de Documentos"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      searchRef.current?.focus();
+                    }}
+                    aria-label="Limpar pesquisa"
+                  >
+                    <X size={17} />
+                  </button>
+                ) : null}
+              </div>
+              <div className="document-portal-quick-filters" aria-label="Filtrar por tipo">
+                <span>Acesso rápido</span>
+                <button
+                  type="button"
+                  className={!filters.type ? "is-active" : ""}
+                  aria-pressed={!filters.type}
+                  onClick={() => setFilters((current) => ({ ...current, type: undefined }))}
+                >
+                  Todos
+                </button>
+                {types.slice(0, 5).map((type) => (
+                  <button
+                    type="button"
+                    key={type}
+                    className={filters.type === type ? "is-active" : ""}
+                    aria-pressed={filters.type === type}
+                    onClick={() => setFilters((current) => ({ ...current, type }))}
+                  >
+                    {type === "POP" ? "Procedimentos (POP)" : type}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <div className="document-portal-library-summary" aria-label="Resumo do acervo">
+              <span>
+                <strong>{loading ? "…" : areas.length}</strong> áreas
+              </span>
+              <span>
+                <strong>{loading ? "…" : updatedInThirtyDays}</strong> atualizados nos últimos 30
+                dias
+              </span>
+            </div>
             <section className="document-portal-discovery-bar" aria-label="Refinar pesquisa">
               <label className="document-portal-filter">
                 <span>Área</span>
@@ -632,147 +655,148 @@ export function DocumentPortal({
               </PortalSection>
             ) : (
               <>
-                <div className="document-portal-feature-grid">
-                  <PortalSection
-                    title="Últimos documentos"
-                    description="Publicados recentemente como vigentes."
-                    icon={<Sparkles size={18} />}
-                  >
-                    {latest.length ? (
-                      <div className="document-portal-card-list">
-                        {latest.map((document) => (
-                          <PortalDocumentCard
-                            key={document.id}
-                            compact
-                            document={document}
-                            favorite={favoriteIds.has(document.id)}
-                            onFavorite={() => toggleFavorite(document.id)}
-                            onOpen={() => openDocument(document)}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="document-portal-section-empty">
-                        Nenhum documento vigente foi publicado nesta organização.
-                      </p>
-                    )}
-                  </PortalSection>
-                  <PortalSection
-                    title="Mais acessados"
-                    description="Conteúdos consultados com maior frequência por você."
-                    icon={<TrendingUp size={18} />}
-                  >
-                    {popular.length ? (
-                      <div className="document-portal-ranked-list">
-                        {popular.map((document, index) => (
-                          <button
-                            type="button"
-                            key={document.id}
-                            onClick={() => openDocument(document)}
-                          >
-                            <span>{String(index + 1).padStart(2, "0")}</span>
-                            <span>
-                              <strong>{document.title}</strong>
-                              <small>
-                                {document.type} · {document.area || "Área não informada"}
-                              </small>
-                            </span>
-                            <ChevronRight size={15} />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="document-portal-section-empty">
-                        Os documentos mais consultados por você aparecerão aqui.
-                      </p>
-                    )}
-                  </PortalSection>
-                </div>
-
-                <div className="document-portal-personal-grid">
-                  <PortalSection
-                    title="Meus favoritos"
-                    description="Atalhos pessoais para consulta recorrente."
-                    icon={<Star size={18} />}
-                  >
-                    {favoriteDocuments.length ? (
-                      <div className="document-portal-mini-list">
-                        {favoriteDocuments.map((document) => (
-                          <button
-                            type="button"
-                            key={document.id}
-                            onClick={() => openDocument(document)}
-                          >
-                            <span>
-                              <strong>{document.title}</strong>
-                              <small>{document.code || document.type}</small>
-                            </span>
-                            <ChevronRight size={14} />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="document-portal-section-empty">
-                        Use a estrela nos documentos para criar seus atalhos.
-                      </p>
-                    )}
-                  </PortalSection>
-                  <PortalSection
-                    title="Acessados recentemente"
-                    description="Retome rapidamente suas últimas consultas."
-                    icon={<Clock3 size={18} />}
-                  >
-                    {recentDocuments.length ? (
-                      <div className="document-portal-mini-list">
-                        {recentDocuments.map((document) => (
-                          <button
-                            type="button"
-                            key={document.id}
-                            onClick={() => openDocument(document)}
-                          >
-                            <span>
-                              <strong>{document.title}</strong>
-                              <small>{document.area || document.type}</small>
-                            </span>
-                            <ChevronRight size={14} />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="document-portal-section-empty">
-                        Os documentos visualizados aparecerão aqui.
-                      </p>
-                    )}
-                  </PortalSection>
-                  <PortalSection
-                    title="Atualizados recentemente"
-                    description="Novas revisões vigentes do acervo."
-                    icon={<Sparkles size={18} />}
-                  >
-                    {updated.length ? (
-                      <div className="document-portal-mini-list">
-                        {updated.map((document) => (
-                          <button
-                            type="button"
-                            key={document.id}
-                            onClick={() => openDocument(document)}
-                          >
-                            <span>
-                              <strong>{document.title}</strong>
-                              <small>
-                                Rev. {document.revision} · {formatPortalDate(document.updatedAt)}
-                              </small>
-                            </span>
-                            <ChevronRight size={14} />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="document-portal-section-empty">
-                        Nenhuma nova revisão vigente no momento.
-                      </p>
-                    )}
-                  </PortalSection>
+                <div className="document-portal-dashboard-grid">
+                  <div className="document-portal-dashboard-main">
+                    <PortalSection
+                      title="Documentos recentes"
+                      description="Publicados recentemente como vigentes."
+                      icon={<Sparkles size={18} />}
+                    >
+                      {latest.length ? (
+                        <div className="document-portal-card-list">
+                          {latest.map((document) => (
+                            <PortalDocumentCard
+                              key={document.id}
+                              compact
+                              document={document}
+                              favorite={favoriteIds.has(document.id)}
+                              onFavorite={() => toggleFavorite(document.id)}
+                              onOpen={() => openDocument(document)}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="document-portal-section-empty">
+                          Nenhum documento vigente foi publicado nesta organização.
+                        </p>
+                      )}
+                    </PortalSection>
+                    <PortalSection
+                      title="Atualizados recentemente"
+                      description="Novas revisões vigentes do acervo."
+                      icon={<Sparkles size={18} />}
+                    >
+                      {updated.length ? (
+                        <div className="document-portal-mini-list">
+                          {updated.map((document) => (
+                            <button
+                              type="button"
+                              key={document.id}
+                              onClick={() => openDocument(document)}
+                            >
+                              <span>
+                                <strong>{document.title}</strong>
+                                <small>
+                                  Rev. {document.revision} · {formatPortalDate(document.updatedAt)}
+                                </small>
+                              </span>
+                              <ChevronRight size={14} />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="document-portal-section-empty">
+                          Nenhuma nova revisão vigente no momento.
+                        </p>
+                      )}
+                    </PortalSection>
+                  </div>
+                  <aside className="document-portal-dashboard-side" aria-label="Atalhos pessoais">
+                    <PortalSection
+                      title="Meus favoritos"
+                      description="Seus atalhos para consulta recorrente."
+                      icon={<Star size={18} />}
+                    >
+                      {favoriteDocuments.length ? (
+                        <div className="document-portal-mini-list">
+                          {favoriteDocuments.map((document) => (
+                            <button
+                              type="button"
+                              key={document.id}
+                              onClick={() => openDocument(document)}
+                            >
+                              <span>
+                                <strong>{document.title}</strong>
+                                <small>{document.code || document.type}</small>
+                              </span>
+                              <ChevronRight size={14} />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="document-portal-section-empty">
+                          Use a estrela nos documentos para criar seus atalhos.
+                        </p>
+                      )}
+                    </PortalSection>
+                    <PortalSection
+                      title="Acessados recentemente"
+                      description="Retome suas últimas consultas."
+                      icon={<Clock3 size={18} />}
+                    >
+                      {recentDocuments.length ? (
+                        <div className="document-portal-mini-list">
+                          {recentDocuments.map((document) => (
+                            <button
+                              type="button"
+                              key={document.id}
+                              onClick={() => openDocument(document)}
+                            >
+                              <span>
+                                <strong>{document.title}</strong>
+                                <small>{document.area || document.type}</small>
+                              </span>
+                              <ChevronRight size={14} />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="document-portal-section-empty">
+                          Os documentos visualizados aparecerão aqui.
+                        </p>
+                      )}
+                    </PortalSection>
+                    <PortalSection
+                      title="Mais acessados"
+                      description="Conteúdos consultados com frequência."
+                      icon={<TrendingUp size={18} />}
+                    >
+                      {popular.length ? (
+                        <div className="document-portal-ranked-list">
+                          {popular.map((document, index) => (
+                            <button
+                              type="button"
+                              key={document.id}
+                              onClick={() => openDocument(document)}
+                            >
+                              <span>{String(index + 1).padStart(2, "0")}</span>
+                              <span>
+                                <strong>{document.title}</strong>
+                                <small>
+                                  {document.type} · {document.area || "Área não informada"}
+                                </small>
+                              </span>
+                              <ChevronRight size={15} />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="document-portal-section-empty">
+                          Os documentos mais consultados aparecerão aqui.
+                        </p>
+                      )}
+                    </PortalSection>
+                  </aside>
                 </div>
 
                 <div className="document-portal-browse-grid">
