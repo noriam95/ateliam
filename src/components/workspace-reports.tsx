@@ -263,8 +263,7 @@ function ValueChainReport({
           category: draft.category,
           description: draft.description || null,
           status: (draft.status.toLowerCase().startsWith("ativ") ? "Ativa" : "Inativa") as
-            | "Ativa"
-            | "Inativa",
+            "Ativa" | "Inativa",
           relatedChainIds: draft.category === "output" ? draft.relatedChainIds : [],
         },
       });
@@ -1784,6 +1783,7 @@ function ValueChainForm({
           </button>
         </div>
         <form
+          noValidate
           className="grid gap-4 pt-4"
           onSubmit={(e) => {
             e.preventDefault();

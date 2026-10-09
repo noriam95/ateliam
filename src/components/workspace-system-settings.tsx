@@ -796,6 +796,7 @@ function OrganizationsSettings({
             onClick={(e) => e.target === e.currentTarget && setFormOpen(false)}
           >
             <form
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
                 saveMut.mutate();
@@ -1488,6 +1489,7 @@ function UsersSettings({
             onClick={(e) => e.target === e.currentTarget && setFormOpen(false)}
           >
             <form
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
                 saveMut.mutate();
@@ -1852,6 +1854,7 @@ function DocumentModelsSettings({
             onClick={(e) => e.target === e.currentTarget && setFormOpen(false)}
           >
             <form
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
                 saveMut.mutate();

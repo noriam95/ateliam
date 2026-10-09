@@ -8802,9 +8802,21 @@ function ModuleWorkspacePage() {
           canConfigure={!!meQ.data?.roles?.includes("admin")}
           email={isDemo ? "analista.local@bfflow.local" : (meQ.data?.profile?.email ?? "")}
           organizationName={organizationBrand.name ?? "BF Flow"}
+          organizations={accessibleOrganizations.map(({ id, name }) => ({
+            id,
+            name: name ?? "Organização",
+          }))}
+          organizationId={selectedOrganizationId ?? ""}
+          onOrganizationChange={(nextId) => {
+            setActiveOrganizationId(nextId);
+            window.localStorage.setItem("ateliam-active-organization", nextId);
+            setActiveCloudDocument(null);
+          }}
           profilePhoto={meQ.data?.profile?.avatar_data_url ?? ""}
           isDemo={isDemo}
-          onProfileUpdated={() => meQ.refetch()}
+          onProfileUpdated={async () => {
+            await meQ.refetch();
+          }}
           onSignOut={signOut}
         />
         <input
@@ -12320,6 +12332,48 @@ function DdpModule({
     return next;
   }
 
+  function moveStepByKeyboard(stepId: string, delta: number) {
+    const fromIndex = data.steps.findIndex((step) => step.id === stepId);
+    const toIndex = fromIndex + delta;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= data.steps.length) return;
+    update({ ...data, steps: renumberFlowSteps(moveItem(data.steps, fromIndex, toIndex)) });
+  }
+
+  function moveSubstepByKeyboard(stepId: string, substepId: string, delta: number) {
+    const step = data.steps.find((item) => item.id === stepId);
+    const fromIndex = step?.substeps.findIndex((item) => item.id === substepId) ?? -1;
+    const toIndex = fromIndex + delta;
+    if (!step || fromIndex < 0 || toIndex < 0 || toIndex >= step.substeps.length) return;
+    updateStep(stepId, { substeps: moveItem(step.substeps, fromIndex, toIndex) });
+  }
+
+  function moveActivityByKeyboard(
+    stepId: string,
+    subprocessId: string,
+    activityId: string,
+    delta: number,
+  ) {
+    const step = data.steps.find((item) => item.id === stepId);
+    const subprocess = step?.substeps.find((item) => item.id === subprocessId);
+    const fromIndex = subprocess?.activities.findIndex((item) => item.id === activityId) ?? -1;
+    const toIndex = fromIndex + delta;
+    if (
+      !step ||
+      !subprocess ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      toIndex >= subprocess.activities.length
+    )
+      return;
+    updateStep(stepId, {
+      substeps: step.substeps.map((item) =>
+        item.id === subprocessId
+          ? { ...item, activities: moveItem(item.activities, fromIndex, toIndex) }
+          : item,
+      ),
+    });
+  }
+
   function reorderSteps(targetStepId: string) {
     if (!draggedStepId || draggedStepId === targetStepId) return;
     const fromIndex = data.steps.findIndex((step) => step.id === draggedStepId);
@@ -13651,11 +13705,17 @@ function DdpModule({
                           <button
                             type="button"
                             draggable
+                            onClick={() => moveStepByKeyboard(step.id, 1)}
+                            title="Mover etapa para baixo; use as setas para cima ou para baixo"
+                            aria-label={`Mover a etapa ${step.etapa} para baixo; use as setas para reordenar`}
+                            onKeyDown={(event) => {
+                              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+                              event.preventDefault();
+                              moveStepByKeyboard(step.id, event.key === "ArrowUp" ? -1 : 1);
+                            }}
                             onDragStart={() => setDraggedStepId(step.id)}
                             onDragEnd={() => setDraggedStepId(null)}
                             className="grid h-9 w-9 shrink-0 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                            title="Arrastar etapa"
-                            aria-label="Arrastar etapa"
                           >
                             <ArrowDownUp className="h-4 w-4" />
                           </button>
@@ -13758,6 +13818,24 @@ function DdpModule({
                                           <button
                                             type="button"
                                             draggable
+                                            onClick={() =>
+                                              moveSubstepByKeyboard(step.id, substep.id, 1)
+                                            }
+                                            title="Mover atividade para baixo; use as setas para cima ou para baixo"
+                                            aria-label={`Mover atividade ${substep.codigo} para baixo; use as setas para reordenar`}
+                                            onKeyDown={(event) => {
+                                              if (
+                                                event.key !== "ArrowUp" &&
+                                                event.key !== "ArrowDown"
+                                              )
+                                                return;
+                                              event.preventDefault();
+                                              moveSubstepByKeyboard(
+                                                step.id,
+                                                substep.id,
+                                                event.key === "ArrowUp" ? -1 : 1,
+                                              );
+                                            }}
                                             onDragStart={() =>
                                               setDraggedSubstep({
                                                 stepId: step.id,
@@ -13766,8 +13844,6 @@ function DdpModule({
                                             }
                                             onDragEnd={() => setDraggedSubstep(null)}
                                             className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                                            title="Arrastar atividade ou subprocesso"
-                                            aria-label="Arrastar atividade ou subprocesso"
                                           >
                                             <ArrowDownUp className="h-4 w-4" />
                                           </button>
@@ -14042,6 +14118,30 @@ function DdpModule({
                                                     <button
                                                       type="button"
                                                       draggable
+                                                      onClick={() =>
+                                                        moveActivityByKeyboard(
+                                                          step.id,
+                                                          substep.id,
+                                                          activity.id,
+                                                          1,
+                                                        )
+                                                      }
+                                                      title="Mover atividade para baixo; use as setas para cima ou para baixo"
+                                                      aria-label={`Mover atividade ${activity.codigo} para baixo; use as setas para reordenar`}
+                                                      onKeyDown={(event) => {
+                                                        if (
+                                                          event.key !== "ArrowUp" &&
+                                                          event.key !== "ArrowDown"
+                                                        )
+                                                          return;
+                                                        event.preventDefault();
+                                                        moveActivityByKeyboard(
+                                                          step.id,
+                                                          substep.id,
+                                                          activity.id,
+                                                          event.key === "ArrowUp" ? -1 : 1,
+                                                        );
+                                                      }}
                                                       onDragStart={() =>
                                                         setDraggedActivity({
                                                           stepId: step.id,
@@ -14051,8 +14151,6 @@ function DdpModule({
                                                       }
                                                       onDragEnd={() => setDraggedActivity(null)}
                                                       className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                                                      title="Arrastar atividade"
-                                                      aria-label="Arrastar atividade"
                                                     >
                                                       <ArrowDownUp className="h-4 w-4" />
                                                     </button>
@@ -15129,6 +15227,15 @@ function PopModule({
     setDraggedProcedureSubitem(null);
   }
 
+  function moveProcedureSubitemByKeyboard(sectionId: string, subitemId: string, delta: number) {
+    const section = data.sections.find((item) => item.id === sectionId);
+    const subitems = section?.subitems ?? [];
+    const fromIndex = subitems.findIndex((item) => item.id === subitemId);
+    const toIndex = fromIndex + delta;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= subitems.length) return;
+    updateSection(sectionId, { subitems: moveProcedureItem(subitems, fromIndex, toIndex) });
+  }
+
   function reorderProcedureClause(sectionId: string, subitemId: string, targetClauseId: string) {
     if (
       !draggedProcedureClause ||
@@ -16001,6 +16108,21 @@ function PopModule({
                                 <button
                                   type="button"
                                   draggable
+                                  onClick={() =>
+                                    moveProcedureSubitemByKeyboard(section.id, subitem.id, 1)
+                                  }
+                                  title="Mover item para baixo; use as setas para cima ou para baixo"
+                                  aria-label={`Mover item ${subitem.code} para baixo; use as setas para reordenar`}
+                                  onKeyDown={(event) => {
+                                    if (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+                                      return;
+                                    event.preventDefault();
+                                    moveProcedureSubitemByKeyboard(
+                                      section.id,
+                                      subitem.id,
+                                      event.key === "ArrowUp" ? -1 : 1,
+                                    );
+                                  }}
                                   onDragStart={() =>
                                     setDraggedProcedureSubitem({
                                       sectionId: section.id,
@@ -16009,8 +16131,6 @@ function PopModule({
                                   }
                                   onDragEnd={() => setDraggedProcedureSubitem(null)}
                                   className="mt-5 grid h-9 w-9 cursor-grab place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                                  title="Mover subitem"
-                                  aria-label="Mover subitem"
                                 >
                                   <ArrowDownUp className="h-4 w-4" />
                                 </button>

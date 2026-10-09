@@ -1163,9 +1163,14 @@ function WorkspaceHome() {
           canConfigure={isCurrentUserAdmin}
           email={email}
           organizationName={organizationName}
+          organizations={accessibleOrganizations.map(({ id, name }) => ({ id, name }))}
+          organizationId={selectedOrganizationId}
+          onOrganizationChange={setActiveOrganizationId}
           profilePhoto={meQ.data?.profile?.avatar_data_url ?? ""}
           isDemo={isDemo}
-          onProfileUpdated={() => meQ.refetch()}
+          onProfileUpdated={async () => {
+            await meQ.refetch();
+          }}
           onSignOut={signOut}
         />
       </header>

@@ -86,7 +86,9 @@ function groups(rows: Entry[], key: "status" | "type" | "priority" | "source") {
   const result = new Map<string, Entry[]>();
   rows.forEach((row) => {
     const name = row[key] || "Não informada";
-    result.set(name, [...(result.get(name) || []), row]);
+    const group = result.get(name);
+    if (group) group.push(row);
+    else result.set(name, [row]);
   });
   return [...result].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], "pt-BR"));
 }
@@ -492,8 +494,17 @@ export function OperationalDashboard({
               "Situação dos registros do módulo.",
               maps.length ? (
                 <div className="op-donut-layout">
-                  <svg viewBox="0 0 160 160" role="img" aria-label="Mapeamentos por situação">
-                    <title>{stats.map(([s, r]) => `${s}: ${r.length}`).join("; ")}</title>
+                  <svg
+                    viewBox="0 0 160 160"
+                    role="img"
+                    aria-label={`Mapeamentos por situação: ${stats
+                      .map(
+                        ([status, rows]) =>
+                          `${status}: ${rows.length} (${Math.round((rows.length / maps.length) * 100)}%)`,
+                      )
+                      .join("; ")}`}
+                  >
+                    <title>Mapeamentos por situação</title>
                     <circle
                       cx="80"
                       cy="80"

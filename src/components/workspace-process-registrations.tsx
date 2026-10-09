@@ -1311,6 +1311,7 @@ export function WorkspaceProcessRegistrations({
           onClick={(e) => e.target === e.currentTarget && setFormOpen(false)}
         >
           <form
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
               saveMutation.mutate();
@@ -1391,6 +1392,7 @@ export function WorkspaceProcessRegistrations({
           onClick={(event) => event.target === event.currentTarget && setRelatedCreate(null)}
         >
           <form
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
               relatedCreateMutation.mutate();
@@ -2772,6 +2774,7 @@ export function ProcessRegistrationDialog({
       onClick={(event) => event.target === event.currentTarget && onClose()}
     >
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           saveMutation.mutate();
@@ -2849,6 +2852,7 @@ export function ProcessRegistrationDialog({
           onClick={(event) => event.target === event.currentTarget && setRelatedCreate(null)}
         >
           <form
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
               relatedCreateMutation.mutate();
@@ -2998,6 +3002,7 @@ export function SystemRegistrationDialog({
           </button>
         </div>
         <form
+          noValidate
           onSubmit={(event) => {
             event.preventDefault();
             if (valid) mutation.mutate();

@@ -5,7 +5,7 @@ import {
 } from "@/lib/theme";
 import { Link } from "@tanstack/react-router";
 import { Camera, KeyRound, LogOut, Monitor, Moon, Palette, Settings, Sun, X } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,9 @@ async function compressProfilePhoto(file: File): Promise<string> {
 export function UserProfileMenu({
   email,
   organizationName,
+  organizations,
+  organizationId,
+  onOrganizationChange,
   profilePhoto = "",
   isDemo = false,
   onProfileUpdated,
@@ -60,6 +63,9 @@ export function UserProfileMenu({
   canConfigure?: boolean;
   email: string;
   organizationName: string;
+  organizations?: Array<{ id: string; name: string }>;
+  organizationId?: string;
+  onOrganizationChange?: (organizationId: string) => void;
   profilePhoto?: string | null;
   isDemo?: boolean;
   onProfileUpdated?: () => void | Promise<void>;
@@ -67,10 +73,41 @@ export function UserProfileMenu({
 }) {
   const updateProfile = useServerFn(updateMyProfile);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
   const [open, setOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [activeTheme, setActiveTheme] = useState(getStoredThemePreference);
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (themeOpen) {
+        setThemeOpen(false);
+        return;
+      }
+      if (passwordOpen) {
+        setPasswordOpen(false);
+        return;
+      }
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, passwordOpen, themeOpen]);
   useEffect(() => listenForThemeChanges(() => setActiveTheme(getStoredThemePreference())), []);
   const [photo, setPhoto] = useState("");
   const [password, setPassword] = useState("");
@@ -156,11 +193,14 @@ export function UserProfileMenu({
   return (
     <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="grid h-9 w-9 overflow-hidden rounded-full border border-border bg-card text-xs font-bold text-foreground shadow-sm hover:border-primary/40"
         title="Perfil do usuário"
         aria-label="Abrir perfil do usuário"
+        aria-expanded={open}
+        aria-controls={panelId}
       >
         {photo ? (
           <img src={photo} alt="Perfil" className="h-full w-full object-cover" />
@@ -181,13 +221,42 @@ export function UserProfileMenu({
       />
 
       {open ? (
-        <div className="absolute right-0 top-11 z-50 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-[0_18px_50px_rgba(15,23,42,.16)]">
+        <div
+          id={panelId}
+          ref={panelRef}
+          className="absolute right-0 top-11 z-50 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-[0_18px_50px_rgba(15,23,42,.16)]"
+        >
           <div className="border-b border-border px-4 py-3">
             <div className="truncate text-sm font-semibold text-popover-foreground">
               {email || "Usuário local"}
             </div>
             <div className="mt-1 truncate text-xs text-muted-foreground">{organizationName}</div>
           </div>
+          {organizations && organizations.length > 1 && onOrganizationChange ? (
+            <div className="border-b border-border px-3 py-2.5 md:hidden">
+              <label
+                htmlFor={`${panelId}-organization`}
+                className="mb-1 block text-xs font-medium text-muted-foreground"
+              >
+                Organização ativa
+              </label>
+              <select
+                id={`${panelId}-organization`}
+                value={organizationId ?? ""}
+                onChange={(event) => {
+                  onOrganizationChange(event.target.value);
+                  setOpen(false);
+                }}
+                className="h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
+              >
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div className="p-1.5">
             <ProfileAction
               icon={<Camera className="h-4 w-4" />}

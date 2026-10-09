@@ -53,6 +53,10 @@ function AuthPage() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!login.trim() || !password) {
+      toast.error("Informe seu usuário e sua senha.");
+      return;
+    }
     setBusy(true);
     try {
       const identifier = login.trim();
@@ -144,7 +148,7 @@ function AuthPage() {
             <span className="mb-1 h-2 w-2 bg-[var(--gold)]" aria-hidden="true" />
           </div>
 
-          <form onSubmit={submit} className="grid gap-5">
+          <form noValidate onSubmit={submit} className="grid gap-5">
             <label className="grid gap-2 text-sm font-semibold text-foreground">
               E-mail ou usuário
               <span className="relative block">

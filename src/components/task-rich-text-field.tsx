@@ -141,6 +141,7 @@ export function TaskRichTextField({
   const editor = useRef<HTMLDivElement>(null);
   const savedSelection = useRef<Range | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [linkError, setLinkError] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [safePreview, setSafePreview] = useState("");
 
@@ -167,7 +168,10 @@ export function TaskRichTextField({
   function applyLink(event: FormEvent) {
     event.preventDefault();
     const url = normalizeUrl(linkUrl);
-    if (!/^(https?:\/\/|mailto:)/i.test(url) || !editor.current) return;
+    if (!/^(https?:\/\/|mailto:)/i.test(url) || !editor.current) {
+      setLinkError("Informe um endereço válido começando com https://, http:// ou mailto:.");
+      return;
+    }
     editor.current.focus();
     if (savedSelection.current) {
       const selection = window.getSelection();
@@ -177,6 +181,7 @@ export function TaskRichTextField({
     document.execCommand("createLink", false, url);
     onChange?.(sanitizeTaskRichText(editor.current.innerHTML));
     setLinkOpen(false);
+    setLinkError("");
   }
 
   if (readOnly) {
@@ -284,7 +289,7 @@ export function TaskRichTextField({
         </button>
       </div>
       {linkOpen && (
-        <form className="task-rich-link-form" onSubmit={applyLink}>
+        <form noValidate className="task-rich-link-form" onSubmit={applyLink}>
           <label htmlFor="premises-link-url">Endereço do link</label>
           <input
             id="premises-link-url"
@@ -295,6 +300,7 @@ export function TaskRichTextField({
             required
             autoFocus
           />
+          {linkError && <p role="alert">{linkError}</p>}
           <button type="submit">Inserir link</button>
           <button type="button" onClick={() => setLinkOpen(false)}>
             Cancelar

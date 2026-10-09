@@ -35,6 +35,7 @@ export function TaskQuickActionDialog({
       dirty={!!note.trim()}
     >
       <form
+        noValidate
         className="ut-form"
         onSubmit={async (event) => {
           event.preventDefault();
