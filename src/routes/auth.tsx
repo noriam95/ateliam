@@ -98,7 +98,7 @@ function AuthPage() {
         </section>
 
         <section
-          className="mx-auto w-full max-w-[460px] rounded-xl border border-border bg-card px-5 py-6 shadow-[0_16px_40px_rgb(24_43_34_/_5%),0_2px_8px_rgb(24_43_34_/_3%)] sm:px-8 sm:py-8 lg:px-9 lg:py-9"
+          className="mx-auto w-full max-w-[460px] rounded-xl border border-border bg-card px-5 py-6 shadow-md sm:px-8 sm:py-8 lg:px-9 lg:py-9"
           aria-label="Acesso"
         >
           <div className="w-full">
@@ -126,7 +126,7 @@ function AuthPage() {
                     autoComplete="username"
                     value={login}
                     onChange={(event) => setLogin(event.target.value)}
-                    className="h-[52px] w-full rounded-md border border-input bg-white pl-11 pr-4 text-sm font-normal outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--gold)_16%,transparent)]"
+                    className="h-[52px] w-full rounded-md border border-input bg-card pl-11 pr-4 text-sm font-normal text-foreground outline-none transition placeholder:text-muted-foreground focus:border-[var(--gold)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--gold)_16%,transparent)]"
                   />
                 </span>
               </label>
@@ -143,7 +143,7 @@ function AuthPage() {
                     autoComplete="current-password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="h-[52px] w-full rounded-md border border-input bg-white pl-11 pr-4 text-sm font-normal outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--gold)_16%,transparent)]"
+                    className="h-[52px] w-full rounded-md border border-input bg-card pl-11 pr-4 text-sm font-normal text-foreground outline-none transition placeholder:text-muted-foreground focus:border-[var(--gold)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--gold)_16%,transparent)]"
                   />
                 </span>
               </label>

@@ -997,7 +997,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .document-portal-dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -1009,13 +1009,28 @@
     padding-inline: 10px;
   }
 
+  .document-portal-home {
+    min-width: 0;
+  }
+
+  .document-portal-home > span {
+    width: min(88px, 24vw);
+    max-width: min(88px, 24vw);
+  }
+
+  .document-portal-home img {
+    max-width: 100%;
+  }
+
   .document-portal-organization {
-    max-width: 148px;
+    min-width: 0;
+    max-width: min(148px, 34vw);
     margin-left: auto;
     padding-inline: 7px;
   }
 
   .document-portal-organization select {
+    width: 100%;
     max-width: 112px;
     font-size: 11px;
   }
@@ -1135,11 +1150,13 @@
   }
 
   .document-portal-home > span {
+    width: min(76px, 22vw);
+    max-width: 76px;
     height: 24px;
   }
 
   .document-portal-organization {
-    max-width: 98px;
+    max-width: min(98px, 31vw);
     height: 32px;
     gap: 4px;
     padding-inline: 6px;
@@ -1150,6 +1167,7 @@
   }
 
   .document-portal-organization select {
+    width: 100%;
     max-width: 82px;
     font-size: 10px;
   }
@@ -1174,5 +1192,41 @@
   .document-portal-information dl > div {
     grid-template-columns: 1fr;
     gap: 3px;
+  }
+}
+
+@media (max-width: 360px) {
+  .document-portal-global-header {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+
+  .document-portal-home > span {
+    width: 66px;
+    max-width: 66px;
+  }
+
+  .document-portal-organization {
+    max-width: 88px;
+    padding-inline: 5px;
+  }
+
+  .document-portal-content {
+    padding-inline: 10px;
+  }
+
+  .document-portal-section {
+    padding: 12px;
+  }
+
+  .document-portal-card {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .document-portal-card-icon {
+    width: 34px;
+    height: 34px;
   }
 }

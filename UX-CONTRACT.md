@@ -200,8 +200,10 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 - A composição deve continuar utilizável entre 320 px e telas amplas, sem reduzir a tipografia para compensar falta de espaço e sem rolagem horizontal no documento.
 - O cabeçalho apresenta o título e total do acervo acima da pesquisa; chips de tipo e filtros usam o mesmo estado persistido na URL. Os campos mudam de quatro para duas e uma coluna, mantendo rótulos visíveis.
 - “Mais filtros” pode sobrepor a página somente em telas amplas. Em notebook estreito, tablet e celular, o painel deve ocupar espaço no fluxo para não encobrir resultados.
-- Em monitores, documentos recentes e atualizados ocupam a coluna principal; favoritos, acessados recentemente e mais acessados ficam na coluna de atalhos. Abaixo de 900 px, o painel de atalhos passa para baixo da coluna principal, preservando a ordem do DOM.
+- Em monitores, documentos recentes e atualizados ocupam a coluna principal; favoritos, acessados recentemente e mais acessados ficam na coluna de atalhos. Abaixo de 1024 px, o painel de atalhos passa para baixo da coluna principal, preservando a ordem do DOM.
+- O cabeçalho mantém o seletor de organização acessível até 320 px; marca, seletor e perfil usam larguras flexíveis sem criar rolagem horizontal.
 - No leitor, os metadados ficam ao lado apenas quando houver largura segura para documento e painel; abaixo de 1180 px, aparecem depois do visualizador.
+- A autenticação usa os mesmos tokens de tema do sistema; campos, superfícies, textos e foco acompanham claro, escuro ou sistema antes do acesso.
 
 Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresentação existente. Fluxogramas reutilizam o `NavigatedViewer` do workspace BPMN, sem instanciar edição. A página de leitura mantém metadados, caminho organizacional e relações ao lado do conteúdo, sem reconstruí-lo. Alterar parâmetros da URL não pode contornar a verificação de vigência executada no servidor.
 

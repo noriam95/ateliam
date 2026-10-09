@@ -195,11 +195,12 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 
 ### Revisão responsiva do Portal — 09/10/2026
 
-- A página usa título e total do acervo, um painel de pesquisa e acesso rápido por tipo, depois uma grade principal de documentos com coluna de atalhos pessoais. Abaixo de 900 px, a coluna de atalhos passa para baixo da principal.
+- A página usa título e total do acervo, um painel de pesquisa e acesso rápido por tipo, depois uma grade principal de documentos com coluna de atalhos pessoais. Abaixo de 1024 px, a coluna de atalhos passa para baixo da principal.
 - Filtros possuem rótulos persistentes e uma grade previsível: quatro campos na largura ampla, duas colunas na intermediária e uma coluna no celular. Filtros adicionais abrem dentro do fluxo em telas menores, sem sobrepor conteúdo nem ultrapassar a janela.
 - Textos, metadados e alvos interativos usam escala legível. Cartões e seções preservam densidade de informação com espaçamento constante; grades de descoberta passam de três para duas e uma coluna conforme o espaço disponível.
 - O leitor limita a coluna de metadados em telas amplas e a move para baixo do documento até 1180 px. A altura do visualizador considera a janela disponível e evita dimensões rígidas em telas baixas.
 - A pesquisa rápida por tipo reutiliza o filtro canônico e não remove área, processo ou demais critérios. O tema claro/escuro e o dourado usam os tokens globais, sem introduzir uma paleta paralela.
+- Cabeçalho do Portal conserva marca, seletor de organização e perfil até 320 px, com dimensões flexíveis. A tela de login aplica os mesmos tokens semânticos de superfície, borda, texto e foco nos dois temas.
 
 ## Cenário e entregas da tarefa de mapeamento — 05/10/2026
 
