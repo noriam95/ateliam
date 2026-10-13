@@ -87,7 +87,7 @@ export function BpmnWorkspace({
   const [modal, setModal] = useState<"new" | "import" | null>(null);
   const [newProcess, setNewProcess] = useState("");
   const [search, setSearch] = useState("");
-  const [libraryView, setLibraryView] = useState<"table" | "gallery">("table");
+  const [libraryView, setLibraryView] = useState<"table" | "gallery">("gallery");
   const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(0);
   const [sortField, setSortField] = useState<BpmnLibrarySortField>("updated_at");
