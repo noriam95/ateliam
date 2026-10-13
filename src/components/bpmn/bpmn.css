@@ -2091,12 +2091,12 @@ dialog.bf-bpmn-import {
 .bf-bpmn-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; }
 .bf-bpmn-gallery-card { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
 .bf-bpmn-gallery-preview { position: relative; display: block !important; width: 100%; height: 164px; padding: 0 !important; overflow: hidden; border: 0 !important; border-bottom: 1px solid var(--border) !important; border-radius: 0 !important; background: var(--muted) !important; }
-.bf-bpmn-miniature { width: 100%; height: 100%; padding: 12px; background: color-mix(in srgb, var(--card) 88%, var(--muted)); }
-.bf-bpmn-miniature svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.bf-bpmn-miniature svg rect, .bf-bpmn-miniature svg ellipse, .bf-bpmn-miniature svg polygon { fill: var(--card); stroke: var(--gold-ink); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.bf-bpmn-miniature svg .bf-bpmn-mini-pool { fill: transparent; stroke: var(--border); }
-.bf-bpmn-miniature svg polyline { fill: none; stroke: var(--muted-foreground); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-.bf-bpmn-miniature svg text { fill: var(--foreground); font: 9px var(--font-sans); }
+.bf-bpmn-miniature { position: absolute; inset: 0; background: color-mix(in srgb, var(--card) 88%, var(--muted)); }
+.bf-bpmn-miniature-canvas { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+.bf-bpmn-miniature-canvas .djs-container { width: 100%; height: 100%; }
+.bf-bpmn-miniature-canvas svg { display: block; width: 100%; height: 100%; }
+.bf-bpmn-miniature-canvas .djs-palette, .bf-bpmn-miniature-canvas .djs-context-pad, .bf-bpmn-miniature-canvas .djs-popup { display: none !important; }
+.bf-bpmn-miniature-canvas .djs-hit, .bf-bpmn-miniature-canvas .djs-outline { display: none !important; }
 .bf-bpmn-miniature-empty { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; flex-direction: column; gap: 6px; color: var(--muted-foreground); font-size: 11px; }
 .bf-bpmn-gallery-open { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--foreground); font-size: 11px; opacity: 0; transition: opacity 120ms ease; }
 .bf-bpmn-gallery-preview:hover .bf-bpmn-gallery-open, .bf-bpmn-gallery-preview:focus-visible .bf-bpmn-gallery-open { opacity: 1; }
