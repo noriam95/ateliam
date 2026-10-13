@@ -149,6 +149,27 @@ export function BpmnWorkspace({
     const row = await getDocument({ data: { id } });
     return row.content_inline || null;
   }, [getDocument]);
+  const deleteDrawings = async (ids: string[]) => {
+    let deleted = 0;
+    let failure: unknown;
+    for (const id of ids) {
+      try {
+        await deleteDocument({ data: { organizationId, id } });
+        deleted++;
+      } catch (cause) {
+        failure = cause;
+        break;
+      }
+    }
+    const refreshed = await docs.refetch();
+    if (refreshed.data)
+      setPage((current) => Math.min(current, Math.max(0, Math.ceil(refreshed.data.count / 20) - 1)));
+    if (failure)
+      throw new Error(
+        `${deleted ? `${deleted} desenho(s) excluído(s). ` : ""}${failure instanceof Error ? failure.message : "Não foi possível concluir a exclusão."}`,
+      );
+    toast.success(ids.length === 1 ? "Desenho excluído." : "Desenhos excluídos.");
+  };
   const loadDocument = useCallback(
     async (id: string) => {
       const token = ++loadToken.current;
@@ -395,6 +416,7 @@ export function BpmnWorkspace({
               />
             ) : undefined
           }
+          showBackToLibrary={!portalPreview && !taskPreview && !embedded}
           onBack={() => {
             setActive(null);
             setDirty(false);
@@ -494,6 +516,7 @@ export function BpmnWorkspace({
                   loadPreview={loadPreview}
                   onOpen={(id) => { setViewOnly(false); void loadDocument(id); }}
                   onView={(id) => { setViewOnly(true); void loadDocument(id); }}
+                  onDelete={canEdit ? deleteDrawings : undefined}
                 />
               ) : (
               <BpmnDocumentsTable
@@ -520,38 +543,7 @@ export function BpmnWorkspace({
                   setViewOnly(true);
                   void loadDocument(id);
                 }}
-                onDelete={
-                  canEdit
-                    ? async (ids) => {
-                        let deleted = 0;
-                        let failure: unknown;
-                        for (const id of ids) {
-                          try {
-                            await deleteDocument({ data: { organizationId, id } });
-                            deleted++;
-                          } catch (cause) {
-                            failure = cause;
-                            break;
-                          }
-                        }
-                        const refreshed = await docs.refetch();
-                        if (refreshed.data)
-                          setPage((current) =>
-                            Math.min(
-                              current,
-                              Math.max(0, Math.ceil(refreshed.data.count / 20) - 1),
-                            ),
-                          );
-                        if (failure)
-                          throw new Error(
-                            `${deleted ? `${deleted} desenho(s) excluído(s). ` : ""}${failure instanceof Error ? failure.message : "Não foi possível concluir a exclusão."}`,
-                          );
-                        toast.success(
-                          ids.length === 1 ? "Desenho excluído." : "Desenhos excluídos.",
-                        );
-                      }
-                    : undefined
-                }
+                onDelete={canEdit ? deleteDrawings : undefined}
               />
               )}
               <div className="bf-bpmn-pagination process-library-pagination">

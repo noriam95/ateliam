@@ -107,6 +107,7 @@ export function BpmnEditor({
   onSave,
   onDirty,
   onBack,
+  showBackToLibrary = false,
   taskContext,
 }: {
   initial: BpmnDocument;
@@ -118,6 +119,7 @@ export function BpmnEditor({
   onSave: (input: BpmnSaveInput) => Promise<SavedBpmn>;
   onDirty?: (dirty: boolean) => void;
   onBack: () => void;
+  showBackToLibrary?: boolean;
   taskContext?: ReactNode;
 }) {
   const canvas = useRef<BpmnCanvasHandle>(null);
@@ -568,6 +570,16 @@ export function BpmnEditor({
         onChange={(event) => loadImage(event.target.files?.[0])}
       />
       {taskContext && <div hidden={readOnly}>{taskContext}</div>}
+      {readOnly && showBackToLibrary && (
+        <nav className="bf-bpmn-reader-navigation" aria-label="Navegação do desenho">
+          <button type="button" onClick={onBack} aria-label="Voltar à consulta de desenhos">
+            <ChevronLeft size={16} aria-hidden="true" />
+            Voltar à consulta
+          </button>
+          <span>{record?.code || document.codigo || document.processName || "Fluxograma"}</span>
+          <small>Somente leitura</small>
+        </nav>
+      )}
       {!readOnly && !toolbarCollapsed && (
         <div className="bf-bpmn-toolbar" aria-label="Ferramentas de edição">
           <nav className="bf-bpmn-toolbar-navigation" aria-label="Navegação do desenho">

@@ -377,27 +377,72 @@ function BpmnMiniature({ xml, title, loading }: { xml: string | null; title: str
 }
 
 export function BpmnDocumentsGallery({
-  rows, loadPreview, onOpen, onView,
+  rows, loadPreview, onOpen, onView, onDelete,
 }: {
   rows: DrawingRow[];
   loadPreview: (id: string) => Promise<string | null>;
   onOpen: (id: string) => void;
   onView: (id: string) => void;
+  onDelete?: (ids: string[]) => Promise<void>;
 }) {
+  const [pending, setPending] = useState<DrawingRow | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const confirmDelete = async () => {
+    if (!onDelete || !pending || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onDelete([pending.id]);
+      setPending(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível excluir o desenho.");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <div className="bf-bpmn-gallery" role="region" aria-label="Desenhos BPMN em miniaturas">
-      {rows.map((row) => <BpmnGalleryCard key={row.id} row={row} loadPreview={loadPreview} onOpen={onOpen} onView={onView} />)}
-    </div>
+    <>
+      <div className="bf-bpmn-gallery" role="region" aria-label="Desenhos BPMN em miniaturas">
+        {rows.map((row) => (
+          <BpmnGalleryCard
+            key={row.id}
+            row={row}
+            loadPreview={loadPreview}
+            onOpen={onOpen}
+            onView={onView}
+            onEdit={onDelete ? () => onOpen(row.id) : undefined}
+            onDelete={onDelete ? () => { setError(""); setPending(row); } : undefined}
+          />
+        ))}
+      </div>
+      {pending && (
+        <TaskDialog title="Excluir desenho" busy={busy} onClose={() => { if (!busy) setPending(null); }}>
+          <div className="bf-bpmn-form">
+            <p>Excluir “{pending.title}”? Esta ação não pode ser desfeita.</p>
+            {error && <p role="alert">{error}</p>}
+          </div>
+          <footer>
+            <button type="button" disabled={busy} onClick={() => setPending(null)}>Cancelar</button>
+            <button type="button" className="bf-bpmn-delete" disabled={busy} onClick={() => void confirmDelete()}>
+              {busy ? "Excluindo…" : "Excluir"}
+            </button>
+          </footer>
+        </TaskDialog>
+      )}
+    </>
   );
 }
 
 function BpmnGalleryCard({
-  row, loadPreview, onOpen, onView,
+  row, loadPreview, onOpen, onView, onEdit, onDelete,
 }: {
   row: DrawingRow;
   loadPreview: (id: string) => Promise<string | null>;
   onOpen: (id: string) => void;
   onView: (id: string) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const [xml, setXml] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -414,9 +459,14 @@ function BpmnGalleryCard({
     <article className="bf-bpmn-gallery-card">
       <div className="bf-bpmn-gallery-preview">
         <BpmnMiniature xml={xml} title={row.title} loading={!loaded} />
-        <button type="button" className="bf-bpmn-gallery-open" onClick={() => onView(row.id)} aria-label={`Visualizar ${row.title}`}>
-          <Eye size={15} aria-hidden="true" /> Visualizar
-        </button>
+        <div className="bf-bpmn-gallery-actions">
+          <DrawingActions
+            row={row}
+            onView={() => onView(row.id)}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        </div>
       </div>
       <div className="bf-bpmn-gallery-info">
         <span className="bf-bpmn-gallery-code">{row.code || "Sem código"}</span>
