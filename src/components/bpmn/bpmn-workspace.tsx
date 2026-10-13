@@ -5,7 +5,7 @@ import { useCallback, useDeferredValue, useEffect, useRef, useState } from "reac
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useBlocker, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Plus, Upload, Workflow } from "lucide-react";
+import { ArrowLeft, LayoutGrid, List, Plus, Upload, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { BFFlowMark } from "@/components/bf-flow-mark";
 import { WorkspaceLauncher, WorkspaceModulesTree } from "@/components/workspace-navigation";
@@ -32,7 +32,7 @@ import { normalizeAreaName } from "@/lib/mapping-temporary-areas";
 import { CatalogPicker, type BpmnCatalogs, type CreateCatalogItem } from "./catalog-picker";
 import { BpmnEditor, type SavedBpmn } from "./bpmn-editor";
 import { BpmnImportWizard } from "./import-wizard";
-import { BpmnDocumentsTable } from "./documents-table";
+import { BpmnDocumentsGallery, BpmnDocumentsTable } from "./documents-table";
 import type { BpmnLibrarySortDirection, BpmnLibrarySortField } from "@/lib/bpmn-library";
 import "./bpmn.css";
 
@@ -87,6 +87,7 @@ export function BpmnWorkspace({
   const [modal, setModal] = useState<"new" | "import" | null>(null);
   const [newProcess, setNewProcess] = useState("");
   const [search, setSearch] = useState("");
+  const [libraryView, setLibraryView] = useState<"table" | "gallery">("table");
   const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(0);
   const [sortField, setSortField] = useState<BpmnLibrarySortField>("updated_at");
@@ -144,6 +145,10 @@ export function BpmnWorkspace({
         },
       }),
   });
+  const loadPreview = useCallback(async (id: string) => {
+    const row = await getDocument({ data: { id } });
+    return row.content_inline || null;
+  }, [getDocument]);
   const loadDocument = useCallback(
     async (id: string) => {
       const token = ++loadToken.current;
@@ -446,6 +451,14 @@ export function BpmnWorkspace({
               }}
               placeholder="Pesquisar em todas as colunas…"
             />
+            <div className="bf-bpmn-view-switch" role="group" aria-label="Visualização dos desenhos">
+              <button type="button" aria-pressed={libraryView === "table"} onClick={() => setLibraryView("table")} title="Visualização em tabela">
+                <List size={16} aria-hidden="true" /> Tabela
+              </button>
+              <button type="button" aria-pressed={libraryView === "gallery"} onClick={() => setLibraryView("gallery")} title="Visualização em miniaturas">
+                <LayoutGrid size={16} aria-hidden="true" /> Miniaturas
+              </button>
+            </div>
           </div>
           {docs.isPending ? (
             <p role="status">Buscando desenhos…</p>
@@ -474,6 +487,15 @@ export function BpmnWorkspace({
             </div>
           ) : (
             <>
+              {libraryView === "gallery" ? (
+                <BpmnDocumentsGallery
+                  key={`gallery:${organizationId}:${page}:${deferredSearch}`}
+                  rows={docs.data.rows}
+                  loadPreview={loadPreview}
+                  onOpen={(id) => { setViewOnly(false); void loadDocument(id); }}
+                  onView={(id) => { setViewOnly(true); void loadDocument(id); }}
+                />
+              ) : (
               <BpmnDocumentsTable
                 key={`${organizationId}:${page}:${deferredSearch}`}
                 rows={docs.data.rows}
@@ -531,6 +553,7 @@ export function BpmnWorkspace({
                     : undefined
                 }
               />
+              )}
               <div className="bf-bpmn-pagination process-library-pagination">
                 <span>
                   {docs.data.count} desenhos · página {page + 1}
