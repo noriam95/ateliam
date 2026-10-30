@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { statusColor } from "@/lib/status-color";
 import {
@@ -75,15 +75,7 @@ function statusName(value: string) {
   if (s.includes("cancel")) return "Cancelada";
   return value && value !== "-" ? value : "Não informada";
 }
-function summarize(entries: [string, Entry[]][], limit = 4): [string, Entry[]][] {
-  return entries.length <= limit
-    ? entries
-    : [
-        ...entries.slice(0, limit - 1),
-        ["Outros", entries.slice(limit - 1).flatMap(([, rows]) => rows)],
-      ];
-}
-function groups(rows: Entry[], key: "status" | "type" | "priority" | "source") {
+function groups(rows: Entry[], key: "status" | "type" | "priority" | "source" | "area") {
   const result = new Map<string, Entry[]>();
   rows.forEach((row) => {
     const name = row[key] || "Não informada";
@@ -142,6 +134,11 @@ export function OperationalDashboard({
   const navigate = useNavigate();
   const [area, setArea] = useState("");
   const [group, setGroup] = useState<"status" | "priority" | "source">("status");
+  const [coverageOnlyPending, setCoverageOnlyPending] = useState(false);
+  const [coverageSort, setCoverageSort] = useState<{
+    key: "name" | "pending" | "coverage";
+    descending: boolean;
+  }>({ key: "pending", descending: true });
   const [detail, setDetail] = useState<{ title: string; rows: Entry[]; criteria?: boolean } | null>(
     null,
   );
@@ -200,27 +197,47 @@ export function OperationalDashboard({
     setDetail({ title, rows });
   };
   const covered = ps.filter((p) => p.status === "Mapeado").length;
-  const displayedAreas = area ? [area] : areas;
-  const coverageAreas = displayedAreas
-    .filter((a) => ps.some((p) => p.area === a))
-    .sort((a, b) => {
-      const ratio = (name: string) => {
-        const rows = ps.filter((p) => p.area === name);
-        return rows.filter((p) => p.status === "Mapeado").length / rows.length;
+  const coverageRows = (area ? [area] : areas)
+    .map((name) => {
+      const rows = ps.filter((p) => p.area === name);
+      const mapped = rows.filter((p) => p.status === "Mapeado").length;
+      return {
+        name,
+        rows,
+        total: rows.length,
+        mapped,
+        pending: rows.length - mapped,
+        coverage: rows.length ? Math.round((mapped / rows.length) * 100) : 0,
       };
-      return ratio(a) - ratio(b) || a.localeCompare(b, "pt-BR");
     })
-    .slice(0, 4);
-  const compareAreas = [...displayedAreas]
-    .sort(
-      (a, b) =>
-        all.filter((r) => r.area === b).length - all.filter((r) => r.area === a).length ||
-        a.localeCompare(b, "pt-BR"),
-    )
-    .slice(0, 3);
-  const stats = summarize(groups(maps, "status"), 5),
-    docTypes = summarize(groups(docs, "type")),
-    impGroups = summarize(groups(imps, group));
+    .filter((row) => row.total > 0 && (!coverageOnlyPending || row.pending > 0))
+    .sort((a, b) => {
+      const difference =
+        coverageSort.key === "name"
+          ? a.name.localeCompare(b.name, "pt-BR")
+          : a[coverageSort.key] - b[coverageSort.key];
+      return (
+        (coverageSort.descending ? -1 : 1) * difference || a.name.localeCompare(b.name, "pt-BR")
+      );
+    });
+  const distribution = groups([...maps, ...imps], "area");
+  const distributionRows =
+    distribution.length <= 4
+      ? distribution
+      : [
+          ...distribution.slice(0, 3),
+          ["Demais áreas", distribution.slice(3).flatMap(([, rows]) => rows)] as [string, Entry[]],
+        ];
+  const maxAreaRecords = Math.max(1, ...distributionRows.map(([, rows]) => rows.length));
+  const stats = groups(maps, "status"),
+    docTypes = groups(docs, "type"),
+    impGroups = groups(imps, group);
+  const openImprovements = imps.filter(
+    (row) => !["Encerrada", "Cancelada", "Concluído"].includes(row.status),
+  );
+  const closedImprovements = imps.filter((row) => ["Encerrada", "Concluído"].includes(row.status));
+  const unclassifiedMappings = maps.filter((row) => row.area === "Sem área");
+  const unclassifiedImprovements = imps.filter((row) => row.area === "Sem área");
   const registeredAreas = departments.filter((d) => !area || d.name === area);
   const areaRecords: Entry[] = registeredAreas.map((d) => ({
     id: d.id,
@@ -279,23 +296,59 @@ export function OperationalDashboard({
     );
   }
   const coveragePercent = ps.length ? Math.round((covered / ps.length) * 100) : 0;
-  const maxAreaRecords = Math.max(
-    1,
-    ...compareAreas.map(
-      (name) =>
-        maps.filter((row) => row.area === name).length +
-        docs.filter((row) => row.area === name).length +
-        imps.filter((row) => row.area === name).length,
-    ),
-  );
   const metricCards = [
-    { title: "Áreas", entries: areaRecords, subtitle: "Cadastros da organização", icon: MapPinned },
-    { title: "Processos", entries: ps, subtitle: "Estrutura cadastrada", icon: Network },
-    { title: "Mapeamentos", entries: maps, subtitle: "Inclui rascunhos", icon: Workflow },
-    { title: "Documentos", entries: docs, subtitle: "Documentação e fluxogramas", icon: FileText },
-    { title: "Melhorias", entries: imps, subtitle: "Oportunidades registradas", icon: Lightbulb },
+    {
+      title: "Processos",
+      value: ps.length.toString(),
+      entries: ps,
+      subtitle: `${areaRecords.length} áreas cadastradas`,
+      icon: Network,
+    },
+    {
+      title: "Cobertura de mapeamento",
+      value: `${coveragePercent}%`,
+      entries: ps.filter((row) => row.status === "Mapeado"),
+      subtitle: `${covered} de ${ps.length} processos`,
+      icon: MapPinned,
+      tone: "gold",
+    },
+    {
+      title: "Sem mapeamento",
+      value: (ps.length - covered).toString(),
+      entries: ps.filter((row) => row.status !== "Mapeado"),
+      subtitle: "Processos pendentes",
+      icon: Network,
+      tone: "attention",
+    },
+    {
+      title: "Mapeamentos",
+      value: maps.length.toString(),
+      entries: maps,
+      subtitle: "Inclui rascunhos",
+      icon: Workflow,
+    },
+    {
+      title: "Melhorias abertas",
+      value: openImprovements.length.toString(),
+      entries: openImprovements,
+      subtitle: `De ${imps.length} registradas`,
+      icon: Lightbulb,
+      tone: "attention",
+    },
+    {
+      title: "Documentos",
+      value: docs.length.toString(),
+      entries: docs,
+      subtitle: "POP e fluxogramas",
+      icon: FileText,
+    },
   ];
-  let offset = 0;
+  const changeCoverageSort = (key: "name" | "pending" | "coverage") => {
+    setCoverageSort((current) => ({
+      key,
+      descending: current.key === key ? !current.descending : key === "pending",
+    }));
+  };
   return (
     <div className="operational-dashboard" aria-busy={loading}>
       <div className="op-heading">
@@ -350,9 +403,15 @@ export function OperationalDashboard({
         <p role="status">Carregando indicadores da organização…</p>
       ) : (
         <>
-          <div className="op-metrics">
-            {metricCards.map(({ title, entries, subtitle, icon: Icon }) => (
-              <button type="button" key={title} onClick={() => show(title, entries)}>
+          <div className="op-metrics op-metrics--data">
+            {metricCards.map(({ title, value, entries, subtitle, icon: Icon, tone }) => (
+              <button
+                type="button"
+                className={`op-metric--${tone || "default"}`}
+                key={title}
+                onClick={() => show(title, entries)}
+                aria-label={`${title}: ${value}. ${subtitle}. Ver registros`}
+              >
                 <span className="op-metric-icon">
                   <Icon size={17} />
                 </span>
@@ -360,207 +419,260 @@ export function OperationalDashboard({
                   <span>{title}</span>
                   <small>{subtitle}</small>
                 </span>
-                <strong>{entries.length}</strong>
+                <strong>{value}</strong>
                 <ArrowRight className="op-metric-arrow" size={15} />
               </button>
             ))}
           </div>
-          <div className="op-dashboard-grid">
+          <div className="op-dashboard-grid op-dashboard-grid--data">
             {panel(
-              "Cobertura de mapeamentos",
-              "Até 4 áreas com menor cobertura de mapeamentos.",
-              <div className="op-coverage">
-                <div className="op-coverage-summary">
-                  <div
-                    className="op-progress-ring"
-                    style={{ "--progress": `${coveragePercent * 3.6}deg` } as CSSProperties}
-                    role="img"
-                    aria-label={`${coveragePercent}% dos processos estão mapeados`}
-                  >
-                    <span>
-                      <strong>{coveragePercent}%</strong>
-                      <small>cobertura</small>
-                    </span>
-                  </div>
-                  <p>
+              "Cobertura por área",
+              "Compare volume pendente e percentual mapeado.",
+              <div className="op-data-content">
+                <div className="op-coverage-toolbar">
+                  <span>
                     <b>
-                      {covered} de {ps.length}
+                      {covered} / {ps.length}
                     </b>{" "}
-                    processos mapeados
-                    <br />
-                    {ps.length - covered} sem mapeamento
-                  </p>
+                    mapeados no total
+                  </span>
+                  <div
+                    className="op-segmented"
+                    role="group"
+                    aria-label="Filtrar áreas por pendência"
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={!coverageOnlyPending}
+                      onClick={() => setCoverageOnlyPending(false)}
+                    >
+                      Todas
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={coverageOnlyPending}
+                      onClick={() => setCoverageOnlyPending(true)}
+                    >
+                      Com pendência
+                    </button>
+                  </div>
                 </div>
-                <div className="op-area-scroll">
-                  {coverageAreas.length
-                    ? coverageAreas.map((a) => {
-                        const subset = ps.filter((p) => p.area === a),
-                          count = subset.filter((p) => p.status === "Mapeado").length;
-                        return (
-                          <button
-                            type="button"
-                            className="op-bar-row"
-                            key={a}
-                            onClick={() => show(`Cobertura · ${a}`, subset)}
-                          >
-                            <span title={a}>{a}</span>
-                            <span className="op-track">
-                              <i
-                                style={{
-                                  width: `${subset.length ? (count / subset.length) * 100 : 0}%`,
-                                }}
-                              />
-                            </span>
-                            <b>
-                              {subset.length ? Math.round((count / subset.length) * 100) : 0}%
-                              <small>
-                                {count}/{subset.length}
-                              </small>
-                            </b>
+                <div className="op-coverage-table-wrap">
+                  <table className="op-coverage-table">
+                    <thead>
+                      <tr>
+                        <th
+                          scope="col"
+                          aria-sort={
+                            coverageSort.key === "name"
+                              ? coverageSort.descending
+                                ? "descending"
+                                : "ascending"
+                              : "none"
+                          }
+                        >
+                          <button type="button" onClick={() => changeCoverageSort("name")}>
+                            Área
                           </button>
-                        );
-                      })
-                    : blank}
+                        </th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Mapeados</th>
+                        <th
+                          scope="col"
+                          aria-sort={
+                            coverageSort.key === "pending"
+                              ? coverageSort.descending
+                                ? "descending"
+                                : "ascending"
+                              : "none"
+                          }
+                        >
+                          <button type="button" onClick={() => changeCoverageSort("pending")}>
+                            Pendentes
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          aria-sort={
+                            coverageSort.key === "coverage"
+                              ? coverageSort.descending
+                                ? "descending"
+                                : "ascending"
+                              : "none"
+                          }
+                        >
+                          <button type="button" onClick={() => changeCoverageSort("coverage")}>
+                            Cobertura
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {coverageRows.map((row) => (
+                        <tr key={row.name}>
+                          <td>
+                            <button
+                              type="button"
+                              className="op-table-link"
+                              onClick={() => show(`Processos · ${row.name}`, row.rows)}
+                            >
+                              {row.name}
+                            </button>
+                          </td>
+                          <td>{row.total}</td>
+                          <td>{row.mapped}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="op-table-link"
+                              onClick={() =>
+                                show(
+                                  `Sem mapeamento · ${row.name}`,
+                                  row.rows.filter((entry) => entry.status !== "Mapeado"),
+                                )
+                              }
+                            >
+                              {row.pending}
+                            </button>
+                          </td>
+                          <td>
+                            <span className="op-mini-track" aria-hidden="true">
+                              <i style={{ width: `${row.coverage}%` }} />
+                            </span>
+                            {row.coverage}%
+                          </td>
+                        </tr>
+                      ))}
+                      {!coverageRows.length && (
+                        <tr>
+                          <td colSpan={5} className="op-table-empty">
+                            {coverageOnlyPending
+                              ? "Nenhuma área com pendência neste recorte."
+                              : "Nenhuma área com processos neste recorte."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>,
               <>
-                <span className="op-caption">Cobertura geral · rascunhos excluídos</span>
-                {link("Ver lacunas", () =>
+                <span className="op-caption">Rascunhos fora da cobertura</span>
+                {link("Ver processos sem mapa", () =>
                   show(
                     "Processos sem mapeamento",
-                    ps.filter((p) => p.status !== "Mapeado"),
+                    ps.filter((entry) => entry.status !== "Mapeado"),
                   ),
                 )}
               </>,
               undefined,
-              "op-panel--coverage",
+              "op-panel--coverage op-panel--data",
             )}
             {panel(
-              "Registros por área",
-              "As 3 áreas com mais registros nos módulos.",
-              <div className="op-compare">
-                {compareAreas.length
-                  ? compareAreas.map((a) => {
-                      const series = [maps, docs, imps].map((rows) =>
-                        rows.filter((row) => row.area === a),
-                      );
-                      const total = series.reduce((sum, rows) => sum + rows.length, 0);
-                      return (
-                        <div className="op-compare-row" key={a}>
-                          <div className="op-compare-label">
-                            <span title={a}>{a}</span>
-                            <b>{total}</b>
-                          </div>
-                          <div className="op-stack-track">
-                            <div style={{ width: `${(total / maxAreaRecords) * 100}%` }}>
-                              {series.map((rows, i) =>
-                                rows.length ? (
-                                  <button
-                                    type="button"
-                                    key={i}
-                                    style={{
-                                      width: `${(rows.length / total) * 100}%`,
-                                      background: colors[i],
-                                    }}
-                                    aria-label={`${a}, ${["Mapeamentos", "Documentos", "Melhorias"][i]}: ${rows.length}`}
-                                    onClick={() =>
-                                      show(
-                                        `${["Mapeamentos", "Documentos", "Melhorias"][i]} · ${a}`,
-                                        rows,
-                                      )
-                                    }
-                                  />
-                                ) : null,
-                              )}
-                            </div>
-                          </div>
-                          <div className="op-compare-values" aria-hidden="true">
-                            {series.map((rows, i) => (
-                              <span key={i}>
-                                <i style={{ background: colors[i] }} /> {rows.length}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })
-                  : blank}
-              </div>,
-              <>
-                <div className="op-legend">
-                  {["Mapeamentos", "Documentos", "Melhorias"].map((s, i) => (
-                    <span key={s}>
-                      <i style={{ background: colors[i] }} />
-                      {s}
-                    </span>
-                  ))}
-                </div>
-                {link("Ver todas as áreas", () => show("Registros por área", filter(all)))}
-              </>,
-              undefined,
-              "op-panel--areas",
-            )}
-            {panel(
-              "Mapeamentos",
-              "Situação dos registros do módulo.",
-              maps.length ? (
-                <div className="op-donut-layout">
-                  <svg
-                    viewBox="0 0 160 160"
-                    role="img"
-                    aria-label={`Mapeamentos por situação: ${stats
-                      .map(
-                        ([status, rows]) =>
-                          `${status}: ${rows.length} (${Math.round((rows.length / maps.length) * 100)}%)`,
-                      )
-                      .join("; ")}`}
+              "Situação das melhorias",
+              `Distribuição das ${imps.length} oportunidades registradas.`,
+              imps.length ? (
+                <div className="op-data-content">
+                  <div
+                    className="op-status-track"
+                    role="group"
+                    aria-label={`Melhorias por ${group === "status" ? "situação" : group === "priority" ? "prioridade" : "origem"}`}
                   >
-                    <title>Mapeamentos por situação</title>
-                    <circle
-                      cx="80"
-                      cy="80"
-                      r="58"
-                      fill="none"
-                      stroke="var(--muted)"
-                      strokeWidth="18"
-                    />
-                    {stats.map(([s, rows], i) => {
-                      const rawLength = (rows.length / maps.length) * 364.425,
-                        len = Math.max(0, rawLength - 3),
-                        start = offset;
-                      offset += rawLength;
-                      return (
-                        <circle
-                          key={s}
-                          cx="80"
-                          cy="80"
-                          r="58"
-                          fill="none"
-                          stroke={colorFor(s, i)}
-                          strokeWidth="18"
-                          strokeLinecap="round"
-                          strokeDasharray={`${len} ${364.425 - len}`}
-                          strokeDashoffset={-start}
-                          transform="rotate(-90 80 80)"
-                        />
-                      );
-                    })}
-                    <text x="80" y="82" textAnchor="middle" className="op-donut-total">
-                      {maps.length}
-                    </text>
-                    <text x="80" y="102" textAnchor="middle" className="op-donut-label">
-                      registros
-                    </text>
-                  </svg>
-                  <div className="op-status-list">
-                    {stats.map(([s, rows], i) => (
+                    {impGroups.map(([label, rows], index) => (
+                      <button
+                        key={label}
+                        type="button"
+                        style={{
+                          width: `${(rows.length / imps.length) * 100}%`,
+                          background: colorFor(label, index),
+                        }}
+                        aria-label={`${label}: ${rows.length}. Ver registros`}
+                        onClick={() => show(`Melhorias · ${label}`, rows)}
+                      />
+                    ))}
+                  </div>
+                  <div className="op-data-status-list">
+                    {impGroups.map(([label, rows], index) => (
                       <button
                         type="button"
-                        key={s}
-                        onClick={() => show(`Mapeamentos · ${s}`, rows)}
+                        key={label}
+                        onClick={() => show(`Melhorias · ${label}`, rows)}
                       >
-                        <i style={{ background: colorFor(s, i) }} />
-                        <span>{s}</span>
+                        <span>
+                          <i style={{ background: colorFor(label, index) }} />
+                          {label}
+                        </span>
+                        <b>
+                          {rows.length}
+                          <small>{Math.round((rows.length / imps.length) * 100)}%</small>
+                        </b>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="op-data-ratio">
+                    <span>
+                      <b>Índice de encerramento</b>
+                      <small>
+                        {closedImprovements.length} de {imps.length} oportunidades
+                      </small>
+                    </span>
+                    <strong>{Math.round((closedImprovements.length / imps.length) * 100)}%</strong>
+                  </div>
+                </div>
+              ) : (
+                blank
+              ),
+              <>
+                <span className="op-caption">
+                  {openImprovements.length} oportunidades em aberto
+                </span>
+                {link("Consultar melhorias", () => show("Melhorias", imps))}
+              </>,
+              <select
+                aria-label="Agrupar melhorias por"
+                value={group}
+                onChange={(event) => setGroup(event.target.value as typeof group)}
+              >
+                <option value="status">Situação</option>
+                <option value="priority">Prioridade</option>
+                <option value="source">Origem</option>
+              </select>,
+              "op-panel--improvements op-panel--data",
+            )}
+            {panel(
+              "Situação dos mapeamentos",
+              `Estágio dos ${maps.length} registros existentes.`,
+              maps.length ? (
+                <div className="op-data-content">
+                  <div
+                    className="op-status-track"
+                    role="group"
+                    aria-label="Mapeamentos por situação"
+                  >
+                    {stats.map(([label, rows], index) => (
+                      <button
+                        key={label}
+                        type="button"
+                        style={{
+                          width: `${(rows.length / maps.length) * 100}%`,
+                          background: colorFor(label, index),
+                        }}
+                        aria-label={`${label}: ${rows.length}. Ver registros`}
+                        onClick={() => show(`Mapeamentos · ${label}`, rows)}
+                      />
+                    ))}
+                  </div>
+                  <div className="op-data-status-list">
+                    {stats.map(([label, rows], index) => (
+                      <button
+                        type="button"
+                        key={label}
+                        onClick={() => show(`Mapeamentos · ${label}`, rows)}
+                      >
+                        <span>
+                          <i style={{ background: colorFor(label, index) }} />
+                          {label}
+                        </span>
                         <b>
                           {rows.length}
                           <small>{Math.round((rows.length / maps.length) * 100)}%</small>
@@ -574,31 +686,147 @@ export function OperationalDashboard({
               ),
               <>
                 <span className="op-caption">Inclui rascunhos</span>
-                {link("Consultar", () => show("Mapeamentos", maps))}
+                {link("Consultar mapeamentos", () => show("Mapeamentos", maps))}
               </>,
               undefined,
-              "op-panel--mappings",
+              "op-panel--mappings op-panel--data",
             )}
             {panel(
-              "Documentos",
-              "Registros por tipo de documento.",
-              docs.length ? (
-                <div className="op-columns">
+              "Registros por área",
+              "Mapeamentos e melhorias, agrupados pelo volume.",
+              distributionRows.length ? (
+                <div className="op-data-content op-data-distribution">
+                  {distributionRows.map(([name, rows]) => {
+                    const mapRows = rows.filter((row) => row.kind === "ddp");
+                    const improvementRows = rows.filter((row) => row.kind === "improvement");
+                    return (
+                      <div className="op-distribution-row" key={name}>
+                        <div>
+                          <button
+                            type="button"
+                            className="op-table-link"
+                            onClick={() => show(`Registros · ${name}`, rows)}
+                          >
+                            {name}
+                          </button>
+                          <strong>{rows.length}</strong>
+                        </div>
+                        <div className="op-distribution-track">
+                          <div style={{ width: `${(rows.length / maxAreaRecords) * 100}%` }}>
+                            {!!mapRows.length && (
+                              <button
+                                type="button"
+                                style={{
+                                  width: `${(mapRows.length / rows.length) * 100}%`,
+                                  background: "var(--chart-blue)",
+                                }}
+                                aria-label={`${name}, mapeamentos: ${mapRows.length}`}
+                                onClick={() => show(`Mapeamentos · ${name}`, mapRows)}
+                              />
+                            )}
+                            {!!improvementRows.length && (
+                              <button
+                                type="button"
+                                style={{
+                                  width: `${(improvementRows.length / rows.length) * 100}%`,
+                                  background: "var(--chart-amber)",
+                                }}
+                                aria-label={`${name}, melhorias: ${improvementRows.length}`}
+                                onClick={() => show(`Melhorias · ${name}`, improvementRows)}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                blank
+              ),
+              <>
+                <div className="op-legend">
+                  <span>
+                    <i style={{ background: "var(--chart-blue)" }} />
+                    Mapeamentos
+                  </span>
+                  <span>
+                    <i style={{ background: "var(--chart-amber)" }} />
+                    Melhorias
+                  </span>
+                </div>
+                {link("Ver todos os registros", () =>
+                  show("Mapeamentos e melhorias", [...maps, ...imps]),
+                )}
+              </>,
+              undefined,
+              "op-panel--areas op-panel--data",
+            )}
+            {panel(
+              "Classificação de área",
+              "Registros sem área informada.",
+              <div className="op-data-content">
+                <div className="op-data-pair">
+                  <button
+                    type="button"
+                    onClick={() => show("Mapeamentos sem área", unclassifiedMappings)}
+                  >
+                    <small>Mapeamentos sem área</small>
+                    <strong>
+                      {unclassifiedMappings.length}
+                      <span> de {maps.length}</span>
+                    </strong>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => show("Melhorias sem área", unclassifiedImprovements)}
+                  >
+                    <small>Melhorias sem área</small>
+                    <strong>
+                      {unclassifiedImprovements.length}
+                      <span> de {imps.length}</span>
+                    </strong>
+                  </button>
+                </div>
+                <div className="op-data-ratio">
+                  <span>
+                    <b>Registros sem área</b>
+                    <small>
+                      {unclassifiedMappings.length + unclassifiedImprovements.length} de{" "}
+                      {maps.length + imps.length}
+                    </small>
+                  </span>
+                  <strong>
+                    {maps.length + imps.length
+                      ? Math.round(
+                          ((unclassifiedMappings.length + unclassifiedImprovements.length) /
+                            (maps.length + imps.length)) *
+                            100,
+                        )
+                      : 0}
+                    %
+                  </strong>
+                </div>
+              </div>,
+              <span className="op-caption">
+                Área não informada não comprova ausência de responsável.
+              </span>,
+              undefined,
+              "op-panel--classification op-panel--data",
+            )}
+            {panel(
+              "Acervo documental",
+              "Documentos cadastrados por tipo.",
+              docTypes.length ? (
+                <div className="op-data-content op-data-pair">
                   {docTypes.map(([type, rows]) => (
                     <button
                       type="button"
                       key={type}
                       onClick={() => show(`Documentos · ${type}`, rows)}
                     >
-                      <b>{rows.length}</b>
-                      <i className="op-column-track">
-                        <span
-                          style={{
-                            height: `${(rows.length / Math.max(...docTypes.map(([, r]) => r.length))) * 100}%`,
-                          }}
-                        />
-                      </i>
-                      <span>{type}</span>
+                      <strong>{rows.length}</strong>
+                      <small>{type}</small>
                     </button>
                   ))}
                 </div>
@@ -607,62 +835,10 @@ export function OperationalDashboard({
               ),
               <>
                 <span className="op-caption">Mapeamentos contabilizados à parte</span>
-                {link("Consultar", () => show("Documentos", docs))}
+                {link("Consultar documentos", () => show("Documentos", docs))}
               </>,
               undefined,
-              "op-panel--documents",
-            )}
-            {panel(
-              "Melhorias",
-              "Oportunidades registradas no módulo.",
-              imps.length ? (
-                <div className="op-improvements">
-                  {impGroups.map(([s, rows], i) => (
-                    <button
-                      type="button"
-                      className="op-bar-row"
-                      key={s}
-                      onClick={() => show(`Melhorias · ${s}`, rows)}
-                    >
-                      <span title={s}>{s}</span>
-                      <span className="op-track">
-                        <i
-                          style={{
-                            width: `${(rows.length / Math.max(...impGroups.map(([, r]) => r.length))) * 100}%`,
-                            background: colorFor(s, i),
-                          }}
-                        />
-                      </span>
-                      <b>
-                        {rows.length}
-                        <small>{Math.round((rows.length / imps.length) * 100)}%</small>
-                      </b>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                blank
-              ),
-              <>
-                <span className="op-caption">
-                  {
-                    imps.filter((r) => !["Encerrada", "Cancelada", "Concluído"].includes(r.status))
-                      .length
-                  }{" "}
-                  oportunidades em aberto
-                </span>
-                {link("Consultar", () => show("Melhorias", imps))}
-              </>,
-              <select
-                aria-label="Agrupar melhorias por"
-                value={group}
-                onChange={(e) => setGroup(e.target.value as typeof group)}
-              >
-                <option value="status">Situação</option>
-                <option value="priority">Prioridade</option>
-                <option value="source">Origem</option>
-              </select>,
-              "op-panel--improvements",
+              "op-panel--documents op-panel--data",
             )}
           </div>
         </>

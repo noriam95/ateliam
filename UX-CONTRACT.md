@@ -223,3 +223,11 @@ Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresenta�
 - O administrador pode salvar antecedências e horário local antes da integração. A política permanece desativada até que o serviço de envio e o agendamento estejam configurados pela empresa.
 - Credenciais de provedores são mantidas em segredos do ambiente quando houver integração; nunca são armazenadas nesta configuração.
 - A interface informa que nenhum envio está ativo enquanto o transporte não estiver conectado. Preferências salvas não representam envio agendado.
+
+# Visão operacional — 30/10/2026
+
+- O painel usa os registros da organização obtidos por `getOrganizationDashboard`; o filtro de área atualiza todos os totais e agrupamentos.
+- Os seis indicadores e os segmentos dos gráficos abrem um detalhamento paginado com acesso ao cadastro de origem. Valores zero também podem ser abertos para confirmar o recorte vazio.
+- A tabela de cobertura lista todas as áreas que possuem processos, permite ordenar por área, pendentes e cobertura e alternar entre todas e somente áreas com pendências. O vínculo de mapeamento salvo, exceto rascunho, define a cobertura.
+- Melhorias abertas excluem encerradas, concluídas e canceladas. O índice de encerramento conta encerradas e concluídas sobre todas as melhorias do recorte.
+- Em telas menores, os painéis são empilhados; a tabela mantém a ordenação e rola horizontalmente quando necessário. Os controles usam foco visível e nomes acessíveis em português.
