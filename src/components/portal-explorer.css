@@ -64,10 +64,12 @@
   object-fit: contain;
 }
 .portal-organization-logo-fallback {
-  color: var(--muted-foreground);
+  color: var(--foreground);
   display: grid;
   min-height: 55px;
   place-items: center;
+  font: 650 18px var(--font-sans);
+  letter-spacing: -0.04em;
 }
 .px-rail-label {
   font-size: 10px;
