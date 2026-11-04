@@ -46,6 +46,7 @@ export type PortalStructure = {
   }>;
   positions: Array<{ id: string; title: string; description: string | null }>;
   valueChains: PortalChain[];
+  valueChainRelations?: Array<{ output_id: string; chain_id: string }>;
 };
 type Props = {
   organization: { name: string; logo_data_url?: string | null };
@@ -172,8 +173,67 @@ export function DocumentPortalView({
             value: r,
             subtitle: "Cargo",
           }));
-  const [catalogLimit, setCatalogLimit] = useState(12);
-  useEffect(() => setCatalogLimit(12), [state.explore, organization.name]);
+  const [selectedExploreId, setSelectedExploreId] = useState("");
+  useEffect(() => setSelectedExploreId(""), [state.explore, organization.name]);
+  const selectedEntity =
+    state.explore === "chain"
+      ? structure.valueChains.find((chain) => chain.id === selectedExploreId) ||
+        structure.valueChains.find((chain) => chain.category === "primary") ||
+        structure.valueChains[0]
+      : entities.find((entity) => entity.id === selectedExploreId) || entities[0];
+  const selectedFilterKey: keyof PortalDocumentFilters =
+    state.explore === "chain"
+      ? "chain"
+      : state.explore === "area"
+        ? "area"
+        : state.explore === "process"
+          ? "processId"
+          : "role";
+  const selectedValue = selectedEntity
+    ? "value" in selectedEntity
+      ? selectedEntity.value
+      : selectedEntity.id
+    : "";
+  const selectedFilter: PortalDocumentFilters | undefined = selectedEntity
+    ? { [selectedFilterKey]: selectedValue }
+    : undefined;
+  const selectedDocuments = selectedFilter
+    ? filterAndSortPortalDocuments(documents, "", selectedFilter, "relevance", accessCounts)
+    : [];
+  const selectedRelations =
+    state.explore === "chain" && selectedEntity
+      ? (structure.valueChainRelations || [])
+          .filter((relation) =>
+            (selectedEntity as PortalChain).category === "output"
+              ? relation.output_id === selectedEntity.id
+              : relation.chain_id === selectedEntity.id,
+          )
+          .map((relation) =>
+            structure.valueChains.find((chain) =>
+              (selectedEntity as PortalChain).category === "output"
+                ? chain.id === relation.chain_id
+                : chain.id === relation.output_id,
+            ),
+          )
+          .filter((chain): chain is PortalChain => !!chain)
+      : [];
+  const selectedRelationsLabel =
+    state.explore === "chain" && (selectedEntity as PortalChain | undefined)?.category === "output"
+      ? "Macroprocessos conectados"
+      : "Saídas relacionadas";
+  const contextDescription =
+    state.explore === "chain"
+      ? (selectedEntity as PortalChain | undefined)?.description
+      : state.explore === "area"
+        ? "Consulte os documentos vigentes associados a esta área."
+        : state.explore === "process"
+          ? (structure.processes.find((process) => process.id === selectedEntity?.id)
+              ?.description ?? "Etapa cadastrada na estrutura de processos da organização.")
+          : (structure.positions.find(
+              (position) =>
+                position.title ===
+                (selectedEntity && "title" in selectedEntity ? selectedEntity.title : ""),
+            )?.description ?? "Documentos associados a esta responsabilidade.");
   const connections = useMemo(() => {
     if (!state.query.trim()) return [];
     const terms = normalizePortalText(state.query).split(" ").filter(Boolean);
@@ -383,7 +443,7 @@ export function DocumentPortalView({
                       <p>Escolha um ponto de partida. O portal conecta o restante.</p>
                     </div>
                   </div>
-                  <div className="px-route-grid" aria-label="Explorar documentos por">
+                  <div className="px-route-grid" role="group" aria-label="Explorar documentos por">
                     {(
                       [
                         {
@@ -443,74 +503,173 @@ export function DocumentPortalView({
                       </button>
                     ))}
                   </div>
-                  {state.explore === "chain" ? (
-                    <>
-                      <PortalValueChain
-                        chains={structure.valueChains}
-                        organizationName={organization.name}
-                        count={(id) => count({ chain: id })}
-                        onSelect={(id) => choose("chain", id)}
-                      />
-                      <div className="px-role-entry">
-                        <div>
-                          <h3>Prefere começar pelo seu cargo?</h3>
-                          <p>Encontre os documentos ligados às suas atividades.</p>
+                  <div className="px-explorer-board">
+                    <div className="px-explorer-visual">
+                      {state.explore === "chain" ? (
+                        <PortalValueChain
+                          chains={structure.valueChains}
+                          organizationName={organization.name}
+                          count={(id) => count({ chain: id })}
+                          selectedId={selectedEntity?.id || ""}
+                          relations={structure.valueChainRelations || []}
+                          onSelect={setSelectedExploreId}
+                        />
+                      ) : state.explore === "process" ? (
+                        <div className="px-process-map" aria-label="Processos por etapa">
+                          {["Macroprocesso", "Processo", "Subprocesso", "Atividade", "Tarefa"]
+                            .map((group) => ({
+                              group,
+                              nodes: entities.filter((entity) => entity.subtitle === group),
+                            }))
+                            .filter((group) => group.nodes.length)
+                            .map((group) => (
+                              <section className="px-process-lane" key={group.group}>
+                                <h3>{group.group}</h3>
+                                <div>
+                                  {group.nodes.map((entity) => (
+                                    <button
+                                      type="button"
+                                      key={entity.id}
+                                      aria-pressed={entity.id === selectedEntity?.id}
+                                      className={
+                                        entity.id === selectedEntity?.id ? "is-selected" : undefined
+                                      }
+                                      onClick={() => setSelectedExploreId(entity.id)}
+                                    >
+                                      <span>{group.group}</span>
+                                      <strong>{entity.title}</strong>
+                                      <small>
+                                        {count({ [entity.filter]: entity.value })} documentos
+                                      </small>
+                                    </button>
+                                  ))}
+                                </div>
+                              </section>
+                            ))}
                         </div>
-                        <select
-                          aria-label="Explorar por cargo"
-                          value=""
-                          onChange={(e) => choose("role", e.target.value)}
-                          disabled={!roles.length}
+                      ) : (
+                        <div
+                          className={`px-visual-field px-visual-field-${state.explore}`}
+                          aria-label={
+                            state.explore === "area"
+                              ? "Áreas da organização"
+                              : "Cargos da organização"
+                          }
                         >
-                          <option value="">
-                            {roles.length ? "Escolha um cargo" : "Nenhum cargo disponível"}
-                          </option>
-                          {roles.map((role) => (
-                            <option key={role}>{role}</option>
+                          {entities.map((entity, index) => (
+                            <button
+                              type="button"
+                              key={entity.id}
+                              aria-pressed={entity.id === selectedEntity?.id}
+                              className={`${entity.id === selectedEntity?.id ? "is-selected" : ""} px-visual-node-${index % 5}`}
+                              onClick={() => setSelectedExploreId(entity.id)}
+                            >
+                              <span className="px-visual-node-icon">
+                                {state.explore === "area" ? (
+                                  <Building2 size={17} />
+                                ) : (
+                                  <ContactRound size={17} />
+                                )}
+                              </span>
+                              <strong>{entity.title}</strong>
+                              <small>{entity.subtitle}</small>
+                            </button>
                           ))}
-                        </select>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="px-entities">
-                        {entities.slice(0, catalogLimit).map((entity) => (
+                        </div>
+                      )}
+                    </div>
+                    <aside className="px-context-panel" aria-live="polite">
+                      {selectedEntity ? (
+                        <>
+                          <p className="px-kicker">
+                            {state.explore === "chain"
+                              ? "MACROPROCESSO SELECIONADO"
+                              : state.explore === "process"
+                                ? "PROCESSO SELECIONADO"
+                                : state.explore === "area"
+                                  ? "ÁREA SELECIONADA"
+                                  : "CARGO SELECIONADO"}
+                          </p>
+                          <h3>
+                            {"title" in selectedEntity ? selectedEntity.title : selectedEntity.name}
+                          </h3>
+                          <p className="px-context-description">
+                            {contextDescription ||
+                              "Explore os vínculos e documentos vigentes relacionados."}
+                          </p>
+                          {selectedRelations.length ? (
+                            <div className="px-context-outputs">
+                              <div>
+                                <strong>{selectedRelationsLabel}</strong>
+                                <small>{selectedRelations.length}</small>
+                              </div>
+                              {selectedRelations.map((output) => (
+                                <button
+                                  type="button"
+                                  key={output.id}
+                                  onClick={() => setSelectedExploreId(output.id)}
+                                >
+                                  {output.name}
+                                  <ArrowRight size={13} />
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                          <div className="px-context-docs-head">
+                            <strong>Documentos neste contexto</strong>
+                            <small>{selectedDocuments.length} relacionados</small>
+                          </div>
+                          <div className="px-context-docs">
+                            {selectedDocuments.slice(0, 3).map((document) => (
+                              <article key={document.id}>
+                                <span>
+                                  <FileText size={15} />
+                                </span>
+                                <div>
+                                  <button type="button" onClick={() => onOpen(document)}>
+                                    {document.title}
+                                  </button>
+                                  <small>
+                                    {document.code || document.type} ·{" "}
+                                    {document.area || document.moduleLabel}
+                                  </small>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="px-save"
+                                  aria-label={`${favorites.includes(document.id) ? "Remover dos favoritos" : "Salvar nos favoritos"}: ${document.title}`}
+                                  aria-pressed={favorites.includes(document.id)}
+                                  onClick={() => onFavorite(document.id)}
+                                >
+                                  <Bookmark
+                                    size={15}
+                                    fill={favorites.includes(document.id) ? "currentColor" : "none"}
+                                  />
+                                </button>
+                              </article>
+                            ))}
+                            {!selectedDocuments.length ? (
+                              <p className="px-context-empty">
+                                Ainda não há documentos vigentes vinculados a esta seleção.
+                              </p>
+                            ) : null}
+                          </div>
                           <button
                             type="button"
-                            key={entity.id}
-                            onClick={() => choose(entity.filter, entity.value)}
+                            className="px-context-open"
+                            onClick={() => choose(selectedFilterKey, selectedValue)}
                           >
-                            <span className="px-entity-icon">
-                              {state.explore === "area" ? (
-                                <Building2 size={20} />
-                              ) : state.explore === "process" ? (
-                                <Workflow size={20} />
-                              ) : (
-                                <ContactRound size={20} />
-                              )}
-                            </span>
-                            <strong>{entity.title}</strong>
-                            <span>{entity.subtitle}</span>
-                            <small>
-                              {count({ [entity.filter]: entity.value })} documentos vinculados →
-                            </small>
+                            Ver {selectedDocuments.length === 1 ? "documento" : "documentos"}{" "}
+                            relacionados <ArrowRight size={14} />
                           </button>
-                        ))}
-                      </div>
-                      {!entities.length ? (
-                        <p className="px-empty">Nenhum cadastro disponível nesta organização.</p>
-                      ) : null}
-                      {entities.length > catalogLimit ? (
-                        <button
-                          type="button"
-                          className="px-more"
-                          onClick={() => setCatalogLimit((n) => n + 12)}
-                        >
-                          Mostrar mais cadastros
-                        </button>
-                      ) : null}
-                    </>
-                  )}
+                        </>
+                      ) : (
+                        <p className="px-context-empty">
+                          Nenhum cadastro disponível nesta organização.
+                        </p>
+                      )}
+                    </aside>
+                  </div>
                 </section>
               ) : null}
               {!exploring ? (
