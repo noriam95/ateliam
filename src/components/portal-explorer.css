@@ -2866,6 +2866,47 @@ html[data-theme="dark"] .portal-explorer {
   .portal-explorer .px-document-icon { height: 38px; }
 }
 
+/* Organization marks sit directly on the hero; keep transparent white wordmarks visible. */
+.portal-explorer .px-hero-brand {
+  flex-basis: clamp(180px, 24vw, 330px);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.portal-explorer .px-hero-logo-plaque {
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.portal-explorer .px-hero-logo-plaque .portal-organization-logo {
+  width: auto;
+  max-width: min(100%, 330px);
+  height: auto;
+  max-height: 112px;
+  filter: drop-shadow(0 2px 12px #11152a55);
+}
+.portal-explorer .px-hero-logo-plaque .portal-organization-logo-fallback {
+  min-height: 0;
+  padding: 0;
+  color: #fff;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 760;
+  text-shadow: 0 2px 12px #11152a55;
+}
+.portal-explorer .px-hero-brand > span { display: none; }
+@media (max-width: 480px) {
+  .portal-explorer .px-hero-brand { display: none; }
+}
+
 /* Value chain: a fresh cartographic canvas with color-coded lanes and no card grid borders. */
 .portal-explorer .px-chain {
   --map-ink: #1b2438;
