@@ -383,6 +383,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 13px;
+  margin-bottom: 28px;
 }
 .px-route {
   --route-color: var(--chart-teal);
@@ -407,7 +408,6 @@
     box-shadow 160ms;
 }
 .px-route:hover {
-  transform: translateY(-3px);
   border-color: color-mix(in oklab, var(--route-color) 45%, var(--border));
   box-shadow: 0 12px 28px color-mix(in oklab, var(--route-color) 12%, transparent);
 }
@@ -736,7 +736,7 @@
 .px-entities {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 .px-entities > button {
   display: flex;
