@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   Bookmark,
   Building2,
@@ -13,6 +20,8 @@ import {
   LoaderCircle,
   ArrowRight,
   Layers3,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import {
   filterAndSortPortalDocuments,
@@ -273,20 +282,13 @@ export function DocumentPortalView({
   ) {
     const selected = state.filters[key] || "";
     return (
-      <label>
-        {title}
-        <select value={selected} onChange={(e) => filter(key, e.target.value)}>
-          <option value="">Todos</option>
-          {selected && !options.some((o) => o.value === selected) ? (
-            <option value={selected}>{label(key, selected)}</option>
-          ) : null}
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <PortalSearchFilter
+        label={title}
+        value={selected}
+        selectedLabel={selected ? label(key, selected) : ""}
+        options={options}
+        onChange={(value) => filter(key, value)}
+      />
     );
   }
   return (
@@ -876,6 +878,133 @@ export function DocumentPortalView({
           <span>Documentos vigentes da organização ativa</span>
         </footer>
       </div>
+    </div>
+  );
+}
+
+function PortalSearchFilter({
+  label,
+  value,
+  selectedLabel,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  selectedLabel: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputId = useId();
+  const listId = `${inputId}-options`;
+  const filtered = useMemo(() => {
+    const term = normalizePortalText(query.trim());
+    return options
+      .filter((option) => !term || normalizePortalText(option.label).includes(term))
+      .slice(0, 80);
+  }, [options, query]);
+
+  useEffect(() => setActiveIndex(0), [filtered.length]);
+
+  function choose(optionValue: string) {
+    onChange(optionValue);
+    setQuery("");
+    setOpen(false);
+  }
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      setOpen(false);
+      setQuery("");
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((index) => Math.min(filtered.length, Math.max(0, index + direction)));
+      return;
+    }
+    if (event.key === "Enter" && open) {
+      event.preventDefault();
+      if (activeIndex === 0) choose("");
+      else if (filtered[activeIndex - 1]) choose(filtered[activeIndex - 1].value);
+    }
+  }
+
+  return (
+    <div className="px-filter-combobox">
+      <label className="px-filter-label" htmlFor={inputId}>
+        {label}
+      </label>
+      <div className="px-filter-input-wrap">
+        <Search size={15} aria-hidden="true" />
+        <input
+          id={inputId}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-activedescendant={open ? `${listId}-option-${activeIndex}` : undefined}
+          autoComplete="off"
+          value={open ? query : selectedLabel}
+          placeholder="Todos · digite para pesquisar"
+          onFocus={() => {
+            setQuery("");
+            setOpen(true);
+          }}
+          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          onKeyDown={handleKeyDown}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+        />
+        <ChevronDown size={15} aria-hidden="true" />
+      </div>
+      {open ? (
+        <div id={listId} className="px-filter-options" role="listbox" aria-label={label}>
+          <button
+            id={`${listId}-option-0`}
+            type="button"
+            role="option"
+            aria-selected={!value}
+            className={activeIndex === 0 ? "is-active" : ""}
+            onMouseDown={(event) => event.preventDefault()}
+            onMouseEnter={() => setActiveIndex(0)}
+            onClick={() => choose("")}
+          >
+            <span>Todos</span>
+            {!value ? <Check size={15} /> : null}
+          </button>
+          {filtered.map((option, index) => {
+            const optionIndex = index + 1;
+            const selected = option.value === value;
+            return (
+              <button
+                id={`${listId}-option-${optionIndex}`}
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={activeIndex === optionIndex ? "is-active" : ""}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveIndex(optionIndex)}
+                onClick={() => choose(option.value)}
+              >
+                <span>{option.label}</span>
+                {selected ? <Check size={15} /> : null}
+              </button>
+            );
+          })}
+          {!filtered.length ? (
+            <p className="px-filter-no-options">Nenhum resultado para “{query}”.</p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

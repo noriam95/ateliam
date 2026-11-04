@@ -2907,6 +2907,95 @@ html[data-theme="dark"] .portal-explorer {
   .portal-explorer .px-hero-brand { display: none; }
 }
 
+.portal-explorer .px-filter-combobox {
+  position: relative;
+  min-width: 0;
+}
+.portal-explorer .px-filter-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--px-muted);
+  font-size: 11px;
+}
+.portal-explorer .px-filter-input-wrap {
+  display: flex;
+  min-width: 0;
+  height: 43px;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 11px;
+  border-radius: 9px;
+  background: var(--px-surface);
+  box-shadow: 0 2px 8px #292a490c;
+  color: #777be9;
+}
+.portal-explorer .px-filter-input-wrap:focus-within {
+  box-shadow: 0 0 0 2px #777be955, 0 4px 12px #292a4912;
+}
+.portal-explorer .px-filter-input-wrap input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--px-ink);
+  font-size: 12px;
+}
+.portal-explorer .px-filter-input-wrap input::placeholder {
+  color: var(--px-muted);
+  opacity: .82;
+}
+.portal-explorer .px-filter-input-wrap > svg:last-child {
+  flex: 0 0 auto;
+  color: var(--px-muted);
+}
+.portal-explorer .px-filter-options {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--px-surface);
+  box-shadow: 0 14px 34px #20243a2b, 0 2px 6px #20243a14;
+}
+.portal-explorer .px-filter-options button {
+  display: flex;
+  width: 100%;
+  min-height: 35px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--px-ink);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+.portal-explorer .px-filter-options button:hover,
+.portal-explorer .px-filter-options button.is-active {
+  background: var(--px-accent-soft);
+}
+.portal-explorer .px-filter-options button[aria-selected="true"] {
+  color: var(--px-accent);
+  font-weight: 700;
+}
+.portal-explorer .px-filter-no-options {
+  padding: 9px;
+  color: var(--px-muted);
+  font-size: 12px;
+}
+html[data-theme="dark"] .portal-explorer .px-filter-options {
+  box-shadow: 0 14px 34px #0008, 0 2px 6px #0004;
+}
+
 /* Value chain: a fresh cartographic canvas with color-coded lanes and no card grid borders. */
 .portal-explorer .px-chain {
   --map-ink: #1b2438;
