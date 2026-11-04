@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 export type PortalChain = {
   id: string;
   name: string;
@@ -44,13 +42,9 @@ export function PortalValueChain({
             .join(" ")}
         >
           <strong>{chain.name}</strong>
-          {compact ? (
-            <small>{count(chain.id)} documentos</small>
-          ) : (
-            <small>
-              {count(chain.id)} {count(chain.id) === 1 ? "documento" : "documentos"} →
-            </small>
-          )}
+          <small>
+            {count(chain.id)} docs{compact ? "" : " →"}
+          </small>
         </button>
       ))
     ) : (
@@ -64,7 +58,6 @@ export function PortalValueChain({
   const selectedOutputSources = relations
     .filter((relation) => relation.output_id === selectedId)
     .map((relation) => relation.chain_id);
-  const [supportExpanded, setSupportExpanded] = useState(false);
   return (
     <div className="px-chain" aria-label="Cadeia de valor da organização">
       <div className="px-chain-org">
@@ -98,35 +91,9 @@ export function PortalValueChain({
       <section className="px-chain-support">
         <h3>
           <span>SUPORTE</span>
-          {support.length > 6 ? (
-            <button
-              type="button"
-              className="px-support-toggle"
-              aria-expanded={supportExpanded}
-              onClick={() => setSupportExpanded((expanded) => !expanded)}
-            >
-              {supportExpanded ? "Recolher" : `Ver mais ${support.length - 6} macroprocessos`}
-            </button>
-          ) : (
-            <small>Capacidades que conectam a operação</small>
-          )}
+          <small>{support.length} macroprocessos</small>
         </h3>
-        <div className="px-chain-nodes px-support-initial">{nodes("support", true, 6)}</div>
-        <div className={`px-chain-nodes px-support-extra${supportExpanded ? " is-expanded" : ""}`}>
-          {support.slice(6).map((chain) => (
-            <button
-              key={chain.id}
-              type="button"
-              onClick={() => onSelect(chain.id)}
-              title={chain.description || undefined}
-              aria-pressed={selectedId === chain.id}
-              className={selectedId === chain.id ? "is-selected" : undefined}
-            >
-              <strong>{chain.name}</strong>
-              <small>{count(chain.id)} documentos</small>
-            </button>
-          ))}
-        </div>
+        <div className="px-chain-nodes px-support-initial">{nodes("support", true)}</div>
       </section>
     </div>
   );

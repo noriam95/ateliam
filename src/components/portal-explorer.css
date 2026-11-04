@@ -1576,6 +1576,7 @@
     display: none;
   }
 }
+
 @media (max-width: 390px) {
   .px-route-grid {
     grid-template-columns: 1fr;
@@ -2197,5 +2198,112 @@
   .px-visual-field > button {
     min-height: 82px;
     padding: 9px;
+  }
+}
+
+/* Compact chain overview: keep every active category and output visible together. */
+.px-chain-management .px-chain-nodes {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+.px-chain-main {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+}
+.px-chain-main > .px-chain-nodes {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+.px-chain-nodes button,
+.px-chain-outputs button {
+  min-height: 42px;
+  gap: 3px;
+  padding: 6px 7px;
+  border-radius: 4px;
+}
+.px-chain button strong {
+  font-size: 9px;
+  line-height: 1.2;
+}
+.px-chain button small {
+  font-size: 8px;
+  line-height: 1.1;
+}
+.px-chain-outputs {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  padding: 7px 0 0;
+  border-top: 1px solid var(--border);
+  border-left: 0;
+}
+.px-chain-outputs h4 {
+  margin: 7px 0 0;
+  font-size: 9px;
+}
+.px-chain-output-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  max-height: none;
+  overflow: visible;
+}
+.px-chain-outputs button {
+  min-height: 34px;
+  margin: 0;
+}
+.px-chain-outputs button strong {
+  font-size: 8px;
+}
+.px-chain-outputs button small {
+  font-size: 7px;
+}
+.px-chain-support .px-chain-nodes {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+.px-chain-support .px-chain-nodes button {
+  min-height: 40px;
+}
+.px-chain-management h3,
+.px-chain-primary h3,
+.px-chain-support h3 {
+  margin-bottom: 5px;
+  padding-block: 5px;
+}
+.px-chain-bridge {
+  height: 20px;
+}
+@media (max-width: 1050px) {
+  .px-chain-management .px-chain-nodes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .px-chain-main > .px-chain-nodes {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .px-chain-output-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .px-chain-support .px-chain-nodes {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .px-chain-management .px-chain-nodes,
+  .px-chain-main > .px-chain-nodes,
+  .px-chain-support .px-chain-nodes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .px-chain-output-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .px-chain-outputs {
+    grid-template-columns: 1fr;
+  }
+  .px-chain-outputs h4 {
+    margin-top: 0;
+  }
+  .px-chain button strong {
+    font-size: 9px;
   }
 }
