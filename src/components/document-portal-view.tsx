@@ -235,7 +235,12 @@ export function DocumentPortalView({
       <div className="px-main">
         {header}
         <div className="px-masthead">
-          <button type="button" className="px-brand" onClick={goHome} aria-label="Ir para o início do portal">
+          <button
+            type="button"
+            className="px-brand"
+            onClick={goHome}
+            aria-label="Ir para o início do portal"
+          >
             <PortalOrganizationLogo name={organization.name} logo={organization.logo_data_url} />
             <span>Portal de documentos</span>
           </button>
@@ -263,26 +268,47 @@ export function DocumentPortalView({
           {exploring ? (
             <section className="px-hero" aria-label="Pesquisa no portal">
               <div className="px-hero-copy">
-                <span className="px-hero-eyebrow"><Sparkles size={14} /> CONHECIMENTO EM MOVIMENTO</span>
-                <h1>Encontre o caminho.<br /><em>Faça acontecer.</em></h1>
-                <p>Documentos, processos e orientações da sua organização — conectados em um só lugar.</p>
+                <span className="px-hero-eyebrow">
+                  <Sparkles size={14} /> CONHECIMENTO EM MOVIMENTO
+                </span>
+                <h1>
+                  Encontre o caminho.
+                  <br />
+                  <em>Faça acontecer.</em>
+                </h1>
+                <p>
+                  Documentos, processos e orientações da sua organização — conectados em um só
+                  lugar.
+                </p>
               </div>
-              <div className="px-hero-art" aria-hidden="true">
-                <span className="px-art-orbit px-orbit-one" />
-                <span className="px-art-orbit px-orbit-two" />
-                <span className="px-art-core"><FileText size={27} /></span>
-                <span className="px-art-node px-node-one"><Workflow size={17} /></span>
-                <span className="px-art-node px-node-two"><Building2 size={17} /></span>
-                <span className="px-art-node px-node-three"><ContactRound size={17} /></span>
+              <div className="px-hero-brand">
+                <div className="px-hero-logo-plaque">
+                  <PortalOrganizationLogo
+                    name={organization.name}
+                    logo={organization.logo_data_url}
+                  />
+                </div>
+                <span>ORGANIZAÇÃO</span>
               </div>
             </section>
           ) : (
             <div className="px-page-heading">
               <div>
-                <p className="px-kicker">{state.view === "saved" ? "SUA COLEÇÃO" : "ACERVO ORGANIZACIONAL"}</p>
-                <h1>{state.view === "saved" ? "Seus favoritos" : state.query ? "Resultados da pesquisa" : "Todos os documentos"}</h1>
+                <p className="px-kicker">
+                  {state.view === "saved" ? "SUA COLEÇÃO" : "ACERVO ORGANIZACIONAL"}
+                </p>
+                <h1>
+                  {state.view === "saved"
+                    ? "Seus favoritos"
+                    : state.query
+                      ? "Resultados da pesquisa"
+                      : "Todos os documentos"}
+                </h1>
               </div>
-              <span className="px-total-pill"><FileText size={15} /> {rows.length} {rows.length === 1 ? "documento" : "documentos"}</span>
+              <span className="px-total-pill">
+                <FileText size={15} /> {rows.length}{" "}
+                {rows.length === 1 ? "documento" : "documentos"}
+              </span>
             </div>
           )}
           <form
@@ -325,10 +351,13 @@ export function DocumentPortalView({
                 <X size={18} />
               </button>
             ) : null}
-            <button type="submit"><Search size={16} /> Buscar</button>
+            <button type="submit">
+              <Search size={16} /> Buscar
+            </button>
           </form>
           <p className="px-search-hint">
-            Pesquise em tudo: títulos, códigos, conteúdo, áreas, processos, cargos e cadeia de valor.
+            Pesquise em tudo: títulos, códigos, conteúdo, áreas, processos, cargos e cadeia de
+            valor.
           </p>
           {loading ? (
             <div className="px-state" role="status">
@@ -355,27 +384,64 @@ export function DocumentPortalView({
                     </div>
                   </div>
                   <div className="px-route-grid" aria-label="Explorar documentos por">
-                      {(
-                        [
-                          { id: "chain", title: "Cadeia de valor", subtitle: "Siga as conexões do negócio", Icon: Workflow, count: structure.valueChains.filter((c) => c.category !== "output").length, tone: "green" },
-                          { id: "area", title: "Área", subtitle: "Encontre pelo seu time", Icon: Building2, count: areas.length, tone: "blue" },
-                          { id: "process", title: "Processo", subtitle: "Vá direto à atividade", Icon: Layers3, count: structure.processes.length, tone: "gold" },
-                          { id: "role", title: "Cargo", subtitle: "Consulte por responsabilidade", Icon: ContactRound, count: roles.length, tone: "purple" },
-                        ] as const
-                      ).map((m) => (
-                        <button
-                          type="button"
-                          key={m.id}
-                          className={`px-route px-route-${m.tone}${state.explore === m.id ? " is-selected" : ""}`}
-                          aria-pressed={state.explore === m.id}
-                          onClick={() => change({ explore: m.id })}
-                        >
-                          <span className="px-route-icon"><m.Icon size={21} /></span>
-                          <span className="px-route-copy"><strong>{m.title}</strong><small>{m.subtitle}</small></span>
-                          <span className="px-route-meta"><b>{m.count}</b><small>{m.count === 1 ? "opção" : "opções"}</small></span>
-                          <ArrowRight className="px-route-arrow" size={17} />
-                        </button>
-                      ))}
+                    {(
+                      [
+                        {
+                          id: "chain",
+                          title: "Cadeia de valor",
+                          subtitle: "Siga as conexões do negócio",
+                          Icon: Workflow,
+                          count: structure.valueChains.filter((c) => c.category !== "output")
+                            .length,
+                          tone: "green",
+                        },
+                        {
+                          id: "area",
+                          title: "Área",
+                          subtitle: "Encontre pelo seu time",
+                          Icon: Building2,
+                          count: areas.length,
+                          tone: "blue",
+                        },
+                        {
+                          id: "process",
+                          title: "Processo",
+                          subtitle: "Vá direto à atividade",
+                          Icon: Layers3,
+                          count: structure.processes.length,
+                          tone: "gold",
+                        },
+                        {
+                          id: "role",
+                          title: "Cargo",
+                          subtitle: "Consulte por responsabilidade",
+                          Icon: ContactRound,
+                          count: roles.length,
+                          tone: "purple",
+                        },
+                      ] as const
+                    ).map((m) => (
+                      <button
+                        type="button"
+                        key={m.id}
+                        className={`px-route px-route-${m.tone}${state.explore === m.id ? " is-selected" : ""}`}
+                        aria-pressed={state.explore === m.id}
+                        onClick={() => change({ explore: m.id })}
+                      >
+                        <span className="px-route-icon">
+                          <m.Icon size={21} />
+                        </span>
+                        <span className="px-route-copy">
+                          <strong>{m.title}</strong>
+                          <small>{m.subtitle}</small>
+                        </span>
+                        <span className="px-route-meta">
+                          <b>{m.count}</b>
+                          <small>{m.count === 1 ? "opção" : "opções"}</small>
+                        </span>
+                        <ArrowRight className="px-route-arrow" size={17} />
+                      </button>
+                    ))}
                   </div>
                   {state.explore === "chain" ? (
                     <>
@@ -447,193 +513,206 @@ export function DocumentPortalView({
                   )}
                 </section>
               ) : null}
-              {!exploring ? <section className="px-results" aria-label="Resultados da consulta">
-                <div className="px-section-head px-results-heading">
-                  <div>
-                    <h2>
-                      {state.view === "saved"
-                        ? "Documentos salvos"
-                        : state.query.trim()
-                          ? "Resultados da pesquisa"
-                          : active
-                            ? "Documentos relacionados"
+              {!exploring ? (
+                <section className="px-results" aria-label="Resultados da consulta">
+                  <div className="px-section-head px-results-heading">
+                    <div>
+                      <h2>
+                        {state.view === "saved"
+                          ? "Documentos salvos"
+                          : state.query.trim()
+                            ? "Resultados da pesquisa"
+                            : active
+                              ? "Documentos relacionados"
                               : "Biblioteca completa"}
-                    </h2>
-                    <p role="status">
-                      {rows.length}{" "}
-                      {rows.length === 1 ? "documento vigente" : "documentos vigentes"}
-                    </p>
+                      </h2>
+                      <p role="status">
+                        {rows.length}{" "}
+                        {rows.length === 1 ? "documento vigente" : "documentos vigentes"}
+                      </p>
+                    </div>
+                    {active ? (
+                      <button type="button" className="px-link" onClick={clear}>
+                        Limpar filtros
+                      </button>
+                    ) : null}
                   </div>
                   {active ? (
-                    <button type="button" className="px-link" onClick={clear}>
-                      Limpar filtros
-                    </button>
-                  ) : null}
-                </div>
-                {active ? (
-                  <div className="px-chips">
-                    {state.query ? (
-                      <button type="button" onClick={() => change({ query: "" })}>
-                        Pesquisa: {state.query}
-                        <X size={13} />
-                      </button>
-                    ) : null}
-                    {Object.entries(state.filters)
-                      .filter(([, v]) => v)
-                      .map(([key, value]) => (
-                        <button
-                          type="button"
-                          key={key}
-                          aria-label={`Remover filtro ${filterLabels[key as keyof PortalDocumentFilters]}`}
-                          onClick={() => filter(key as keyof PortalDocumentFilters, "")}
-                        >
-                          {filterLabels[key as keyof PortalDocumentFilters]}:{" "}
-                          {label(key as keyof PortalDocumentFilters, value!)}
+                    <div className="px-chips">
+                      {state.query ? (
+                        <button type="button" onClick={() => change({ query: "" })}>
+                          Pesquisa: {state.query}
                           <X size={13} />
                         </button>
-                      ))}
-                  </div>
-                ) : null}
-                {
-                  <div className="px-filters">
-                    {select(
-                      "area",
-                      "Área",
-                      areas.map((value) => ({ value, label: value })),
-                    )}
-                    {select(
-                      "processId",
-                      "Processo",
-                      structure.processes.map((p) => ({ value: p.id, label: p.name })),
-                    )}
-                    {select(
-                      "role",
-                      "Cargo",
-                      roles.map((value) => ({ value, label: value })),
-                    )}
-                    {select(
-                      "type",
-                      "Modalidade",
-                      types.map((value) => ({ value, label: value })),
-                    )}
-                    <label>
-                      Ordenar por
-                      <select
-                        value={state.sort}
-                        onChange={(e) => change({ sort: e.target.value as PortalDocumentSort })}
-                      >
-                        <option value="relevance">Relevância</option>
-                        <option value="alphabetical">Título: A–Z</option>
-                        <option value="updated">Última atualização</option>
-                        <option value="effective">Vigência</option>
-                        <option value="recent">Mais recentes</option>
-                        <option value="popular">Mais acessados por mim</option>
-                      </select>
-                    </label>
-                  </div>
-                }
-                {connections.length ? (
-                  <div className="px-connections" aria-label="Cadastros encontrados">
-                    {connections.map((e) => (
-                      <button
-                        type="button"
-                        key={e.key + e.value}
-                        onClick={() => choose(e.key, e.value)}
-                      >
-                        <small>{filterLabels[e.key]}</small>
-                        {e.title} →
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="px-documents">
-                  {rows.slice((page - 1) * pageSize, page * pageSize).map((d) => (
-                    <article className="px-document" key={d.id} data-module={d.module}>
-                      <span className="px-document-icon">
-                        <FileText size={21} aria-hidden="true" />
-                      </span>
-                      <div>
+                      ) : null}
+                      {Object.entries(state.filters)
+                        .filter(([, v]) => v)
+                        .map(([key, value]) => (
+                          <button
+                            type="button"
+                            key={key}
+                            aria-label={`Remover filtro ${filterLabels[key as keyof PortalDocumentFilters]}`}
+                            onClick={() => filter(key as keyof PortalDocumentFilters, "")}
+                          >
+                            {filterLabels[key as keyof PortalDocumentFilters]}:{" "}
+                            {label(key as keyof PortalDocumentFilters, value!)}
+                            <X size={13} />
+                          </button>
+                        ))}
+                    </div>
+                  ) : null}
+                  {
+                    <div className="px-filters">
+                      {select(
+                        "area",
+                        "Área",
+                        areas.map((value) => ({ value, label: value })),
+                      )}
+                      {select(
+                        "processId",
+                        "Processo",
+                        structure.processes.map((p) => ({ value: p.id, label: p.name })),
+                      )}
+                      {select(
+                        "role",
+                        "Cargo",
+                        roles.map((value) => ({ value, label: value })),
+                      )}
+                      {select(
+                        "type",
+                        "Modalidade",
+                        types.map((value) => ({ value, label: value })),
+                      )}
+                      <label>
+                        Ordenar por
+                        <select
+                          value={state.sort}
+                          onChange={(e) => change({ sort: e.target.value as PortalDocumentSort })}
+                        >
+                          <option value="relevance">Relevância</option>
+                          <option value="alphabetical">Título: A–Z</option>
+                          <option value="updated">Última atualização</option>
+                          <option value="effective">Vigência</option>
+                          <option value="recent">Mais recentes</option>
+                          <option value="popular">Mais acessados por mim</option>
+                        </select>
+                      </label>
+                    </div>
+                  }
+                  {connections.length ? (
+                    <div className="px-connections" aria-label="Cadastros encontrados">
+                      {connections.map((e) => (
                         <button
                           type="button"
-                          className="px-document-title"
-                          onClick={() => onOpen(d)}
+                          key={e.key + e.value}
+                          onClick={() => choose(e.key, e.value)}
                         >
-                          {d.title}
-                          <ArrowUpRight size={14} aria-hidden="true" />
+                          <small>{filterLabels[e.key]}</small>
+                          {e.title} →
                         </button>
-                        <p>
-                          {d.code || d.type} · {d.area || "Área não informada"} · Rev. {d.revision}
-                        </p>
-                        <p>{d.process || d.macroprocess || d.description}</p>
-                        {state.query.trim() ? (
-                          <small>Encontrado em: {matchLabels(d) || "Palavras-chave"}</small>
-                        ) : null}
-                      </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="px-documents">
+                    {rows.slice((page - 1) * pageSize, page * pageSize).map((d) => (
+                      <article className="px-document" key={d.id} data-module={d.module}>
+                        <span className="px-document-icon">
+                          <FileText size={21} aria-hidden="true" />
+                        </span>
+                        <div>
+                          <button
+                            type="button"
+                            className="px-document-title"
+                            onClick={() => onOpen(d)}
+                          >
+                            {d.title}
+                            <ArrowUpRight size={14} aria-hidden="true" />
+                          </button>
+                          <p>
+                            {d.code || d.type} · {d.area || "Área não informada"} · Rev.{" "}
+                            {d.revision}
+                          </p>
+                          <p>{d.process || d.macroprocess || d.description}</p>
+                          {state.query.trim() ? (
+                            <small>Encontrado em: {matchLabels(d) || "Palavras-chave"}</small>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          className="px-save"
+                          aria-pressed={favorites.includes(d.id)}
+                          aria-label={`${favorites.includes(d.id) ? "Remover dos salvos" : "Salvar"}: ${d.title}`}
+                          onClick={() => onFavorite(d.id)}
+                        >
+                          <Bookmark
+                            size={18}
+                            fill={favorites.includes(d.id) ? "currentColor" : "none"}
+                          />
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                  {!rows.length ? (
+                    <div className="px-state">
+                      <h3>
+                        {state.view === "saved" && !active
+                          ? "Você ainda não salvou documentos"
+                          : active
+                            ? "Nenhum documento encontrado"
+                            : "Nenhum documento vigente disponível"}
+                      </h3>
+                      <p>
+                        {active
+                          ? "Tente outro termo ou remova os filtros."
+                          : state.view === "saved"
+                            ? "Use o marcador ao lado de um documento para encontrá-lo aqui."
+                            : "Documentos publicados e vigentes desta organização aparecerão aqui."}
+                      </p>
+                      {active ? (
+                        <button type="button" onClick={clear}>
+                          Limpar pesquisa e filtros
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {rows.length > pageSize ? (
+                    <nav className="px-pagination" aria-label="Páginas de documentos">
                       <button
                         type="button"
-                        className="px-save"
-                        aria-pressed={favorites.includes(d.id)}
-                        aria-label={`${favorites.includes(d.id) ? "Remover dos salvos" : "Salvar"}: ${d.title}`}
-                        onClick={() => onFavorite(d.id)}
+                        disabled={page === 1}
+                        onClick={() => change({ page: page - 1 })}
                       >
-                        <Bookmark
-                          size={18}
-                          fill={favorites.includes(d.id) ? "currentColor" : "none"}
-                        />
+                        Anterior
                       </button>
-                    </article>
-                  ))}
-                </div>
-                {!rows.length ? (
-                  <div className="px-state">
-                    <h3>
-                      {state.view === "saved" && !active
-                        ? "Você ainda não salvou documentos"
-                        : active
-                          ? "Nenhum documento encontrado"
-                          : "Nenhum documento vigente disponível"}
-                    </h3>
-                    <p>
-                      {active
-                        ? "Tente outro termo ou remova os filtros."
-                        : state.view === "saved"
-                          ? "Use o marcador ao lado de um documento para encontrá-lo aqui."
-                          : "Documentos publicados e vigentes desta organização aparecerão aqui."}
-                    </p>
-                    {active ? (
-                      <button type="button" onClick={clear}>
-                        Limpar pesquisa e filtros
+                      <span>
+                        {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, rows.length)} de{" "}
+                        {rows.length}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={page * pageSize >= rows.length}
+                        onClick={() => change({ page: page + 1 })}
+                      >
+                        Próxima
                       </button>
-                    ) : null}
-                  </div>
-                ) : null}
-                {rows.length > pageSize ? (
-                  <nav className="px-pagination" aria-label="Páginas de documentos">
-                    <button
-                      type="button"
-                      disabled={page === 1}
-                      onClick={() => change({ page: page - 1 })}
-                    >
-                      Anterior
-                    </button>
-                    <span>
-                      {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, rows.length)} de{" "}
-                      {rows.length}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={page * pageSize >= rows.length}
-                      onClick={() => change({ page: page + 1 })}
-                    >
-                      Próxima
-                    </button>
-                  </nav>
-                ) : null}
-              </section> : null}
+                    </nav>
+                  ) : null}
+                </section>
+              ) : null}
               {exploring ? (
                 <div className="px-discovery-footer">
-                  <div><span className="px-discovery-mark"><Library size={19} /></span><p><strong>Prefere ver tudo de uma vez?</strong><small>Navegue pelo acervo completo e use os filtros para refinar.</small></p></div>
-                  <button type="button" onClick={() => change({ view: "library" })}>Abrir todos os documentos <ArrowRight size={16} /></button>
+                  <div>
+                    <span className="px-discovery-mark">
+                      <Library size={19} />
+                    </span>
+                    <p>
+                      <strong>Prefere ver tudo de uma vez?</strong>
+                      <small>Navegue pelo acervo completo e use os filtros para refinar.</small>
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => change({ view: "library" })}>
+                    Abrir todos os documentos <ArrowRight size={16} />
+                  </button>
                 </div>
               ) : null}
             </>
