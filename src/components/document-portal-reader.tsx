@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, BookOpen, Building2, ChevronRight, ExternalLink, FileText } from "lucide-react";
-import { BFFlowMark } from "@/components/bf-flow-mark";
+import { PortalOrganizationLogo } from "./portal-organization-logo";
 import { UserProfileMenu } from "@/components/user-profile-menu";
 import { WorkspaceLauncher } from "@/components/workspace-navigation";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { getMe, listAccessibleOrganizations, listPortalDocuments } from "@/lib/c
 import { relatedPortalDocuments, type PortalDocument } from "@/lib/document-portal";
 import { visibleModulesFor } from "@/lib/module-visibility";
 import "./document-portal.css";
+import "./portal-explorer.css";
 
 function formatReaderDate(value: string) {
   if (!value) return "Não informada";
@@ -52,11 +53,17 @@ function rememberPortalAccess(userId: string, organizationId: string, documentId
 export function DocumentPortalReader({
   documentId,
   requestedOrganization,
+  returnTo,
 }: {
   documentId: string;
   requestedOrganization?: string;
+  returnTo?: string;
 }) {
   const navigate = useNavigate();
+  const backToResults = () =>
+    returnTo
+      ? navigate({ href: returnTo })
+      : navigate({ to: "/portal", search: { organization: organizationId } });
   const getUser = useServerFn(getMe);
   const getOrganizations = useServerFn(listAccessibleOrganizations);
   const getDocuments = useServerFn(listPortalDocuments);
@@ -137,7 +144,10 @@ export function DocumentPortalReader({
           className="document-portal-home"
           aria-label="Ir para a página inicial"
         >
-          <BFFlowMark className="h-8" />
+          <PortalOrganizationLogo
+            name={organizationName}
+            logo={organizations.data?.find((item) => item.id === organizationId)?.logo_data_url}
+          />
         </button>
         <div className="flex-1" />
         {!!organizations.data?.length && (
@@ -197,14 +207,14 @@ export function DocumentPortalReader({
         <main className="document-portal-reader-state" role="alert">
           <strong>Documento indisponível no Portal</strong>
           <span>O item pode não estar vigente ou não pertencer à organização selecionada.</span>
-          <button type="button" onClick={() => void navigate({ to: "/portal" })}>
+          <button type="button" onClick={() => void backToResults()}>
             Voltar ao Portal
           </button>
         </main>
       ) : (
         <main className="document-portal-reader-content">
           <nav className="document-portal-breadcrumb" aria-label="Caminho do documento">
-            <button type="button" onClick={() => void navigate({ to: "/portal" })}>
+            <button type="button" onClick={() => void backToResults()}>
               Portal
             </button>
             {document.area ? (
@@ -212,7 +222,16 @@ export function DocumentPortalReader({
                 <ChevronRight size={13} aria-hidden="true" />
                 <button
                   type="button"
-                  onClick={() => void navigate({ to: "/portal", search: { area: document.area } })}
+                  onClick={() =>
+                    void navigate({
+                      to: "/portal",
+                      search: {
+                        area: document.area,
+                        organization: organizationId,
+                        view: "library",
+                      },
+                    })
+                  }
                 >
                   {document.area}
                 </button>
@@ -224,7 +243,15 @@ export function DocumentPortalReader({
                 <button
                   type="button"
                   onClick={() =>
-                    void navigate({ to: "/portal", search: { process: document.process } })
+                    void navigate({
+                      to: "/portal",
+                      search: {
+                        processId: document.processId || undefined,
+                        process: document.processId ? undefined : document.process,
+                        organization: organizationId,
+                        view: "library",
+                      },
+                    })
                   }
                 >
                   {document.process}
@@ -236,7 +263,7 @@ export function DocumentPortalReader({
           </nav>
 
           <section className="document-portal-reader-titlebar">
-            <button type="button" onClick={() => void navigate({ to: "/portal" })}>
+            <button type="button" onClick={() => void backToResults()}>
               <ArrowLeft size={16} aria-hidden="true" /> Voltar
             </button>
             <div>
@@ -256,6 +283,42 @@ export function DocumentPortalReader({
                 <h2>Informações</h2>
               </div>
               <dl>
+                {(document.roles ?? []).map((role) => (
+                  <div key={role}>
+                    <dt>Cargo</dt>
+                    <dd>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void navigate({
+                            to: "/portal",
+                            search: { organization: organizationId, role, view: "library" },
+                          })
+                        }
+                      >
+                        {role} →
+                      </button>
+                    </dd>
+                  </div>
+                ))}
+                {(document.chainIds ?? []).map((chain, index) => (
+                  <div key={chain}>
+                    <dt>Cadeia de valor</dt>
+                    <dd>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void navigate({
+                            to: "/portal",
+                            search: { organization: organizationId, chain, view: "library" },
+                          })
+                        }
+                      >
+                        {document.chainNames?.[index] || "Consultar documentos"} →
+                      </button>
+                    </dd>
+                  </div>
+                ))}
                 <div>
                   <dt>Tipo</dt>
                   <dd>{document.type}</dd>
@@ -328,7 +391,7 @@ export function DocumentPortalReader({
                         void navigate({
                           to: "/portal/$documentId",
                           params: { documentId: item.id },
-                          search: { organization: organizationId },
+                          search: { organization: organizationId, returnTo },
                         })
                       }
                     >

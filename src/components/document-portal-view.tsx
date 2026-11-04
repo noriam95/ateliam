@@ -1,0 +1,617 @@
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Bookmark,
+  Building2,
+  Compass,
+  FileText,
+  Library,
+  Search,
+  Workflow,
+  X,
+  ContactRound,
+  ArrowUpRight,
+  LoaderCircle,
+} from "lucide-react";
+import {
+  filterAndSortPortalDocuments,
+  normalizePortalText,
+  type PortalDocument,
+  type PortalDocumentFilters,
+  type PortalDocumentSort,
+} from "@/lib/document-portal";
+import { PortalOrganizationLogo } from "./portal-organization-logo";
+import { PortalValueChain, type PortalChain } from "./portal-value-chain";
+import "./portal-explorer.css";
+
+export type PortalViewState = {
+  query: string;
+  filters: PortalDocumentFilters;
+  sort: PortalDocumentSort;
+  view: "explore" | "library" | "saved";
+  explore: "chain" | "area" | "process" | "role";
+  page: number;
+};
+export type PortalStructure = {
+  areas: Array<{ id: string; name: string; sigla?: string | null }>;
+  processes: Array<{
+    id: string;
+    name: string;
+    type: string;
+    parent_process_id: string | null;
+    value_chain_id: string | null;
+    description?: string | null;
+  }>;
+  positions: Array<{ id: string; title: string; description: string | null }>;
+  valueChains: PortalChain[];
+};
+type Props = {
+  organization: { name: string; logo_data_url?: string | null };
+  documents: PortalDocument[];
+  structure: PortalStructure;
+  state: PortalViewState;
+  onChange: (state: PortalViewState) => void;
+  favorites: string[];
+  accessCounts: Record<string, number>;
+  onFavorite: (id: string) => void;
+  onOpen: (document: PortalDocument) => void;
+  loading: boolean;
+  error?: string;
+  onRetry: () => void;
+  header: ReactNode;
+};
+const filterLabels: Record<keyof PortalDocumentFilters, string> = {
+  area: "Área",
+  process: "Processo",
+  processId: "Processo",
+  role: "Cargo",
+  chain: "Cadeia de valor",
+  type: "Modalidade",
+  macroprocess: "Macroprocesso",
+  subprocess: "Subprocesso",
+  responsible: "Responsável",
+  module: "Módulo",
+};
+const pageSize = 12;
+
+export function DocumentPortalView({
+  organization,
+  documents,
+  structure,
+  state,
+  onChange,
+  favorites,
+  accessCounts,
+  onFavorite,
+  onOpen,
+  loading,
+  error,
+  onRetry,
+  header,
+}: Props) {
+  const [draft, setDraft] = useState(state.query);
+  const composing = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => setDraft(state.query), [state.query]);
+  const change = (next: Partial<PortalViewState>) => onChange({ ...state, page: 1, ...next });
+  const filter = (key: keyof PortalDocumentFilters, value: string) =>
+    change({ view: "library", filters: { ...state.filters, [key]: value || undefined } });
+  const choose = (key: keyof PortalDocumentFilters, value: string) =>
+    change({ query: "", view: "library", filters: { [key]: value } });
+  const clear = () => {
+    setDraft("");
+    change({ query: "", filters: {}, sort: "relevance" });
+    input.current?.focus();
+  };
+  const rows = useMemo(
+    () =>
+      filterAndSortPortalDocuments(
+        documents,
+        state.query,
+        state.filters,
+        state.sort,
+        accessCounts,
+      ).filter((d) => state.view !== "saved" || favorites.includes(d.id)),
+    [documents, state, accessCounts, favorites],
+  );
+  const page = Math.min(Math.max(1, state.page), Math.max(1, Math.ceil(rows.length / pageSize)));
+  const active = !!state.query.trim() || Object.values(state.filters).some(Boolean);
+  const exploring = state.view === "explore" && !active;
+  const unique = (values: string[]) =>
+    [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const roles = unique([
+    ...structure.positions.map((p) => p.title),
+    ...documents.flatMap((d) => d.roles ?? []),
+  ]);
+  const areas = unique([...structure.areas.map((a) => a.name), ...documents.map((d) => d.area)]);
+  const types = unique(documents.map((d) => d.type));
+  const count = (filters: PortalDocumentFilters) =>
+    filterAndSortPortalDocuments(documents, "", filters, "relevance").length;
+  const label = (key: keyof PortalDocumentFilters, value: string) =>
+    key === "chain"
+      ? structure.valueChains.find((c) => c.id === value)?.name || value
+      : key === "processId"
+        ? structure.processes.find((p) => p.id === value)?.name || value
+        : value;
+  const entities =
+    state.explore === "area"
+      ? structure.areas.map((a) => ({
+          id: a.id,
+          title: a.name,
+          filter: "area" as const,
+          value: a.name,
+          subtitle: a.sigla || "Área",
+        }))
+      : state.explore === "process"
+        ? structure.processes.map((p) => ({
+            id: p.id,
+            title: p.name,
+            filter: "processId" as const,
+            value: p.id,
+            subtitle:
+              (
+                {
+                  macroprocess: "Macroprocesso",
+                  process: "Processo",
+                  subprocess: "Subprocesso",
+                  atividade: "Atividade",
+                  tarefa: "Tarefa",
+                } as Record<string, string>
+              )[p.type] || "Processo",
+          }))
+        : roles.map((r) => ({
+            id: r,
+            title: r,
+            filter: "role" as const,
+            value: r,
+            subtitle: "Cargo",
+          }));
+  const [catalogLimit, setCatalogLimit] = useState(12);
+  useEffect(() => setCatalogLimit(12), [state.explore, organization.name]);
+  const connections = useMemo(() => {
+    if (!state.query.trim()) return [];
+    const terms = normalizePortalText(state.query).split(" ").filter(Boolean);
+    const all = [
+      ...areas.map((a) => ({ key: "area" as const, value: a, title: a })),
+      ...structure.processes.map((p) => ({
+        key: "processId" as const,
+        value: p.id,
+        title: p.name,
+      })),
+      ...roles.map((r) => ({ key: "role" as const, value: r, title: r })),
+      ...structure.valueChains.map((c) => ({ key: "chain" as const, value: c.id, title: c.name })),
+    ];
+    return all
+      .filter((e) => terms.every((t) => normalizePortalText(e.title).includes(t)))
+      .slice(0, 8);
+  }, [state.query, areas, roles, structure]);
+  function matchLabels(d: PortalDocument) {
+    const terms = normalizePortalText(state.query).split(" ").filter(Boolean);
+    return [
+      ["Título", d.title],
+      ["Código", d.code],
+      ["Área", d.area],
+      ["Processo", [d.macroprocess, d.process, d.subprocess].join(" ")],
+      ["Cargo", (d.roles ?? []).join(" ")],
+      ["Cadeia de valor", (d.chainNames ?? []).join(" ")],
+      ["Responsável", d.responsible],
+      ["Conteúdo", d.searchText],
+    ]
+      .filter(([, value]) => terms.some((t) => normalizePortalText(value).includes(t)))
+      .map(([name]) => name)
+      .join(", ");
+  }
+  function select(
+    key: keyof PortalDocumentFilters,
+    title: string,
+    options: Array<{ value: string; label: string }>,
+  ) {
+    const selected = state.filters[key] || "";
+    return (
+      <label>
+        {title}
+        <select value={selected} onChange={(e) => filter(key, e.target.value)}>
+          <option value="">Todos</option>
+          {selected && !options.some((o) => o.value === selected) ? (
+            <option value={selected}>{label(key, selected)}</option>
+          ) : null}
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  return (
+    <div className="portal-explorer">
+      <aside className="px-rail">
+        <div className="px-org">
+          <PortalOrganizationLogo name={organization.name} logo={organization.logo_data_url} />
+        </div>
+        <div>
+          <p className="px-rail-label">CONHECIMENTO</p>
+          <nav aria-label="Navegação do portal">
+            {(
+              [
+                { id: "explore", title: "Explorar", Icon: Compass },
+                { id: "library", title: "Biblioteca", Icon: Library },
+                { id: "saved", title: "Salvos", Icon: Bookmark },
+              ] as const
+            ).map(({ id, title, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={state.view === id}
+                onClick={() =>
+                  change({ view: id, ...(id === "explore" ? { query: "", filters: {} } : {}) })
+                }
+              >
+                <Icon size={18} />
+                {title}
+              </button>
+            ))}
+          </nav>
+        </div>
+        <div className="px-sign">
+          Conectado por<strong>ateliam.</strong>
+        </div>
+      </aside>
+      <div className="px-main">
+        {header}
+        <main className="px-body">
+          <div className="px-intro">
+            <p className="px-kicker">O conhecimento tem vários caminhos</p>
+            <h1>Qual é o seu ponto de partida?</h1>
+            <p>Um assunto, uma área, um processo ou o seu cargo.</p>
+          </div>
+          <form
+            noValidate
+            className="px-search"
+            role="search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!composing.current) change({ query: draft, view: "library" });
+            }}
+          >
+            <Search size={20} aria-hidden="true" />
+            <input
+              ref={input}
+              value={draft}
+              aria-label="Pesquisar em todo o portal"
+              placeholder="Pesquise em todo o portal"
+              maxLength={160}
+              onCompositionStart={() => (composing.current = true)}
+              onCompositionEnd={(e) => {
+                composing.current = false;
+                change({ query: e.currentTarget.value });
+              }}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                if (!composing.current) change({ query: e.target.value });
+              }}
+            />
+            {draft ? (
+              <button
+                type="button"
+                className="px-clear-search"
+                aria-label="Limpar pesquisa"
+                onClick={() => {
+                  setDraft("");
+                  change({ query: "" });
+                  input.current?.focus();
+                }}
+              >
+                <X size={18} />
+              </button>
+            ) : null}
+            <button type="submit">Buscar</button>
+          </form>
+          <p className="px-search-hint">
+            Pesquise por título, código, conteúdo, área, processo, cargo ou cadeia de valor.
+          </p>
+          {loading ? (
+            <div className="px-state" role="status">
+              <LoaderCircle className="animate-spin" size={20} />
+              Carregando documentos e cadastros…
+            </div>
+          ) : error ? (
+            <div className="px-state" role="alert">
+              <strong>Não foi possível carregar o portal.</strong>
+              <p>{error}</p>
+              <button type="button" onClick={onRetry}>
+                Tentar novamente
+              </button>
+            </div>
+          ) : (
+            <>
+              {exploring ? (
+                <section aria-label="Explorar documentos">
+                  <div className="px-section-head">
+                    <h2>Explore as conexões</h2>
+                    <div className="px-modes" aria-label="Explorar por">
+                      {(
+                        [
+                          { id: "chain", title: "Cadeia de valor" },
+                          { id: "area", title: "Área" },
+                          { id: "process", title: "Processo" },
+                          { id: "role", title: "Cargo" },
+                        ] as const
+                      ).map((m) => (
+                        <button
+                          type="button"
+                          key={m.id}
+                          aria-pressed={state.explore === m.id}
+                          onClick={() => change({ explore: m.id })}
+                        >
+                          {m.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {state.explore === "chain" ? (
+                    <>
+                      <PortalValueChain
+                        chains={structure.valueChains}
+                        organizationName={organization.name}
+                        count={(id) => count({ chain: id })}
+                        onSelect={(id) => choose("chain", id)}
+                      />
+                      <div className="px-role-entry">
+                        <div>
+                          <h3>Prefere começar pelo seu cargo?</h3>
+                          <p>Encontre os documentos ligados às suas atividades.</p>
+                        </div>
+                        <select
+                          aria-label="Explorar por cargo"
+                          value=""
+                          onChange={(e) => choose("role", e.target.value)}
+                          disabled={!roles.length}
+                        >
+                          <option value="">
+                            {roles.length ? "Escolha um cargo" : "Nenhum cargo disponível"}
+                          </option>
+                          {roles.map((role) => (
+                            <option key={role}>{role}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="px-entities">
+                        {entities.slice(0, catalogLimit).map((entity) => (
+                          <button
+                            type="button"
+                            key={entity.id}
+                            onClick={() => choose(entity.filter, entity.value)}
+                          >
+                            <span className="px-entity-icon">
+                              {state.explore === "area" ? (
+                                <Building2 size={20} />
+                              ) : state.explore === "process" ? (
+                                <Workflow size={20} />
+                              ) : (
+                                <ContactRound size={20} />
+                              )}
+                            </span>
+                            <strong>{entity.title}</strong>
+                            <span>{entity.subtitle}</span>
+                            <small>
+                              {count({ [entity.filter]: entity.value })} documentos vinculados →
+                            </small>
+                          </button>
+                        ))}
+                      </div>
+                      {!entities.length ? (
+                        <p className="px-empty">Nenhum cadastro disponível nesta organização.</p>
+                      ) : null}
+                      {entities.length > catalogLimit ? (
+                        <button
+                          type="button"
+                          className="px-more"
+                          onClick={() => setCatalogLimit((n) => n + 12)}
+                        >
+                          Mostrar mais cadastros
+                        </button>
+                      ) : null}
+                    </>
+                  )}
+                </section>
+              ) : null}
+              <section className="px-results" aria-label="Resultados da consulta">
+                <div className="px-section-head">
+                  <div>
+                    <h2>
+                      {state.view === "saved"
+                        ? "Documentos salvos"
+                        : state.query.trim()
+                          ? "Resultados da pesquisa"
+                          : active
+                            ? "Documentos relacionados"
+                            : exploring
+                              ? "Para começar a consulta"
+                              : "Biblioteca completa"}
+                    </h2>
+                    <p role="status">
+                      {rows.length}{" "}
+                      {rows.length === 1 ? "documento vigente" : "documentos vigentes"}
+                    </p>
+                  </div>
+                  {active ? (
+                    <button type="button" className="px-link" onClick={clear}>
+                      Limpar filtros
+                    </button>
+                  ) : null}
+                </div>
+                {active ? (
+                  <div className="px-chips">
+                    {state.query ? (
+                      <button type="button" onClick={() => change({ query: "" })}>
+                        Pesquisa: {state.query}
+                        <X size={13} />
+                      </button>
+                    ) : null}
+                    {Object.entries(state.filters)
+                      .filter(([, v]) => v)
+                      .map(([key, value]) => (
+                        <button
+                          type="button"
+                          key={key}
+                          aria-label={`Remover filtro ${filterLabels[key as keyof PortalDocumentFilters]}`}
+                          onClick={() => filter(key as keyof PortalDocumentFilters, "")}
+                        >
+                          {filterLabels[key as keyof PortalDocumentFilters]}:{" "}
+                          {label(key as keyof PortalDocumentFilters, value!)}
+                          <X size={13} />
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
+                {!exploring ? (
+                  <div className="px-filters">
+                    {select(
+                      "area",
+                      "Área",
+                      areas.map((value) => ({ value, label: value })),
+                    )}
+                    {select(
+                      "processId",
+                      "Processo",
+                      structure.processes.map((p) => ({ value: p.id, label: p.name })),
+                    )}
+                    {select(
+                      "role",
+                      "Cargo",
+                      roles.map((value) => ({ value, label: value })),
+                    )}
+                    {select(
+                      "type",
+                      "Modalidade",
+                      types.map((value) => ({ value, label: value })),
+                    )}
+                    <label>
+                      Ordenar por
+                      <select
+                        value={state.sort}
+                        onChange={(e) => change({ sort: e.target.value as PortalDocumentSort })}
+                      >
+                        <option value="relevance">Relevância</option>
+                        <option value="alphabetical">Título: A–Z</option>
+                        <option value="updated">Última atualização</option>
+                        <option value="effective">Vigência</option>
+                        <option value="recent">Mais recentes</option>
+                        <option value="popular">Mais acessados por mim</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+                {connections.length ? (
+                  <div className="px-connections" aria-label="Cadastros encontrados">
+                    {connections.map((e) => (
+                      <button
+                        type="button"
+                        key={e.key + e.value}
+                        onClick={() => choose(e.key, e.value)}
+                      >
+                        <small>{filterLabels[e.key]}</small>
+                        {e.title} →
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="px-documents">
+                  {rows.slice((page - 1) * pageSize, page * pageSize).map((d) => (
+                    <article className="px-document" key={d.id} data-module={d.module}>
+                      <span className="px-document-icon">
+                        <FileText size={21} aria-hidden="true" />
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          className="px-document-title"
+                          onClick={() => onOpen(d)}
+                        >
+                          {d.title}
+                          <ArrowUpRight size={14} aria-hidden="true" />
+                        </button>
+                        <p>
+                          {d.code || d.type} · {d.area || "Área não informada"} · Rev. {d.revision}
+                        </p>
+                        <p>{d.process || d.macroprocess || d.description}</p>
+                        {state.query.trim() ? (
+                          <small>Encontrado em: {matchLabels(d) || "Palavras-chave"}</small>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        className="px-save"
+                        aria-pressed={favorites.includes(d.id)}
+                        aria-label={`${favorites.includes(d.id) ? "Remover dos salvos" : "Salvar"}: ${d.title}`}
+                        onClick={() => onFavorite(d.id)}
+                      >
+                        <Bookmark
+                          size={18}
+                          fill={favorites.includes(d.id) ? "currentColor" : "none"}
+                        />
+                      </button>
+                    </article>
+                  ))}
+                </div>
+                {!rows.length ? (
+                  <div className="px-state">
+                    <h3>
+                      {state.view === "saved" && !active
+                        ? "Você ainda não salvou documentos"
+                        : active
+                          ? "Nenhum documento encontrado"
+                          : "Nenhum documento vigente disponível"}
+                    </h3>
+                    <p>
+                      {active
+                        ? "Tente outro termo ou remova os filtros."
+                        : state.view === "saved"
+                          ? "Use o marcador ao lado de um documento para encontrá-lo aqui."
+                          : "Documentos publicados e vigentes desta organização aparecerão aqui."}
+                    </p>
+                    {active ? (
+                      <button type="button" onClick={clear}>
+                        Limpar pesquisa e filtros
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {rows.length > pageSize ? (
+                  <nav className="px-pagination" aria-label="Páginas de documentos">
+                    <button
+                      type="button"
+                      disabled={page === 1}
+                      onClick={() => change({ page: page - 1 })}
+                    >
+                      Anterior
+                    </button>
+                    <span>
+                      {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, rows.length)} de{" "}
+                      {rows.length}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={page * pageSize >= rows.length}
+                      onClick={() => change({ page: page + 1 })}
+                    >
+                      Próxima
+                    </button>
+                  </nav>
+                ) : null}
+              </section>
+            </>
+          )}
+        </main>
+        <footer className="px-footer">
+          <span>{organization.name} · Portal de documentos</span>
+          <span>Documentos vigentes da organização ativa</span>
+        </footer>
+      </div>
+    </div>
+  );
+}

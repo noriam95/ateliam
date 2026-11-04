@@ -21,6 +21,10 @@ export type PortalDocument = {
   updatedAt: string;
   createdAt: string;
   searchText: string;
+  roles?: string[];
+  chainIds?: string[];
+  chainNames?: string[];
+  processIds?: string[];
 };
 
 export type PortalDocumentFilters = {
@@ -31,6 +35,9 @@ export type PortalDocumentFilters = {
   type?: string;
   responsible?: string;
   module?: string;
+  role?: string;
+  chain?: string;
+  processId?: string;
 };
 
 export type PortalDocumentSort =
@@ -77,6 +84,8 @@ function portalDocumentHaystack(document: PortalDocument) {
       document.responsible,
       document.moduleLabel,
       document.searchText,
+      ...(document.roles ?? []),
+      ...(document.chainNames ?? []),
     ].join(" "),
   );
 }
@@ -121,7 +130,13 @@ export function filterAndSortPortalDocuments(
         matchesFilter(document.subprocess, filters.subprocess) &&
         matchesFilter(document.type, filters.type) &&
         matchesFilter(document.responsible, filters.responsible) &&
-        matchesFilter(document.module, filters.module),
+        matchesFilter(document.module, filters.module) &&
+        (!filters.role ||
+          (document.roles ?? []).some((role) => matchesFilter(role, filters.role))) &&
+        (!filters.chain || (document.chainIds ?? []).includes(filters.chain)) &&
+        (!filters.processId ||
+          document.processId === filters.processId ||
+          (document.processIds ?? []).includes(filters.processId)),
     );
 
   const time = (value: string) => {

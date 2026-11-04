@@ -184,6 +184,17 @@ Cabeçalho da consulta BPMN — 30/09/2026: alinhado aos demais módulos, com al
 
 ## Portal de Documentos — 05/10/2026
 
+### Direção aprovada — 04/11/2026 (substitui a composição anterior)
+
+- Portal de consulta com navegação lateral Explorar / Biblioteca / Salvos, busca dominante e lista de documentos. No celular, a navegação passa ao topo. Origem: protótipo aprovado nesta implementação.
+- Logo e nome vêm de `organizations.logo_data_url` e `organizations.name` da organização ativa. Preservar proporção; sem logo ou em erro, apresentar o nome. Não usar imagens de organizações fixas no código.
+- `PortalValueChain` é a variante de consulta do diagrama Porter existente: Gestão, Finalísticos com Saídas à direita e Suporte abaixo. Consome os mesmos cadastros ativos e categorias; não inventa etapas. Selecionar uma saída inclui documentos dos processos ligados às cadeias relacionadas.
+- `DocumentPortalView` concentra busca, filtros cumulativos, exploração por área/processo/cargo e paginação de 12 documentos. `DocumentPortal` mantém autenticação, organização, consultas e favoritos. O leitor existente continua sendo a fonte de apresentação dos documentos.
+- Tokens do portal em `portal-explorer.css` derivam de `src/styles.css`: dourado para busca/gestão, teal para finalísticos, violeta para suporte e azul para vínculos. Superfícies acompanham o tema; trilho grafite identifica a navegação. Foco e hierarquia não dependem apenas de cor.
+- Busca considera conteúdo textual completo dos documentos vigentes, títulos, códigos, metadados, cargos explícitos e cadeia registrada. Cargos são extraídos das responsabilidades, atores de mapeamento e vínculos de raias BPMN; menção no texto é pesquisável, mas não cria vínculo de cargo.
+- Organização, consulta, filtros, ordenação, aba de exploração e página ficam na URL. O leitor recebe um retorno interno validado para restaurar os resultados. Favoritos continuam locais por usuário e organização.
+- Verificação: testes de domínio de pesquisa e indexação, TypeScript, lint, suíte de testes e build; navegação da interface exercitada com dados controlados em navegador, incluindo vazio/erro/carregamento, logo, organizações e tamanhos estreitos.
+
 - North Star: permitir que qualquer pessoa encontre e consulte rapidamente o procedimento vigente, sem entrar nos módulos usados para produzi-lo.
 - O portal é uma camada corporativa somente leitura. Reúne Mapeamentos, documentos POP e Fluxogramas BPMN, preserva a fonte original e abre cada item no visualizador próprio do módulo.
 - Somente estados vigentes são publicados: Vigente, Publicado, Aprovado, Concluído ou Ativo. Rascunhos, revisões, obsoletos, arquivados e cancelados ficam fora da listagem e também são bloqueados no acesso direto ao visualizador.

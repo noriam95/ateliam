@@ -182,6 +182,22 @@ Navegação no editor BPMN — 05/10/2026: o início da barra de modelagem reuti
 
 ## Portal de Documentos — contrato de consulta
 
+### Revisão aprovada — 04/11/2026
+
+Esta revisão substitui a composição de atalhos e cartões descrita abaixo; mantém as regras de autorização e vigência.
+
+| Capacidade           | Dono canônico                                           | Comportamento                                                                                                                                                                                 |
+| -------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Consulta e estado    | DocumentPortal / DocumentPortalView                     | Explorar, Biblioteca e Salvos; consulta local sobre documentos autorizados; estado refletido na URL; paginação de 12 linhas.                                                                  |
+| Identidade           | PortalOrganizationLogo                                  | Logo parametrizada da organização ativa; proporção preservada, nome como fallback; nenhuma marca organizacional fixa.                                                                         |
+| Cadeia de valor      | PortalValueChain, variante de consulta do PorterDiagram | Mesmos cadastros, categorias e vínculos; Gestão / Finalísticos + Saídas / Suporte; registros vazios não são substituídos por exemplos.                                                        |
+| Pesquisa             | document-portal / portal-content-index                  | Todos os termos podem corresponder a campos diferentes; acentos ignorados; pesquisa em conteúdo, cargos explícitos, nomes das cadeias e metadados. Sem interpretar HTML ou executar conteúdo. |
+| Filtros              | Select nativo / PortalDocumentFilters                   | Área, processo por ID incluindo descendentes, cargo, modalidade e cadeia cumulativos; filtros anteriores continuam aceitos na URL.                                                            |
+| Leitura              | DocumentPortalReader                                    | Leitor existente, somente leitura; voltar restaura os resultados; área, processo, cargo e cadeia levam a consultas na mesma organização.                                                      |
+| Estado vazio e falha | DocumentPortalView                                      | Sem dados fictícios; motivo e limpeza de filtros ou nova tentativa. Favoritos isolados por usuário/organização.                                                                               |
+
+Fonte: aprovação do protótipo e pedido de implementação em 04/11/2026. Segurança: `requireSupabaseAuth`, `permissionContext` e filtros `organization_id` existentes permanecem obrigatórios; o índice recebe somente documentos vigentes da organização autorizada.
+
 | Capacidade       | Regra                                                                                                                                                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Entrada          | “Portal de Documentos” fica disponível no lançador global e abre `/portal`.                                                                                                                                            |

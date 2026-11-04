@@ -157,3 +157,40 @@ test("catalog associations match areas without accent differences and processes 
     ["area"],
   );
 });
+
+test("searches role and chain metadata, with exact filters and ancestor process links", () => {
+  const rows = [
+    {
+      ...documents[0],
+      roles: ["Comprador"],
+      chainNames: ["Logística & Supply Chain"],
+      chainIds: ["chain-1", "output-1"],
+      processIds: ["parent", "leaf"],
+      processId: "leaf",
+    },
+    documents[1],
+  ];
+  assert.deepEqual(
+    filterAndSortPortalDocuments(rows, "comprador logistica", {}, "relevance").map((d) => d.id),
+    ["a"],
+  );
+  assert.equal(
+    filterAndSortPortalDocuments(
+      rows,
+      "",
+      { role: "comprador", chain: "output-1", processId: "parent" },
+      "relevance",
+    ).length,
+    1,
+  );
+  assert.equal(
+    filterAndSortPortalDocuments(rows, "", { role: "Analista", chain: "chain-1" }, "relevance")
+      .length,
+    0,
+  );
+  assert.equal(
+    filterAndSortPortalDocuments(rows, "", { chain: "another-organization-chain" }, "relevance")
+      .length,
+    0,
+  );
+});

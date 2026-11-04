@@ -1,3 +1,4 @@
+import { portalContentIndex } from "./portal-content-index";
 import { documentTitle } from "./document-label";
 import { bpmnListMetadata } from "./bpmn-list-metadata";
 import {
@@ -1510,28 +1511,6 @@ export const listModuleDocuments = createServerFn({ method: "POST" })
     return rows ?? [];
   });
 
-function portalMetadataStrings(value: unknown, target: string[] = [], depth = 0): string[] {
-  if (target.length >= 120 || depth > 5 || value == null) return target;
-  if (typeof value === "string") {
-    const text = value.trim();
-    if (text && text.length <= 1000 && !text.startsWith("data:") && !text.startsWith("<svg")) {
-      target.push(text);
-    }
-    return target;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value.slice(0, 40)) portalMetadataStrings(item, target, depth + 1);
-    return target;
-  }
-  if (typeof value !== "object") return target;
-  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-    if (/^(xml|src|image|logo|content|content_inline)$/i.test(key)) continue;
-    portalMetadataStrings(nested, target, depth + 1);
-    if (target.length >= 120) break;
-  }
-  return target;
-}
-
 function portalStatusFromContent(module: string, contentInline: string | null) {
   try {
     const parsed = JSON.parse(contentInline ?? "{}") as Record<string, unknown>;
@@ -1554,27 +1533,59 @@ export const listPortalDocuments = createServerFn({ method: "POST" })
   .validator((d: { organizationId?: string | null }) => organizationScopeSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
-    const [documentResult, processResult] = await Promise.all([
-      dashboardRows(
-        context.supabase
-          .from("documents")
-          .select(
-            "id,name,description,module,current_version,updated_at,created_at,primary_process_id,content_inline",
-          )
-          .eq("organization_id", access.organizationId)
-          .in("module", ["ddp", "pop", "bpmn"])
-          .order("updated_at", { ascending: false }),
-      ),
-      dashboardRows(
-        context.supabase
-          .from("organization_processes")
-          .select("id,parent_process_id,name,type,department,owner,description,status")
-          .eq("organization_id", access.organizationId),
-      ),
-    ]);
+    const [documentResult, processResult, chainResult, relationResult, positionResult] =
+      await Promise.all([
+        dashboardRows(
+          context.supabase
+            .from("documents")
+            .select(
+              "id,name,description,module,current_version,updated_at,created_at,primary_process_id,content_inline",
+            )
+            .eq("organization_id", access.organizationId)
+            .in("module", ["ddp", "pop", "bpmn"])
+            .order("updated_at", { ascending: false }),
+        ),
+        dashboardRows(
+          context.supabase
+            .from("organization_processes")
+            .select(
+              "id,parent_process_id,name,type,department,owner,description,status,value_chain_id",
+            )
+            .eq("organization_id", access.organizationId),
+        ),
+        dashboardRows(
+          context.supabase
+            .from("organization_value_chains")
+            .select("id,name,category,status")
+            .eq("organization_id", access.organizationId)
+            .eq("status", "Ativa")
+            .order("id"),
+        ),
+        dashboardRows(
+          (context.supabase as any)
+            .from("organization_value_chain_output_relations")
+            .select("output_id,chain_id")
+            .eq("organization_id", access.organizationId)
+            .order("output_id")
+            .order("chain_id"),
+        ),
+        dashboardRows(
+          (context.supabase as any)
+            .from("organization_positions")
+            .select("id,title")
+            .eq("organization_id", access.organizationId)
+            .order("id"),
+        ),
+      ]);
     if (documentResult.error) throw new Error(documentResult.error.message);
     if (processResult.error) throw new Error(processResult.error.message);
 
+    for (const result of [chainResult, relationResult, positionResult]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    const chains = chainResult.data ?? [];
+    const relations = (relationResult.data ?? []) as Array<{ output_id: string; chain_id: string }>;
+    const positions = (positionResult.data ?? []) as Array<{ id: string; title: string }>;
     const processById = new Map(
       (processResult.data ?? []).map((process) => [process.id, process] as const),
     );
@@ -1694,7 +1705,25 @@ export const listPortalDocuments = createServerFn({ method: "POST" })
             : document.updated_at,
         document.updated_at,
       );
-      const metadata = portalMetadataStrings(source);
+      const contentIndex = portalContentIndex(
+        document.module === "ddp" ? ddp : document.module === "pop" ? pop : bpmn,
+      );
+      const chainIds = new Set(
+        hierarchy.map((item) => item.value_chain_id).filter((id): id is string => !!id),
+      );
+      for (const relation of relations) {
+        if (chainIds.has(relation.chain_id)) chainIds.add(relation.output_id);
+      }
+      const linkedChains = chains.filter((chain) => chainIds.has(chain.id));
+      const roles = new Set(contentIndex.roles);
+      for (const position of positions) {
+        if (
+          hierarchy.some(
+            (item) => normalizePortalText(item.owner) === normalizePortalText(position.title),
+          )
+        )
+          roles.add(position.title);
+      }
       const explicitTags = [
         ...(Array.isArray(ddpMeta.tags) ? ddpMeta.tags : []),
         ...(Array.isArray(popMeta.tags) ? popMeta.tags : []),
@@ -1733,7 +1762,11 @@ export const listPortalDocuments = createServerFn({ method: "POST" })
         processId: document.primary_process_id ?? "",
         updatedAt: document.updated_at,
         createdAt: document.created_at,
-        searchText: normalizePortalText(metadata.join(" ")).slice(0, 8000),
+        searchText: normalizePortalText(contentIndex.text),
+        roles: [...roles],
+        chainIds: linkedChains.map((chain) => chain.id),
+        chainNames: linkedChains.map((chain) => chain.name),
+        processIds: hierarchy.map((item) => item.id),
       });
     }
     return documents;
@@ -1744,39 +1777,49 @@ export const listPortalStructure = createServerFn({ method: "POST" })
   .validator((d: { organizationId?: string | null }) => organizationScopeSchema.parse(d))
   .handler(async ({ data, context }) => {
     const access = await permissionContext(context, data.organizationId);
-    const [areaResult, processResult, chainResult, outputRelationsResult] = await Promise.all([
-      dashboardRows(
-        context.supabase
-          .from("organization_departments")
-          .select("id,name,sigla")
-          .eq("organization_id", access.organizationId)
-          .order("name", { ascending: true }),
-      ),
-      dashboardRows(
-        context.supabase
-          .from("organization_processes")
-          .select(
-            "id,parent_process_id,name,type,value_chain_id,department,owner,description,status",
-          )
-          .eq("organization_id", access.organizationId)
-          .eq("status", "Ativo")
-          .order("name", { ascending: true }),
-      ),
-      dashboardRows(
-        context.supabase
-          .from("organization_value_chains")
-          .select("id,name,category,description,status")
-          .eq("organization_id", access.organizationId)
-          .eq("status", "Ativa")
-          .order("name", { ascending: true }),
-      ),
-      dashboardRows(
-        (context.supabase as any)
-          .from("organization_value_chain_output_relations")
-          .select("output_id,chain_id")
-          .eq("organization_id", access.organizationId),
-      ),
-    ]);
+    const [areaResult, processResult, chainResult, outputRelationsResult, positionResult] =
+      await Promise.all([
+        dashboardRows(
+          context.supabase
+            .from("organization_departments")
+            .select("id,name,sigla")
+            .eq("organization_id", access.organizationId)
+            .order("name", { ascending: true }),
+        ),
+        dashboardRows(
+          context.supabase
+            .from("organization_processes")
+            .select(
+              "id,parent_process_id,name,type,value_chain_id,department,owner,description,status",
+            )
+            .eq("organization_id", access.organizationId)
+            .eq("status", "Ativo")
+            .order("name", { ascending: true }),
+        ),
+        dashboardRows(
+          context.supabase
+            .from("organization_value_chains")
+            .select("id,name,category,description,status")
+            .eq("organization_id", access.organizationId)
+            .eq("status", "Ativa")
+            .order("name", { ascending: true }),
+        ),
+        dashboardRows(
+          (context.supabase as any)
+            .from("organization_value_chain_output_relations")
+            .select("output_id,chain_id")
+            .eq("organization_id", access.organizationId),
+        ),
+        dashboardRows(
+          (context.supabase as any)
+            .from("organization_positions")
+            .select("id,title,description")
+            .eq("organization_id", access.organizationId)
+            .order("title")
+            .order("id"),
+        ),
+      ]);
+    if (positionResult.error) throw new Error(positionResult.error.message);
     if (areaResult.error) throw new Error(areaResult.error.message);
     if (processResult.error) throw new Error(processResult.error.message);
     if (chainResult.error) throw new Error(chainResult.error.message);
@@ -1788,6 +1831,11 @@ export const listPortalStructure = createServerFn({ method: "POST" })
     }
 
     return {
+      positions: (positionResult.data ?? []) as Array<{
+        id: string;
+        title: string;
+        description: string | null;
+      }>,
       areas: areaResult.data ?? [],
       processes: processResult.data ?? [],
       valueChainRelations: (outputRelationsResult.data ?? []) as Array<{
