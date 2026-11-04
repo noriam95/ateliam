@@ -247,3 +247,10 @@ Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresenta�
 - A tabela de cobertura lista todas as áreas que possuem processos, permite ordenar por área, pendentes e cobertura e alternar entre todas e somente áreas com pendências. O vínculo de mapeamento salvo, exceto rascunho, define a cobertura.
 - Melhorias abertas excluem encerradas, concluídas e canceladas. O índice de encerramento conta encerradas e concluídas sobre todas as melhorias do recorte.
 - Em telas menores, os painéis são empilhados; a tabela mantém a ordenação e rola horizontalmente quando necessário. Os controles usam foco visível e nomes acessíveis em português.
+
+## Consulta da cadeia de valor — 04/11/2026
+
+- Selecionar um macroprocesso no diagrama restringe o desenho ao macroprocesso e às saídas vinculadas. A tabela mantém abas separadas para Processos e Saídas, ambas filtradas pelo mesmo macroprocesso selecionado.
+- Selecionar uma saída restringe o desenho à saída e aos macroprocessos relacionados; a aba Processos mostra os processos desses macroprocessos e a aba Saídas mostra a saída selecionada.
+- A aba Saídas lista descrição, macroprocessos relacionados e status, com pesquisa, filtro de status, vínculo por cadeia e estados vazios recuperáveis. “Limpar seleção” restaura o desenho e a consulta ao conjunto completo.
+- Exportar o diagrama respeita o recorte selecionado atualmente.

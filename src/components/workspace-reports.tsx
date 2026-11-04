@@ -32,7 +32,7 @@ function readValueChainViewState() {
     return JSON.parse(window.localStorage.getItem(VALUE_CHAIN_VIEW_STATE_KEY) ?? "null") as {
       query?: string;
       statusFilter?: "all" | "active" | "inactive";
-      activeTab?: "value-chain" | "processes";
+      activeTab?: "value-chain" | "processes" | "outputs";
     } | null;
   } catch {
     return null;
@@ -49,6 +49,8 @@ function readValueChainTableState() {
       processStatusFilter?: "all" | "active" | "inactive";
       processSortField?: ProcessSortField;
       processSortDir?: SortDir;
+      outputQuery?: string;
+      outputStatusFilter?: "all" | "active" | "inactive";
       density?: "comfortable" | "compact";
     } | null;
   } catch {
@@ -208,7 +210,7 @@ function ValueChainReport({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">(
     () => readValueChainViewState()?.statusFilter ?? "active",
   );
-  const [activeTab, setActiveTab] = useState<"value-chain" | "processes">(
+  const [activeTab, setActiveTab] = useState<"value-chain" | "processes" | "outputs">(
     () => readValueChainViewState()?.activeTab ?? "value-chain",
   );
   const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
@@ -351,12 +353,26 @@ function ValueChainReport({
       ),
     [selectedChain, valueChainRelations],
   );
+  const relatedOutputIds = useMemo(
+    () =>
+      new Set(
+        selectedChain && selectedChain.category !== "output"
+          ? valueChainRelations
+              .filter((relation) => relation.chain_id === selectedChain.id)
+              .map((relation) => relation.output_id)
+          : [],
+      ),
+    [selectedChain, valueChainRelations],
+  );
   const diagramChains = useMemo(() => {
-    if (selectedChain?.category !== "output") return filteredChains;
+    if (!selectedChain) return filteredChains;
     return filteredChains.filter(
-      (chain) => chain.id === selectedChain.id || relatedChainIds.has(chain.id),
+      (chain) =>
+        chain.id === selectedChain.id ||
+        relatedChainIds.has(chain.id) ||
+        relatedOutputIds.has(chain.id),
     );
-  }, [filteredChains, relatedChainIds, selectedChain]);
+  }, [filteredChains, relatedChainIds, relatedOutputIds, selectedChain]);
   const primary = diagramChains.filter((c) => c.category === "primary");
   const support = diagramChains.filter((c) => c.category === "support");
   const management = diagramChains.filter((c) => c.category === "management");
@@ -388,13 +404,14 @@ function ValueChainReport({
             onSelectChain={(chain) => {
               const nextId = selectedChainId === chain.id ? null : chain.id;
               setSelectedChainId(nextId);
-              setActiveTab(chain.category === "output" ? "value-chain" : "processes");
+              setActiveTab(chain.category === "output" ? "outputs" : "processes");
             }}
             onExportPng={() => exportPNG(primary, support, management, outputs, organizationName)}
           />
           <ConsultationTable
             chains={chains}
             processes={processes}
+            valueChainRelations={valueChainRelations}
             query={query}
             setQuery={setQuery}
             statusFilter={statusFilter}
@@ -404,11 +421,11 @@ function ValueChainReport({
             selectedChainId={selectedChainId}
             setSelectedChainId={setSelectedChainId}
             busy={chainBusy}
-            onNewChain={() =>
+            onNewChain={(category = "primary") =>
               setEditingChain({
                 id: null,
                 name: "",
-                category: "primary",
+                category,
                 description: "",
                 status: "Ativa",
                 relatedChainIds: [],
@@ -780,6 +797,7 @@ const PROCESS_TYPE_LABELS: Record<string, string> = {
 function ConsultationTable({
   chains,
   processes,
+  valueChainRelations,
   query,
   setQuery,
   statusFilter,
@@ -796,16 +814,17 @@ function ConsultationTable({
 }: {
   chains: ValueChain[];
   processes: ProcessRecord[];
+  valueChainRelations: ValueChainRelation[];
   query: string;
   setQuery: (value: string) => void;
   statusFilter: "all" | "active" | "inactive";
   setStatusFilter: (value: "all" | "active" | "inactive") => void;
-  activeTab: "value-chain" | "processes";
-  setActiveTab: (value: "value-chain" | "processes") => void;
+  activeTab: "value-chain" | "processes" | "outputs";
+  setActiveTab: (value: "value-chain" | "processes" | "outputs") => void;
   selectedChainId: string | null;
   setSelectedChainId: (value: string | null) => void;
   busy: boolean;
-  onNewChain: () => void;
+  onNewChain: (category?: ChainCategory) => void;
   onEditChain: (chain: ValueChain) => void;
   onDeleteChain: (chain: ValueChain) => void;
   onToggleChain: (chain: ValueChain) => void;
@@ -843,6 +862,12 @@ function ConsultationTable({
   const [processSortDir, setProcessSortDir] = useState<SortDir>(
     () => readValueChainTableState()?.processSortDir ?? "asc",
   );
+  const [outputQuery, setOutputQuery] = useState(
+    () => readValueChainTableState()?.outputQuery ?? "",
+  );
+  const [outputStatusFilter, setOutputStatusFilter] = useState<"all" | "active" | "inactive">(
+    () => readValueChainTableState()?.outputStatusFilter ?? "active",
+  );
   const [density, setDensity] = useState<"comfortable" | "compact">(
     () => readValueChainTableState()?.density ?? "comfortable",
   );
@@ -857,6 +882,8 @@ function ConsultationTable({
         processStatusFilter,
         processSortField,
         processSortDir,
+        outputQuery,
+        outputStatusFilter,
         density,
       }),
     );
@@ -867,6 +894,8 @@ function ConsultationTable({
     processStatusFilter,
     processSortField,
     processSortDir,
+    outputQuery,
+    outputStatusFilter,
     density,
   ]);
 
@@ -920,7 +949,17 @@ function ConsultationTable({
     const q = processQuery.trim().toLowerCase();
     let result = orderedProcesses.filter(({ process }) => {
       const chain = process.value_chain_id ? chainById.get(process.value_chain_id) : null;
-      if (selectedChainId && process.value_chain_id !== selectedChainId) return false;
+      if (selectedChain) {
+        const matchesSelection =
+          selectedChain.category === "output"
+            ? valueChainRelations.some(
+                (relation) =>
+                  relation.output_id === selectedChain.id &&
+                  relation.chain_id === process.value_chain_id,
+              )
+            : process.value_chain_id === selectedChain.id;
+        if (!matchesSelection) return false;
+      }
       if (processStatusFilter === "active" && !isActiveProcess(process)) return false;
       if (processStatusFilter === "inactive" && isActiveProcess(process)) return false;
       if (!q) return true;
@@ -965,9 +1004,48 @@ function ConsultationTable({
     processStatusFilter,
     processSortField,
     processSortDir,
-    selectedChainId,
+    selectedChain,
+    valueChainRelations,
     chainById,
   ]);
+
+  const outputRows = useMemo(() => {
+    const q = outputQuery.trim().toLocaleLowerCase("pt-BR");
+    return ordered
+      .filter(({ chain }) => {
+        if (chain.category !== "output") return false;
+        if (selectedChain?.category === "output" && chain.id !== selectedChain.id) return false;
+        if (
+          selectedChain &&
+          selectedChain.category !== "output" &&
+          !valueChainRelations.some(
+            (relation) => relation.output_id === chain.id && relation.chain_id === selectedChain.id,
+          )
+        ) {
+          return false;
+        }
+        if (outputStatusFilter === "active" && !isActiveChain(chain)) return false;
+        if (outputStatusFilter === "inactive" && isActiveChain(chain)) return false;
+        if (!q) return true;
+        const relatedNames = valueChainRelations
+          .filter((relation) => relation.output_id === chain.id)
+          .map((relation) => chainById.get(relation.chain_id)?.name ?? "")
+          .join(" ");
+        return `${chain.name} ${chain.description ?? ""} ${relatedNames} ${chain.status}`
+          .toLocaleLowerCase("pt-BR")
+          .includes(q);
+      })
+      .map(({ chain, index }) => ({
+        chain,
+        index,
+        relatedNames: valueChainRelations
+          .filter((relation) => relation.output_id === chain.id)
+          .map((relation) => chainById.get(relation.chain_id)?.name)
+          .filter((name): name is string => Boolean(name))
+          .sort((a, b) => a.localeCompare(b, "pt-BR")),
+      }))
+      .sort((a, b) => a.chain.name.localeCompare(b.chain.name, "pt-BR"));
+  }, [ordered, outputQuery, outputStatusFilter, selectedChain, valueChainRelations, chainById]);
 
   function toggleSort(field: SortField) {
     if (sortField === field) {
@@ -1070,6 +1148,17 @@ function ConsultationTable({
             >
               Processos
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("outputs")}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${
+                activeTab === "outputs"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Saídas
+            </button>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {activeTab === "value-chain" ? (
@@ -1078,7 +1167,7 @@ function ConsultationTable({
                 {activeCount === 1 ? "ativo" : "ativos"} · {ordered.length - activeCount} inativo
                 {ordered.length - activeCount === 1 ? "" : "s"}
               </>
-            ) : (
+            ) : activeTab === "processes" ? (
               <>
                 {processRows.length}{" "}
                 {processRows.length === 1 ? "registro exibido" : "registros exibidos"} ·{" "}
@@ -1087,8 +1176,22 @@ function ConsultationTable({
                 {orderedProcesses.length - activeProcessCount === 1 ? "" : "s"}
                 {selectedChain ? ` · Filtro: ${selectedChain.name}` : ""}
               </>
+            ) : (
+              <>
+                {outputRows.length} {outputRows.length === 1 ? "saída exibida" : "saídas exibidas"}
+                {selectedChain ? ` · Filtro: ${selectedChain.name}` : ""}
+              </>
             )}
           </p>
+          {selectedChain ? (
+            <button
+              type="button"
+              onClick={() => setSelectedChainId(null)}
+              className="w-fit text-xs font-medium text-[var(--gold-ink)] hover:underline"
+            >
+              Limpar seleção de {selectedChain.name}
+            </button>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {activeTab === "value-chain" ? (
@@ -1110,7 +1213,7 @@ function ConsultationTable({
                 <option value="inactive">Apenas inativos</option>
               </select>
             </>
-          ) : (
+          ) : activeTab === "processes" ? (
             <>
               <input
                 type="text"
@@ -1143,15 +1246,62 @@ function ConsultationTable({
                 <option value="inactive">Apenas inativos</option>
               </select>
             </>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={outputQuery}
+                onChange={(e) => setOutputQuery(e.target.value)}
+                placeholder="Filtrar saídas..."
+                aria-label="Filtrar saídas"
+                className="h-8 w-48 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              />
+              <select
+                aria-label="Filtrar saídas por cadeia de valor"
+                value={selectedChainId ?? ""}
+                onChange={(e) => setSelectedChainId(e.target.value || null)}
+                className="h-8 max-w-64 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              >
+                <option value="">Todas as cadeias</option>
+                {ordered
+                  .filter(({ chain }) => chain.category !== "output")
+                  .map(({ chain }) => (
+                    <option key={chain.id} value={chain.id}>
+                      {chain.name}
+                    </option>
+                  ))}
+              </select>
+              <select
+                aria-label="Filtrar saídas por status"
+                value={outputStatusFilter}
+                onChange={(e) =>
+                  setOutputStatusFilter(e.target.value as "all" | "active" | "inactive")
+                }
+                className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]/40"
+              >
+                <option value="all">Todos os status</option>
+                <option value="active">Apenas ativas</option>
+                <option value="inactive">Apenas inativas</option>
+              </select>
+            </>
           )}
           {activeTab === "value-chain" ? (
             <button
               type="button"
-              onClick={onNewChain}
+              onClick={() => onNewChain()}
               disabled={busy}
               className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-45"
             >
               <Plus className="h-4 w-4" /> Novo
+            </button>
+          ) : activeTab === "outputs" ? (
+            <button
+              type="button"
+              onClick={() => onNewChain("output")}
+              disabled={busy}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-45"
+            >
+              <Plus className="h-4 w-4" /> Nova saída
             </button>
           ) : null}
           <button
@@ -1195,7 +1345,7 @@ function ConsultationTable({
                     key={chain.id}
                     onClick={() => {
                       setSelectedChainId(chain.id);
-                      setActiveTab("processes");
+                      setActiveTab(chain.category === "output" ? "outputs" : "processes");
                     }}
                     className={`cursor-pointer hover:bg-muted/30 transition-colors ${active ? "" : "opacity-60"}`}
                   >
@@ -1264,7 +1414,7 @@ function ConsultationTable({
                       ) : (
                         <button
                           type="button"
-                          onClick={onNewChain}
+                          onClick={() => onNewChain()}
                           className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--gold)] px-3 text-xs font-semibold text-black hover:brightness-95"
                         >
                           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1277,7 +1427,7 @@ function ConsultationTable({
               )}
             </tbody>
           </table>
-        ) : (
+        ) : activeTab === "processes" ? (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
@@ -1355,6 +1505,132 @@ function ConsultationTable({
                           className="h-8 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted"
                         >
                           Limpar filtros
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <th className="w-16 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  #
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Saída
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Descrição
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Macroprocessos relacionados
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Status
+                </th>
+                <th className="w-24 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {outputRows.map(({ chain, index, relatedNames }) => (
+                <tr
+                  key={chain.id}
+                  className={`hover:bg-muted/30 transition-colors ${isActiveChain(chain) ? "" : "opacity-60"}`}
+                >
+                  <td className="px-5 py-3 tabular-nums text-muted-foreground">{index}</td>
+                  <td className="px-5 py-3 font-medium text-foreground">
+                    <button
+                      type="button"
+                      aria-pressed={selectedChainId === chain.id}
+                      onClick={() =>
+                        setSelectedChainId(selectedChainId === chain.id ? null : chain.id)
+                      }
+                      className="text-left hover:text-[var(--gold-ink)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
+                    >
+                      {chain.name}
+                    </button>
+                  </td>
+                  <td className="max-w-xl px-5 py-3 text-muted-foreground">
+                    {chain.description || <span className="italic opacity-50">-</span>}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {relatedNames.length ? (
+                      relatedNames.join(" · ")
+                    ) : (
+                      <span className="italic opacity-50">Sem vínculo</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                    <ChainStatusSwitch chain={chain} disabled={busy} onToggle={onToggleChain} />
+                  </td>
+                  <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        title="Editar saída"
+                        aria-label={`Editar saída ${chain.name}`}
+                        onClick={() => onEditChain(chain)}
+                        className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Excluir saída"
+                        aria-label={`Excluir saída ${chain.name}`}
+                        onClick={() => onDeleteChain(chain)}
+                        className="grid h-8 w-8 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {outputRows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-10 text-center">
+                    <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
+                      <FileSearch className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {selectedChain && selectedChain.category !== "output"
+                            ? "Nenhuma saída vinculada a este macroprocesso"
+                            : "Nenhuma saída encontrada"}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {outputQuery || outputStatusFilter !== "all" || selectedChainId
+                            ? "Ajuste os filtros para ampliar os resultados."
+                            : "Cadastre as saídas da organização e relacione-as aos macroprocessos."}
+                        </p>
+                      </div>
+                      {outputQuery || outputStatusFilter !== "all" || selectedChainId ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOutputQuery("");
+                            setOutputStatusFilter("all");
+                            setSelectedChainId(null);
+                          }}
+                          className="h-8 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted"
+                        >
+                          Limpar filtros
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onNewChain("output")}
+                          disabled={busy}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--gold)] px-3 text-xs font-semibold text-black hover:brightness-95 disabled:opacity-45"
+                        >
+                          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                          Nova saída
                         </button>
                       )}
                     </div>
