@@ -58,7 +58,6 @@ export function PortalValueChain({
     );
   };
   const support = chains.filter((chain) => chain.category === "support");
-  const selected = chains.find((chain) => chain.id === selectedId);
   const selectedOutputIds = relations
     .filter((relation) => relation.chain_id === selectedId)
     .map((relation) => relation.output_id);
@@ -129,15 +128,6 @@ export function PortalValueChain({
           ))}
         </div>
       </section>
-      {selected ? (
-        <div className="px-chain-selection" aria-live="polite">
-          <strong>{selected.name}</strong>
-          <span>{selected.description || "Macroprocesso selecionado"}</span>
-          {selectedOutputIds.length ? (
-            <small>{selectedOutputIds.length} saída(s) vinculada(s) destacada(s)</small>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

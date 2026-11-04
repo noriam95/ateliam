@@ -13,7 +13,6 @@ import {
   LoaderCircle,
   ArrowRight,
   Layers3,
-  Sparkles,
 } from "lucide-react";
 import {
   filterAndSortPortalDocuments,
@@ -328,18 +327,9 @@ export function DocumentPortalView({
           {exploring ? (
             <section className="px-hero" aria-label="Pesquisa no portal">
               <div className="px-hero-copy">
-                <span className="px-hero-eyebrow">
-                  <Sparkles size={14} /> CONHECIMENTO EM MOVIMENTO
-                </span>
-                <h1>
-                  Encontre o caminho.
-                  <br />
-                  <em>Faça acontecer.</em>
-                </h1>
-                <p>
-                  Documentos, processos e orientações da sua organização — conectados em um só
-                  lugar.
-                </p>
+                <span className="px-hero-eyebrow">PORTAL DE DOCUMENTOS</span>
+                <h1>Encontre a informação certa.</h1>
+                <p>Consulte documentos vigentes por cadeia de valor, área, processo ou cargo.</p>
               </div>
               <div className="px-hero-brand">
                 <div className="px-hero-logo-plaque">
@@ -348,7 +338,7 @@ export function DocumentPortalView({
                     logo={organization.logo_data_url}
                   />
                 </div>
-                <span>ORGANIZAÇÃO</span>
+                <span>{organization.name}</span>
               </div>
             </section>
           ) : (
@@ -438,9 +428,9 @@ export function DocumentPortalView({
                 <section aria-label="Explorar documentos">
                   <div className="px-explore-heading">
                     <div>
-                      <p className="px-kicker">COMECE PELO QUE VOCÊ CONHECE</p>
+                      <p className="px-kicker">EXPLORE O ACERVO</p>
                       <h2>Como você quer encontrar?</h2>
-                      <p>Escolha um ponto de partida. O portal conecta o restante.</p>
+                      <p>Explore a cadeia, uma área, um processo ou um cargo.</p>
                     </div>
                   </div>
                   <div className="px-route-grid" role="group" aria-label="Explorar documentos por">
@@ -572,7 +562,11 @@ export function DocumentPortalView({
                                 )}
                               </span>
                               <strong>{entity.title}</strong>
-                              <small>{entity.subtitle}</small>
+                              <small>
+                                {state.explore === "area"
+                                  ? `${entity.subtitle} · ${count({ [entity.filter]: entity.value })} documentos`
+                                  : `${count({ [entity.filter]: entity.value })} documentos vinculados`}
+                              </small>
                             </button>
                           ))}
                         </div>

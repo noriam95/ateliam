@@ -1,11 +1,11 @@
 .portal-explorer {
   --px-green: var(--chart-teal);
-  --px-blue: var(--chart-blue);
-  --px-purple: var(--chart-purple);
+  --px-blue: var(--chart-teal);
+  --px-purple: var(--muted-foreground);
   --px-green-soft: color-mix(in oklab, var(--chart-teal) 12%, var(--card));
-  --px-blue-soft: color-mix(in oklab, var(--chart-blue) 12%, var(--card));
-  --px-purple-soft: color-mix(in oklab, var(--chart-purple) 12%, var(--card));
-  --px-gold-soft: color-mix(in oklab, var(--gold) 15%, var(--card));
+  --px-blue-soft: color-mix(in oklab, var(--chart-teal) 8%, var(--card));
+  --px-purple-soft: color-mix(in oklab, var(--muted) 48%, var(--card));
+  --px-gold-soft: color-mix(in oklab, var(--gold) 11%, var(--card));
   display: block;
   min-height: 100dvh;
   background: var(--background);
@@ -100,7 +100,7 @@
   min-height: 42px;
   padding: 0 15px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 7px;
   background: transparent;
   color: var(--muted-foreground);
   font-size: 13px;
@@ -112,8 +112,8 @@
   color: var(--foreground);
 }
 .px-primary-nav button[aria-current="page"] {
-  background: color-mix(in oklab, var(--chart-teal) 10%, var(--card));
-  border-color: color-mix(in oklab, var(--chart-teal) 20%, var(--border));
+  background: color-mix(in oklab, var(--chart-teal) 7%, var(--card));
+  border-color: color-mix(in oklab, var(--chart-teal) 18%, var(--border));
   color: var(--chart-teal);
   font-weight: 650;
 }
@@ -151,29 +151,18 @@
 .px-hero {
   position: relative;
   display: flex;
-  min-height: 286px;
+  min-height: 228px;
   align-items: center;
   justify-content: space-between;
   gap: 30px;
   overflow: hidden;
-  margin-bottom: 23px;
-  padding: clamp(30px, 5vw, 62px);
-  border: 1px solid color-mix(in oklab, var(--chart-teal) 34%, transparent);
-  border-radius: 25px;
-  background:
-    radial-gradient(
-      ellipse at 85% 4%,
-      color-mix(in oklab, var(--gold) 26%, transparent),
-      transparent 43%
-    ),
-    radial-gradient(
-      ellipse at 72% 95%,
-      color-mix(in oklab, var(--chart-teal) 44%, transparent),
-      transparent 43%
-    ),
-    linear-gradient(118deg, #102f2b 0%, #064a40 56%, #087a63 100%);
+  margin-bottom: 20px;
+  padding: clamp(28px, 4vw, 48px);
+  border: 0;
+  border-radius: 12px;
+  background: #123f37;
   color: #f7fbf9;
-  box-shadow: 0 20px 55px color-mix(in oklab, var(--chart-teal) 14%, transparent);
+  box-shadow: none;
 }
 .px-hero-copy {
   position: relative;
@@ -183,76 +172,75 @@
 .px-hero-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 19px;
-  color: #b7e6d8;
+  gap: 0;
+  margin-bottom: 13px;
+  color: #c8ddd6;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 1.8px;
+  letter-spacing: 0.12em;
 }
 .px-hero h1 {
   font-family: var(--font-display);
-  font-size: clamp(34px, 4.6vw, 58px);
-  font-weight: 640;
-  line-height: 1.02;
-  letter-spacing: -2px;
+  max-width: 680px;
+  font-size: clamp(32px, 4vw, 49px);
+  font-weight: 620;
+  line-height: 1.08;
+  letter-spacing: -1.6px;
 }
 .px-hero h1 em {
-  color: #f3c35a;
+  color: #e7bd62;
   font-style: normal;
 }
 .px-hero-copy > p {
   max-width: 500px;
-  margin-top: 16px;
+  margin-top: 12px;
   color: #d1e5de;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.55;
 }
 .px-hero-brand {
   position: relative;
   z-index: 1;
-  flex: 0 1 390px;
-  min-width: 240px;
+  flex: 0 1 320px;
+  min-width: 220px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 28px;
-  border: 1px solid #ffffff34;
-  border-radius: 21px;
-  background: linear-gradient(145deg, #ffffff22, #ffffff0a);
-  box-shadow:
-    0 22px 55px #001c1738,
-    inset 0 1px #ffffff2d;
-  backdrop-filter: blur(12px);
+  gap: 9px;
+  padding: 15px;
+  border: 1px solid #ffffff2d;
+  border-radius: 9px;
+  background: #ffffff0a;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 .px-hero-logo-plaque {
   display: grid;
   place-items: center;
   width: 100%;
-  min-height: 128px;
-  padding: 24px;
-  border: 1px solid #ffffffaa;
-  border-radius: 15px;
+  min-height: 88px;
+  padding: 14px;
+  border: 0;
+  border-radius: 6px;
   background: #fff;
-  box-shadow: 0 8px 22px #00291e24;
+  box-shadow: none;
 }
 .px-hero-logo-plaque .portal-organization-logo {
   width: 100%;
   max-width: 300px;
-  height: 78px;
+  height: 58px;
 }
 .px-hero-logo-plaque .portal-organization-logo-fallback {
-  min-height: 78px;
-  font-size: 30px;
+  min-height: 58px;
+  font-size: 24px;
   color: #15483c;
 }
 .px-hero-brand > span {
-  color: #d2e9e1;
+  color: #d2e0dc;
   font-size: 9px;
   font-weight: 650;
-  letter-spacing: 2px;
+  letter-spacing: 0.1em;
 }
 .px-page-heading {
   display: flex;
@@ -1202,6 +1190,392 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Visual refinement: restrained materials, stronger hierarchy and readable map labels. */
+.portal-explorer {
+  --px-blue: var(--chart-teal);
+  --px-purple: var(--muted-foreground);
+  --px-blue-soft: color-mix(in oklab, var(--chart-teal) 8%, var(--card));
+  --px-purple-soft: color-mix(in oklab, var(--muted) 48%, var(--card));
+  --px-gold-soft: color-mix(in oklab, var(--gold) 10%, var(--card));
+}
+.px-hero {
+  min-height: 220px;
+  margin-bottom: 20px;
+  padding: clamp(28px, 4vw, 46px);
+  border: 0;
+  border-radius: 12px;
+  background: #123f37;
+  box-shadow: none;
+}
+.px-route.is-selected {
+  border: 0;
+  border-bottom: 2px solid var(--px-green);
+  background: transparent;
+  color: var(--px-green);
+  box-shadow: none;
+}
+.px-hero-eyebrow {
+  margin-bottom: 12px;
+  color: #c5d9d3;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.px-hero h1 {
+  max-width: 650px;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 620;
+  line-height: 1.08;
+  letter-spacing: -1.5px;
+}
+.px-hero-copy > p {
+  margin-top: 12px;
+  color: #d6e2de;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.px-hero-brand {
+  flex-basis: 320px;
+  min-width: 220px;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid #ffffff2d;
+  border-radius: 8px;
+  background: #ffffff0a;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.px-hero-logo-plaque {
+  min-height: 88px;
+  padding: 14px;
+  border: 0;
+  border-radius: 5px;
+  box-shadow: none;
+}
+.px-hero-logo-plaque .portal-organization-logo,
+.px-hero-logo-plaque .portal-organization-logo-fallback {
+  height: 58px;
+  min-height: 58px;
+}
+.px-hero-logo-plaque .portal-organization-logo-fallback {
+  font-size: 24px;
+}
+.px-hero-brand > span {
+  color: #d2e0dc;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.px-primary-nav button {
+  border-radius: 7px;
+}
+.px-primary-nav button[aria-current="page"] {
+  background: color-mix(in oklab, var(--chart-teal) 7%, var(--card));
+  border-color: color-mix(in oklab, var(--chart-teal) 18%, var(--border));
+}
+.px-explore-heading {
+  margin: 24px 0 10px;
+}
+.px-explore-heading h2 {
+  font-size: clamp(20px, 2.1vw, 26px);
+  font-weight: 620;
+  letter-spacing: -0.55px;
+}
+.px-explore-heading > div > p:last-child {
+  margin-top: 5px;
+  font-size: 12px;
+}
+.px-route-grid {
+  width: 100%;
+  gap: 18px;
+  margin-bottom: 0;
+  padding: 0 5px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+.px-route {
+  min-height: 43px;
+  gap: 8px;
+  padding: 7px 3px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.px-route:hover {
+  border-color: transparent;
+  border-bottom-color: color-mix(in oklab, var(--px-green) 45%, var(--border));
+  background: transparent;
+  box-shadow: none;
+}
+.px-route-green,
+.px-route-blue,
+.px-route-gold,
+.px-route-purple {
+  --route-color: var(--px-green);
+  --route-tint: var(--px-green-soft);
+}
+.px-route-icon {
+  width: 23px;
+  height: 23px;
+  border-radius: 4px;
+  background: transparent;
+}
+.px-route-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.px-route-copy strong {
+  font-size: 12px;
+  font-weight: 580;
+}
+.px-route.is-selected {
+  border: 0;
+  border-bottom: 2px solid var(--px-green);
+  background: transparent;
+  color: var(--px-green);
+  box-shadow: none;
+}
+.px-explorer-board {
+  border-radius: 9px;
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--foreground) 3%, transparent);
+}
+.px-explorer-visual {
+  padding: 12px;
+}
+.px-chain-org {
+  margin-bottom: 9px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--px-green);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--muted) 28%, var(--card));
+  color: var(--foreground);
+}
+.px-chain-org span:first-child {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.px-chain-org span:last-child {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+.px-chain-management h3,
+.px-chain-primary h3,
+.px-chain-support h3 {
+  padding: 7px 8px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+.px-chain-management h3 small,
+.px-chain-primary h3 small,
+.px-chain-support h3 small {
+  font-size: 10px;
+}
+.px-chain-management h3 {
+  border-left: 2px solid var(--gold);
+  background: transparent;
+}
+.px-chain-bridge {
+  height: 24px;
+  color: var(--muted-foreground);
+}
+.px-chain-bridge span {
+  background: var(--muted);
+  font-size: 12px;
+}
+.px-chain-primary {
+  padding: 8px;
+  border: 1px solid color-mix(in oklab, var(--px-green) 15%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--px-green) 3%, var(--card));
+}
+.px-chain-nodes button,
+.px-chain-outputs button {
+  justify-content: flex-start;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: var(--card);
+}
+.px-chain-nodes button {
+  min-height: 62px;
+}
+.px-chain-management .px-chain-nodes button {
+  border-top: 1px solid var(--border);
+  border-left: 2px solid color-mix(in oklab, var(--gold) 70%, var(--border));
+}
+.px-chain button strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.px-chain button small {
+  font-size: 10px;
+}
+.px-chain button:hover {
+  background: color-mix(in oklab, var(--px-green) 4%, var(--card));
+}
+.px-chain button.is-selected {
+  border: 2px solid var(--px-green);
+  background: color-mix(in oklab, var(--px-green) 7%, var(--card));
+  box-shadow: none;
+}
+.px-chain button.is-linked {
+  border-color: color-mix(in oklab, var(--px-green) 45%, var(--border));
+  background: color-mix(in oklab, var(--px-green) 3%, var(--card));
+  box-shadow: none;
+}
+.px-chain-outputs h4::before {
+  background: var(--px-green);
+}
+.px-chain-outputs button {
+  min-height: 40px;
+}
+.px-chain-outputs button strong {
+  font-size: 10px;
+}
+.px-chain-outputs button small {
+  font-size: 9px;
+}
+.px-chain-support h3 {
+  border-left: 2px solid var(--muted-foreground);
+  background: transparent;
+}
+.px-chain-support .px-chain-nodes button {
+  min-height: 54px;
+  padding: 8px;
+  border-bottom-width: 1px;
+  border-bottom-color: var(--border);
+}
+.px-support-toggle {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--px-green);
+  font-size: 10px;
+}
+.px-context-panel {
+  padding: 18px 16px;
+  background: color-mix(in oklab, var(--muted) 12%, var(--card));
+}
+.px-context-panel > .px-kicker {
+  font-size: 9px;
+}
+.px-context-panel > h3 {
+  font-size: 18px;
+  font-weight: 620;
+}
+.px-context-description {
+  font-size: 12px;
+}
+.px-context-outputs > div strong,
+.px-context-docs-head strong {
+  font-size: 11px;
+}
+.px-context-outputs > div small,
+.px-context-docs-head small {
+  font-size: 10px;
+}
+.px-context-outputs > button {
+  padding: 7px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 11px;
+}
+.px-context-docs article {
+  padding: 10px 0;
+}
+.px-context-docs article > span {
+  width: 28px;
+  height: 30px;
+  background: var(--px-green-soft);
+  color: var(--px-green);
+}
+.px-context-docs article > div button {
+  font-size: 11px;
+}
+.px-context-docs article > div small {
+  font-size: 9px;
+}
+.px-context-empty {
+  font-size: 11px;
+}
+.px-context-open {
+  border-radius: 5px;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 11px;
+}
+.px-visual-field > button,
+.px-process-lane > div > button {
+  border-radius: 7px;
+  transition:
+    border-color 140ms,
+    background 140ms;
+}
+.px-visual-field > button:hover,
+.px-process-lane > div > button:hover {
+  transform: none;
+  border-color: color-mix(in oklab, var(--px-green) 50%, var(--border));
+}
+.px-visual-field > button.is-selected,
+.px-process-lane > div > button.is-selected {
+  border-color: var(--px-green);
+  background: color-mix(in oklab, var(--px-green) 5%, var(--card));
+  box-shadow: none;
+}
+.px-visual-node-icon {
+  border-radius: 6px;
+  background: var(--px-green-soft);
+  color: var(--px-green);
+}
+.px-visual-field-area > button:nth-child(n) .px-visual-node-icon {
+  background: var(--px-green-soft);
+  color: var(--px-green);
+}
+.px-visual-field-role > button:nth-child(n) {
+  border-top: 1px solid var(--border);
+}
+.px-process-lane > div > button {
+  border-left: 2px solid var(--px-green);
+}
+.px-process-lane > div > button > span {
+  color: var(--muted-foreground);
+}
+@media (max-width: 640px) {
+  .px-hero {
+    min-height: 0;
+    padding: 26px 22px;
+    border-radius: 9px;
+  }
+  .px-hero-brand {
+    min-width: 0;
+    padding: 12px;
+    border-radius: 6px;
+  }
+  .px-hero-logo-plaque {
+    min-height: 70px;
+  }
+  .px-hero-logo-plaque .portal-organization-logo,
+  .px-hero-logo-plaque .portal-organization-logo-fallback {
+    height: 48px;
+    min-height: 48px;
+  }
+  .px-route-grid {
+    gap: 12px;
+    overflow-x: auto;
+  }
+  .px-route {
+    padding-inline: 2px;
+  }
+  .px-route-meta {
+    display: none;
+  }
+}
 @media (max-width: 390px) {
   .px-route-grid {
     grid-template-columns: 1fr;
@@ -1686,7 +2060,7 @@
 }
 .px-visual-field > button strong,
 .px-process-lane > div > button strong {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.35;
 }
 .px-visual-field > button small,
