@@ -63,10 +63,11 @@
   height: 55px;
   object-fit: contain;
 }
-.portal-organization-name {
-  font-size: 16px;
-  overflow-wrap: anywhere;
-  text-align: center;
+.portal-organization-logo-fallback {
+  color: var(--muted-foreground);
+  display: grid;
+  min-height: 55px;
+  place-items: center;
 }
 .px-rail-label {
   font-size: 10px;
@@ -98,18 +99,6 @@
   background: var(--gold);
   color: var(--primary-foreground);
   font-weight: 650;
-}
-.px-sign {
-  margin-top: auto;
-  padding: 30px 10px 0;
-  font-size: 11px;
-  color: #b4bfce;
-}
-.px-sign strong {
-  display: block;
-  font: 24px var(--font-brand);
-  color: #edf1f6;
-  margin-top: 5px;
 }
 .px-main {
   min-width: 0;
@@ -671,8 +660,7 @@
     height: 36px;
     width: 115px;
   }
-  .px-rail-label,
-  .px-sign {
+  .px-rail-label {
     display: none;
   }
   .px-rail nav {

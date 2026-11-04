@@ -253,9 +253,6 @@ export function DocumentPortalView({
             ))}
           </nav>
         </div>
-        <div className="px-sign">
-          Conectado por<strong>ateliam.</strong>
-        </div>
       </aside>
       <div className="px-main">
         {header}
