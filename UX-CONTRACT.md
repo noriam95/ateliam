@@ -188,8 +188,8 @@ Esta revisão substitui a composição de atalhos e cartões descrita abaixo; ma
 
 | Capacidade           | Dono canônico                                           | Comportamento                                                                                                                                                                                 |
 | -------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Consulta e estado    | DocumentPortal / DocumentPortalView                     | Explorar, Biblioteca e Salvos; consulta local sobre documentos autorizados; estado refletido na URL; paginação de 12 linhas.                                                                  |
-| Identidade           | PortalOrganizationLogo                                  | Logo parametrizada da organização ativa; proporção preservada, nome como fallback; nenhuma marca organizacional fixa.                                                                         |
+| Consulta e estado    | DocumentPortal / DocumentPortalView                     | Cabeçalho com Explorar, Todos os documentos e Favoritos; página inicial separa descoberta do acervo; estado refletido na URL; paginação de 12 linhas.                                     |
+| Identidade           | PortalOrganizationLogo                                  | Logo parametrizada da organização ativa; proporção preservada, fallback BF Flow; nenhuma marca organizacional fixa.                                                                            |
 | Cadeia de valor      | PortalValueChain, variante de consulta do PorterDiagram | Mesmos cadastros, categorias e vínculos; Gestão / Finalísticos + Saídas / Suporte; registros vazios não são substituídos por exemplos.                                                        |
 | Pesquisa             | document-portal / portal-content-index                  | Todos os termos podem corresponder a campos diferentes; acentos ignorados; pesquisa em conteúdo, cargos explícitos, nomes das cadeias e metadados. Sem interpretar HTML ou executar conteúdo. |
 | Filtros              | Select nativo / PortalDocumentFilters                   | Área, processo por ID incluindo descendentes, cargo, modalidade e cadeia cumulativos; filtros anteriores continuam aceitos na URL.                                                            |
@@ -197,6 +197,13 @@ Esta revisão substitui a composição de atalhos e cartões descrita abaixo; ma
 | Estado vazio e falha | DocumentPortalView                                      | Sem dados fictícios; motivo e limpeza de filtros ou nova tentativa. Favoritos isolados por usuário/organização.                                                                               |
 
 Fonte: aprovação do protótipo e pedido de implementação em 04/11/2026. Segurança: `requireSupabaseAuth`, `permissionContext` e filtros `organization_id` existentes permanecem obrigatórios; o índice recebe somente documentos vigentes da organização autorizada.
+
+### Revisão de navegação e descoberta — 04/11/2026
+
+- A navegação principal fica junto à marca parametrizada, com três destinos explícitos: Explorar, Todos os documentos e Favoritos. Não há trilho lateral fixo.
+- Explorar é uma página de descoberta: busca global e quatro rotas claras (Cadeia de valor, Área, Processo e Cargo), com contagem dos registros reais da organização. O catálogo completo não é repetido abaixo dos resultados da descoberta; uma ação dedicada abre Todos os documentos.
+- A cadeia é a mesma fonte e hierarquia do sistema, incluindo saídas. Selecionar cadeia, área, processo ou cargo abre resultados já filtrados. A busca aceita todos os campos do índice vigente.
+- Todos os documentos e Favoritos têm título e contagem contextualizados, filtros e resultados. Logo, responsividade, navegação por teclado, foco visível e estados de carregamento, falha e vazio permanecem acessíveis.
 
 | Capacidade       | Regra                                                                                                                                                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

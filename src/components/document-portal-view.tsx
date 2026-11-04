@@ -11,6 +11,9 @@ import {
   ContactRound,
   ArrowUpRight,
   LoaderCircle,
+  ArrowRight,
+  Layers3,
+  Sparkles,
 } from "lucide-react";
 import {
   filterAndSortPortalDocuments,
@@ -116,6 +119,10 @@ export function DocumentPortalView({
   const page = Math.min(Math.max(1, state.page), Math.max(1, Math.ceil(rows.length / pageSize)));
   const active = !!state.query.trim() || Object.values(state.filters).some(Boolean);
   const exploring = state.view === "explore" && !active;
+  const goHome = () => {
+    setDraft("");
+    change({ view: "explore", query: "", filters: {}, sort: "relevance" });
+  };
   const unique = (values: string[]) =>
     [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const roles = unique([
@@ -225,46 +232,62 @@ export function DocumentPortalView({
   }
   return (
     <div className="portal-explorer">
-      <aside className="px-rail">
-        <div className="px-org">
-          <PortalOrganizationLogo name={organization.name} logo={organization.logo_data_url} />
-        </div>
-        <div>
-          <p className="px-rail-label">CONHECIMENTO</p>
-          <nav aria-label="Navegação do portal">
-            {(
-              [
-                { id: "explore", title: "Explorar", Icon: Compass },
-                { id: "library", title: "Biblioteca", Icon: Library },
-                { id: "saved", title: "Salvos", Icon: Bookmark },
-              ] as const
-            ).map(({ id, title, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={state.view === id}
-                onClick={() =>
-                  change({ view: id, ...(id === "explore" ? { query: "", filters: {} } : {}) })
-                }
-              >
-                <Icon size={18} />
-                {title}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </aside>
       <div className="px-main">
         {header}
+        <div className="px-masthead">
+          <button type="button" className="px-brand" onClick={goHome} aria-label="Ir para o início do portal">
+            <PortalOrganizationLogo name={organization.name} logo={organization.logo_data_url} />
+            <span>Portal de documentos</span>
+          </button>
+          <nav className="px-primary-nav" aria-label="Navegação do portal">
+            <button type="button" aria-current={exploring ? "page" : undefined} onClick={goHome}>
+              <Compass size={17} /> Explorar
+            </button>
+            <button
+              type="button"
+              aria-current={state.view === "library" ? "page" : undefined}
+              onClick={() => change({ view: "library" })}
+            >
+              <Library size={17} /> Todos os documentos <span>{documents.length}</span>
+            </button>
+            <button
+              type="button"
+              aria-current={state.view === "saved" ? "page" : undefined}
+              onClick={() => change({ view: "saved" })}
+            >
+              <Bookmark size={17} /> Favoritos <span>{favorites.length}</span>
+            </button>
+          </nav>
+        </div>
         <main className="px-body">
-          <div className="px-intro">
-            <p className="px-kicker">O conhecimento tem vários caminhos</p>
-            <h1>Qual é o seu ponto de partida?</h1>
-            <p>Um assunto, uma área, um processo ou o seu cargo.</p>
-          </div>
+          {exploring ? (
+            <section className="px-hero" aria-label="Pesquisa no portal">
+              <div className="px-hero-copy">
+                <span className="px-hero-eyebrow"><Sparkles size={14} /> CONHECIMENTO EM MOVIMENTO</span>
+                <h1>Encontre o caminho.<br /><em>Faça acontecer.</em></h1>
+                <p>Documentos, processos e orientações da sua organização — conectados em um só lugar.</p>
+              </div>
+              <div className="px-hero-art" aria-hidden="true">
+                <span className="px-art-orbit px-orbit-one" />
+                <span className="px-art-orbit px-orbit-two" />
+                <span className="px-art-core"><FileText size={27} /></span>
+                <span className="px-art-node px-node-one"><Workflow size={17} /></span>
+                <span className="px-art-node px-node-two"><Building2 size={17} /></span>
+                <span className="px-art-node px-node-three"><ContactRound size={17} /></span>
+              </div>
+            </section>
+          ) : (
+            <div className="px-page-heading">
+              <div>
+                <p className="px-kicker">{state.view === "saved" ? "SUA COLEÇÃO" : "ACERVO ORGANIZACIONAL"}</p>
+                <h1>{state.view === "saved" ? "Seus favoritos" : state.query ? "Resultados da pesquisa" : "Todos os documentos"}</h1>
+              </div>
+              <span className="px-total-pill"><FileText size={15} /> {rows.length} {rows.length === 1 ? "documento" : "documentos"}</span>
+            </div>
+          )}
           <form
             noValidate
-            className="px-search"
+            className={`px-search${exploring ? " px-search-hero" : ""}`}
             role="search"
             onSubmit={(e) => {
               e.preventDefault();
@@ -276,7 +299,7 @@ export function DocumentPortalView({
               ref={input}
               value={draft}
               aria-label="Pesquisar em todo o portal"
-              placeholder="Pesquise em todo o portal"
+              placeholder="Pesquise por assunto, código, área, processo, cargo…"
               maxLength={160}
               onCompositionStart={() => (composing.current = true)}
               onCompositionEnd={(e) => {
@@ -302,10 +325,10 @@ export function DocumentPortalView({
                 <X size={18} />
               </button>
             ) : null}
-            <button type="submit">Buscar</button>
+            <button type="submit"><Search size={16} /> Buscar</button>
           </form>
           <p className="px-search-hint">
-            Pesquise por título, código, conteúdo, área, processo, cargo ou cadeia de valor.
+            Pesquise em tudo: títulos, códigos, conteúdo, áreas, processos, cargos e cadeia de valor.
           </p>
           {loading ? (
             <div className="px-state" role="status">
@@ -324,27 +347,35 @@ export function DocumentPortalView({
             <>
               {exploring ? (
                 <section aria-label="Explorar documentos">
-                  <div className="px-section-head">
-                    <h2>Explore as conexões</h2>
-                    <div className="px-modes" aria-label="Explorar por">
+                  <div className="px-explore-heading">
+                    <div>
+                      <p className="px-kicker">COMECE PELO QUE VOCÊ CONHECE</p>
+                      <h2>Como você quer encontrar?</h2>
+                      <p>Escolha um ponto de partida. O portal conecta o restante.</p>
+                    </div>
+                  </div>
+                  <div className="px-route-grid" aria-label="Explorar documentos por">
                       {(
                         [
-                          { id: "chain", title: "Cadeia de valor" },
-                          { id: "area", title: "Área" },
-                          { id: "process", title: "Processo" },
-                          { id: "role", title: "Cargo" },
+                          { id: "chain", title: "Cadeia de valor", subtitle: "Siga as conexões do negócio", Icon: Workflow, count: structure.valueChains.filter((c) => c.category !== "output").length, tone: "green" },
+                          { id: "area", title: "Área", subtitle: "Encontre pelo seu time", Icon: Building2, count: areas.length, tone: "blue" },
+                          { id: "process", title: "Processo", subtitle: "Vá direto à atividade", Icon: Layers3, count: structure.processes.length, tone: "gold" },
+                          { id: "role", title: "Cargo", subtitle: "Consulte por responsabilidade", Icon: ContactRound, count: roles.length, tone: "purple" },
                         ] as const
                       ).map((m) => (
                         <button
                           type="button"
                           key={m.id}
+                          className={`px-route px-route-${m.tone}${state.explore === m.id ? " is-selected" : ""}`}
                           aria-pressed={state.explore === m.id}
                           onClick={() => change({ explore: m.id })}
                         >
-                          {m.title}
+                          <span className="px-route-icon"><m.Icon size={21} /></span>
+                          <span className="px-route-copy"><strong>{m.title}</strong><small>{m.subtitle}</small></span>
+                          <span className="px-route-meta"><b>{m.count}</b><small>{m.count === 1 ? "opção" : "opções"}</small></span>
+                          <ArrowRight className="px-route-arrow" size={17} />
                         </button>
                       ))}
-                    </div>
                   </div>
                   {state.explore === "chain" ? (
                     <>
@@ -416,8 +447,8 @@ export function DocumentPortalView({
                   )}
                 </section>
               ) : null}
-              <section className="px-results" aria-label="Resultados da consulta">
-                <div className="px-section-head">
+              {!exploring ? <section className="px-results" aria-label="Resultados da consulta">
+                <div className="px-section-head px-results-heading">
                   <div>
                     <h2>
                       {state.view === "saved"
@@ -426,8 +457,6 @@ export function DocumentPortalView({
                           ? "Resultados da pesquisa"
                           : active
                             ? "Documentos relacionados"
-                            : exploring
-                              ? "Para começar a consulta"
                               : "Biblioteca completa"}
                     </h2>
                     <p role="status">
@@ -465,7 +494,7 @@ export function DocumentPortalView({
                       ))}
                   </div>
                 ) : null}
-                {!exploring ? (
+                {
                   <div className="px-filters">
                     {select(
                       "area",
@@ -502,7 +531,7 @@ export function DocumentPortalView({
                       </select>
                     </label>
                   </div>
-                ) : null}
+                }
                 {connections.length ? (
                   <div className="px-connections" aria-label="Cadastros encontrados">
                     {connections.map((e) => (
@@ -600,12 +629,18 @@ export function DocumentPortalView({
                     </button>
                   </nav>
                 ) : null}
-              </section>
+              </section> : null}
+              {exploring ? (
+                <div className="px-discovery-footer">
+                  <div><span className="px-discovery-mark"><Library size={19} /></span><p><strong>Prefere ver tudo de uma vez?</strong><small>Navegue pelo acervo completo e use os filtros para refinar.</small></p></div>
+                  <button type="button" onClick={() => change({ view: "library" })}>Abrir todos os documentos <ArrowRight size={16} /></button>
+                </div>
+              ) : null}
             </>
           )}
         </main>
         <footer className="px-footer">
-          <span>{organization.name} · Portal de documentos</span>
+          <span>Portal de documentos · {organization.name}</span>
           <span>Documentos vigentes da organização ativa</span>
         </footer>
       </div>
