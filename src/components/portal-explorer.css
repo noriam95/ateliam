@@ -2207,7 +2207,7 @@
   gap: 5px;
 }
 .px-chain-main {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.28fr);
   gap: 7px;
 }
 .px-chain-main > .px-chain-nodes {
@@ -2230,33 +2230,32 @@
   line-height: 1.1;
 }
 .px-chain-outputs {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  align-items: start;
-  gap: 6px;
-  padding: 7px 0 0;
-  border-top: 1px solid var(--border);
-  border-left: 0;
+  display: block;
+  min-width: 0;
+  padding: 0 0 0 8px;
+  border-top: 0;
+  border-left: 1px solid var(--border);
 }
 .px-chain-outputs h4 {
-  margin: 7px 0 0;
+  margin: 0 0 5px;
   font-size: 9px;
 }
 .px-chain-output-list {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
   max-height: none;
   overflow: visible;
 }
 .px-chain-outputs button {
-  min-height: 34px;
+  min-height: 28px;
   margin: 0;
+  padding: 4px 5px;
 }
 .px-chain-outputs button strong {
   font-size: 8px;
 }
 .px-chain-outputs button small {
-  font-size: 7px;
+  display: none;
 }
 .px-chain-support .px-chain-nodes {
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -2278,11 +2277,14 @@
   .px-chain-management .px-chain-nodes {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .px-chain-main {
+    grid-template-columns: minmax(0, 1fr) minmax(155px, 0.36fr);
+  }
   .px-chain-main > .px-chain-nodes {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .px-chain-output-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .px-chain-support .px-chain-nodes {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2294,16 +2296,29 @@
   .px-chain-support .px-chain-nodes {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .px-chain-output-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .px-chain-outputs {
-    grid-template-columns: 1fr;
+    padding-left: 6px;
+    border-top: 0;
+    border-left: 1px solid var(--border);
   }
   .px-chain-outputs h4 {
     margin-top: 0;
   }
+  .px-chain-output-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .px-chain-outputs button {
+    min-height: 30px;
+    padding-inline: 4px;
+  }
+  .px-chain-outputs button strong {
+    font-size: 7.5px;
+  }
   .px-chain button strong {
     font-size: 9px;
+  }
+  .px-chain-main {
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 36%);
+    gap: 5px;
   }
 }
