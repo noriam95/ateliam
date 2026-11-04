@@ -254,3 +254,8 @@ Os visualizadores de Mapeamento e Documentação reutilizam o HTML de apresenta�
 - Selecionar uma saída restringe o desenho à saída e aos macroprocessos relacionados; a aba Processos mostra os processos desses macroprocessos e a aba Saídas mostra a saída selecionada.
 - A aba Saídas lista descrição, macroprocessos relacionados e status, com pesquisa, filtro de status, vínculo por cadeia e estados vazios recuperáveis. “Limpar seleção” restaura o desenho e a consulta ao conjunto completo.
 - Exportar o diagrama respeita o recorte selecionado atualmente.
+
+## Cadastro de áreas — 04/11/2026
+
+- O cadastro de áreas exibe sigla, nome e descrição. Descrição é opcional e aceita até 2.000 caracteres; inclusão e edição persistem o valor na organização ativa.
+- A lista de áreas mostra a descrição completa, permite ordená-la e incluí-la na pesquisa global da tela. Descrições longas quebram linha dentro da tabela.

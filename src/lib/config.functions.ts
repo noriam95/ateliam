@@ -603,7 +603,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
     ] = await Promise.all([
       context.supabase
         .from("organization_departments")
-        .select("id, name, sigla, organization_id, created_at, updated_at")
+        .select("*")
         .eq("organization_id", organizationId)
         .order("name", { ascending: true }),
       context.supabase
@@ -805,18 +805,26 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
 
 export const saveProcessArea = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { id?: string; organizationId?: string | null; name: string; sigla: string }) =>
-    organizationScopeSchema
-      .extend({
-        id: z.string().uuid().optional(),
-        name: z.string().trim().min(2).max(120),
-        sigla: z
-          .string()
-          .trim()
-          .regex(/^[A-Za-z]{3}$/, "A sigla deve ter exatamente 3 letras.")
-          .transform((value) => value.toUpperCase()),
-      })
-      .parse(data),
+  .validator(
+    (data: {
+      id?: string;
+      organizationId?: string | null;
+      name: string;
+      sigla: string;
+      description?: string | null;
+    }) =>
+      organizationScopeSchema
+        .extend({
+          id: z.string().uuid().optional(),
+          name: z.string().trim().min(2).max(120),
+          sigla: z
+            .string()
+            .trim()
+            .regex(/^[A-Za-z]{3}$/, "A sigla deve ter exatamente 3 letras.")
+            .transform((value) => value.toUpperCase()),
+          description: z.string().trim().max(2000).optional().nullable(),
+        })
+        .parse(data),
   )
   .handler(async ({ data, context }) => {
     const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
@@ -845,6 +853,7 @@ export const saveProcessArea = createServerFn({ method: "POST" })
       organization_id: access.organizationId,
       name: data.name,
       sigla: data.sigla,
+      description: data.description?.trim() || null,
       updated_at: new Date().toISOString(),
     };
     const query = data.id

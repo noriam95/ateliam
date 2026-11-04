@@ -82,7 +82,12 @@ type SystemItem = {
 };
 type Position = { id: string; title: string; description: string | null };
 
-type Area = { id: string; name: string; sigla: string | null };
+type Area = {
+  id: string;
+  name: string;
+  sigla: string | null;
+  description?: string | null;
+};
 type Owner = {
   id: string;
   name: string;
@@ -872,7 +877,13 @@ export function WorkspaceProcessRegistrations({
       }
       if (view === "areas") {
         return saveArea({
-          data: { id: draft.id || undefined, organizationId, name: draft.name, sigla: draft.sigla },
+          data: {
+            id: draft.id || undefined,
+            organizationId,
+            name: draft.name,
+            sigla: draft.sigla,
+            description: draft.description,
+          },
         });
       }
       if (view === "positions") {
@@ -1081,7 +1092,12 @@ export function WorkspaceProcessRegistrations({
       }
       if (relatedView === "areas") {
         return saveArea({
-          data: { organizationId, name: relatedDraft.name, sigla: relatedDraft.sigla },
+          data: {
+            organizationId,
+            name: relatedDraft.name,
+            sigla: relatedDraft.sigla,
+            description: relatedDraft.description,
+          },
         });
       }
       return saveOwner({
@@ -1240,9 +1256,9 @@ export function WorkspaceProcessRegistrations({
                   {row.values.map((value, index) => (
                     <td
                       key={`${row.id}-${index}`}
-                      className={
+                      className={`${
                         index ? "px-4 py-3 text-muted-foreground" : "px-4 py-3 font-semibold"
-                      }
+                      } ${view === "areas" && index === 2 ? "max-w-[38rem] whitespace-normal break-words" : ""}`}
                     >
                       {value}
                     </td>
@@ -1598,6 +1614,19 @@ function RegistrationFields({
           <p className="mt-1 text-xs font-normal text-muted-foreground">
             Usada na codificação dos documentos desta área (ex.:{" "}
             <span className="font-mono">POP.{draft.sigla || "ADM"}.001</span>).
+          </p>
+        </Field>
+        <Field label="Descrição (opcional)">
+          <textarea
+            value={draft.description}
+            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+            maxLength={2000}
+            rows={4}
+            placeholder="Descreva as responsabilidades e o escopo desta área."
+            className={`resize-y ${inputClass} h-auto min-h-24 py-2`}
+          />
+          <p className="text-xs font-normal text-muted-foreground">
+            {draft.description.length}/2000 caracteres
           </p>
         </Field>
       </>
@@ -1995,7 +2024,7 @@ function registryCopy(view: ProcessRegistrationView) {
       title: "Áreas",
       singular: "Área",
       description: "Mantenha as áreas utilizadas nos processos, donos e documentos.",
-      columns: ["Sigla", "Área"],
+      columns: ["Sigla", "Área", "Descrição"],
       icon: <Layers3 className="h-5 w-5" />,
     };
   if (view === "positions")
@@ -2051,7 +2080,10 @@ function registryCopy(view: ProcessRegistrationView) {
 
 function registryRows(view: ProcessRegistrationView, data: RegistryData) {
   if (view === "areas")
-    return data.areas.map((item) => ({ id: item.id, values: [item.sigla || "—", item.name] }));
+    return data.areas.map((item) => ({
+      id: item.id,
+      values: [item.sigla || "—", item.name, item.description || "—"],
+    }));
   if (view === "positions")
     return (data.positions ?? []).map((item) => ({
       id: item.id,
@@ -2125,7 +2157,15 @@ function draftFromRow(view: ProcessRegistrationView, id: string, data: RegistryD
   const draft = emptyDraft(view, data);
   if (view === "areas") {
     const item = data.areas.find((row) => row.id === id);
-    return item ? { ...draft, id, name: item.name, sigla: normalizeSigla(item.sigla) } : draft;
+    return item
+      ? {
+          ...draft,
+          id,
+          name: item.name,
+          sigla: normalizeSigla(item.sigla),
+          description: item.description || "",
+        }
+      : draft;
   }
   if (view === "positions") {
     const item = data.positions.find((row) => row.id === id);
@@ -2214,7 +2254,12 @@ function saveDemoRegistration(
       const previous = current.areas.find((item) => item.id === id);
       return {
         ...current,
-        areas: upsert(current.areas, { id, name: draft.name, sigla: draft.sigla }),
+        areas: upsert(current.areas, {
+          id,
+          name: draft.name,
+          sigla: draft.sigla,
+          description: draft.description.trim() || null,
+        }),
         processes:
           previous && previous.name !== draft.name
             ? current.processes.map((process) =>
