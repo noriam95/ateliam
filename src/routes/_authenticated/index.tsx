@@ -1266,6 +1266,7 @@ function WorkspaceHome() {
                 isLoading={dashboardQ.isLoading && !isDemo}
                 isDemo={isDemo}
                 isAdmin={isCurrentUserAdmin}
+                canEditRegistrations={canEditRegistrations}
               />
             )}
           </main>
@@ -2580,6 +2581,7 @@ function WorkspaceContent({
   isLoading,
   isDemo,
   isAdmin,
+  canEditRegistrations,
 }: {
   view: WorkspaceView;
   organizationName: string;
@@ -2610,6 +2612,7 @@ function WorkspaceContent({
   isLoading: boolean;
   isDemo: boolean;
   isAdmin: boolean;
+  canEditRegistrations: boolean;
 }) {
   const navigate = useNavigate();
 
