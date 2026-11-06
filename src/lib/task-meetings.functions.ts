@@ -2,6 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+async function assertTaskModuleAccess(context: { supabase: SupabaseClient; userId: string }) {
+  const { data, error } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId);
+  if (error) throw new Error(error.message);
+  if (!data?.some((item) => item.role === "admin" || item.role === "editor")) {
+    throw new Error("O módulo de tarefas é restrito a ADM e Analista de Processos.");
+  }
+}
+
 export type TaskMeeting = {
   id: string;
   organization_id: string;
@@ -30,6 +42,7 @@ export const loadTaskMeetings = createServerFn({ method: "POST" })
       .parse(v),
   )
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     let q = db
       .from("task_meetings")
@@ -98,6 +111,7 @@ export const saveTaskMeeting = createServerFn({ method: "POST" })
       .parse(v),
   )
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     const { data: meeting, error } = await db.rpc("task_meeting_save", {
       p_org: data.organizationId,
@@ -120,6 +134,7 @@ export const changeMeetingVisibility = createServerFn({ method: "POST" })
       .parse(v),
   )
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     const { data: meeting, error } = await db.rpc("task_meeting_visibility", {
       p_org: data.organizationId,

@@ -5,6 +5,17 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { TaskFeed } from "./user-tasks";
 const scope = z.object({ organizationId: z.string().uuid() });
+async function assertTaskModuleAccess(context: { supabase: SupabaseClient; userId: string }) {
+  const { data, error } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId);
+  if (error) throw new Error(error.message);
+  if (!data?.some((item) => item.role === "admin" || item.role === "editor")) {
+    throw new Error("O módulo de tarefas é restrito a ADM e Analista de Processos.");
+  }
+}
+
 export const loadUserTasks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
@@ -33,6 +44,7 @@ export const loadUserTasks = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     const { data: result, error } = await db.rpc("user_tasks_feed", {
       p_org: data.organizationId,
@@ -129,6 +141,7 @@ export const updateUserTask = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     if (data.action === "claim") {
       const { data: claimed, error: claimError } = await db.rpc("claim_user_task", {
@@ -152,6 +165,7 @@ export const loadTaskAreas = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((v: unknown) => scope.parse(v))
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const { data: rows, error } = await context.supabase
       .from("organization_departments")
       .select("id,name")
@@ -164,6 +178,7 @@ export const loadTaskNotifications = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((v: unknown) => scope.parse(v))
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     const { data: tasks, error } = await db
       .from("user_tasks")
@@ -256,6 +271,7 @@ export const loadTaskExportDocuments = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((v: unknown) => scope.extend({ taskId: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     const result = await db.rpc("user_task_export_documents", {
       p_org: data.organizationId,
@@ -292,6 +308,7 @@ export const loadHomeDashboard = createServerFn({ method: "POST" })
       .parse(v),
   )
   .handler(async ({ data, context }) => {
+    await assertTaskModuleAccess(context);
     const db = context.supabase as unknown as SupabaseClient;
     const result = await db.rpc("user_home_dashboard", {
       p_org: data.organizationId,

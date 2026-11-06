@@ -735,6 +735,7 @@ export function WorkspaceProcessRegistrations({
   organizationName,
   codeSettings,
   isDemo,
+  canEditRegistrations,
 }: {
   view: ProcessRegistrationView;
   organizationId?: string | null;
@@ -742,6 +743,7 @@ export function WorkspaceProcessRegistrations({
   organizationSlug?: string | null;
   codeSettings?: CodeSettings | null;
   isDemo: boolean;
+  canEditRegistrations: boolean;
 }) {
   const listRegistry = useServerFn(listProcessRegistrationData);
   const saveArea = useServerFn(saveProcessArea);
@@ -816,7 +818,8 @@ export function WorkspaceProcessRegistrations({
     }
     return result;
   }, [rows, search, sortCol, sortDir]);
-  const canDeleteRows = view !== "process-types";
+  const canConfigure = isDemo || canEditRegistrations;
+  const canDeleteRows = view !== "process-types" && canConfigure;
   const visibleIds = useMemo(() => displayRows.map((row) => row.id), [displayRows]);
   const selectedVisibleCount = visibleIds.filter((id) => selectedIds.includes(id)).length;
   const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
@@ -1155,7 +1158,7 @@ export function WorkspaceProcessRegistrations({
     <section className="process-library">
       <header>
         <ProcessLibraryHeader title={copy.title} description={copy.description}>
-          {view !== "process-types" ? (
+          {view !== "process-types" && canConfigure ? (
             <button
               type="button"
               onClick={() => {
@@ -1274,10 +1277,12 @@ export function WorkspaceProcessRegistrations({
                           }
                         />
                       ) : null}
-                      <IconButton label="Editar" onClick={() => editRow(row.id)}>
-                        <Pencil className="h-4 w-4" />
-                      </IconButton>
-                      {view !== "process-types" ? (
+                      {canConfigure ? (
+                        <IconButton label="Editar" onClick={() => editRow(row.id)}>
+                          <Pencil className="h-4 w-4" />
+                        </IconButton>
+                      ) : null}
+                      {view !== "process-types" && canConfigure ? (
                         <IconButton label="Excluir" onClick={() => setPendingDeleteIds([row.id])}>
                           <Trash2 className="h-4 w-4" />
                         </IconButton>
@@ -1377,7 +1382,7 @@ export function WorkspaceProcessRegistrations({
                 autoCode={isAutoProcessCode}
                 codePreview={processCodePreview}
                 quickCreate={
-                  view === "processes"
+                  view === "processes" && canConfigure
                     ? {
                         onCreateValueChain: (name) => openRelatedCreate("valueChain", name),
                         onCreateArea: (name) => openRelatedCreate("area", name),

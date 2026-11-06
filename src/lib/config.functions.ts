@@ -316,6 +316,7 @@ async function assertOrganizationEditor(context: AuthContext, organizationId?: s
 export const getAppConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertOrganizationAdmin(context);
     const { data, error } = await context.supabase
       .from("app_config")
       .select("*")
@@ -590,7 +591,7 @@ export const listOrganizationCatalogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const access = await permissionContext(context, data.organizationId);
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const organizationId = access.organizationId;
     const [
       { data: departments, error: departmentsError },
@@ -707,7 +708,7 @@ export const listProcessRegistrationData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const access = await permissionContext(context, data.organizationId);
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const organizationId = access.organizationId;
     const [areas, owners, types, valueChains, processes, systems, positions, valueChainRelations] =
       await Promise.all([
@@ -1507,7 +1508,7 @@ export const listModuleDocuments = createServerFn({ method: "POST" })
     organizationScopeSchema.extend({ moduleId: z.enum(["ddp", "pop", "bpmn"]) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const access = await permissionContext(context, data.organizationId);
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const { data: rows, error } = await context.supabase
       .from("documents")
       .select(
@@ -1537,6 +1538,85 @@ function portalStatusFromContent(module: string, contentInline: string | null) {
   }
 }
 
+async function portalDocumentAccess(
+  context: AuthContext,
+  organizationId: string,
+  documents: Array<{ id: string; primary_process_id: string | null }>,
+  processes: Array<{ id: string; department_id?: string | null; department_ids?: string[] | null }>,
+) {
+  const roles = await rolesFor(context);
+  if (roles.includes("admin")) return new Set(documents.map((document) => document.id));
+  if (!documents.length) return new Set<string>();
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const db = supabaseAdmin as any;
+  const { data: memberships, error: membershipError } = await db
+    .from("organization_view_group_users")
+    .select("group_id")
+    .eq("user_id", context.userId);
+  if (membershipError) throw new Error(membershipError.message);
+  const memberGroupIds = [...new Set((memberships ?? []).map((row: any) => row.group_id))];
+  if (!memberGroupIds.length) return new Set<string>();
+  const { data: groups, error: groupError } = await db
+    .from("organization_view_groups")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .in("id", memberGroupIds);
+  if (groupError) throw new Error(groupError.message);
+  const groupIds = (groups ?? []).map((group: any) => group.id);
+  if (!groupIds.length) return new Set<string>();
+  const [{ data: areaRows, error: areaError }, { data: ruleRows, error: ruleError }] =
+    await Promise.all([
+      db.from("organization_view_group_areas").select("group_id,area_id").in("group_id", groupIds),
+      db
+        .from("document_view_group_access")
+        .select("group_id,document_id,effect")
+        .in("group_id", groupIds)
+        .in(
+          "document_id",
+          documents.map((document) => document.id),
+        ),
+    ]);
+  if (areaError) throw new Error(areaError.message);
+  if (ruleError) throw new Error(ruleError.message);
+  const groupAreas = new Map<string, Set<string>>();
+  for (const row of areaRows ?? []) {
+    const areas = groupAreas.get(row.group_id) ?? new Set<string>();
+    areas.add(row.area_id);
+    groupAreas.set(row.group_id, areas);
+  }
+  const rules = new Map<string, Map<string, string>>();
+  for (const row of ruleRows ?? []) {
+    const docs = rules.get(row.group_id) ?? new Map<string, string>();
+    docs.set(row.document_id, row.effect);
+    rules.set(row.group_id, docs);
+  }
+  const processById = new Map(processes.map((process) => [process.id, process] as const));
+  const allowed = new Set<string>();
+  for (const document of documents) {
+    const process = document.primary_process_id
+      ? processById.get(document.primary_process_id)
+      : null;
+    const documentAreas = new Set([
+      ...(process?.department_ids ?? []),
+      ...(process?.department_id ? [process.department_id] : []),
+    ]);
+    for (const groupId of groupIds) {
+      const explicit = rules.get(groupId)?.get(document.id);
+      if (explicit === "allow") {
+        allowed.add(document.id);
+        break;
+      }
+      if (explicit === "deny") continue;
+      if ([...(groupAreas.get(groupId) ?? [])].some((areaId) => documentAreas.has(areaId))) {
+        allowed.add(document.id);
+        break;
+      }
+    }
+  }
+  return allowed;
+}
+
 export const listPortalDocuments = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: { organizationId?: string | null }) => organizationScopeSchema.parse(d))
@@ -1558,7 +1638,7 @@ export const listPortalDocuments = createServerFn({ method: "POST" })
           context.supabase
             .from("organization_processes")
             .select(
-              "id,parent_process_id,name,type,department,owner,description,status,value_chain_id",
+              "id,parent_process_id,name,type,department,department_id,department_ids,owner,description,status,value_chain_id",
             )
             .eq("organization_id", access.organizationId),
         ),
@@ -1598,6 +1678,19 @@ export const listPortalDocuments = createServerFn({ method: "POST" })
     const processById = new Map(
       (processResult.data ?? []).map((process) => [process.id, process] as const),
     );
+    const allowedDocumentIds = await portalDocumentAccess(
+      context,
+      access.organizationId,
+      (documentResult.data ?? []).map((document) => ({
+        id: document.id,
+        primary_process_id: document.primary_process_id,
+      })),
+      (processResult.data ?? []).map((process) => ({
+        id: process.id,
+        department_id: process.department_id,
+        department_ids: process.department_ids,
+      })),
+    );
     const hierarchyFor = (processId: string | null) => {
       const hierarchy: Array<(typeof processResult.data)[number]> = [];
       const visited = new Set<string>();
@@ -1614,6 +1707,7 @@ export const listPortalDocuments = createServerFn({ method: "POST" })
 
     const documents: PortalDocument[] = [];
     for (const document of documentResult.data ?? []) {
+      if (!allowedDocumentIds.has(document.id)) continue;
       if (document.module !== "ddp" && document.module !== "pop" && document.module !== "bpmn") {
         continue;
       }
@@ -1799,7 +1893,7 @@ export const listPortalStructure = createServerFn({ method: "POST" })
           context.supabase
             .from("organization_processes")
             .select(
-              "id,parent_process_id,name,type,value_chain_id,department,owner,description,status",
+              "id,parent_process_id,name,type,value_chain_id,department,department_id,department_ids,owner,description,status",
             )
             .eq("organization_id", access.organizationId)
             .eq("status", "Ativo")
@@ -1839,22 +1933,107 @@ export const listPortalStructure = createServerFn({ method: "POST" })
       );
     }
 
+    const currentRoles = await rolesFor(context);
+    let visibleAreaIds: Set<string> | null = null;
+    let explicitlyVisibleProcessIds = new Set<string>();
+    if (!currentRoles.includes("admin")) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const db = supabaseAdmin as any;
+      const { data: memberships, error: membershipsError } = await db
+        .from("organization_view_group_users")
+        .select("group_id")
+        .eq("user_id", context.userId);
+      if (membershipsError) throw new Error(membershipsError.message);
+      const memberIds = [...new Set((memberships ?? []).map((item: any) => item.group_id))];
+      const { data: groups, error: groupsError } = memberIds.length
+        ? await db
+            .from("organization_view_groups")
+            .select("id")
+            .eq("organization_id", access.organizationId)
+            .in("id", memberIds)
+        : { data: [], error: null };
+      if (groupsError) throw new Error(groupsError.message);
+      const groupIds = (groups ?? []).map((group: any) => group.id);
+      const [groupAreas, documentRules] = groupIds.length
+        ? await Promise.all([
+            db.from("organization_view_group_areas").select("area_id").in("group_id", groupIds),
+            db
+              .from("document_view_group_access")
+              .select("document_id")
+              .eq("effect", "allow")
+              .in("group_id", groupIds),
+          ])
+        : [
+            { data: [], error: null },
+            { data: [], error: null },
+          ];
+      if (groupAreas.error) throw new Error(groupAreas.error.message);
+      if (documentRules.error) throw new Error(documentRules.error.message);
+      visibleAreaIds = new Set((groupAreas.data ?? []).map((row: any) => row.area_id));
+      const allowedDocIds = [
+        ...new Set((documentRules.data ?? []).map((row: any) => row.document_id)),
+      ];
+      if (allowedDocIds.length) {
+        const { data: allowedDocs, error: allowedDocsError } = await db
+          .from("documents")
+          .select("primary_process_id")
+          .eq("organization_id", access.organizationId)
+          .in("id", allowedDocIds);
+        if (allowedDocsError) throw new Error(allowedDocsError.message);
+        explicitlyVisibleProcessIds = new Set(
+          (allowedDocs ?? []).map((row: any) => row.primary_process_id).filter(Boolean),
+        );
+        const relatedProcessIds = [...explicitlyVisibleProcessIds];
+        if (relatedProcessIds.length) {
+          const { data: relatedProcesses, error: relatedProcessesError } = await db
+            .from("organization_processes")
+            .select("department_id,department_ids")
+            .eq("organization_id", access.organizationId)
+            .in("id", relatedProcessIds);
+          if (relatedProcessesError) throw new Error(relatedProcessesError.message);
+          for (const process of relatedProcesses ?? []) {
+            for (const areaId of [
+              ...(process.department_ids ?? []),
+              ...(process.department_id ? [process.department_id] : []),
+            ])
+              visibleAreaIds.add(areaId);
+          }
+        }
+      }
+    }
+    const scopedProcesses = (processResult.data ?? []).filter(
+      (process: any) =>
+        visibleAreaIds === null ||
+        explicitlyVisibleProcessIds.has(process.id) ||
+        [
+          ...(process.department_ids ?? []),
+          ...(process.department_id ? [process.department_id] : []),
+        ].some((areaId) => visibleAreaIds?.has(areaId)),
+    );
+    const scopedChainIds = new Set(
+      scopedProcesses.map((process: any) => process.value_chain_id).filter(Boolean),
+    );
+
     return {
       positions: (positionResult.data ?? []) as Array<{
         id: string;
         title: string;
         description: string | null;
       }>,
-      areas: areaResult.data ?? [],
-      processes: processResult.data ?? [],
+      areas: (areaResult.data ?? []).filter(
+        (area: any) => visibleAreaIds === null || visibleAreaIds.has(area.id),
+      ),
+      processes: scopedProcesses,
       valueChainRelations: (outputRelationsResult.data ?? []) as Array<{
         output_id: string;
         chain_id: string;
       }>,
-      valueChains: (chainResult.data ?? []).map((chain) => ({
-        ...chain,
-        name: chain.name.trim().toLocaleUpperCase("pt-BR"),
-      })),
+      valueChains: (chainResult.data ?? [])
+        .filter((chain: any) => visibleAreaIds === null || scopedChainIds.has(chain.id))
+        .map((chain) => ({
+          ...chain,
+          name: chain.name.trim().toLocaleUpperCase("pt-BR"),
+        })),
     };
   });
 
@@ -1886,6 +2065,7 @@ export const getModuleDocumentContent = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .single();
     if (error) throw new Error(error.message);
+    await assertOrganizationEditor(context, row.organization_id);
     return row;
   });
 
@@ -1901,6 +2081,23 @@ export const getPortalDocumentContent = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .single();
     if (error) throw new Error(error.message);
+    const processResult = row.primary_process_id
+      ? await context.supabase
+          .from("organization_processes")
+          .select("id,department_id,department_ids")
+          .eq("organization_id", row.organization_id)
+          .eq("id", row.primary_process_id)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (processResult.error) throw new Error(processResult.error.message);
+    const allowedIds = await portalDocumentAccess(
+      context,
+      row.organization_id,
+      [{ id: row.id, primary_process_id: row.primary_process_id }],
+      processResult.data ? [processResult.data] : [],
+    );
+    if (!allowedIds.has(row.id))
+      throw new Error("Você não possui acesso de visualização a este documento.");
     if (!isPortalCurrentStatus(portalStatusFromContent(row.module, row.content_inline))) {
       throw new Error("Este documento não está vigente e não pode ser exibido no Portal.");
     }
@@ -2149,7 +2346,7 @@ export const listBpmnDocuments = createServerFn({ method: "POST" })
         .parse(data),
   )
   .handler(async ({ data, context }) => {
-    const access = await permissionContext(context, data.organizationId);
+    const access = await assertOrganizationEditor(context, data.organizationId);
     const query = context.supabase
       .from("documents")
       .select("id,name,current_version,updated_at,created_at,primary_process_id,content_inline")
@@ -2196,6 +2393,13 @@ export const listModuleDocumentVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: { documentId: string }) => z.object({ documentId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    const { data: document, error: documentError } = await context.supabase
+      .from("documents")
+      .select("organization_id")
+      .eq("id", data.documentId)
+      .single();
+    if (documentError) throw new Error(documentError.message);
+    await assertOrganizationEditor(context, document.organization_id);
     const { data: rows, error } = await context.supabase
       .from("document_versions")
       .select("id, version_number, comment, created_at, sharepoint_version_label")
@@ -2211,10 +2415,17 @@ export const getModuleDocumentVersionContent = createServerFn({ method: "POST" }
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("document_versions")
-      .select("content_snapshot")
+      .select("content_snapshot,document_id")
       .eq("id", data.versionId)
       .single();
     if (error) throw new Error(error.message);
+    const { data: document, error: documentError } = await context.supabase
+      .from("documents")
+      .select("organization_id")
+      .eq("id", row.document_id)
+      .single();
+    if (documentError) throw new Error(documentError.message);
+    await assertOrganizationEditor(context, document.organization_id);
     return { content: row.content_snapshot ?? null };
   });
 
@@ -2681,7 +2892,7 @@ export const getOrganizationDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((data: z.infer<typeof organizationScopeSchema>) => organizationScopeSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const access = await permissionContext(context, data.organizationId);
+    const access = await assertOrganizationEditor(context, data.organizationId ?? undefined);
     const organizationId = access.organizationId;
     const [
       { data: organization, error: organizationError },
@@ -3199,6 +3410,295 @@ export const deleteUserAccess = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+const viewGroupSchema = z.object({
+  id: z.string().uuid().optional().nullable(),
+  organizationId: z.string().uuid().optional().nullable(),
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(1000).optional().nullable(),
+  externalGroupId: z.string().trim().max(240).optional().nullable(),
+  userIds: z.array(z.string().uuid()).max(2000).default([]),
+  areaIds: z.array(z.string().uuid()).max(2000).default([]),
+  documentRules: z
+    .array(z.object({ documentId: z.string().uuid(), effect: z.enum(["allow", "deny"]) }))
+    .max(5000)
+    .default([]),
+});
+
+export const listViewGroupSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { organizationId?: string | null }) => organizationScopeSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationAdmin(context, data.organizationId ?? undefined);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as any;
+    const [
+      groupsResult,
+      primaryUsersResult,
+      orgUsersResult,
+      areasResult,
+      docsResult,
+      processesResult,
+    ] = await Promise.all([
+      db
+        .from("organization_view_groups")
+        .select("id,name,description,external_group_id")
+        .eq("organization_id", access.organizationId)
+        .order("name"),
+      db.from("profiles").select("id").eq("organization_id", access.organizationId),
+      db
+        .from("user_organization_access")
+        .select("user_id")
+        .eq("organization_id", access.organizationId),
+      db
+        .from("organization_departments")
+        .select("id,name,sigla")
+        .eq("organization_id", access.organizationId)
+        .order("name"),
+      db
+        .from("documents")
+        .select("id,name,module,primary_process_id,content_inline")
+        .eq("organization_id", access.organizationId)
+        .in("module", ["ddp", "pop", "bpmn"])
+        .order("name"),
+      db
+        .from("organization_processes")
+        .select("id,department_id,department_ids")
+        .eq("organization_id", access.organizationId),
+    ]);
+    for (const result of [
+      groupsResult,
+      primaryUsersResult,
+      orgUsersResult,
+      areasResult,
+      docsResult,
+      processesResult,
+    ]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    const accessibleUserIds = [
+      ...new Set([
+        ...(primaryUsersResult.data ?? []).map((user: any) => user.id),
+        ...(orgUsersResult.data ?? []).map((membership: any) => membership.user_id),
+      ]),
+    ];
+    const usersResult = accessibleUserIds.length
+      ? await db
+          .from("profiles")
+          .select("id,email,display_name,username")
+          .in("id", accessibleUserIds)
+          .order("display_name")
+      : { data: [], error: null };
+    if (usersResult.error) throw new Error(usersResult.error.message);
+    const groupIds = (groupsResult.data ?? []).map((group: any) => group.id);
+    const [membersResult, areasByGroupResult, rulesResult] = groupIds.length
+      ? await Promise.all([
+          db
+            .from("organization_view_group_users")
+            .select("group_id,user_id")
+            .in("group_id", groupIds),
+          db
+            .from("organization_view_group_areas")
+            .select("group_id,area_id")
+            .in("group_id", groupIds),
+          db
+            .from("document_view_group_access")
+            .select("group_id,document_id,effect")
+            .in("group_id", groupIds),
+        ])
+      : [
+          { data: [], error: null },
+          { data: [], error: null },
+          { data: [], error: null },
+        ];
+    for (const result of [membersResult, areasByGroupResult, rulesResult]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    const areaNames = new Map((areasResult.data ?? []).map((area: any) => [area.id, area.name]));
+    const processById = new Map(
+      (processesResult.data ?? []).map((process: any) => [process.id, process]),
+    );
+    const documents = (docsResult.data ?? [])
+      .filter((document: any) =>
+        isPortalCurrentStatus(portalStatusFromContent(document.module, document.content_inline)),
+      )
+      .map((document: any) => {
+        const process: any = document.primary_process_id
+          ? processById.get(document.primary_process_id)
+          : null;
+        const areaIds = Array.from(
+          new Set([
+            ...(process?.department_ids ?? []),
+            ...(process?.department_id ? [process.department_id] : []),
+          ]),
+        );
+        return {
+          id: document.id,
+          name: document.name,
+          module: document.module,
+          areaIds,
+          areaNames: areaIds.map((id) => areaNames.get(id)).filter(Boolean),
+        };
+      });
+    return {
+      groups: (groupsResult.data ?? []).map((group: any) => ({
+        ...group,
+        userIds: (membersResult.data ?? [])
+          .filter((row: any) => row.group_id === group.id)
+          .map((row: any) => row.user_id),
+        areaIds: (areasByGroupResult.data ?? [])
+          .filter((row: any) => row.group_id === group.id)
+          .map((row: any) => row.area_id),
+        documentRules: (rulesResult.data ?? [])
+          .filter((row: any) => row.group_id === group.id)
+          .map((row: any) => ({ documentId: row.document_id, effect: row.effect })),
+      })),
+      users: usersResult.data ?? [],
+      areas: areasResult.data ?? [],
+      documents,
+    };
+  });
+
+export const saveViewGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: z.infer<typeof viewGroupSchema>) => viewGroupSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationAdmin(context, data.organizationId ?? undefined);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as any;
+    const userIds = [...new Set(data.userIds)];
+    const areaIds = [...new Set(data.areaIds)];
+    const documentRules = [
+      ...new Map(data.documentRules.map((rule) => [rule.documentId, rule])).values(),
+    ];
+    if (data.id) {
+      const { data: current, error } = await db
+        .from("organization_view_groups")
+        .select("id")
+        .eq("id", data.id)
+        .eq("organization_id", access.organizationId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!current) throw new Error("O grupo não pertence à organização ativa.");
+    }
+    const checks = await Promise.all([
+      userIds.length
+        ? db
+            .from("profiles")
+            .select("id")
+            .eq("organization_id", access.organizationId)
+            .in("id", userIds)
+        : Promise.resolve({ data: [], error: null }),
+      userIds.length
+        ? db
+            .from("user_organization_access")
+            .select("user_id")
+            .eq("organization_id", access.organizationId)
+            .in("user_id", userIds)
+        : Promise.resolve({ data: [], error: null }),
+      areaIds.length
+        ? db
+            .from("organization_departments")
+            .select("id")
+            .eq("organization_id", access.organizationId)
+            .in("id", areaIds)
+        : Promise.resolve({ data: [], error: null }),
+      documentRules.length
+        ? db
+            .from("documents")
+            .select("id")
+            .eq("organization_id", access.organizationId)
+            .in(
+              "id",
+              documentRules.map((rule) => rule.documentId),
+            )
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    for (const result of checks) if (result.error) throw new Error(result.error.message);
+    const validUserIds = new Set([
+      ...(checks[0].data ?? []).map((user: any) => user.id),
+      ...(checks[1].data ?? []).map((membership: any) => membership.user_id),
+    ]);
+    if (userIds.some((userId) => !validUserIds.has(userId)))
+      throw new Error("Um ou mais usuários não pertencem a esta organização.");
+    if ((checks[2].data ?? []).length !== areaIds.length)
+      throw new Error("Uma ou mais áreas não pertencem a esta organização.");
+    if ((checks[3].data ?? []).length !== documentRules.length)
+      throw new Error("Um ou mais documentos não pertencem a esta organização.");
+    const payload = {
+      organization_id: access.organizationId,
+      name: data.name,
+      description: data.description?.trim() || null,
+      external_group_id: data.externalGroupId?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    const saved = data.id
+      ? await db
+          .from("organization_view_groups")
+          .update(payload)
+          .eq("id", data.id)
+          .select("id")
+          .single()
+      : await db.from("organization_view_groups").insert(payload).select("id").single();
+    if (saved.error) throw new Error(saved.error.message);
+    const groupId = saved.data.id as string;
+    for (const table of [
+      "organization_view_group_users",
+      "organization_view_group_areas",
+      "document_view_group_access",
+    ]) {
+      const { error } = await db.from(table).delete().eq("group_id", groupId);
+      if (error) throw new Error(error.message);
+    }
+    const inserts = [
+      userIds.length
+        ? db
+            .from("organization_view_group_users")
+            .insert(userIds.map((user_id) => ({ group_id: groupId, user_id })))
+        : null,
+      areaIds.length
+        ? db
+            .from("organization_view_group_areas")
+            .insert(areaIds.map((area_id) => ({ group_id: groupId, area_id })))
+        : null,
+      documentRules.length
+        ? db.from("document_view_group_access").insert(
+            documentRules.map((rule) => ({
+              group_id: groupId,
+              document_id: rule.documentId,
+              effect: rule.effect,
+            })),
+          )
+        : null,
+    ].filter(Boolean);
+    for (const operation of inserts) {
+      const { error } = await operation;
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, id: groupId };
+  });
+
+export const deleteViewGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { id: string; organizationId?: string | null }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        organizationId: organizationScopeSchema.shape.organizationId,
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await assertOrganizationAdmin(context, data.organizationId ?? undefined);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any)
+      .from("organization_view_groups")
+      .delete()
+      .eq("id", data.id)
+      .eq("organization_id", access.organizationId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

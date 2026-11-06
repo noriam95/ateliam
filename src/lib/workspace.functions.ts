@@ -24,10 +24,25 @@ async function userOrganizationId(context: { supabase: SupabaseClient<Database>;
   return data.organization_id;
 }
 
+async function assertWorkspaceAccess(context: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+}) {
+  const { data, error } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId);
+  if (error) throw new Error(error.message);
+  if (!data?.some((item) => item.role === "admin" || item.role === "editor")) {
+    throw new Error("O módulo de processos é restrito a ADM e Analista de Processos.");
+  }
+}
+
 /** Get or create the single workspace document for the current organization. */
 export const getOrCreateWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertWorkspaceAccess(context);
     const organizationId = await userOrganizationId(context);
     const { data: existing, error: selErr } = await context.supabase
       .from("documents")
@@ -67,6 +82,7 @@ export const saveWorkspace = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
+    await assertWorkspaceAccess(context);
     const organizationId = await userOrganizationId(context);
     // Find or create the workspace row
     const { data: existing } = await context.supabase
@@ -159,6 +175,7 @@ export const saveWorkspace = createServerFn({ method: "POST" })
 export const listWorkspaceVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertWorkspaceAccess(context);
     const organizationId = await userOrganizationId(context);
     const { data: doc } = await context.supabase
       .from("documents")
@@ -181,6 +198,7 @@ export const getWorkspaceVersionContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: { versionId: string }) => z.object({ versionId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    await assertWorkspaceAccess(context);
     const { data: v, error } = await context.supabase
       .from("document_versions")
       .select("content_snapshot")

@@ -126,10 +126,13 @@ import {
   createUserAccess,
   deleteOrganization,
   deleteUserAccess,
+  deleteViewGroup,
   listAccessibleOrganizations,
   listOrganizationDocumentModels,
   listUserAccess,
+  listViewGroupSettings,
   saveOrganizationDocumentModel,
+  saveViewGroup,
   updateOrganization,
   updateUserAccess,
 } from "@/lib/config.functions";
@@ -141,7 +144,8 @@ import {
   previewDocumentCode,
 } from "@/lib/code-generation";
 
-export type WorkspaceSystemSettingsView = "users" | "organizations" | "document-models";
+export type WorkspaceSystemSettingsView =
+  "users" | "view-groups" | "organizations" | "document-models";
 
 type AppRole = "admin" | "editor" | "viewer";
 type OrganizationRow = {
@@ -169,6 +173,32 @@ type UserAccessRow = {
     organization: { id: string; name: string; slug?: string } | null;
   }>;
 };
+type ViewGroupSettingsData = {
+  groups: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    external_group_id: string | null;
+    userIds: string[];
+    areaIds: string[];
+    documentRules: Array<{ documentId: string; effect: "allow" | "deny" }>;
+  }>;
+  users: Array<{
+    id: string;
+    display_name: string | null;
+    username: string | null;
+    email: string | null;
+  }>;
+  areas: Array<{ id: string; name: string; sigla: string | null }>;
+  documents: Array<{
+    id: string;
+    name: string;
+    module: string;
+    areaIds: string[];
+    areaNames: string[];
+  }>;
+};
+type ViewGroupRow = ViewGroupSettingsData["groups"][number];
 const DEMO_ORGANIZATION_LOGO_KEY = "ateliam-demo-organization-logo";
 const DEMO_DOCUMENT_MODELS_KEY = "ateliam-demo-document-models";
 
@@ -191,7 +221,10 @@ function mergeDocumentModels(rows: DocumentModelRow[]) {
 }
 
 function normalizeHex(value: string | null | undefined, fallback = "1D1F23") {
-  const normalized = (value ?? "").replace(/[^0-9a-f]/gi, "").slice(0, 6).toUpperCase();
+  const normalized = (value ?? "")
+    .replace(/[^0-9a-f]/gi, "")
+    .slice(0, 6)
+    .toUpperCase();
   return normalized.length === 6 ? normalized : fallback;
 }
 
@@ -208,9 +241,9 @@ function defaultModelsForOrganization(color: string) {
 }
 
 const roleLabels: Record<AppRole, string> = {
-  admin: "Administrador",
-  editor: "Editor",
-  viewer: "Consulta",
+  admin: "ADM",
+  editor: "Analista de Processos",
+  viewer: "Usuário padrão",
 };
 
 function Modal({
@@ -247,7 +280,9 @@ function Modal({
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 id={titleId} className="text-xl font-black tracking-tight">{title}</h2>
+            <h2 id={titleId} className="text-xl font-black tracking-tight">
+              {title}
+            </h2>
             {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>
           <button
@@ -290,6 +325,9 @@ export function WorkspaceSystemSettings({
   const deleteUser = useServerFn(deleteUserAccess);
   const listDocumentModels = useServerFn(listOrganizationDocumentModels);
   const saveDocumentModel = useServerFn(saveOrganizationDocumentModel);
+  const listViewGroups = useServerFn(listViewGroupSettings);
+  const saveViewGroupFn = useServerFn(saveViewGroup);
+  const deleteViewGroupFn = useServerFn(deleteViewGroup);
 
   const [demoOrganizations, setDemoOrganizations] = useState<OrganizationRow[]>(() => {
     const fallback = [
@@ -360,10 +398,54 @@ export function WorkspaceSystemSettings({
     queryFn: () => listDocumentModels({ data: { organizationId: organizationId ?? null } }),
     enabled: !isDemo && view === "document-models",
   });
+  const viewGroupsQ = useQuery({
+    queryKey: ["workspace-view-groups", organizationId],
+    queryFn: () => listViewGroups({ data: { organizationId: organizationId ?? null } }),
+    enabled: !isDemo && view === "view-groups",
+  });
   const organizations = isDemo
     ? demoOrganizations
     : ((organizationsQ.data ?? []) as OrganizationRow[]);
   const users = isDemo ? demoUsers : ((usersQ.data ?? []) as UserAccessRow[]);
+
+  if (view === "view-groups") {
+    return (
+      <ViewGroupsSettings
+        organizationId={organizationId ?? null}
+        data={
+          (viewGroupsQ.data ?? {
+            groups: [],
+            users: [],
+            areas: [],
+            documents: [],
+          }) as ViewGroupSettingsData
+        }
+        loading={viewGroupsQ.isLoading}
+        error={viewGroupsQ.error}
+        onSave={async (draft) => {
+          await saveViewGroupFn({
+            data: {
+              id: draft.id,
+              organizationId: organizationId ?? null,
+              name: draft.name,
+              description: draft.description,
+              externalGroupId: draft.external_group_id,
+              userIds: draft.userIds,
+              areaIds: draft.areaIds,
+              documentRules: draft.documentRules,
+            },
+          });
+          await viewGroupsQ.refetch();
+        }}
+        onDelete={async (groupId) => {
+          await deleteViewGroupFn({
+            data: { id: groupId, organizationId: organizationId ?? null },
+          });
+          await viewGroupsQ.refetch();
+        }}
+      />
+    );
+  }
 
   if (!isAdmin && (view === "users" || view === "organizations")) {
     return (
@@ -516,7 +598,7 @@ export function WorkspaceSystemSettings({
               ? { id: organization.id, name: organization.name, slug: organization.slug }
               : null,
             roles: [draft.role],
-              visible_modules: draft.visibleModules,
+            visible_modules: draft.visibleModules,
             organization_access: organizationAccess,
           };
           setDemoUsers((current) =>
@@ -673,7 +755,14 @@ function OrganizationsSettings({
     if (documentModelsQ.data) {
       setDraftModels(mergeDocumentModels(documentModelsQ.data as DocumentModelRow[]));
     }
-  }, [formOpen, isDemo, demoDocumentModels, draft.id, draft.word_header_color, documentModelsQ.data]);
+  }, [
+    formOpen,
+    isDemo,
+    demoDocumentModels,
+    draft.id,
+    draft.word_header_color,
+    documentModelsQ.data,
+  ]);
 
   function selectLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -803,126 +892,135 @@ function OrganizationsSettings({
               }}
               className="my-auto flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,.22)]"
             >
-            <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-              <OrganizationLogo row={draft} large />
-              <div className="min-w-0">
-                <div className="font-display text-lg font-bold">
-                  {draft.id ? "Editar organização" : "Nova organização"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Identidade, codificação e layout dos documentos
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFormOpen(false)}
-                className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Fechar"
-                aria-label="Fechar formulário"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid gap-5 overflow-auto p-5">
-              <SettingsSection
-                title="Organização"
-                description="Dados básicos e logo usada na interface do sistema."
-              >
-                <div className="grid gap-4 lg:grid-cols-[1fr_1fr_260px]">
-                  <FormField label="Nome da organização">
-                    <input
-                      required
-                      value={draft.name}
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, name: event.target.value }))
-                      }
-                      className={inputClass}
-                    />
-                  </FormField>
-                  <FormField label="Identificador">
-                    <input
-                      required
-                      value={draft.slug}
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, slug: event.target.value }))
-                      }
-                      className={inputClass}
-                      placeholder="ex.: bom-futuro"
-                    />
-                  </FormField>
-                  <div>
-                    <div className="text-xs font-medium text-muted-foreground">Logo do sistema</div>
-                    <div className="mt-1 flex h-10 items-center gap-2">
-                      {draft.logo_data_url ? (
-                        <img
-                          src={draft.logo_data_url}
-                          alt="Logo do sistema"
-                          className="h-10 w-24 rounded-md border border-border bg-white object-contain p-1"
-                        />
-                      ) : (
-                        <span className="flex h-10 w-24 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
-                          Sem logo
-                        </span>
-                      )}
-                      <label className={iconButtonClass} title="Alterar logo">
-                        <ImagePlus className="h-4 w-4" />
-                        <input type="file" accept="image/*" className="hidden" onChange={selectLogo} />
-                      </label>
-                      {draft.logo_data_url ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDraft((current) => ({ ...current, logo_data_url: null }))
-                          }
-                          className={iconButtonClass}
-                          title="Remover logo"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      ) : null}
-                    </div>
+              <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+                <OrganizationLogo row={draft} large />
+                <div className="min-w-0">
+                  <div className="font-display text-lg font-bold">
+                    {draft.id ? "Editar organização" : "Nova organização"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Identidade, codificação e layout dos documentos
                   </div>
                 </div>
-              </SettingsSection>
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title="Fechar"
+                  aria-label="Fechar formulário"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid gap-5 overflow-auto p-5">
+                <SettingsSection
+                  title="Organização"
+                  description="Dados básicos e logo usada na interface do sistema."
+                >
+                  <div className="grid gap-4 lg:grid-cols-[1fr_1fr_260px]">
+                    <FormField label="Nome da organização">
+                      <input
+                        required
+                        value={draft.name}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, name: event.target.value }))
+                        }
+                        className={inputClass}
+                      />
+                    </FormField>
+                    <FormField label="Identificador">
+                      <input
+                        required
+                        value={draft.slug}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, slug: event.target.value }))
+                        }
+                        className={inputClass}
+                        placeholder="ex.: bom-futuro"
+                      />
+                    </FormField>
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground">
+                        Logo do sistema
+                      </div>
+                      <div className="mt-1 flex h-10 items-center gap-2">
+                        {draft.logo_data_url ? (
+                          <img
+                            src={draft.logo_data_url}
+                            alt="Logo do sistema"
+                            className="h-10 w-24 rounded-md border border-border bg-white object-contain p-1"
+                          />
+                        ) : (
+                          <span className="flex h-10 w-24 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+                            Sem logo
+                          </span>
+                        )}
+                        <label className={iconButtonClass} title="Alterar logo">
+                          <ImagePlus className="h-4 w-4" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={selectLogo}
+                          />
+                        </label>
+                        {draft.logo_data_url ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDraft((current) => ({ ...current, logo_data_url: null }))
+                            }
+                            className={iconButtonClass}
+                            title="Remover logo"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </SettingsSection>
 
-              <CodificationSettings
-                settings={draft.code_settings}
-                onChange={(code_settings) => setDraft((current) => ({ ...current, code_settings }))}
-              />
+                <CodificationSettings
+                  settings={draft.code_settings}
+                  onChange={(code_settings) =>
+                    setDraft((current) => ({ ...current, code_settings }))
+                  }
+                />
 
-              <OrganizationDocumentModelSettings
-                models={draftModels}
-                loading={documentModelsQ.isLoading && !isDemo && !!draft.id}
-                organizationColor={draft.word_header_color}
-                organizationLogo={draft.logo_data_url}
-                onChange={setDraftModels}
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 border-t border-border bg-card px-5 py-4">
-              <button
-                type="button"
-                onClick={() => setFormOpen(false)}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold hover:bg-muted"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={
-                  saveMut.isPending ||
-                  (documentModelsQ.isLoading && !isDemo && !!draft.id) ||
-                  !draft.name.trim() ||
-                  !draft.slug.trim() ||
-                  draftModels.some(
-                    (model) => !model.name.trim() || !isHexCode(model.primary_color),
-                  )
-                }
-                className={primaryButtonClass}
-              >
-                <Save className="h-4 w-4" />
-                {saveMut.isPending ? "Salvando..." : "Salvar"}
-              </button>
-            </div>
+                <OrganizationDocumentModelSettings
+                  models={draftModels}
+                  loading={documentModelsQ.isLoading && !isDemo && !!draft.id}
+                  organizationColor={draft.word_header_color}
+                  organizationLogo={draft.logo_data_url}
+                  onChange={setDraftModels}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 border-t border-border bg-card px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    saveMut.isPending ||
+                    (documentModelsQ.isLoading && !isDemo && !!draft.id) ||
+                    !draft.name.trim() ||
+                    !draft.slug.trim() ||
+                    draftModels.some(
+                      (model) => !model.name.trim() || !isHexCode(model.primary_color),
+                    )
+                  }
+                  className={primaryButtonClass}
+                >
+                  <Save className="h-4 w-4" />
+                  {saveMut.isPending ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
             </form>
           </div>
         ) : null}
@@ -1115,7 +1213,12 @@ function ModelLogoControl({
         <input type="file" accept="image/*" className="hidden" onChange={onSelect} />
       </label>
       {model.logo_data_url ? (
-        <button type="button" onClick={onClear} className={iconButtonClass} title="Usar logo do sistema">
+        <button
+          type="button"
+          onClick={onClear}
+          className={iconButtonClass}
+          title="Usar logo do sistema"
+        >
           <Trash2 className="h-4 w-4" />
         </button>
       ) : null}
@@ -1162,12 +1265,13 @@ function OrganizationDocumentModelSettings({
   );
 
   function patchModel(modelKey: DocumentModelRow["model_key"], patch: Partial<DocumentModelRow>) {
-    onChange(
-      rows.map((model) => (model.model_key === modelKey ? { ...model, ...patch } : model)),
-    );
+    onChange(rows.map((model) => (model.model_key === modelKey ? { ...model, ...patch } : model)));
   }
 
-  function selectModelLogo(modelKey: DocumentModelRow["model_key"], event: ChangeEvent<HTMLInputElement>) {
+  function selectModelLogo(
+    modelKey: DocumentModelRow["model_key"],
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -1185,7 +1289,9 @@ function OrganizationDocumentModelSettings({
       title="Documentos e layouts"
       description="Ajuste somente o que muda na saída dos documentos: cor do cabeçalho e logo."
     >
-      {loading ? <span className="text-xs text-muted-foreground">Carregando modelos...</span> : null}
+      {loading ? (
+        <span className="text-xs text-muted-foreground">Carregando modelos...</span>
+      ) : null}
       <div className="overflow-hidden rounded-md border border-border">
         {editableModels.map(({ title, description, model }) => {
           const metadata = modelMetadata(model.model_key);
@@ -1201,7 +1307,9 @@ function OrganizationDocumentModelSettings({
                 </span>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold">{title}</div>
-                  <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</div>
+                  <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {description}
+                  </div>
                 </div>
               </div>
               <div>
@@ -1294,7 +1402,7 @@ function UsersSettings({
     organizationId: organizations[0]?.id ?? "",
     organizationIds: organizations[0]?.id ? [organizations[0].id] : [],
     role: "viewer",
-    visibleModules: [...MODULE_IDS],
+    visibleModules: [],
   });
   const [draft, setDraft] = useState<UserDraft>(emptyDraft);
   const [formOpen, setFormOpen] = useState(false);
@@ -1327,7 +1435,11 @@ function UsersSettings({
   });
 
   function edit(row: UserAccessRow) {
-    const role = row.roles.find((item): item is AppRole => item in roleLabels) ?? "viewer";
+    const role: AppRole = row.roles.includes("admin")
+      ? "admin"
+      : row.roles.includes("editor")
+        ? "editor"
+        : "viewer";
     const accesses = row.organization_access ?? [];
     const defaultAccess = accesses.find((item) => item.is_default);
     const defaultOrganizationId =
@@ -1346,7 +1458,7 @@ function UsersSettings({
           ? [defaultOrganizationId]
           : [],
       role,
-      visibleModules: row.visible_modules ?? [...MODULE_IDS],
+      visibleModules: role === "viewer" ? [] : (row.visible_modules ?? [...MODULE_IDS]),
     });
     setFormOpen(true);
   }
@@ -1423,7 +1535,7 @@ function UsersSettings({
                   sortDir={table.sortDir}
                   onSort={table.toggleSort}
                 />
-                <th className="px-3 py-3 font-semibold">Tipo de acesso</th>
+                <th className="px-3 py-3 font-semibold">Perfil de acesso</th>
                 <th className="w-20 px-3 py-3 font-semibold">Ação</th>
               </tr>
             </thead>
@@ -1496,108 +1608,75 @@ function UsersSettings({
               }}
               className="my-auto max-h-[92vh] w-full max-w-lg overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
             >
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
-                <UserRound className="h-5 w-5" />
-              </span>
-              <div>
-                <div className="font-display text-lg font-bold">
-                  {draft.id ? "Editar usuário" : "Novo usuário"}
-                </div>
-                <div className="text-xs text-muted-foreground">Identidade e permissão</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFormOpen(false)}
-                className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Fechar formulário"
-                aria-label="Fechar formulário"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mt-5 grid gap-4">
-              <FormField label="Nome">
-                <input
-                  value={draft.displayName}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, displayName: event.target.value }))
-                  }
-                  className={inputClass}
-                />
-              </FormField>
-              <FormField label="Usuário">
-                <input
-                  value={draft.username}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, username: event.target.value }))
-                  }
-                  placeholder="ex.: mairon.conceicao"
-                  className={inputClass}
-                />
-              </FormField>
-              <FormField label="E-mail">
-                <input
-                  required
-                  type="email"
-                  disabled={!!draft.id}
-                  value={draft.email}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, email: event.target.value }))
-                  }
-                  className={inputClass}
-                />
-              </FormField>
-              {!draft.id ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <FormField label="Senha inicial">
-                    <input
-                      required
-                      minLength={6}
-                      type="password"
-                      value={draft.password}
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, password: event.target.value }))
-                      }
-                      className={inputClass}
-                    />
-                  </FormField>
-                  <FormField label="Confirmar senha">
-                    <input
-                      required
-                      minLength={6}
-                      type="password"
-                      value={draft.passwordConfirmation}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          passwordConfirmation: event.target.value,
-                        }))
-                      }
-                      className={inputClass}
-                    />
-                  </FormField>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-border bg-muted/20 p-3">
-                  <div className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">
-                    Alterar senha
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
+                  <UserRound className="h-5 w-5" />
+                </span>
+                <div>
+                  <div className="font-display text-lg font-bold">
+                    {draft.id ? "Editar usuário" : "Novo usuário"}
                   </div>
+                  <div className="text-xs text-muted-foreground">Identidade e permissão</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title="Fechar formulário"
+                  aria-label="Fechar formulário"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-5 grid gap-4">
+                <FormField label="Nome">
+                  <input
+                    value={draft.displayName}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, displayName: event.target.value }))
+                    }
+                    className={inputClass}
+                  />
+                </FormField>
+                <FormField label="Usuário">
+                  <input
+                    value={draft.username}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, username: event.target.value }))
+                    }
+                    placeholder="ex.: mairon.conceicao"
+                    className={inputClass}
+                  />
+                </FormField>
+                <FormField label="E-mail">
+                  <input
+                    required
+                    type="email"
+                    disabled={!!draft.id}
+                    value={draft.email}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, email: event.target.value }))
+                    }
+                    className={inputClass}
+                  />
+                </FormField>
+                {!draft.id ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <FormField label="Nova senha">
+                    <FormField label="Senha inicial">
                       <input
+                        required
                         minLength={6}
                         type="password"
                         value={draft.password}
                         onChange={(event) =>
                           setDraft((current) => ({ ...current, password: event.target.value }))
                         }
-                        placeholder="Manter senha atual"
                         className={inputClass}
                       />
                     </FormField>
-                    <FormField label="Confirmar nova senha">
+                    <FormField label="Confirmar senha">
                       <input
+                        required
                         minLength={6}
                         type="password"
                         value={draft.passwordConfirmation}
@@ -1607,77 +1686,121 @@ function UsersSettings({
                             passwordConfirmation: event.target.value,
                           }))
                         }
-                        placeholder="Repita a nova senha"
                         className={inputClass}
                       />
                     </FormField>
                   </div>
-                </div>
-              )}
-              <div className="grid gap-2">
-                <div className="text-xs font-semibold text-muted-foreground">
-                  Organizações permitidas
-                </div>
-                <div className="grid gap-1.5 rounded-md border border-border bg-background/55 p-3">
-                  {organizations.map((organization) => (
-                    <label key={organization.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={draft.organizationIds.includes(organization.id)}
-                        onChange={() => toggleOrganization(organization.id)}
-                      />
-                      {organization.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <FormField label="Organização padrão">
-                <select
-                  value={draft.organizationId}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      organizationId: event.target.value,
-                    }))
-                  }
-                  className={inputClass}
-                >
-                  <option value="">Selecione</option>
-                  {organizations
-                    .filter((organization) => draft.organizationIds.includes(organization.id))
-                    .map((organization) => (
-                      <option key={organization.id} value={organization.id}>
+                ) : (
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <div className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">
+                      Alterar senha
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <FormField label="Nova senha">
+                        <input
+                          minLength={6}
+                          type="password"
+                          value={draft.password}
+                          onChange={(event) =>
+                            setDraft((current) => ({ ...current, password: event.target.value }))
+                          }
+                          placeholder="Manter senha atual"
+                          className={inputClass}
+                        />
+                      </FormField>
+                      <FormField label="Confirmar nova senha">
+                        <input
+                          minLength={6}
+                          type="password"
+                          value={draft.passwordConfirmation}
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              passwordConfirmation: event.target.value,
+                            }))
+                          }
+                          placeholder="Repita a nova senha"
+                          className={inputClass}
+                        />
+                      </FormField>
+                    </div>
+                  </div>
+                )}
+                <div className="grid gap-2">
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    Organizações permitidas
+                  </div>
+                  <div className="grid gap-1.5 rounded-md border border-border bg-background/55 p-3">
+                    {organizations.map((organization) => (
+                      <label key={organization.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={draft.organizationIds.includes(organization.id)}
+                          onChange={() => toggleOrganization(organization.id)}
+                        />
                         {organization.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <FormField label="Organização padrão">
+                  <select
+                    value={draft.organizationId}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        organizationId: event.target.value,
+                      }))
+                    }
+                    className={inputClass}
+                  >
+                    <option value="">Selecione</option>
+                    {organizations
+                      .filter((organization) => draft.organizationIds.includes(organization.id))
+                      .map((organization) => (
+                        <option key={organization.id} value={organization.id}>
+                          {organization.name}
+                        </option>
+                      ))}
+                  </select>
+                </FormField>
+                <FormField label="Nível de acesso">
+                  <select
+                    value={draft.role}
+                    onChange={(event) => {
+                      const role = event.target.value as AppRole;
+                      setDraft((current) => ({
+                        ...current,
+                        role,
+                        visibleModules: role === "viewer" ? [] : [...MODULE_IDS],
+                      }));
+                    }}
+                    className={inputClass}
+                  >
+                    {Object.entries(roleLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
                       </option>
                     ))}
-                </select>
-              </FormField>
-              <FormField label="Tipo de acesso">
-                <select
-                  value={draft.role}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, role: event.target.value as AppRole }))
-                  }
-                  className={inputClass}
-                >
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <fieldset className="col-span-full rounded-lg border border-border p-4">
+                  </select>
+                </FormField>
+                <p className="-mt-2 text-xs leading-relaxed text-muted-foreground">
+                  ADM administra todos os módulos e parametrizações. Analista de Processos pode
+                  trabalhar em processos e documentos, sem alterar parametrizações. Usuário padrão
+                  acessa somente o Portal de Documentos.
+                </p>
+                <fieldset className="col-span-full rounded-lg border border-border p-4">
                   <legend className="px-1 text-sm font-semibold">Módulos visíveis</legend>
                   <p className="mb-3 text-xs text-muted-foreground">
-                    Todos vêm habilitados por padrão. Administradores visualizam todos os módulos.
+                    O Usuário padrão acessa somente o Portal de Documentos. Os demais perfis podem
+                    receber os módulos operacionais abaixo.
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {MODULE_OPTIONS.map((option) => (
                       <label key={option.id} className="flex items-center gap-2 text-sm">
                         <input
                           type="checkbox"
-                          disabled={draft.role === "admin"}
+                          disabled={draft.role === "viewer" || draft.role === "admin"}
                           checked={
                             draft.role === "admin" || draft.visibleModules.includes(option.id)
                           }
@@ -1695,22 +1818,21 @@ function UsersSettings({
                     ))}
                   </div>
                 </fieldset>
-              <button
-                type="submit"
-                disabled={
-                  saveMut.isPending ||
-                  !draft.email.trim() ||
-                  (!draft.id &&
-                    (!draft.password.trim() || !draft.passwordConfirmation.trim())) ||
-                  !draft.organizationId ||
-                  !draft.organizationIds.length
-                }
-                className={primaryButtonClass}
-              >
-                <Save className="h-4 w-4" />
-                {saveMut.isPending ? "Salvando..." : "Salvar usuário"}
-              </button>
-            </div>
+                <button
+                  type="submit"
+                  disabled={
+                    saveMut.isPending ||
+                    !draft.email.trim() ||
+                    (!draft.id && (!draft.password.trim() || !draft.passwordConfirmation.trim())) ||
+                    !draft.organizationId ||
+                    !draft.organizationIds.length
+                  }
+                  className={primaryButtonClass}
+                >
+                  <Save className="h-4 w-4" />
+                  {saveMut.isPending ? "Salvando..." : "Salvar usuário"}
+                </button>
+              </div>
             </form>
           </div>
         ) : null}
@@ -1742,6 +1864,363 @@ function UsersSettings({
           </Modal>
         ) : null}
       </div>
+    </SettingsSurface>
+  );
+}
+
+function ViewGroupsSettings({
+  organizationId,
+  data,
+  loading,
+  error,
+  onSave,
+  onDelete,
+}: {
+  organizationId: string | null;
+  data: ViewGroupSettingsData;
+  loading: boolean;
+  error: unknown;
+  onSave: (draft: Omit<ViewGroupRow, "id"> & { id?: string | null }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<(Omit<ViewGroupRow, "id"> & { id?: string | null }) | null>(
+    null,
+  );
+  const [documentSearch, setDocumentSearch] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<ViewGroupRow | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const filteredDocuments = useMemo(() => {
+    const query = documentSearch.trim().toLocaleLowerCase("pt-BR");
+    return query
+      ? data.documents.filter((document) =>
+          `${document.name} ${document.areaNames.join(" ")} ${document.module}`
+            .toLocaleLowerCase("pt-BR")
+            .includes(query),
+        )
+      : data.documents;
+  }, [data.documents, documentSearch]);
+
+  const empty = (): Omit<ViewGroupRow, "id"> & { id?: string | null } => ({
+    name: "",
+    description: "",
+    external_group_id: "",
+    userIds: [],
+    areaIds: [],
+    documentRules: [],
+  });
+  const setField = <K extends keyof (Omit<ViewGroupRow, "id"> & { id?: string | null })>(
+    key: K,
+    value: (Omit<ViewGroupRow, "id"> & { id?: string | null })[K],
+  ) => setDraft((current) => (current ? { ...current, [key]: value } : current));
+  const setDocumentRule = (documentId: string, effect: "allow" | "deny" | "") => {
+    setDraft((current) => {
+      if (!current) return current;
+      const rules = current.documentRules.filter((rule) => rule.documentId !== documentId);
+      if (effect) rules.push({ documentId, effect });
+      return { ...current, documentRules: rules };
+    });
+  };
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!draft) return;
+    setSaving(true);
+    try {
+      await onSave(draft);
+      toast.success(draft.id ? "Grupo atualizado." : "Grupo criado.");
+      setDraft(null);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível salvar o grupo.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SettingsSurface
+      eyebrow="configurações · acesso"
+      title="Grupos de visualização"
+      description="Defina pessoas e áreas de acesso ao Portal de Documentos. Exceções por documento prevalecem somente dentro do grupo."
+      action={
+        <button type="button" onClick={() => setDraft(empty())} className={primaryButtonClass}>
+          <Plus className="h-4 w-4" /> Novo grupo
+        </button>
+      }
+    >
+      <DataTableFrame loading={loading} error={error} empty={!data.groups.length}>
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead className="bg-muted/75 text-xs text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Grupo</th>
+              <th className="px-3 py-3 font-semibold">Áreas</th>
+              <th className="px-3 py-3 font-semibold">Usuários</th>
+              <th className="px-3 py-3 font-semibold">Exceções</th>
+              <th className="w-20 px-3 py-3 font-semibold">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.groups.map((group) => (
+              <tr key={group.id} className="border-t border-border hover:bg-muted/45">
+                <td className="px-4 py-3">
+                  <div className="font-semibold">{group.name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {group.external_group_id
+                      ? `AD · ${group.external_group_id}`
+                      : group.description || "Sem identificador do AD"}
+                  </div>
+                </td>
+                <td className="px-3 py-3 text-muted-foreground">{group.areaIds.length}</td>
+                <td className="px-3 py-3 text-muted-foreground">{group.userIds.length}</td>
+                <td className="px-3 py-3 text-muted-foreground">{group.documentRules.length}</td>
+                <td className="px-3 py-3">
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setDraft({ ...group })}
+                      className={iconButtonClass}
+                      aria-label={`Editar grupo ${group.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDelete(group)}
+                      className={iconButtonClass}
+                      aria-label={`Excluir grupo ${group.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </DataTableFrame>
+
+      {draft ? (
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center overflow-auto bg-slate-950/35 p-3 backdrop-blur-[2px]"
+          onMouseDown={(event) => event.target === event.currentTarget && setDraft(null)}
+        >
+          <form
+            noValidate
+            onSubmit={submit}
+            className="my-auto max-h-[94vh] w-full max-w-4xl overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
+          >
+            <header className="flex items-center gap-3 border-b border-border pb-4">
+              <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
+                <Users className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="font-display text-lg font-bold">
+                  {draft.id ? "Editar grupo" : "Novo grupo"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Escopo por áreas, com exceções de documentos
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDraft(null)}
+                className="ml-auto grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <FormField label="Nome do grupo">
+                <input
+                  required
+                  value={draft.name}
+                  onChange={(event) => setField("name", event.target.value)}
+                  className={inputClass}
+                />
+              </FormField>
+              <FormField label="Identificador do grupo no AD (opcional)">
+                <input
+                  value={draft.external_group_id ?? ""}
+                  onChange={(event) => setField("external_group_id", event.target.value)}
+                  placeholder="Ex.: BF-PORTAL-FISCAL"
+                  className={inputClass}
+                />
+              </FormField>
+              <div className="lg:col-span-2">
+                <FormField label="Descrição">
+                  <textarea
+                    value={draft.description ?? ""}
+                    onChange={(event) => setField("description", event.target.value)}
+                    className={`${inputClass} min-h-20 resize-none py-2`}
+                  />
+                </FormField>
+              </div>
+              <fieldset className="rounded-lg border border-border p-4">
+                <legend className="px-1 text-sm font-semibold">Usuários neste grupo</legend>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Somente integrantes deste grupo recebem o recorte abaixo.
+                </p>
+                <div className="grid max-h-56 gap-2 overflow-auto sm:grid-cols-2">
+                  {data.users.map((user) => (
+                    <label key={user.id} className="flex min-w-0 items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={draft.userIds.includes(user.id)}
+                        onChange={(event) =>
+                          setField(
+                            "userIds",
+                            event.target.checked
+                              ? [...draft.userIds, user.id]
+                              : draft.userIds.filter((id) => id !== user.id),
+                          )
+                        }
+                      />
+                      <span className="truncate">
+                        {user.display_name || user.username || user.email}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="rounded-lg border border-border p-4">
+                <legend className="px-1 text-sm font-semibold">Áreas permitidas</legend>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Documentos vinculados a processos destas áreas ficam visíveis ao grupo.
+                </p>
+                <div className="grid max-h-56 gap-2 overflow-auto sm:grid-cols-2">
+                  {data.areas.map((area) => (
+                    <label key={area.id} className="flex min-w-0 items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={draft.areaIds.includes(area.id)}
+                        onChange={(event) =>
+                          setField(
+                            "areaIds",
+                            event.target.checked
+                              ? [...draft.areaIds, area.id]
+                              : draft.areaIds.filter((id) => id !== area.id),
+                          )
+                        }
+                      />
+                      <span className="truncate">
+                        {area.sigla ? `${area.sigla} · ` : ""}
+                        {area.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="rounded-lg border border-border p-4 lg:col-span-2">
+                <legend className="px-1 text-sm font-semibold">Exceções por documento</legend>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Permitir libera um documento fora das áreas; Bloquear oculta um documento mesmo
+                  quando a área está permitida.
+                </p>
+                <input
+                  value={documentSearch}
+                  onChange={(event) => setDocumentSearch(event.target.value)}
+                  placeholder="Pesquisar documento ou área..."
+                  className={inputClass}
+                />
+                <div className="mt-3 max-h-64 divide-y divide-border overflow-auto rounded-md border border-border">
+                  {filteredDocuments.map((document) => {
+                    const effect =
+                      draft.documentRules.find((rule) => rule.documentId === document.id)?.effect ??
+                      "";
+                    return (
+                      <div
+                        key={document.id}
+                        className="flex flex-wrap items-center gap-3 px-3 py-2.5"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">{document.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {document.areaNames.join(", ") || "Sem área vinculada"}
+                          </div>
+                        </div>
+                        <select
+                          value={effect}
+                          onChange={(event) =>
+                            setDocumentRule(
+                              document.id,
+                              event.target.value as "allow" | "deny" | "",
+                            )
+                          }
+                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                        >
+                          <option value="">Seguir áreas</option>
+                          <option value="allow">Permitir neste grupo</option>
+                          <option value="deny">Bloquear neste grupo</option>
+                        </select>
+                      </div>
+                    );
+                  })}
+                  {!filteredDocuments.length ? (
+                    <p className="p-4 text-sm text-muted-foreground">
+                      Nenhum documento localizado.
+                    </p>
+                  ) : null}
+                </div>
+              </fieldset>
+            </div>
+            <footer className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setDraft(null)}
+                className="rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving || !draft.name.trim() || !organizationId}
+                className={primaryButtonClass}
+              >
+                <Save className="h-4 w-4" />
+                {saving ? "Salvando..." : "Salvar grupo"}
+              </button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
+      {pendingDelete ? (
+        <Modal
+          title="Excluir grupo de visualização"
+          subtitle={`O grupo “${pendingDelete.name}” e suas regras de acesso serão removidos.`}
+          onClose={() => setPendingDelete(null)}
+        >
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              className="rounded-md border border-border px-4 py-2 text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await onDelete(pendingDelete.id);
+                  toast.success("Grupo excluído.");
+                  setPendingDelete(null);
+                } catch (cause) {
+                  toast.error(
+                    cause instanceof Error ? cause.message : "Não foi possível excluir o grupo.",
+                  );
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+              className="rounded-md bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground"
+            >
+              {deleting ? "Excluindo..." : "Excluir grupo"}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
     </SettingsSurface>
   );
 }
@@ -1861,144 +2340,148 @@ function DocumentModelsSettings({
               }}
               className="my-auto max-h-[92vh] w-full max-w-lg overflow-auto rounded-xl border border-border bg-card p-5 shadow-[0_24px_80px_rgba(15,23,42,.22)]"
             >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
-                  {metadata.icon}
-                </span>
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {metadata.module}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-[var(--gold-ink)]">
+                    {metadata.icon}
+                  </span>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      {metadata.module}
+                    </div>
+                    <h2 className="mt-1 font-display text-xl font-bold">Editar modelo</h2>
                   </div>
-                  <h2 className="mt-1 font-display text-xl font-bold">Editar modelo</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="h-2.5 w-12 rounded-full"
+                    style={{ backgroundColor: `#${draft.primary_color}` }}
+                    title={`Cor #${draft.primary_color}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormOpen(false)}
+                    className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    title="Fechar formulário"
+                    aria-label="Fechar formulário"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-2.5 w-12 rounded-full"
-                  style={{ backgroundColor: `#${draft.primary_color}` }}
-                  title={`Cor #${draft.primary_color}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setFormOpen(false)}
-                  className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                  title="Fechar formulário"
-                  aria-label="Fechar formulário"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
 
-            <div className="mt-5 grid gap-4">
-              <FormField label="Nome do modelo">
-                <input
-                  required
-                  value={draft.name}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, name: event.target.value }))
-                  }
-                  className={inputClass}
-                />
-              </FormField>
-              <FormField label="Descrição">
-                <textarea
-                  rows={3}
-                  value={draft.description ?? ""}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, description: event.target.value }))
-                  }
-                  className={`resize-none ${inputClass} h-auto py-2`}
-                />
-              </FormField>
-              <FormField label="Cor institucional do modelo">
-                <div className="flex gap-2">
+              <div className="mt-5 grid gap-4">
+                <FormField label="Nome do modelo">
                   <input
-                    type="color"
-                    value={`#${draft.primary_color}`}
+                    required
+                    value={draft.name}
                     onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        primary_color: event.target.value.slice(1).toUpperCase(),
-                      }))
-                    }
-                    className="h-10 w-12 rounded-md border border-input bg-background p-1"
-                  />
-                  <input
-                    value={draft.primary_color}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        primary_color: event.target.value
-                          .replace(/[^0-9a-f]/gi, "")
-                          .slice(0, 6)
-                          .toUpperCase(),
-                      }))
+                      setDraft((current) => ({ ...current, name: event.target.value }))
                     }
                     className={inputClass}
                   />
-                </div>
-              </FormField>
-
-              <div className="rounded-md border border-border bg-background/55 p-3">
-                <div className="text-xs font-semibold text-muted-foreground">Logo do documento</div>
-                <div className="mt-3 flex items-center gap-3">
-                  {draft.logo_data_url ? (
-                    <img
-                      src={draft.logo_data_url}
-                      alt="Logo configurada para o documento"
-                      className="h-14 w-28 rounded-md border border-border bg-white object-contain p-1"
-                    />
-                  ) : (
-                    <span className="flex h-14 w-28 items-center justify-center rounded-md border border-dashed border-border bg-card p-2">
-                      <BFFlowMark className="h-8 max-w-full" />
-                    </span>
-                  )}
+                </FormField>
+                <FormField label="Descrição">
+                  <textarea
+                    rows={3}
+                    value={draft.description ?? ""}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, description: event.target.value }))
+                    }
+                    className={`resize-none ${inputClass} h-auto py-2`}
+                  />
+                </FormField>
+                <FormField label="Cor institucional do modelo">
                   <div className="flex gap-2">
-                    <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold hover:bg-muted">
-                      <ImagePlus className="h-4 w-4" /> Alterar
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={selectLogo}
-                      />
-                    </label>
-                    {draft.logo_data_url ? (
-                      <button
-                        type="button"
-                        onClick={() => setDraft((current) => ({ ...current, logo_data_url: null }))}
-                        className={iconButtonClass}
-                        title="Usar logo padrão do BF Flow"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    ) : null}
+                    <input
+                      type="color"
+                      value={`#${draft.primary_color}`}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          primary_color: event.target.value.slice(1).toUpperCase(),
+                        }))
+                      }
+                      className="h-10 w-12 rounded-md border border-input bg-background p-1"
+                    />
+                    <input
+                      value={draft.primary_color}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          primary_color: event.target.value
+                            .replace(/[^0-9a-f]/gi, "")
+                            .slice(0, 6)
+                            .toUpperCase(),
+                        }))
+                      }
+                      className={inputClass}
+                    />
                   </div>
-                </div>
-                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                  Esta logo será incorporada somente às exportações deste modelo. Sem imagem, o
-                  BF Flow será usado como padrão.
-                </p>
-              </div>
+                </FormField>
 
-              <div className="divide-y divide-border border-y border-border text-sm">
-                <ModelDetail label="Formato" value={metadata.format} />
-                <ModelDetail label="Organização" value={organizationName} />
-                <ModelDetail label="Versionamento" value="Automático a partir do documento" />
+                <div className="rounded-md border border-border bg-background/55 p-3">
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    Logo do documento
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    {draft.logo_data_url ? (
+                      <img
+                        src={draft.logo_data_url}
+                        alt="Logo configurada para o documento"
+                        className="h-14 w-28 rounded-md border border-border bg-white object-contain p-1"
+                      />
+                    ) : (
+                      <span className="flex h-14 w-28 items-center justify-center rounded-md border border-dashed border-border bg-card p-2">
+                        <BFFlowMark className="h-8 max-w-full" />
+                      </span>
+                    )}
+                    <div className="flex gap-2">
+                      <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-xs font-semibold hover:bg-muted">
+                        <ImagePlus className="h-4 w-4" /> Alterar
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={selectLogo}
+                        />
+                      </label>
+                      {draft.logo_data_url ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDraft((current) => ({ ...current, logo_data_url: null }))
+                          }
+                          className={iconButtonClass}
+                          title="Usar logo padrão do BF Flow"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                    Esta logo será incorporada somente às exportações deste modelo. Sem imagem, o BF
+                    Flow será usado como padrão.
+                  </p>
+                </div>
+
+                <div className="divide-y divide-border border-y border-border text-sm">
+                  <ModelDetail label="Formato" value={metadata.format} />
+                  <ModelDetail label="Organização" value={organizationName} />
+                  <ModelDetail label="Versionamento" value="Automático a partir do documento" />
+                </div>
+                <button
+                  type="submit"
+                  disabled={
+                    saveMut.isPending || !draft.name.trim() || draft.primary_color.length !== 6
+                  }
+                  className={primaryButtonClass}
+                >
+                  <Save className="h-4 w-4" />
+                  {saveMut.isPending ? "Salvando..." : "Salvar modelo"}
+                </button>
               </div>
-              <button
-                type="submit"
-                disabled={
-                  saveMut.isPending || !draft.name.trim() || draft.primary_color.length !== 6
-                }
-                className={primaryButtonClass}
-              >
-                <Save className="h-4 w-4" />
-                {saveMut.isPending ? "Salvando..." : "Salvar modelo"}
-              </button>
-            </div>
             </form>
           </div>
         ) : null}

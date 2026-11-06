@@ -5,7 +5,7 @@ import { visibleModulesFor } from "@/lib/module-visibility";
 import { statusColor } from "@/lib/status-color";
 import type { SearchSchemaInput } from "@tanstack/react-router";
 import { TaskEditorContext } from "@/components/task-editor-context";
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -257,8 +257,16 @@ export const Route = createFileRoute("/_authenticated/m/$module")({
     filter: typeof search.filter === "string" ? search.filter.slice(0, 120) : undefined,
     embedded: search.embedded === true || search.embedded === "1" ? true : undefined,
   }),
-  beforeLoad: ({ params }) => {
+  beforeLoad: async ({ params }) => {
     if (!MODULES.some((m) => m.id === params.module)) throw notFound();
+    const me = await getMe();
+    if (
+      me.roles.includes("viewer") &&
+      !me.roles.includes("admin") &&
+      !me.roles.includes("editor")
+    ) {
+      throw redirect({ to: "/portal" });
+    }
   },
 });
 

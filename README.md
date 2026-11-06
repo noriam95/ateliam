@@ -1,4 +1,4 @@
-# Ateliam — BF Flow
+# BF Flow
 
 Plataforma web para gestão de processos, documentos e atividades organizacionais. O produto reúne mapeamento de processos, documentação operacional, modelagem BPMN, cadeia de valor, cadastros corporativos e fluxo de tarefas em um workspace multi-organização.
 
@@ -50,7 +50,7 @@ O isolamento entre organizações usa `organization_id`, políticas de Row Level
 - **Cadeia de valor:** estrutura e relacionamento entre processos.
 - **Configurações:** identidade visual, modelos documentais, permissões e preferências da organização.
 
-A visibilidade dos módulos é controlada por perfil. Administradores acessam todos os módulos; os demais usuários seguem a configuração `visible_modules`.
+O perfil **ADM** acessa todos os módulos e configurações. **Analista de Processos** pode operar os módulos e cadastros de processo, sem alterar configurações gerais da organização. **Usuário padrão** acessa somente o Portal de Documentos. Grupos de visualização limitam documentos por área e aceitam exceções por documento.
 
 ## Persistência e versionamento
 
@@ -72,7 +72,6 @@ A visibilidade dos módulos é controlada por perfil. Administradores acessam to
 | `src/integrations/supabase/` | Clientes, autenticação e tipos do Supabase                           |
 | `supabase/migrations/`       | Evolução versionada do banco, funções SQL, RLS e Storage             |
 | `tests/`                     | Testes de domínio, persistência, segurança e navegação               |
-| `outputs/`                   | Scripts SQL auxiliares e entregáveis históricos                      |
 | `DESIGN.md`                  | Decisões e padrões atuais de interface                               |
 | `UX-CONTRACT.md`             | Regras de consistência de experiência e interação                    |
 

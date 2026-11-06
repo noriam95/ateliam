@@ -112,6 +112,16 @@ function readNavigationState(defaults: Record<string, boolean>) {
 
 export const Route = createFileRoute("/_authenticated/")({
   component: WorkspaceHome,
+  beforeLoad: async () => {
+    const me = await getMe();
+    if (
+      me.roles.includes("viewer") &&
+      !me.roles.includes("admin") &&
+      !me.roles.includes("editor")
+    ) {
+      throw redirect({ to: "/portal" });
+    }
+  },
   validateSearch: (search: Record<string, unknown> & SearchSchemaInput) => ({
     area:
       search.area === "reports"
@@ -166,6 +176,7 @@ type WorkspaceView =
   | "profile"
   | "preferences"
   | "users"
+  | "view-groups"
   | "permissions"
   | "roles"
   | "access-profiles"
@@ -194,6 +205,7 @@ function AdminSettingsTabs({ view }: { view: WorkspaceView }) {
   const tabs: { view: WorkspaceView; label: string }[] = [
     { view: "organizations", label: "Organizações" },
     { view: "users", label: "Usuários" },
+    { view: "view-groups", label: "Grupos de visualização" },
     { view: "task-flows", label: "Fluxos e notificações" },
     { view: "task-reminders", label: "Lembretes de tarefas" },
   ];
@@ -520,6 +532,7 @@ function WorkspaceHome() {
     enabled: !isDemo,
   });
   const isCurrentUserAdmin = isDemo || !!meQ.data?.roles?.some((role) => role === "admin");
+  const canEditRegistrations = isCurrentUserAdmin || !!meQ.data?.roles?.includes("editor");
   const accessibleOrganizationsQ = useQuery({
     queryKey: ["accessible-organizations", isDemo ? "demo" : "cloud"],
     queryFn: () => accessibleOrganizationsFn(),
@@ -1089,6 +1102,12 @@ function WorkspaceHome() {
                 <>
                   <TreeButton active={view === "users"} onClick={() => setView("users")}>
                     <Users className="h-4 w-4" /> Usuários
+                  </TreeButton>
+                  <TreeButton
+                    active={view === "view-groups"}
+                    onClick={() => setView("view-groups")}
+                  >
+                    <Users className="h-4 w-4" /> Grupos de visualização
                   </TreeButton>
                   <TreeButton
                     active={view === "organizations"}
@@ -2726,7 +2745,12 @@ function WorkspaceContent({
     );
   }
 
-  if (view === "users" || view === "organizations" || view === "document-models") {
+  if (
+    view === "users" ||
+    view === "view-groups" ||
+    view === "organizations" ||
+    view === "document-models"
+  ) {
     if (!isAdmin) {
       return (
         <section className="rounded-lg border border-border bg-card p-6">
@@ -2788,6 +2812,7 @@ function WorkspaceContent({
         organizationSlug={organizationSlug}
         codeSettings={codeSettings}
         isDemo={isDemo}
+        canEditRegistrations={canEditRegistrations}
       />
     );
   }
