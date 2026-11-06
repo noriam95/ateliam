@@ -68,11 +68,6 @@
   min-height: 39px;
   font-size: 20px;
 }
-.px-brand > span:last-child {
-  border-left: 1px solid var(--border);
-  padding-left: 15px;
-  color: var(--muted-foreground);
-}
 .portal-organization-logo {
   display: block;
   width: 100%;

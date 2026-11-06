@@ -312,7 +312,6 @@ export function DocumentPortalView({
             aria-label="Ir para o início do portal"
           >
             <PortalOrganizationLogo name={organization.name} logo={organization.logo_data_url} />
-            <span>Portal de documentos</span>
           </button>
           <nav className="px-primary-nav" aria-label="Navegação do portal">
             <button type="button" aria-current={exploring ? "page" : undefined} onClick={goHome}>
