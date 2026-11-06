@@ -1161,8 +1161,9 @@ function CreateTask({
           </label>
           {!poolConfigured && (
             <p className="ut-warning" role="status">
-              Ainda não há atendentes configurados para este fluxo. O administrador deve montar a
-              pool em Configurações → Fluxos e notificações antes de receber novas solicitações.
+              Ainda não há atendentes configurados para este fluxo. A tarefa será criada e ficará
+              disponível aos atendentes assim que forem incluídos na pool em Configurações → Fluxos
+              e notificações.
             </p>
           )}
           <input
@@ -1216,7 +1217,7 @@ function CreateTask({
           <button type="button" disabled={busy} onClick={close}>
             Cancelar
           </button>
-          <button className="ut-primary" disabled={busy || !poolConfigured}>
+          <button className="ut-primary" disabled={busy}>
             {busy ? "Salvando…" : created ? "Concluir comentário e anexos" : "Criar tarefa"}
           </button>
         </footer>
