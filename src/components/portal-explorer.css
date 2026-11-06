@@ -477,59 +477,32 @@
 .px-results-heading {
   margin-top: 0;
 }
-.px-discovery-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-top: 32px;
-  padding: 19px 22px;
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: linear-gradient(
-    100deg,
-    var(--card),
-    color-mix(in oklab, var(--chart-blue) 5%, var(--card))
-  );
-}
-.px-discovery-footer > div {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-.px-discovery-footer p strong,
-.px-discovery-footer p small {
-  display: block;
-}
-.px-discovery-footer p strong {
-  font-size: 13px;
-}
-.px-discovery-footer p small {
-  margin-top: 4px;
-  color: var(--muted-foreground);
-  font-size: 11px;
-}
-.px-discovery-mark {
+.px-back-to-top {
+  position: fixed;
+  z-index: 40;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
   display: grid;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--px-blue-soft);
-  color: var(--px-blue);
+  border: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--card) 94%, transparent);
+  color: var(--foreground);
+  box-shadow: 0 5px 18px rgb(20 24 40 / 12%);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
 }
-.px-discovery-footer > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  border: 0;
-  border-radius: 9px;
-  padding: 11px 14px;
-  background: var(--foreground);
-  color: var(--background);
-  font-size: 12px;
-  font-weight: 620;
-  white-space: nowrap;
+.px-back-to-top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgb(20 24 40 / 17%);
+}
+.px-back-to-top:active {
+  transform: translateY(0);
 }
 .px-section-head h2 {
   font-size: 19px;
@@ -1136,15 +1109,6 @@
   }
   .px-explore-heading {
     margin-top: 34px;
-  }
-  .px-discovery-footer {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 16px;
-  }
-  .px-discovery-footer > button {
-    width: 100%;
-    justify-content: center;
   }
   .px-search {
     gap: 7px;
@@ -2830,13 +2794,6 @@ html[data-theme="dark"] .portal-explorer {
   background: var(--px-surface);
   box-shadow: 0 4px 15px #292a490c;
 }
-.portal-explorer .px-discovery-footer {
-  border: 0;
-  border-radius: 14px;
-  background: linear-gradient(105deg, #ececff, #f7eddd);
-}
-.portal-explorer .px-discovery-mark { background: #fff; color: #5b60c8; }
-.portal-explorer .px-discovery-footer > button { background: #20243a; }
 .portal-explorer .px-footer { color: var(--px-muted); }
 @media (max-width: 760px) {
   .portal-explorer .px-explorer-board { grid-template-columns: minmax(0, 1fr); }

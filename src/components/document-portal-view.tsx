@@ -23,6 +23,7 @@ import {
   Layers3,
   ChevronDown,
   Check,
+  ArrowUp,
 } from "lucide-react";
 import {
   filterAndSortPortalDocuments,
@@ -102,9 +103,16 @@ export function DocumentPortalView({
   header,
 }: Props) {
   const [draft, setDraft] = useState(state.query);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const composing = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => setDraft(state.query), [state.query]);
+  useEffect(() => {
+    const updateVisibility = () => setShowBackToTop(window.scrollY > 480);
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    return () => window.removeEventListener("scroll", updateVisibility);
+  }, []);
   const change = (next: Partial<PortalViewState>) => onChange({ ...state, page: 1, ...next });
   const filter = (key: keyof PortalDocumentFilters, value: string) =>
     change({ view: "library", filters: { ...state.filters, [key]: value || undefined } });
@@ -855,22 +863,6 @@ export function DocumentPortalView({
                   ) : null}
                 </section>
               ) : null}
-              {exploring ? (
-                <div className="px-discovery-footer">
-                  <div>
-                    <span className="px-discovery-mark">
-                      <Library size={19} />
-                    </span>
-                    <p>
-                      <strong>Prefere ver tudo de uma vez?</strong>
-                      <small>Navegue pelo acervo completo e use os filtros para refinar.</small>
-                    </p>
-                  </div>
-                  <button type="button" onClick={() => change({ view: "library" })}>
-                    Abrir todos os documentos <ArrowRight size={16} />
-                  </button>
-                </div>
-              ) : null}
             </>
           )}
         </main>
@@ -878,6 +870,24 @@ export function DocumentPortalView({
           <span>Portal de documentos · {organization.name}</span>
           <span>Documentos vigentes da organização ativa</span>
         </footer>
+        {showBackToTop ? (
+          <button
+            type="button"
+            className="px-back-to-top"
+            aria-label="Voltar ao topo"
+            title="Voltar ao topo"
+            onClick={() =>
+              window.scrollTo({
+                top: 0,
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                  ? "auto"
+                  : "smooth",
+              })
+            }
+          >
+            <ArrowUp size={18} aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
     </div>
   );
