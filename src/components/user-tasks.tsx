@@ -985,27 +985,56 @@ function CreateTask({
   const [kind, setKind] = useState<"mapping" | "improvement" | "document">("mapping");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLFormElement>(null);
   const poolConfigured = data.configuredKinds ? data.configuredKinds.includes(kind) : true;
+
+  function clearFieldError(field: string) {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
   return (
     <TaskDialog title="Nova tarefa" onClose={close} busy={busy} dirty={dirty}>
       <form
+        ref={formRef}
         noValidate
         onChange={() => setDirty(true)}
         onSubmit={async (e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
-          if (
-            title.trim().length < 2 ||
-            !f.get("areaId") ||
-            !f.get("dueOn") ||
-            !f.get("assignedTo") ||
-            !f.get("requestedBy") ||
-            !f.get("startsOn") ||
-            String(f.get("dueOn")) < String(f.get("startsOn"))
-          ) {
-            setError(
-              "Preencha título, solicitante, área e período. O prazo deve ser igual ou posterior ao início.",
+          const startsOn = String(f.get("startsOn") || "");
+          const dueOn = String(f.get("dueOn") || "");
+          const nextErrors: Record<string, string> = {};
+          if (title.trim().length < 2) nextErrors.title = "Informe o título da tarefa.";
+          if (!f.get("requestedBy")) nextErrors.requestedBy = "Selecione o solicitante.";
+          if (!f.get("areaId")) nextErrors.areaId = "Selecione uma área.";
+          if (!startsOn) nextErrors.startsOn = "Informe o prazo de início.";
+          if (!dueOn) nextErrors.dueOn = "Informe o prazo de término.";
+          else if (startsOn && dueOn < startsOn)
+            nextErrors.dueOn = "O término deve ser igual ou posterior ao início.";
+
+          setFieldErrors(nextErrors);
+          if (Object.keys(nextErrors).length) {
+            const firstInvalid = ["title", "requestedBy", "areaId", "startsOn", "dueOn"].find(
+              (field) => nextErrors[field],
             );
+            window.setTimeout(() => {
+              const target =
+                firstInvalid === "areaId"
+                  ? formRef.current?.querySelector<HTMLInputElement>(
+                      ".ut-area-search input[role='combobox']",
+                    )
+                  : formRef.current?.elements.namedItem(firstInvalid || "");
+              if (target instanceof HTMLElement) {
+                target.focus();
+                target.scrollIntoView({ block: "center", behavior: "smooth" });
+              }
+            }, 0);
             return;
           }
           setBusy(true);
@@ -1076,7 +1105,25 @@ function CreateTask({
         <div className="ut-form">
           <label>
             Título
-            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
+            <input
+              name="title"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                clearFieldError("title");
+              }}
+              maxLength={200}
+              minLength={2}
+              required
+              aria-invalid={Boolean(fieldErrors.title)}
+              aria-describedby={fieldErrors.title ? "task-title-error" : undefined}
+              className={fieldErrors.title ? "ut-invalid" : undefined}
+            />
+            {fieldErrors.title && (
+              <small id="task-title-error" className="ut-field-error">
+                {fieldErrors.title}
+              </small>
+            )}
           </label>
           <div className="ut-form-row">
             <label>
@@ -1128,24 +1175,72 @@ function CreateTask({
             </label>
             <label>
               Solicitante
-              <select name="requestedBy" defaultValue={data.userId}>
+              <select
+                name="requestedBy"
+                defaultValue={data.userId}
+                required
+                aria-invalid={Boolean(fieldErrors.requestedBy)}
+                aria-describedby={fieldErrors.requestedBy ? "task-requester-error" : undefined}
+                className={fieldErrors.requestedBy ? "ut-invalid" : undefined}
+                onChange={() => clearFieldError("requestedBy")}
+              >
                 {data.people.map((p) => (
                   <option value={p.id} key={p.id}>
                     {p.name}
                   </option>
                 ))}
               </select>
+              {fieldErrors.requestedBy && (
+                <small id="task-requester-error" className="ut-field-error">
+                  {fieldErrors.requestedBy}
+                </small>
+              )}
             </label>
-            <TaskAreaField organizationId={organizationId} />
+            <TaskAreaField
+              organizationId={organizationId}
+              validationError={fieldErrors.areaId}
+              onSelect={() => clearFieldError("areaId")}
+            />
           </div>
           <div className="ut-form-row">
             <label>
               Prazo de início
-              <input type="date" name="startsOn" defaultValue={localDay()} />
+              <input
+                type="date"
+                name="startsOn"
+                defaultValue={localDay()}
+                required
+                aria-invalid={Boolean(fieldErrors.startsOn)}
+                aria-describedby={fieldErrors.startsOn ? "task-start-error" : undefined}
+                className={fieldErrors.startsOn ? "ut-invalid" : undefined}
+                onChange={(event) => {
+                  clearFieldError("startsOn");
+                  const dueOn = formRef.current?.elements.namedItem("dueOn") as HTMLInputElement;
+                  if (dueOn?.value && dueOn.value >= event.target.value) clearFieldError("dueOn");
+                }}
+              />
+              {fieldErrors.startsOn && (
+                <small id="task-start-error" className="ut-field-error">
+                  {fieldErrors.startsOn}
+                </small>
+              )}
             </label>
             <label>
               Prazo de término
-              <input type="date" name="dueOn" />
+              <input
+                type="date"
+                name="dueOn"
+                required
+                aria-invalid={Boolean(fieldErrors.dueOn)}
+                aria-describedby={fieldErrors.dueOn ? "task-due-error" : undefined}
+                className={fieldErrors.dueOn ? "ut-invalid" : undefined}
+                onChange={() => clearFieldError("dueOn")}
+              />
+              {fieldErrors.dueOn && (
+                <small id="task-due-error" className="ut-field-error">
+                  {fieldErrors.dueOn}
+                </small>
+              )}
             </label>
           </div>
           <label>
@@ -1258,10 +1353,9 @@ function TaskDetails({
     !!t &&
     !t.deleted_at &&
     data?.canCreate &&
-    (data?.isAdmin ||
-      (data?.claimableKinds === undefined
-        ? data?.userId === t.assigned_to
-        : !!t.claimed_by && data?.userId === t.assigned_to));
+    !!t.claimed_by &&
+    t.claimed_by === data?.userId &&
+    t.assigned_to === data?.userId;
   const canEdit =
     canAct &&
     t?.status !== "completed" &&
@@ -1271,10 +1365,17 @@ function TaskDetails({
   const canFillChecklist = canEdit && t?.stage === "documentation";
   const canClaim =
     !!t &&
+    !!data?.canCreate &&
     !t.deleted_at &&
     !t.claimed_by &&
-    !!data?.claimableKinds?.includes(t.kind) &&
-    !["completed", "cancelled"].includes(t.status);
+    !["completed", "cancelled"].includes(t.status) &&
+    ((t.status !== "paused" &&
+      !!data?.claimableKinds?.includes(t.kind) &&
+      ["intake", "documentation"].includes(t.stage)) ||
+      (t.assigned_to === data?.userId &&
+        ["intake", "documentation", "registration", "technical_review", "owner_approval"].includes(
+          t.stage,
+        )));
   const remainder = t ? pending(t) : [];
   async function write(
     action: TaskAction,
@@ -1383,11 +1484,8 @@ function TaskDetails({
               !!data &&
               !t.deleted_at &&
               !["completed", "cancelled"].includes(t.status) &&
-              (data.isAdmin ||
-                ((data.claimableKinds === undefined
-                  ? t.assigned_to === data.userId
-                  : !!t.claimed_by && t.assigned_to === data.userId) &&
-                  t.documenter_id === data.userId))
+              !!canAct &&
+              (data.isAdmin || t.documenter_id === data.userId)
             }
             expanded={headerExpanded}
             toggle={() => {
@@ -1395,7 +1493,7 @@ function TaskDetails({
               setHeaderExpanded(true);
             }}
           />
-          {headerExpanded && data && !t.deleted_at && (
+          {headerExpanded && canAct && data && !t.deleted_at && (
             <TaskManagement
               task={t}
               data={data}
@@ -1526,15 +1624,21 @@ function TaskDetails({
                   </button>
                 </nav>
                 <div hidden={activityTab !== "comments"}>
-                  {data && !t.deleted_at && (
-                    <TaskComment
-                      task={t}
-                      userId={data.userId}
-                      busy={busy}
-                      write={write}
-                      onDirty={setCommentDirty}
-                    />
-                  )}
+                  {data &&
+                    !t.deleted_at &&
+                    (canAct || (t.stage === "registration" && t.requested_by === data.userId) ? (
+                      <TaskComment
+                        task={t}
+                        userId={data.userId}
+                        busy={busy}
+                        write={write}
+                        onDirty={setCommentDirty}
+                      />
+                    ) : (
+                      <p className="ut-muted" role="status">
+                        Assuma o atendimento para registrar comentários e anexos.
+                      </p>
+                    ))}
                   {data?.events.map((ev) => (
                     <article className="ut-activity" key={ev.id}>
                       <span className="ut-avatar" aria-hidden="true">
@@ -1583,6 +1687,7 @@ function TaskDetails({
                     tasks={[t]}
                     taskId={t.id}
                     isAdmin={data?.isAdmin}
+                    canManage={!!canAct}
                   />
                 )}
               </aside>

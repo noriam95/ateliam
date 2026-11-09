@@ -4,7 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { loadTaskAreas } from "@/lib/user-tasks.functions";
 import { saveProcessArea } from "@/lib/config.functions";
-export function TaskAreaField({ organizationId }: { organizationId: string }) {
+export function TaskAreaField({
+  organizationId,
+  validationError,
+  onSelect,
+}: {
+  organizationId: string;
+  validationError?: string;
+  onSelect?: () => void;
+}) {
   const load = useServerFn(loadTaskAreas);
   const save = useServerFn(saveProcessArea);
   const q = useQuery({
@@ -28,9 +36,13 @@ export function TaskAreaField({ organizationId }: { organizationId: string }) {
           placeholder="Pesquisar área"
           compact
           createOnlyWhenEmpty
+          invalid={Boolean(validationError)}
+          errorMessageId={validationError ? "task-area-error" : undefined}
           onChange={(value) => {
             setSearch(value);
-            setSelected(q.data?.find((area) => area.name === value)?.id || "");
+            const areaId = q.data?.find((area) => area.name === value)?.id || "";
+            setSelected(areaId);
+            if (areaId) onSelect?.();
           }}
           createLabel="Cadastrar área"
           onCreate={
@@ -45,6 +57,11 @@ export function TaskAreaField({ organizationId }: { organizationId: string }) {
           }
         />
       </div>
+      {validationError && (
+        <small id="task-area-error" className="ut-field-error">
+          {validationError}
+        </small>
+      )}
       {adding && (
         <div>
           <label>

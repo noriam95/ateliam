@@ -48,6 +48,7 @@ export function TaskMeetings({
   period = "month",
   taskId,
   isAdmin = false,
+  canManage = true,
   render,
   search = "",
   home = false,
@@ -58,6 +59,7 @@ export function TaskMeetings({
   period?: TaskPeriod;
   taskId?: string;
   isAdmin?: boolean;
+  canManage?: boolean;
   search?: string;
   home?: boolean;
   render?: (
@@ -144,7 +146,7 @@ export function TaskMeetings({
     }
   };
   const current = editor && editor !== "new" ? editor : null;
-  const canEdit = !current || current.organizer_id === query.data?.userId || isAdmin;
+  const canEdit = canManage && (!current || current.organizer_id === query.data?.userId || isAdmin);
   const refreshMeetings = async () => {
     await cache.invalidateQueries({ queryKey: ["task-meetings", organizationId] });
     await cache.invalidateQueries({ queryKey: ["task-detail", organizationId] });
@@ -212,9 +214,15 @@ export function TaskMeetings({
             </label>
           </div>
         )}
-        <button className="ut-primary" onClick={() => schedule(anchor)}>
-          Agendar compromisso
-        </button>
+        {canManage ? (
+          <button className="ut-primary" onClick={() => schedule(anchor)}>
+            Agendar compromisso
+          </button>
+        ) : (
+          <p className="ut-muted" role="status">
+            Assuma o atendimento para agendar compromissos vinculados à tarefa.
+          </p>
+        )}
       </div>
       {query.isLoading && <p role="status">Carregando reuniões…</p>}
       {query.error && (
@@ -239,7 +247,7 @@ export function TaskMeetings({
                       : "Agendada"}
                 </span>
               </button>
-              {(m.organizer_id === query.data?.userId || isAdmin) && (
+              {canManage && (m.organizer_id === query.data?.userId || isAdmin) && (
                 <MeetingDeleteAction
                   meeting={m}
                   changed={refreshMeetings}

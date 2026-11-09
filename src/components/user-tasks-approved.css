@@ -766,6 +766,12 @@
   color: var(--muted-foreground);
   overflow-wrap: anywhere;
 }
+.ut-edit-title-field {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
 .ut-edit-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -25,16 +25,20 @@ export function TaskManagement({
 }) {
   const [confirm, setConfirm] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState("");
-  const [revision] = useState(task.revision);
+  const [revision, setRevision] = useState(task.revision);
   const [dirty, setDirty] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [savedTitle, setSavedTitle] = useState(task.title);
   const submitting = useRef(false);
-  const firstField = useRef<HTMLSelectElement>(null);
+  const firstField = useRef<HTMLInputElement>(null);
   useEffect(() => {
     firstField.current?.focus();
   }, []);
   const errorId = useId();
   const allowed =
-    data.isAdmin || (task.assigned_to === data.userId && task.documenter_id === data.userId);
+    task.claimed_by === data.userId &&
+    task.assigned_to === data.userId &&
+    (data.isAdmin || task.documenter_id === data.userId);
   const canChangeModality =
     task.kind === "mapping" && task.stage === "documentation" && !task.review_started;
   if (!allowed || task.deleted_at || ["completed", "cancelled"].includes(task.status)) return null;
@@ -43,7 +47,20 @@ export function TaskManagement({
     if (submitting.current || busy) return;
     submitting.current = true;
     try {
-      if (await write("edit_details", { ...payload, revision })) onClose();
+      const nextTitle = String(payload.title || title).trim();
+      const details = { ...payload };
+      delete details.title;
+      let currentRevision = revision;
+      if (nextTitle !== savedTitle) {
+        if (!(await write("edit_title", { title: nextTitle, revision: currentRevision }))) {
+          setConfirm(null);
+          return;
+        }
+        currentRevision += 1;
+        setRevision(currentRevision);
+        setSavedTitle(nextTitle);
+      }
+      if (await write("edit_details", { ...details, revision: currentRevision })) onClose();
       else setConfirm(null);
     } finally {
       submitting.current = false;
@@ -70,6 +87,12 @@ export function TaskManagement({
           if (busy || submitting.current || confirm) return;
           const form = e.currentTarget;
           const values = Object.fromEntries(new FormData(form));
+          const nextTitle = String(values.title || "").trim();
+          if (nextTitle.length < 2 || nextTitle.length > 200) {
+            setError("O título deve ter entre 2 e 200 caracteres.");
+            (form.elements.namedItem("title") as HTMLInputElement)?.focus();
+            return;
+          }
           if (!values.startsOn || !values.dueOn || String(values.dueOn) < String(values.startsOn)) {
             setError("Informe as duas datas. O prazo deve ser igual ou posterior ao início.");
             (
@@ -85,12 +108,25 @@ export function TaskManagement({
           await save(payload);
         }}
       >
-        <p className="ut-edit-context">{task.title}</p>
+        <label className="ut-edit-title-field">
+          Título
+          <input
+            ref={firstField}
+            name="title"
+            value={title}
+            minLength={2}
+            maxLength={200}
+            required
+            disabled={busy}
+            onChange={(event) => setTitle(event.target.value)}
+            aria-invalid={!!error && title.trim().length < 2}
+          />
+        </label>
         <fieldset disabled={busy} className="ut-edit-fields">
           <legend>Pessoas</legend>
           <label>
             Responsável
-            <select ref={firstField} name="assignedTo" defaultValue={task.assigned_to}>
+            <select name="assignedTo" defaultValue={task.assigned_to}>
               {!data.people.some((p) => p.id === task.assigned_to && p.can_edit) && (
                 <option value={task.assigned_to} disabled>
                   {task.assignee_name}

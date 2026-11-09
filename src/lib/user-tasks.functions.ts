@@ -115,6 +115,7 @@ export const updateUserTask = createServerFn({ method: "POST" })
           "edit_details",
           "start_documentation",
           "claim",
+          "edit_title",
           "request_complement",
           "resubmit",
           "create",
@@ -151,6 +152,16 @@ export const updateUserTask = createServerFn({ method: "POST" })
       });
       if (claimError) throw new Error(claimError.message);
       return claimed as { id: string; documentId?: string; revision?: number };
+    }
+    if (data.action === "edit_title") {
+      const { data: updated, error: titleError } = await db.rpc("update_claimed_task_title", {
+        p_org: data.organizationId,
+        p_task: data.payload.id,
+        p_revision: data.payload.revision,
+        p_title: data.payload.title,
+      });
+      if (titleError) throw new Error(titleError.message);
+      return updated as { id: string; revision?: number; documentId?: string };
     }
     const { data: result, error } = await db.rpc("user_tasks_command", {
       p_org: data.organizationId,

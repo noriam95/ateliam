@@ -169,6 +169,7 @@ export type TaskAction =
   | "pause"
   | "resume"
   | "edit_details"
+  | "edit_title"
   | "start_documentation"
   | "claim"
   | "request_complement"

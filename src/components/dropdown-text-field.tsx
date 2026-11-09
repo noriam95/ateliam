@@ -27,6 +27,8 @@ export function DropdownTextField({
   compact,
   inlineOptions = false,
   createOnlyWhenEmpty = false,
+  invalid = false,
+  errorMessageId,
 }: {
   label: string;
   value: string;
@@ -39,6 +41,8 @@ export function DropdownTextField({
   /** Keeps options in the scroll flow of constrained inspectors and dialogs. */
   inlineOptions?: boolean;
   createOnlyWhenEmpty?: boolean;
+  invalid?: boolean;
+  errorMessageId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -110,6 +114,8 @@ export function DropdownTextField({
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={open}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? errorMessageId : undefined}
           aria-controls={listboxId}
           aria-activedescendant={
             open && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
@@ -121,7 +127,7 @@ export function DropdownTextField({
             setOpen(true);
           }}
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
-          className={`${fieldInputBase} ${compact ? "h-9" : "h-10"} pl-9 pr-9`}
+          className={`${fieldInputBase} ${compact ? "h-9" : "h-10"} pl-9 pr-9 ${invalid ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
         />
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
       </div>

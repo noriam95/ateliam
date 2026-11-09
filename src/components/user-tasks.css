@@ -489,6 +489,17 @@
   resize: none;
   min-height: 160px;
 }
+.ut-form .ut-invalid {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 1px var(--destructive);
+}
+.ut-form .ut-field-error {
+  display: block;
+  margin-top: 5px;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 1.4;
+}
 .ut-document-picker {
   padding: 14px;
   border: 1px solid var(--border);
