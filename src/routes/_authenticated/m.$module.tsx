@@ -13483,6 +13483,16 @@ function DdpModule({
                       displayValue={system.nome}
                       systems={catalogs.systems}
                       placeholder="Buscar sistema ou documento cadastrado..."
+                      onTextChange={(name) =>
+                        update({
+                          ...data,
+                          systems: data.systems.map((item) =>
+                            item.id === system.id
+                              ? { ...item, systemId: "", nome: name }
+                              : item,
+                          ),
+                        })
+                      }
                       onSelect={(selectedSystem) =>
                         update({
                           ...data,
@@ -17466,6 +17476,7 @@ function RegisteredSystemSelect({
   displayValue = "",
   systems,
   onSelect,
+  onTextChange,
   placeholder = "Buscar sistema ou documento cadastrado...",
   onRequestCreate,
 }: {
@@ -17474,6 +17485,7 @@ function RegisteredSystemSelect({
   displayValue?: string;
   systems: OrganizationSystem[];
   onSelect: (system: OrganizationSystem | null) => void;
+  onTextChange: (value: string) => void;
   placeholder?: string;
   // Abre o cadastro de um novo sistema (pré-preenchendo o nome pesquisado).
   onRequestCreate?: (query: string) => void;
@@ -17544,11 +17556,12 @@ function RegisteredSystemSelect({
             activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
           }
           onFocus={() => {
-            setQuery("");
+            setQuery(selected?.name ?? displayValue);
             setOpen(true);
           }}
           onChange={(event) => {
             setQuery(event.target.value);
+            onTextChange(event.target.value);
             setOpen(true);
           }}
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
