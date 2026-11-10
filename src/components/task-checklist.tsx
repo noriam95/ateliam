@@ -1,6 +1,6 @@
 import { documentLabel } from "@/lib/document-label";
 import { TaskDocumentPreview } from "./task-delivery-export";
-import { Pencil, Trash2, Eye, Paperclip, Plus } from "lucide-react";
+import { Pencil, Trash2, Eye, Paperclip, Plus, CheckCircle2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -36,6 +36,7 @@ type Props = {
 export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setBusy }: Props) {
   const [removingSection, setRemovingSection] = useState<TaskItem | null>(null);
   const [removing, setRemoving] = useState<TaskItem | null>(null);
+  const [completing, setCompleting] = useState<TaskItem | null>(null);
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
   const [type, setType] = useState("file");
@@ -279,6 +280,18 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
                               <Pencil size={16} />
                             </a>
                           )}
+                          {canEdit && item.document_id && !item.completed && (
+                            <button
+                              type="button"
+                              className="ut-icon-button"
+                              disabled={busy}
+                              aria-label="Concluir item"
+                              title="Concluir item"
+                              onClick={() => setCompleting(item)}
+                            >
+                              <CheckCircle2 size={16} />
+                            </button>
+                          )}
                           {canEdit && (
                             <button
                               type="button"
@@ -429,6 +442,40 @@ export function TaskChecklist({ task, canEdit, busy, hideDone, edit, write, setB
               }}
             >
               Excluir vínculo
+            </button>
+          </footer>
+        </TaskDialog>
+      )}
+      {completing && (
+        <TaskDialog title="Concluir item" busy={busy} onClose={() => setCompleting(null)}>
+          <div className="ut-form">
+            <p>
+              Confirmar a conclusão de “{completing.document_name || completing.label}”? O sistema
+              verificará se o documento está salvo definitivamente antes de concluir.
+            </p>
+          </div>
+          <footer>
+            <button disabled={busy} onClick={() => setCompleting(null)}>
+              Cancelar
+            </button>
+            <button
+              className="ut-primary"
+              disabled={busy}
+              onClick={async () => {
+                if (
+                  await write("item", {
+                    key: completing.key,
+                    documentId: completing.document_id,
+                    savedVersion: completing.saved_version,
+                    savedAt: completing.saved_at,
+                    content: completing.content,
+                    completed: true,
+                  })
+                )
+                  setCompleting(null);
+              }}
+            >
+              Concluir item
             </button>
           </footer>
         </TaskDialog>
