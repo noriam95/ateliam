@@ -8,6 +8,10 @@ type AnnotationResizeRulesInstance = {
 
 export function AnnotationResizeRules(this: AnnotationResizeRulesInstance, eventBus: any) {
   RuleProvider.call(this, eventBus);
+  // Let selected text annotations show the standard BPMN resize handles.
+  eventBus.on("resize.canResize", 2000, ({ shape }: any) => {
+    if (shape?.type === "bpmn:TextAnnotation") return true;
+  });
   eventBus.on("commandStack.shape.resize.preExecute", 500, ({ context }: any) => {
     if (context.shape?.type !== "bpmn:TextAnnotation") return;
     // Preserve the user-sized box; the native renderer wraps its text in that box.
