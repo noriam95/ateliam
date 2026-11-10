@@ -830,3 +830,350 @@
     flex-wrap: wrap;
   }
 }
+
+/* Compact task-detail workspace: keep every action while grouping related information. */
+.ut-task-detail-dialog {
+  width: min(1440px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.ut-task-detail-dialog > header {
+  flex: 0 0 auto;
+  padding: 9px 16px;
+  gap: 10px;
+  background: var(--muted);
+}
+.ut-task-detail-dialog > header h2 {
+  font-size: 16px;
+  line-height: 1.25;
+}
+.ut-task-detail-dialog .ut-dialog-heading {
+  min-width: 0;
+  gap: 10px;
+}
+.ut-task-detail-dialog .ut-detail-code {
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+}
+.ut-task-detail-dialog .ut-task-detail-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ut-task-detail-dialog .ut-routing {
+  flex: 0 0 auto;
+  gap: 5px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--status-pending) 8%, var(--card));
+}
+.ut-task-detail-dialog .ut-routing h3 {
+  margin: 0;
+  font-size: 12px;
+}
+.ut-task-detail-dialog .ut-routing p {
+  margin: 0;
+  font-size: 11px;
+}
+.ut-task-detail-dialog .ut-routing > button {
+  align-self: flex-start;
+  min-height: 30px;
+  margin-top: 3px;
+  padding: 5px 10px;
+}
+.ut-task-detail-dialog .ut-task-summary {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 7px 16px 9px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+.ut-task-detail-dialog .ut-summary-heading {
+  margin: 0 0 6px;
+}
+.ut-task-detail-dialog .ut-summary-heading h3 {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+}
+.ut-task-detail-dialog .ut-edit-details {
+  min-height: 28px;
+  padding: 4px 8px;
+}
+.ut-task-detail-dialog .ut-task-metadata {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: none;
+  grid-auto-flow: row;
+  gap: 7px 12px;
+}
+.ut-task-detail-dialog .ut-task-metadata dt {
+  margin-bottom: 2px;
+  font-size: 9px;
+  line-height: 1.2;
+}
+.ut-task-detail-dialog .ut-task-metadata dd {
+  min-height: 22px;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.ut-task-detail-dialog .ut-task-metadata .ut-avatar {
+  width: 22px;
+  height: 22px;
+}
+.ut-task-detail-dialog .ut-summary-editor {
+  margin: 8px 16px;
+}
+.ut-task-detail-dialog .ut-detail-tabs {
+  flex: 0 0 auto;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 16px;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+.ut-task-detail-dialog .ut-detail-tabs button {
+  min-height: 38px;
+  padding: 7px 0 6px;
+  font-size: 11px;
+}
+.ut-task-detail-dialog .ut-detail-grid-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.ut-task-detail-dialog .ut-detail-grid {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.85fr);
+}
+.ut-task-detail-dialog :is(.ut-detail-main, .ut-detail-history) {
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.ut-task-detail-dialog .ut-detail-main {
+  background: var(--card);
+}
+.ut-task-detail-dialog .ut-detail {
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
+.ut-task-detail-dialog .ut-request-context {
+  gap: 4px;
+}
+.ut-task-detail-dialog .ut-request-heading strong,
+.ut-task-detail-dialog .ut-detail .ut-heading h3 {
+  font-size: 12px;
+}
+.ut-task-detail-dialog .ut-request-text {
+  font-size: 11px;
+  line-height: 1.45;
+}
+.ut-task-detail-dialog .ut-request-byline {
+  font-size: 9px;
+}
+.ut-task-detail-dialog .ut-detail .ut-heading {
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.ut-task-detail-dialog .ut-detail .ut-heading h3 {
+  margin: 0;
+}
+.ut-task-detail-dialog .ut-checklist-count {
+  font-size: 10px;
+}
+.ut-task-detail-dialog .ut-deliveries {
+  display: grid;
+  gap: 7px;
+}
+.ut-task-detail-dialog .ut-delivery-disclosure {
+  margin: 0;
+  border-radius: 7px;
+  box-shadow: none;
+}
+.ut-task-detail-dialog .ut-delivery-summary {
+  min-height: 34px;
+  gap: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+}
+.ut-task-detail-dialog .ut-delivery-summary::before {
+  font-size: 16px;
+}
+.ut-task-detail-dialog .ut-delivery-status,
+.ut-task-detail-dialog .ut-delivery-count {
+  font-size: 9px;
+}
+.ut-task-detail-dialog .ut-delivery-content {
+  padding: 0 9px 7px;
+}
+.ut-task-detail-dialog .ut-delivery-entry {
+  gap: 8px;
+  padding: 7px 0;
+}
+.ut-task-detail-dialog .ut-delivery-entry strong {
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+.ut-task-detail-dialog .ut-delivery-entry small {
+  margin-top: 2px;
+  font-size: 9px;
+}
+.ut-task-detail-dialog .ut-entry-actions {
+  gap: 4px;
+}
+.ut-task-detail-dialog .ut-entry-actions :is(button, a) {
+  width: 29px;
+  height: 29px;
+  min-height: 29px;
+  padding: 0 !important;
+  border-radius: 5px;
+}
+.ut-task-detail-dialog .ut-entry-actions svg {
+  width: 14px;
+  height: 14px;
+}
+.ut-task-detail-dialog .ut-delivery-toolbar {
+  padding-top: 5px;
+}
+.ut-task-detail-dialog .ut-delivery-toolbar > button {
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 10px;
+}
+.ut-task-detail-dialog .ut-detail-history {
+  padding: 0 14px 12px;
+  border-left: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 52%, var(--card));
+}
+.ut-task-detail-dialog .ut-activity-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-height: 38px;
+  margin: 0 -14px;
+  padding: 0 14px;
+  gap: 14px;
+  background: var(--card);
+}
+.ut-task-detail-dialog .ut-activity-tabs button {
+  min-height: 38px;
+  padding: 7px 0 6px;
+  font-size: 10px;
+}
+.ut-task-detail-dialog .ut-comment-composer {
+  margin: 10px 0 4px;
+  padding: 6px;
+}
+.ut-task-detail-dialog .ut-comment-composer textarea {
+  min-height: 60px;
+  font-size: 11px;
+}
+.ut-task-detail-dialog .ut-activity {
+  gap: 8px;
+  padding: 9px 0;
+  font-size: 10px;
+}
+.ut-task-detail-dialog .ut-activity .ut-avatar {
+  width: 23px;
+  height: 23px;
+  font-size: 9px;
+}
+.ut-task-detail-dialog .ut-activity > div > strong {
+  font-size: 10px;
+}
+.ut-task-detail-dialog .ut-activity > div > small {
+  margin: 2px 0 4px;
+  font-size: 9px;
+}
+.ut-task-detail-dialog .ut-activity p {
+  margin: 2px 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.ut-task-detail-dialog .ut-detail-history > div > small {
+  font-size: 9px;
+}
+.ut-task-detail-dialog .ut-movements {
+  padding: 12px 16px;
+}
+
+@media (max-width: 1000px) {
+  .ut-task-detail-dialog .ut-task-metadata {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .ut-task-detail-dialog {
+    width: min(760px, calc(100vw - 20px));
+    max-height: calc(100dvh - 20px);
+    overflow: auto;
+  }
+  .ut-task-detail-dialog .ut-task-detail-body {
+    display: block;
+    flex: none;
+    overflow: visible;
+  }
+  .ut-task-detail-dialog .ut-detail-grid-host,
+  .ut-task-detail-dialog .ut-detail-grid {
+    height: auto;
+    overflow: visible;
+  }
+  .ut-task-detail-dialog .ut-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ut-task-detail-dialog :is(.ut-detail-main, .ut-detail-history) {
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+  }
+  .ut-task-detail-dialog .ut-detail-history {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+    padding: 0 14px 12px;
+  }
+}
+@media (max-width: 600px) {
+  .ut-task-detail-dialog > header {
+    padding: 8px 10px;
+  }
+  .ut-task-detail-dialog .ut-task-summary {
+    padding: 7px 10px;
+  }
+  .ut-task-detail-dialog .ut-task-metadata {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 10px;
+  }
+  .ut-task-detail-dialog .ut-detail-tabs {
+    padding: 0 10px;
+    gap: 14px;
+    overflow-x: auto;
+  }
+  .ut-task-detail-dialog .ut-detail-tabs button {
+    white-space: nowrap;
+  }
+  .ut-task-detail-dialog .ut-detail {
+    padding: 10px;
+  }
+  .ut-task-detail-dialog .ut-request-text {
+    line-height: 1.4;
+  }
+  .ut-task-detail-dialog .ut-delivery-entry {
+    align-items: flex-start;
+  }
+  .ut-task-detail-dialog .ut-entry-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

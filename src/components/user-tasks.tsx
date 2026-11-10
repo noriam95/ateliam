@@ -1462,7 +1462,7 @@ function TaskDetails({
       ) : !t ? (
         <p className="ut-empty">Tarefa não encontrada ou sem acesso.</p>
       ) : (
-        <div>
+        <div className="ut-task-detail-body">
           {canClaim && data && (
             <section className="ut-routing" aria-label="Demanda disponível para atendimento">
               <h3>Disponível para a pool de atendimento</h3>
@@ -1517,7 +1517,7 @@ function TaskDetails({
               Fluxo do processo
             </button>
           </nav>
-          <div>
+          <div className="ut-detail-grid-host">
             <div className="ut-detail-grid">
               <section className="ut-detail-main">
                 <section
