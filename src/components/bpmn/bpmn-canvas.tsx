@@ -399,7 +399,10 @@ export const BpmnCanvas = forwardRef<
         const viewport = { x: 0, y: 0, width: hostRect.width, height: hostRect.height };
         setLaneLabels(
           registry
-            .filter((el: any) => el.type === "bpmn:Lane" && !el.hidden)
+            .filter(
+              (el: any) =>
+                ["bpmn:Lane", "bpmn:Participant"].includes(el.type) && !el.hidden,
+            )
             .flatMap((el: any) => {
               const graphics = registry.getGraphics(el);
               const label = graphics?.querySelector(".djs-label");
@@ -420,14 +423,14 @@ export const BpmnCanvas = forwardRef<
                   height: bounds.height,
                 },
                 viewport,
-                readOnly ? { width: 240, height: 38 } : undefined,
+                readOnly ? { width: 280, height: 54 } : { width: 220, height: 42 },
               );
               graphics.toggleAttribute("data-bf-clipped-label", Boolean(position));
               return position
                 ? [
                     {
                       id: el.id,
-                      name: el.businessObject.name || "A DEFINIR",
+                      name: el.businessObject.name || (el.type === "bpmn:Lane" ? "A DEFINIR" : "Participante"),
                       kind: el.type,
                       ...position,
                     },
@@ -889,12 +892,12 @@ export const BpmnCanvas = forwardRef<
         {ready && frozen && laneLabels.length > 0 && (
           <div
             className="bf-bpmn-edge-identifications"
-            aria-label="Identificações de raias fora da área visível"
+            aria-label="Identificações de raias e participantes fora da área visível"
           >
             {laneLabels.map((label) => (
               <div
                 key={label.id}
-                className="bf-bpmn-edge-label is-lane"
+                className={`bf-bpmn-edge-label ${label.kind === "bpmn:Participant" ? "is-pool" : "is-lane"}`}
                 style={{
                   left: label.left,
                   top: label.top,
@@ -902,7 +905,7 @@ export const BpmnCanvas = forwardRef<
                 }}
                 title={label.name}
               >
-                {!readOnly && <small>Raia</small>}
+                {!readOnly && <small>{label.kind === "bpmn:Participant" ? "Participante" : "Raia"}</small>}
                 <span>{bindings[label.id]?.name || label.name}</span>
               </div>
             ))}

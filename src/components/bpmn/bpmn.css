@@ -1003,12 +1003,26 @@
 }
 
 .bf-bpmn-edge-label.is-pool {
-  writing-mode: vertical-rl;
-  max-height: 190px;
-  padding: 8px 5px;
+  max-height: 72px;
+  padding: 7px 10px;
+  border-left: 3px solid #52627a;
 }
 .bf-bpmn-edge-label.is-pool > small {
-  display: none;
+  display: block;
+}
+.bf-bpmn-canvas.is-presentation .bf-bpmn-edge-label.is-pool {
+  padding: 9px 12px;
+  border-color: #52627a;
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: #fffffff5;
+  box-shadow: 0 3px 12px #18233220;
+  color: #1f2a37;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.bf-bpmn-canvas.is-presentation .bf-bpmn-edge-label.is-pool > span {
+  font-weight: 700;
 }
 
 .bf-bpmn-lane-drop {
